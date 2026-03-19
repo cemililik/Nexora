@@ -55,28 +55,38 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 > **Goal**: Development environment, CI/CD, core architecture, database design
 
 ### Deliverables
-- [ ] Repository structure (solution, projects, folder conventions)
-- [ ] Development environment setup (Docker Compose for all infra)
+- [x] Repository structure (solution, projects, folder conventions)
+- [x] Development environment setup (Docker Compose for all infra)
 - [ ] CI/CD pipeline (GitHub Actions: build, test, lint, security scan)
 - [ ] PostgreSQL multi-tenant infrastructure (schema management, migrations)
 - [ ] Keycloak setup (realm configuration, tenant-aware authentication)
 - [ ] APISIX gateway configuration (routing, rate limiting, JWT validation)
-- [ ] Dapr sidecar setup (pub/sub, state store, secret store bindings)
-- [ ] Redis configuration (caching layer, session management)
-- [ ] Kafka topic design and cluster setup
+- [x] Dapr sidecar setup (pub/sub, state store, secret store bindings)
+- [x] Redis configuration (caching layer, session management)
+- [x] Kafka topic design and cluster setup
 - [ ] HashiCorp Vault integration (secret management)
-- [ ] MinIO setup (object storage, bucket-per-tenant)
+- [x] MinIO setup (object storage, bucket-per-tenant)
 - [ ] Observability stack (OpenTelemetry, Grafana, Loki, Tempo)
-- [ ] Shared kernel library (common types, base entities, multi-tenant middleware)
-- [ ] Module loader & plugin architecture
-- [ ] API documentation infrastructure (OpenAPI/Swagger)
-- [ ] Coding standards enforcement (EditorConfig, analyzers, pre-commit hooks)
+- [x] Shared kernel library (common types, base entities, multi-tenant middleware)
+- [x] Module loader & plugin architecture
+- [x] API documentation infrastructure (OpenAPI/Swagger)
+- [x] Coding standards enforcement (EditorConfig, analyzers, pre-commit hooks)
 
 ### Technical Milestones
-1. `docker compose up` brings entire stack online
-2. A request flows: APISIX → .NET App → Dapr → PostgreSQL → Response
-3. Tenant A and Tenant B have isolated schemas
-4. Keycloak issues JWT, APISIX validates it, .NET resolves tenant
+1. [x] `docker compose up` brings entire stack online
+2. [ ] A request flows: APISIX → .NET App → Dapr → PostgreSQL → Response
+3. [ ] Tenant A and Tenant B have isolated schemas
+4. [ ] Keycloak issues JWT, APISIX validates it, .NET resolves tenant
+
+### Completed Work
+- **Solution structure**: 8 projects (Host, SharedKernel, Infrastructure, Identity module, 4 test projects)
+- **SharedKernel**: Entity/AuditableEntity base classes, strongly-typed IDs, Result<T> pattern, PagedResult<T>, LocalizedMessage (lockey_ enforcement), DomainException, value objects (Money, DateRange, EmailAddress, PhoneNumber), CQRS interfaces, ICacheService, ISecretProvider, IJobScheduler, IModule, IModuleAvailability, ITenantContext
+- **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant), DaprCacheService (L1+L2 with prefix invalidation), DaprEventBus, DaprSecretProvider (generic overload), HangfireJobScheduler, TenantJobFilter, ValidationBehavior (all errors), LoggingBehavior, DatabaseTenantConfiguration
+- **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role protection)
+- **Identity module (partial)**: Domain entities (Tenant, Organization, User, Role, Permission, Department + join entities), strongly-typed IDs, domain events, EF configurations, CreateOrganization command/handler/validator, GetOrganizations query, API endpoints with envelope format
+- **Docker Compose**: PostgreSQL 17, Redis 7, Kafka (KRaft), Keycloak 26, MinIO, Dapr
+- **Standards audit**: 8 critical + 12 minor violations found and fixed
+- **Tests**: 130 tests passing (SharedKernel: 58, Infrastructure: 9, Architecture: 19, Identity: 44)
 
 ---
 
@@ -85,11 +95,14 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 ### 1.1 Identity & Access Management
 **Spec**: [modules/identity/SPEC.md](../modules/identity/SPEC.md)
-- [ ] Tenant management (create, configure, suspend tenants)
-- [ ] Organization management (multi-org within tenant)
-- [ ] User management (invite, roles, deactivate)
-- [ ] Role-based access control (RBAC) with organization scope
-- [ ] Permission system (module-level + entity-level permissions)
+- [x] Tenant management — domain model (create, activate, suspend, terminate + domain events)
+- [x] Organization management — domain model + CQRS (create, update, activate/deactivate + API endpoints)
+- [x] User management — domain model (create, update profile, activate/deactivate, record login + domain events)
+- [x] Role-based access control — domain model (Role, Permission, RolePermission with assign/revoke + domain events)
+- [x] Permission system — module.resource.action format
+- [ ] Tenant management — API endpoints, Keycloak realm provisioning
+- [ ] User management — API endpoints, Keycloak user sync
+- [ ] Organization management — remaining endpoints (update, delete, members)
 - [ ] User profile & preferences
 - [ ] Login audit trail
 - [ ] Module install/uninstall management API

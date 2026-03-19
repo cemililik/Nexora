@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nexora.SharedKernel\Nexora.SharedKernel.csproj" />
+    <ProjectReference Include="..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Nexora.Modules.Identity\Nexora.Modules.Identity.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.17" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+  </ItemGroup>
+
+</Project>
