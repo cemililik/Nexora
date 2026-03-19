@@ -27,12 +27,18 @@ try
     // Dapr
     builder.Services.AddDaprClient();
 
+    // Global exception handler
+    builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+    builder.Services.AddProblemDetails();
+
     // Module discovery & registration
     builder.Services.AddNexoraModules(builder.Configuration);
 
     var app = builder.Build();
 
-    // Request pipeline
+    // Request pipeline — exception handler must be first
+    app.UseExceptionHandler();
+
     if (app.Environment.IsDevelopment())
     {
         app.MapOpenApi();

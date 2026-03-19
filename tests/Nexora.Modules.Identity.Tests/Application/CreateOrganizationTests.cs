@@ -5,6 +5,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -28,7 +29,7 @@ public sealed class CreateOrganizationTests : IDisposable
     [Fact]
     public async Task Handle_ValidCommand_ShouldCreateOrganization()
     {
-        var handler = new CreateOrganizationHandler(_dbContext, _tenantAccessor);
+        var handler = new CreateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<CreateOrganizationHandler>.Instance);
         var command = new CreateOrganizationCommand("Acme School", "acme-school");
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -47,7 +48,7 @@ public sealed class CreateOrganizationTests : IDisposable
         await _dbContext.Organizations.AddAsync(org);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new CreateOrganizationHandler(_dbContext, _tenantAccessor);
+        var handler = new CreateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<CreateOrganizationHandler>.Instance);
         var command = new CreateOrganizationCommand("Second", "taken-slug");
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -59,7 +60,7 @@ public sealed class CreateOrganizationTests : IDisposable
     [Fact]
     public async Task Handle_ShouldPersistToDatabase()
     {
-        var handler = new CreateOrganizationHandler(_dbContext, _tenantAccessor);
+        var handler = new CreateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<CreateOrganizationHandler>.Instance);
         var command = new CreateOrganizationCommand("Persisted Org", "persisted");
 
         await handler.Handle(command, CancellationToken.None);

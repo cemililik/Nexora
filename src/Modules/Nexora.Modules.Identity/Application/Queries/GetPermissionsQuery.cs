@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
@@ -33,6 +34,7 @@ public sealed class GetPermissionsHandler(
                 p.Description))
             .ToListAsync(cancellationToken);
 
-        return Result<List<PermissionDto>>.Success(permissions);
+        return Result<List<PermissionDto>>.Success(permissions,
+            new LocalizedMessage("lockey_identity_permissions_listed"));
     }
 }

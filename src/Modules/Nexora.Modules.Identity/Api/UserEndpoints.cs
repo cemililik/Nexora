@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -9,12 +10,10 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Api;
 
-/// <summary>
-/// Minimal API endpoints for user management within a tenant.
-/// </summary>
+/// <summary>Minimal API endpoints for user management within a tenant.</summary>
 public static class UserEndpoints
 {
-    /// <summary>Maps user listing and creation endpoints.</summary>
+    /// <summary>Maps user CRUD, profile, status, and /me endpoints.</summary>
     public static void MapUserEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/users")
@@ -29,6 +28,26 @@ public static class UserEndpoints
                 : Results.BadRequest(ApiEnvelope<PagedResult<UserDto>>.Fail(result.Error!));
         });
 
+        group.MapGet("/me", async (HttpContext httpContext, ISender sender, CancellationToken ct) =>
+        {
+            var keycloakUserId = httpContext.User.FindFirstValue("sub");
+            if (string.IsNullOrEmpty(keycloakUserId))
+                return Results.Unauthorized();
+
+            var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<UserDetailDto>.Success(result.Value!))
+                : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));
+        });
+
+        group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetUserByIdQuery(id), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<UserDetailDto>.Success(result.Value!))
+                : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));
+        });
+
         group.MapPost("/", async (CreateUserCommand command, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(command, ct);
@@ -38,5 +57,29 @@ public static class UserEndpoints
                     ApiEnvelope<UserDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<UserDto>.Fail(result.Error!));
         });
+
+        group.MapPut("/{id:guid}/profile", async (Guid id, UpdateProfileRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new UpdateUserProfileCommand(id, request.FirstName, request.LastName, request.Phone);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<UserDto>.Success(result.Value!, result.Message))
+                : Results.NotFound(ApiEnvelope<UserDto>.Fail(result.Error!));
+        });
+
+        group.MapPut("/{id:guid}/status", async (Guid id, UpdateUserStatusRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new UpdateUserStatusCommand(id, request.Action);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
+        });
     }
 }
+
+/// <summary>Request body for updating a user's profile.</summary>
+public sealed record UpdateProfileRequest(string FirstName, string LastName, string? Phone);
+
+/// <summary>Request body for changing a user's status.</summary>
+public sealed record UpdateUserStatusRequest(string Action);
