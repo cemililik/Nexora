@@ -1,0 +1,20 @@
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:pre-request {
+  const token = bru.getEnvVar("accessToken");
+
+  if (!token) {
+    console.warn("No accessToken set — run Auth/Get Token first or set it in the environment.");
+  }
+}

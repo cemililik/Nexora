@@ -1,0 +1,30 @@
+meta {
+  name: Get Token
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token
+  body: formUrlEncoded
+  auth: none
+}
+
+body:form-urlencoded {
+  grant_type: password
+  client_id: {{keycloakClientId}}
+  client_secret: {{keycloakClientSecret}}
+  username: {{adminUsername}}
+  password: {{adminPassword}}
+  scope: openid
+}
+
+script:post-response {
+  if (res.status === 200) {
+    const body = res.getBody();
+    bru.setEnvVar("accessToken", body.access_token);
+    console.log("Token acquired, expires in " + body.expires_in + "s");
+  } else {
+    console.error("Token request failed with status " + res.status);
+  }
+}

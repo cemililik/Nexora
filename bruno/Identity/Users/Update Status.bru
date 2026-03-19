@@ -1,0 +1,21 @@
+meta {
+  name: Update Status
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/identity/users/{{userId}}/status
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "action": "deactivate"
+  }
+}

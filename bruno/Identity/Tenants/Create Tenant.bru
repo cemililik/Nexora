@@ -1,0 +1,32 @@
+meta {
+  name: Create Tenant
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/identity/tenants
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Demo Organization",
+    "slug": "demo-org"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("tenantId", body.data.id);
+      console.log("tenantId set to " + body.data.id);
+    }
+  }
+}

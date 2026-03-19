@@ -1,0 +1,32 @@
+meta {
+  name: Create Organization
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/identity/organizations
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Acme Corporation",
+    "slug": "acme-corp"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("organizationId", body.data.id);
+      console.log("organizationId set to " + body.data.id);
+    }
+  }
+}

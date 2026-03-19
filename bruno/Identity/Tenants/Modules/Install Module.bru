@@ -1,0 +1,21 @@
+meta {
+  name: Install Module
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/identity/tenants/{{tenantId}}/modules
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "moduleName": "crm"
+  }
+}
