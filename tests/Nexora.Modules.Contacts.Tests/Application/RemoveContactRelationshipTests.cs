@@ -1,0 +1,100 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Nexora.Infrastructure.MultiTenancy;
+using Nexora.Modules.Contacts.Application.Commands;
+using Nexora.Modules.Contacts.Domain.Entities;
+using Nexora.Modules.Contacts.Domain.ValueObjects;
+using Nexora.Modules.Contacts.Infrastructure;
+using Nexora.SharedKernel.Abstractions.MultiTenancy;
+
+namespace Nexora.Modules.Contacts.Tests.Application;
+
+public sealed class RemoveContactRelationshipTests : IDisposable
+{
+    private readonly ContactsDbContext _dbContext;
+    private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly Guid _tenantId = Guid.NewGuid();
+    private readonly Guid _orgId = Guid.NewGuid();
+
+    public RemoveContactRelationshipTests()
+    {
+        _tenantAccessor = CreateTenantAccessor(_tenantId, _orgId);
+        var options = new DbContextOptionsBuilder<ContactsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new ContactsDbContext(options, _tenantAccessor);
+    }
+
+    [Fact]
+    public async Task Handle_ExistingRelationship_ShouldRemove()
+    {
+        // Arrange
+        var (contact, relationship) = await SeedContactWithRelationship();
+        var handler = new RemoveContactRelationshipHandler(_dbContext, _tenantAccessor, NullLogger<RemoveContactRelationshipHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(
+            new RemoveContactRelationshipCommand(contact.Id.Value, relationship.Id.Value),
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        var count = await _dbContext.ContactRelationships.CountAsync();
+        count.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_ContactNotFound_ShouldFail()
+    {
+        // Arrange
+        var handler = new RemoveContactRelationshipHandler(_dbContext, _tenantAccessor, NullLogger<RemoveContactRelationshipHandler>.Instance);
+        var result = await handler.Handle(
+            new RemoveContactRelationshipCommand(Guid.NewGuid(), Guid.NewGuid()),
+            CancellationToken.None);
+
+        // Act & Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_contact_not_found");
+    }
+
+    [Fact]
+    public async Task Handle_RelationshipNotFound_ShouldFail()
+    {
+        // Arrange
+        var contact = Contact.Create(_tenantId, _orgId, ContactType.Individual, "John", "Doe", null, null, null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(contact);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        var handler = new RemoveContactRelationshipHandler(_dbContext, _tenantAccessor, NullLogger<RemoveContactRelationshipHandler>.Instance);
+        var result = await handler.Handle(
+            new RemoveContactRelationshipCommand(contact.Id.Value, Guid.NewGuid()),
+            CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_relationship_not_found");
+    }
+
+    private async Task<(Contact contact, ContactRelationship relationship)> SeedContactWithRelationship()
+    {
+        var contact = Contact.Create(_tenantId, _orgId, ContactType.Individual, "John", "Doe", null, null, null, ContactSource.Manual);
+        var related = Contact.Create(_tenantId, _orgId, ContactType.Individual, "Jane", "Smith", null, null, null, ContactSource.Manual);
+        await _dbContext.Contacts.AddRangeAsync(contact, related);
+        await _dbContext.SaveChangesAsync();
+
+        var relationship = ContactRelationship.Create(contact.Id, related.Id, RelationshipType.ParentOf);
+        await _dbContext.ContactRelationships.AddAsync(relationship);
+        await _dbContext.SaveChangesAsync();
+        return (contact, relationship);
+    }
+
+    public void Dispose() => _dbContext.Dispose();
+
+    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
+    {
+        var accessor = new TenantContextAccessor();
+        accessor.SetTenant(tenantId.ToString(), orgId.ToString());
+        return accessor;
+    }
+}
