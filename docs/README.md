@@ -18,6 +18,7 @@
 | [Localization Standards](./standards/LOCALIZATION_STANDARDS.md) | i18n rules, lockey_ format, BE + FE localization |
 | [Documentation Standards](./standards/DOCUMENTATION_STANDARDS.md) | Mermaid diagrams, ADR template, module spec template |
 | [Release Standards](./standards/RELEASE_STANDARDS.md) | Versioning, CI/CD, Docker, migrations |
+| [Infrastructure Standards](./standards/INFRASTRUCTURE_STANDARDS.md) | Cache, background jobs, secrets, configuration management |
 
 ### Architecture Decisions
 | Document | Description |

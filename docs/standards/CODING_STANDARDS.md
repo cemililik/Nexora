@@ -446,3 +446,90 @@ public sealed class MyHandler(IContactQueryService contacts) { ... }
 // ❌ NEVER direct reference to another module's internals
 using Nexora.Modules.Donations.Domain.Entities; // FORBIDDEN
 ```
+
+## 12. Infrastructure Usage Rules
+
+**See full standard**: `docs/standards/INFRASTRUCTURE_STANDARDS.md`
+
+### Cache
+```csharp
+// ✅ REQUIRED — Use ICacheService abstraction
+public sealed class GetLeadHandler(ICacheService cache, ILeadRepository repo)
+{
+    public async Task<LeadResponse?> Handle(GetLeadQuery query, CancellationToken ct)
+    {
+        return await cache.GetOrSetAsync(
+            $"crm:{query.TenantId}:lead:{query.LeadId}",
+            async token => (await repo.GetByIdAsync(query.LeadId, token))?.Adapt<LeadResponse>(),
+            new CacheOptions { L1Ttl = TimeSpan.FromMinutes(5) },
+            ct);
+    }
+}
+
+// ❌ FORBIDDEN — Direct cache provider usage
+public sealed class BadHandler(IDistributedCache redis) { }
+public sealed class BadHandler2(IMemoryCache memory) { }
+public sealed class BadHandler3(DaprClient dapr) { } // for cache
+```
+
+### Background Jobs
+```csharp
+// ✅ REQUIRED — Extend NexoraJob<TParams>, register in IModule.ConfigureJobs
+public sealed class SendReceiptJob(
+    ITenantContextAccessor tenant,
+    ILogger<SendReceiptJob> logger)
+    : NexoraJob<DonationId>(tenant, logger)
+{
+    protected override async Task HandleAsync(DonationId id, CancellationToken ct) { ... }
+}
+
+// ✅ Register recurring jobs
+public void ConfigureJobs(IJobScheduler scheduler)
+{
+    scheduler.AddOrUpdate<OverdueCheckJob>(
+        "donations:overdue-check", Cron.Hourly(), queue: "default");
+}
+
+// ❌ FORBIDDEN — Raw Task.Run, Timer, or Thread-based background work
+Task.Run(() => SendEmailAsync()); // FORBIDDEN
+new Timer(callback, null, 0, 60000); // FORBIDDEN
+```
+
+### Secrets
+```csharp
+// ✅ REQUIRED — Use ISecretProvider
+public sealed class StripePaymentGateway(ISecretProvider secrets)
+{
+    public async Task<string> GetApiKeyAsync(CancellationToken ct)
+        => await secrets.GetSecretAsync("nexora/stripe/api-key", ct);
+}
+
+// ❌ FORBIDDEN — Hardcoded secrets or direct Vault/env access
+var key = "sk_live_abc123"; // FORBIDDEN
+var key = Environment.GetEnvironmentVariable("STRIPE_KEY"); // FORBIDDEN for secrets
+```
+
+### Configuration
+```csharp
+// ✅ REQUIRED — Strongly-typed options
+public sealed class DonationModuleOptions
+{
+    public const string SectionName = "ModuleConfig:Donations";
+    public int MaxCartItems { get; set; } = 20;
+}
+
+// ✅ Usage with IOptions
+public sealed class MyHandler(IOptions<DonationModuleOptions> options) { }
+
+// ✅ Tenant-specific config
+public sealed class MyHandler2(ITenantConfiguration tenantConfig)
+{
+    var gateway = await tenantConfig.GetAsync<string>("donations:payment-gateway", ct);
+}
+
+// ❌ FORBIDDEN — Raw IConfiguration or magic strings
+public sealed class BadHandler(IConfiguration config)
+{
+    var value = config["ModuleConfig:Donations:MaxCartItems"]; // FORBIDDEN
+}
+```

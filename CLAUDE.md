@@ -102,12 +102,45 @@ Nexora.Modules.{ModuleName}/
 
 ## Tech Stack Quick Reference
 - Backend: .NET 10, ASP.NET Core, EF Core, MediatR, FluentValidation, Mapster
-- Database: PostgreSQL 17, Redis (cache), Kafka (events)
+- Database: PostgreSQL 17, Redis (cache via Dapr State Store), Kafka (events via Dapr Pub/Sub)
 - Auth: Keycloak, APISIX (gateway)
-- Infrastructure: Dapr, HashiCorp Vault, MinIO
+- Infrastructure: Dapr (state, secrets, pub/sub), HashiCorp Vault (secrets), MinIO (files)
+- Jobs: Hangfire (PostgreSQL-backed)
 - Frontend: React 19 + TypeScript (admin), Next.js 16 (portal), Tailwind CSS 4, shadcn/ui
 - DevOps: Docker, Kubernetes, Helm, GitHub Actions
 - Observability: OpenTelemetry, Grafana, Loki, Tempo
+
+## Infrastructure Standards
+**Full spec**: `docs/standards/INFRASTRUCTURE_STANDARDS.md`
+
+### Cache
+- Use **only** `ICacheService` for caching — never `IDistributedCache`, `IMemoryCache`, or `DaprClient` directly
+- Cache key format: `{module}:{tenant}:{entity}:{identifier}`
+- Tenant ID in cache key is **mandatory** — cross-tenant cache leak is a critical security issue
+- L1 (in-memory, 2 min) → L2 (Redis via Dapr, 15 min) → Database
+- Cache-aside pattern: `GetOrSetAsync` for reads, explicit invalidation on writes
+
+### Background Jobs
+- Use **Hangfire** for all background/scheduled work
+- All jobs extend `NexoraJob<TParams>` base class (tenant-aware, logged, traced)
+- Job naming: `{module}:{action-descriptor}` (e.g., `donations:recurring-charge`)
+- 4 queues: `critical` (payments), `default` (normal), `bulk` (mass ops), `maintenance` (cleanup)
+- Jobs MUST be idempotent (Hangfire retries automatically)
+- Register recurring jobs in `IModule.ConfigureJobs()`
+- Max job duration: 10 minutes. Longer tasks must be split into batches
+
+### Secrets
+- Use **only** `ISecretProvider` for secrets — backed by Dapr Secret Store (Vault in prod)
+- Secret naming: `nexora/{category}/{name}` (e.g., `nexora/stripe/api-key`)
+- **NEVER** put secrets in appsettings.json, env vars, or source code
+- **NEVER** log secret values
+
+### Configuration
+- 5-layer hierarchy: appsettings.json → env-specific → env vars → Dapr secrets → tenant DB config
+- Use `IOptions<T>` / `IOptionsMonitor<T>` for strongly-typed module config
+- Tenant-specific config via `ITenantConfiguration` (stored in DB, overrides platform defaults)
+- Every config key MUST have a sensible default value
+- Validate config on startup with `IValidateOptions<T>`
 
 ## When Writing Code
 - Use file-scoped namespaces
