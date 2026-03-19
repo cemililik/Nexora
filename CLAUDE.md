@@ -40,7 +40,21 @@ Before writing ANY code or documentation, you MUST read and strictly follow:
    - DomainException MUST use `lockey_` keys
    - Result.Failure/Success MUST use `LocalizedMessage.Of("lockey_...")`
 
-5. **Module System**: `docs/architecture/MODULE_SYSTEM.md`
+5. **Observability & Error Handling Standards**: `docs/standards/OBSERVABILITY_STANDARDS.md`
+   - Structured logging with Serilog + `ILogger<T>` — PascalCase named parameters, no string interpolation
+   - Two-tier error model: `Result.Failure()` for expected errors, exceptions for unexpected
+   - `DomainException` only from domain entities — handlers use `Result.Failure()`
+   - `GlobalExceptionHandler` middleware catches all unhandled exceptions → standard `ApiEnvelope` response
+   - OpenTelemetry for distributed tracing and metrics
+   - Custom `ActivitySource` for external service calls and job execution
+   - Module-specific metrics via `System.Diagnostics.Metrics` (Meter/Counter/Histogram)
+   - Health checks: `/health/live`, `/health/ready`, `/health/startup`
+   - `CorrelationId` propagated across entire request chain
+   - Command handlers MUST log success (Information) and business rule failures (Warning)
+   - **NEVER** log secrets, passwords, tokens, or PII
+   - **NEVER** use `catch(Exception)` in module code — only in GlobalExceptionHandler and NexoraJob
+
+6. **Module System**: `docs/architecture/MODULE_SYSTEM.md`
    - Modules are true plugins — installable/removable per tenant at runtime
    - Every module implements `IModule` interface
    - Modules declare their dependencies explicitly
@@ -159,6 +173,14 @@ Nexora.Modules.{ModuleName}/
 - Module code must implement `IModule` interface
 - Module tables must be prefixed: `{modulename}_{tablename}`
 - No direct references to other modules — use SharedKernel interfaces or integration events
+- Command handlers MUST inject `ILogger<T>` and log:
+  - `Information` on successful entity creation/update/deletion
+  - `Warning` on expected business rule failures (before returning `Result.Failure()`)
+  - `Error` on external service failures (Keycloak, payment, etc.)
+- Query handlers: log `Debug` for not-found, `Warning` for slow queries (>500ms)
+- Use structured logging: `logger.LogInformation("Tenant {TenantId} created", id)` — no string interpolation
+- DomainException ONLY from domain entities — handlers return `Result.Failure()` instead
+- Never use `catch(Exception)` in module code
 
 ## When Writing Frontend Code
 - **NEVER** write raw text in JSX — always use translation function:

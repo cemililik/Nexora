@@ -1,0 +1,124 @@
+# Sourcery AI Configuration
+# Docs: https://docs.sourcery.ai/Configuration/
+
+review:
+  enable: true
+  # Sourcery reviews every PR automatically
+  auto_trigger: true
+
+  rule_settings:
+    enable: [default]
+
+  # Project-specific review instructions based on Nexora standards
+  instructions: |
+    Bu proje Nexora adinda modüler, multi-tenant bir enterprise platformdur.
+    .NET 10, PostgreSQL, React 19, Next.js 16 teknolojileri kullanilir.
+    Modular Monolith + Clean Architecture per module mimarisi uygulanir.
+
+    Review yaparken asagidaki standart dosyalarini referans al:
+    - docs/standards/CODING_STANDARDS.md
+    - docs/standards/LOCALIZATION_STANDARDS.md
+    - docs/standards/OBSERVABILITY_STANDARDS.md
+    - docs/standards/INFRASTRUCTURE_STANDARDS.md
+    - docs/standards/DOCUMENTATION_STANDARDS.md
+    - docs/standards/RELEASE_STANDARDS.md
+
+    ## Kritik Kurallar (bunlari MUTLAKA kontrol et)
+
+    ### 1. Localization (SIFIR TOLERANS)
+    - Hicbir user-facing string hardcoded olamaz
+    - Backend: Result.Success/Failure icinde LocalizedMessage.Of("lockey_...") ZORUNLU
+    - Backend: FluentValidation .WithMessage("lockey_...") ZORUNLU
+    - Backend: DomainException("lockey_...") ZORUNLU
+    - Frontend React: t('lockey_...') kullan, raw text YASAK
+    - Frontend Next.js: useTranslations ile t('lockey_...') kullan
+    - Tum lockey_ key'ler en ve tr translation dosyalarinda olmali
+
+    ### 2. Strongly-Typed IDs
+    - Raw Guid veya int ID kullanimi YASAK
+    - [StronglyTypedId] attribute ile typed ID tanimlanmali
+
+    ### 3. CQRS ve Result Pattern
+    - Command/Query sealed record olmali
+    - Her command icin FluentValidation validator ZORUNLU
+    - Handler basarili/basarisiz sonuc icin Result<T> donmeli
+    - Handler'dan exception firlatmak yerine Result.Failure() kullanilmali
+
+    ### 4. Structured Logging
+    - ILogger<T> inject edilmeli
+    - Command handler: success icin LogInformation, failure icin LogWarning ZORUNLU
+    - Named PascalCase parametreler: {TenantId}, {UserId} (string interpolation YASAK)
+    - Secret/PII loglamak YASAK
+    - catch(Exception) modul kodunda YASAK (sadece GlobalExceptionHandler ve NexoraJob'da)
+
+    ### 5. Domain Model
+    - Rich domain model — behavior entity uzerinde
+    - DomainException SADECE entity icinden firlatilir, handler'dan ASLA
+    - Factory pattern: private constructor + public static Create()
+    - Value object'ler record olmali
+
+    ### 6. Infrastructure Abstractions
+    - Cache: SADECE ICacheService (IDistributedCache, IMemoryCache, DaprClient direkt kullanim YASAK)
+    - Secret: SADECE ISecretProvider (hardcoded secret, env var YASAK)
+    - Job: NexoraJob<T> extend et (Task.Run, Timer, Thread YASAK)
+    - Config: IOptions<T> veya ITenantConfiguration (raw IConfiguration YASAK)
+
+    ### 7. Module Boundaries
+    - Moduller arasi dogrudan referans YASAK
+    - Cross-module iletisim: integration event (Kafka) veya SharedKernel interface'leri
+    - Her modul kendi DbContext'ine sahip
+    - Tablo isimleri {module}_{table} prefix'li
+
+    ### 8. API Conventions
+    - Endpoint: /api/v{version}/{module}/{resource}
+    - Response: ApiEnvelope<T> formati
+    - XML documentation her public endpoint'te ZORUNLU
+
+    ### 9. Testing
+    - Test adlandirma: Method_Scenario_ExpectedResult
+    - AAA pattern (Arrange, Act, Assert)
+    - FluentAssertions kullan
+
+    ### 10. Git & Release
+    - Conventional Commits: feat(module): description
+    - Branch naming: feature/NEX-123-description
+    - Squash merge to main
+
+  path_instructions:
+    - path: "src/Modules/**/Domain/**"
+      instructions: |
+        Domain layer: Rich domain model, strongly-typed ID, DomainException sadece burada,
+        lockey_ key zorunlu, private constructor + static Create pattern.
+
+    - path: "src/Modules/**/Application/**"
+      instructions: |
+        Application layer: CQRS handler'lar, FluentValidation zorunlu, Result<T> pattern,
+        ILogger<T> inject + structured logging zorunlu, ICacheService/ISecretProvider kullan,
+        DomainException firlatma — Result.Failure() kullan, lockey_ key zorunlu.
+
+    - path: "src/Modules/**/Infrastructure/**"
+      instructions: |
+        Infrastructure layer: EF DbContext modul bazli, tablo prefix {module}_{table},
+        ICacheService/ISecretProvider abstraction kullan, custom ActivitySource external service'lerde,
+        HttpClient typed/IHttpClientFactory ile.
+
+    - path: "src/Clients/**"
+      instructions: |
+        Frontend: Raw text JSX'te YASAK, lockey_ key ile t() fonksiyonu kullan.
+        React admin: react-i18next, Next.js portal: next-intl. RTL destegi Tailwind ile.
+
+    - path: "tests/**"
+      instructions: |
+        Test: Method_Scenario_ExpectedResult naming, AAA pattern, FluentAssertions.
+        Coverage hedefleri: Domain %90, Application %85, Infrastructure %70.
+
+    - path: "docs/**"
+      instructions: |
+        Dokumantasyon: Mermaid diagram zorunlu (inline), ADR template, modul spec template.
+
+    - path: "deploy/**"
+      instructions: |
+        Deploy: Health check endpoint'leri (/health/live, /health/ready, /health/startup),
+        secret'lar Vault/Dapr uzerinden, resource limit tanimli.
+
+rules: []

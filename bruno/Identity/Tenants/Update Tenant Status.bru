@@ -1,0 +1,21 @@
+meta {
+  name: Update Tenant Status
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/identity/tenants/{{tenantId}}/status
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "action": "activate"
+  }
+}

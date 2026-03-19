@@ -1,0 +1,201 @@
+# CodeRabbit Configuration
+# Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: tr-TR
+
+reviews:
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: false
+  sequence_diagrams: true
+  auto_review:
+    enabled: true
+    drafts: false
+
+chat:
+  auto_reply: true
+
+tone_instructions: >
+  Teknik ve yapıcı ol. Standartlara aykırı durumlarda net ve spesifik geri bildirim ver.
+  Hangi standardın ihlal edildigini belirt.
+
+early_access: true
+
+knowledge_base:
+  learnings:
+    scope: auto
+  issues:
+    scope: auto
+  jira:
+    project_keys: []
+  linear:
+    team_keys: []
+
+path_instructions:
+  # ── Backend: Domain Layer ──
+  - path: "src/Modules/**/Domain/**"
+    instructions: |
+      Bu katman Domain Entity, Value Object ve Domain Event içerir.
+      Review yaparken su standartlara dikkat et:
+
+      **CODING_STANDARDS.md kurallari:**
+      - Entity'ler rich domain model olmali (behavior entity uzerinde, anemic model yasak)
+      - Strongly-typed ID kullanilmali (raw Guid/int yasak): `[StronglyTypedId] public readonly partial struct XxxId;`
+      - Value object'ler `record` olmali
+      - Entity constructor'lar `private`, factory method `public static Create(...)` pattern'i kullanilmali
+      - Domain event'ler entity icinden `AddDomainEvent()` ile eklenmeli
+      - Setter'lar `private set` olmali — state degisikligi sadece method'lar ile
+
+      **OBSERVABILITY_STANDARDS.md kurallari:**
+      - DomainException SADECE entity/value object icinden firlatilir
+      - DomainException MUTLAKA `lockey_` prefix'li key alir
+      - Handler'lardan DomainException firlatmak YASAK
+
+      **LOCALIZATION_STANDARDS.md kurallari:**
+      - DomainException mesajlari `lockey_{scope}_{context}_{descriptor}` formatinda olmali
+      - Hardcoded string ile exception firlatmak yasak
+
+  # ── Backend: Application Layer (Commands/Queries) ──
+  - path: "src/Modules/**/Application/**"
+    instructions: |
+      Bu katman CQRS Command/Query handler'lari, DTO'lar ve Validator'lari icerir.
+
+      **CODING_STANDARDS.md kurallari:**
+      - Command/Query record olmali: `public sealed record XxxCommand(...) : IRequest<Result<T>>`
+      - Her command icin FluentValidation validator ZORUNLU
+      - Handler'lar `sealed class`, primary constructor ile DI
+      - Result<T> pattern kullan — exception firlatma
+      - DTO'lar record olmali, Mapster ile mapping
+
+      **OBSERVABILITY_STANDARDS.md kurallari:**
+      - Command handler'lar ILogger<T> inject etmeli
+      - Basarili islem: `LogInformation` ZORUNLU
+      - Business rule reddi: `LogWarning` ZORUNLU (Result.Failure donmeden once)
+      - External service hatasi: `LogError` ZORUNLU
+      - Query handler: not-found icin `LogDebug`, yavas query icin `LogWarning`
+      - Structured logging: named PascalCase parametreler (`{TenantId}`, `{UserId}`)
+      - String interpolation YASAK (`$"text {var}"` seklinde log YASAK)
+      - Handler'dan DomainException firlatmak YASAK — Result.Failure() kullan
+      - catch(Exception) modül kodunda YASAK
+
+      **LOCALIZATION_STANDARDS.md kurallari:**
+      - Result.Success/Failure icinde `LocalizedMessage.Of("lockey_...")` ZORUNLU
+      - FluentValidation `.WithMessage("lockey_...")` ZORUNLU
+      - Hardcoded user-facing string YASAK
+
+      **INFRASTRUCTURE_STANDARDS.md kurallari:**
+      - Cache icin SADECE ICacheService kullan (IDistributedCache, IMemoryCache, DaprClient yasak)
+      - Secret icin SADECE ISecretProvider kullan
+      - Configuration icin IOptions<T> veya ITenantConfiguration kullan (raw IConfiguration yasak)
+      - Background is icin NexoraJob<T> extend et (Task.Run, Timer yasak)
+
+  # ── Backend: Infrastructure Layer ──
+  - path: "src/Modules/**/Infrastructure/**"
+    instructions: |
+      Bu katman EF DbContext, Repository implementasyonlari ve external service entegrasyonlari icerir.
+
+      **CODING_STANDARDS.md kurallari:**
+      - Her modülün kendi DbContext'i olmali
+      - Tablo isimleri `{module}_{table}` prefix'li olmali
+      - Strongly-typed ID conversion'lari configure edilmeli
+      - Repository pattern kullanilmali
+
+      **INFRASTRUCTURE_STANDARDS.md kurallari:**
+      - Cache: SADECE ICacheService — direkt Redis/IMemoryCache/DaprClient yasak
+      - Secret: SADECE ISecretProvider — hardcoded secret, Environment.GetEnvironmentVariable yasak
+      - Job: NexoraJob<T> base class — Task.Run, Timer, Thread yasak
+      - HttpClient: IHttpClientFactory veya typed HttpClient kullan
+
+      **OBSERVABILITY_STANDARDS.md kurallari:**
+      - External service cagrilarinda custom ActivitySource kullan
+      - ActivitySource adlandirma: `Nexora.{Module}.{Service}`
+      - Span adlandirma: `{Operation} {Resource}`
+      - Tag'lere secret/PII ekleme
+      - Exception loglarken `LogError(ex, "message", args)` formati kullan
+
+  # ── Backend: API Layer ──
+  - path: "src/Modules/**/Api/**"
+    instructions: |
+      Bu katman API endpoint'lerini icerir.
+
+      **CODING_STANDARDS.md kurallari:**
+      - Endpoint yapisi: `/api/v{version}/{module}/{resource}`
+      - Response envelope: `ApiEnvelope<T>` formati
+      - HTTP status code'lar standarda uygun olmali (200, 201, 204, 400, 401, 403, 404, 409, 422, 500)
+      - XML documentation her public endpoint'te ZORUNLU
+
+      **DOCUMENTATION_STANDARDS.md kurallari:**
+      - `/// <summary>`, `/// <response>` XML doc'lari olmali
+      - Tum olasi HTTP status code'lar `[ProducesResponseType]` ile belirtilmeli
+
+  # ── Frontend: React Admin ──
+  - path: "src/Clients/nexora-admin/**"
+    instructions: |
+      React 19 admin dashboard kodu.
+
+      **LOCALIZATION_STANDARDS.md kurallari:**
+      - JSX icinde raw text YASAK — her zaman `t('lockey_...')` kullan
+      - `const { t } = useTranslation('module')` pattern'i
+      - Translation dosyalari: `locales/{lang}/{module}.json`
+      - Yeni eklenen her lockey_ key hem `en` hem `tr` dosyasinda olmali
+      - RTL destegi icin Tailwind RTL utility'leri kullan
+
+  # ── Frontend: Next.js Portal ──
+  - path: "src/Clients/nexora-portal/**"
+    instructions: |
+      Next.js 16 public portal kodu.
+
+      **LOCALIZATION_STANDARDS.md kurallari:**
+      - JSX icinde raw text YASAK — `const t = useTranslations('module')` kullan
+      - next-intl kullan (react-i18next degil)
+      - Yeni eklenen her lockey_ key hem `en` hem `tr` dosyasinda olmali
+      - RTL destegi icin Tailwind RTL utility'leri kullan
+
+  # ── Tests ──
+  - path: "tests/**"
+    instructions: |
+      **CODING_STANDARDS.md kurallari:**
+      - Test adlandirma: `Method_Scenario_ExpectedResult`
+      - AAA pattern: Arrange, Act, Assert
+      - FluentAssertions kullan (`.Should().BeTrue()`)
+      - Coverage: Domain %90, Application %85, Infrastructure %70
+      - Architecture test'leri modul sinirlarini enforce etmeli
+
+  # ── Kubernetes / Helm / Docker ──
+  - path: "deploy/**"
+    instructions: |
+      **INFRASTRUCTURE_STANDARDS.md kurallari:**
+      - Health check endpoint'leri configure edilmeli: /health/live, /health/ready, /health/startup
+      - Secret'lar Vault/Dapr uzerinden — env var'da plain-text secret yasak
+      - Resource limit'ler tanimli olmali
+
+      **OBSERVABILITY_STANDARDS.md kurallari:**
+      - OpenTelemetry collector sidecar/agent config'i dogru olmali
+      - Loki, Tempo, Prometheus endpoint'leri dogru tanimlanmali
+
+  # ── Migrations ──
+  - path: "src/**/Migrations/**"
+    instructions: |
+      **CODING_STANDARDS.md kurallari:**
+      - Production'da migration'lar sadece additive olmali (DROP yasak)
+      - Tablo isimleri `{module}_{table}` prefix'li olmali
+
+  # ── Documentation ──
+  - path: "docs/**"
+    instructions: |
+      **DOCUMENTATION_STANDARDS.md kurallari:**
+      - Diyagramlar MUTLAKA Mermaid olmali (inline, ayri image dosyasi degil)
+      - ADR template'ine uygun olmali
+      - Her modül icin: ER diagram, state diagram, sequence diagram, component diagram, integration diagram ZORUNLU
+      - Changelog Keep a Changelog formatinda
+
+  # ── GitHub Actions / CI ──
+  - path: ".github/**"
+    instructions: |
+      **RELEASE_STANDARDS.md kurallari:**
+      - Semantic Versioning kullanilmali
+      - Conventional Commits enforce edilmeli
+      - Squash merge to main
+      - CI pipeline'da: build, test, lint, architecture test adimlari olmali

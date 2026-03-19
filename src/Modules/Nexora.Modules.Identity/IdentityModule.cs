@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Identity.Api;
 using Nexora.Modules.Identity.Infrastructure;
+using Nexora.Modules.Identity.Infrastructure.Keycloak;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Exceptions;
@@ -40,6 +41,14 @@ public sealed class IdentityModule : IModule
 
         // Register module migration for tenant provisioning
         services.AddSingleton<IModuleMigration, IdentityModuleMigration>();
+
+        // Keycloak Admin API
+        services.Configure<KeycloakOptions>(configuration.GetSection(KeycloakOptions.SectionName));
+        services.AddHttpClient<IKeycloakAdminService, KeycloakAdminService>((sp, client) =>
+        {
+            var kcOptions = configuration.GetSection(KeycloakOptions.SectionName).Get<KeycloakOptions>()!;
+            client.BaseAddress = new Uri(kcOptions.BaseUrl);
+        });
     }
 
     public void ConfigureEventHandlers(IServiceCollection services)
@@ -53,6 +62,8 @@ public sealed class IdentityModule : IModule
         endpoints.MapTenantEndpoints();
         endpoints.MapUserEndpoints();
         endpoints.MapRoleEndpoints();
+        endpoints.MapAuditEndpoints();
+        endpoints.MapModuleEndpoints();
     }
 
     public void ConfigureJobs(IJobScheduler scheduler)

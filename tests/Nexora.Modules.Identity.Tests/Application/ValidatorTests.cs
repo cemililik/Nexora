@@ -8,14 +8,14 @@ public sealed class CreateTenantValidatorTests
     private readonly CreateTenantValidator _validator = new();
 
     [Fact]
-    public void Valid_ShouldPass()
+    public void Validate_ValidCommand_ShouldPass()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("Acme", "acme"));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public void EmptyName_ShouldFail()
+    public void Validate_EmptyName_ShouldFail()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("", "acme"));
         result.ShouldHaveValidationErrorFor(x => x.Name)
@@ -23,7 +23,7 @@ public sealed class CreateTenantValidatorTests
     }
 
     [Fact]
-    public void EmptySlug_ShouldFail()
+    public void Validate_EmptySlug_ShouldFail()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("Acme", ""));
         result.ShouldHaveValidationErrorFor(x => x.Slug)
@@ -31,7 +31,7 @@ public sealed class CreateTenantValidatorTests
     }
 
     [Fact]
-    public void InvalidSlugFormat_ShouldFail()
+    public void Validate_InvalidSlugFormat_ShouldFail()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("Acme", "UPPER CASE!"));
         result.ShouldHaveValidationErrorFor(x => x.Slug)
@@ -39,7 +39,7 @@ public sealed class CreateTenantValidatorTests
     }
 
     [Fact]
-    public void SlugTooLong_ShouldFail()
+    public void Validate_SlugTooLong_ShouldFail()
     {
         var result = _validator.TestValidate(
             new CreateTenantCommand("Acme", new string('a', 101)));
@@ -56,7 +56,7 @@ public sealed class UpdateTenantStatusValidatorTests
     [InlineData("activate")]
     [InlineData("suspend")]
     [InlineData("terminate")]
-    public void ValidAction_ShouldPass(string action)
+    public void Validate_ValidAction_ShouldPass(string action)
     {
         var result = _validator.TestValidate(
             new UpdateTenantStatusCommand(Guid.NewGuid(), action));
@@ -64,7 +64,7 @@ public sealed class UpdateTenantStatusValidatorTests
     }
 
     [Fact]
-    public void InvalidAction_ShouldFail()
+    public void Validate_InvalidAction_ShouldFail()
     {
         var result = _validator.TestValidate(
             new UpdateTenantStatusCommand(Guid.NewGuid(), "destroy"));
@@ -73,7 +73,7 @@ public sealed class UpdateTenantStatusValidatorTests
     }
 
     [Fact]
-    public void EmptyTenantId_ShouldFail()
+    public void Validate_EmptyTenantId_ShouldFail()
     {
         var result = _validator.TestValidate(
             new UpdateTenantStatusCommand(Guid.Empty, "activate"));
@@ -86,45 +86,55 @@ public sealed class CreateUserValidatorTests
     private readonly CreateUserValidator _validator = new();
 
     [Fact]
-    public void Valid_ShouldPass()
+    public void Validate_ValidCommand_ShouldPass()
     {
         var result = _validator.TestValidate(
-            new CreateUserCommand("kc-1", "user@test.com", "John", "Doe"));
+            new CreateUserCommand("user@test.com", "John", "Doe", "TempPass1!"));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public void EmptyEmail_ShouldFail()
+    public void Validate_EmptyEmail_ShouldFail()
     {
         var result = _validator.TestValidate(
-            new CreateUserCommand("kc-1", "", "John", "Doe"));
+            new CreateUserCommand("", "John", "Doe", "TempPass1!"));
         result.ShouldHaveValidationErrorFor(x => x.Email)
             .WithErrorMessage("lockey_identity_validation_email_required");
     }
 
     [Fact]
-    public void InvalidEmail_ShouldFail()
+    public void Validate_InvalidEmail_ShouldFail()
     {
         var result = _validator.TestValidate(
-            new CreateUserCommand("kc-1", "not-an-email", "John", "Doe"));
+            new CreateUserCommand("not-an-email", "John", "Doe", "TempPass1!"));
         result.ShouldHaveValidationErrorFor(x => x.Email)
             .WithErrorMessage("lockey_identity_validation_email_format");
     }
 
     [Fact]
-    public void EmptyFirstName_ShouldFail()
+    public void Validate_EmptyFirstName_ShouldFail()
     {
         var result = _validator.TestValidate(
-            new CreateUserCommand("kc-1", "u@t.com", "", "Doe"));
+            new CreateUserCommand("u@t.com", "", "Doe", "TempPass1!"));
         result.ShouldHaveValidationErrorFor(x => x.FirstName);
     }
 
     [Fact]
-    public void EmptyKeycloakId_ShouldFail()
+    public void Validate_EmptyPassword_ShouldFail()
     {
         var result = _validator.TestValidate(
-            new CreateUserCommand("", "u@t.com", "J", "D"));
-        result.ShouldHaveValidationErrorFor(x => x.KeycloakUserId);
+            new CreateUserCommand("u@t.com", "J", "D", ""));
+        result.ShouldHaveValidationErrorFor(x => x.TemporaryPassword)
+            .WithErrorMessage("lockey_identity_validation_password_required");
+    }
+
+    [Fact]
+    public void Validate_ShortPassword_ShouldFail()
+    {
+        var result = _validator.TestValidate(
+            new CreateUserCommand("u@t.com", "J", "D", "short"));
+        result.ShouldHaveValidationErrorFor(x => x.TemporaryPassword)
+            .WithErrorMessage("lockey_identity_validation_password_min_length");
     }
 }
 
@@ -133,7 +143,7 @@ public sealed class CreateRoleValidatorTests
     private readonly CreateRoleValidator _validator = new();
 
     [Fact]
-    public void Valid_ShouldPass()
+    public void Validate_ValidCommand_ShouldPass()
     {
         var result = _validator.TestValidate(
             new CreateRoleCommand("Admin", "Full access", null));
@@ -141,7 +151,7 @@ public sealed class CreateRoleValidatorTests
     }
 
     [Fact]
-    public void EmptyName_ShouldFail()
+    public void Validate_EmptyName_ShouldFail()
     {
         var result = _validator.TestValidate(
             new CreateRoleCommand("", null, null));
@@ -150,7 +160,7 @@ public sealed class CreateRoleValidatorTests
     }
 
     [Fact]
-    public void NameTooLong_ShouldFail()
+    public void Validate_NameTooLong_ShouldFail()
     {
         var result = _validator.TestValidate(
             new CreateRoleCommand(new string('x', 101), null, null));

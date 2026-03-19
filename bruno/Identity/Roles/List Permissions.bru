@@ -1,0 +1,19 @@
+meta {
+  name: List Permissions
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/identity/permissions
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~module: identity
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

@@ -1,9 +1,11 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
+using Nexora.Modules.Identity.Infrastructure.Keycloak;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -32,10 +34,12 @@ public sealed class CreateTenantValidator : AbstractValidator<CreateTenantComman
     }
 }
 
-/// <summary>Creates a tenant, provisions its schema, installs identity module, and activates.</summary>
+/// <summary>Creates a tenant, provisions Keycloak realm, schema, installs identity module, and activates.</summary>
 public sealed class CreateTenantHandler(
     PlatformDbContext platformDb,
-    ITenantSchemaManager schemaManager) : ICommandHandler<CreateTenantCommand, TenantDto>
+    ITenantSchemaManager schemaManager,
+    IKeycloakAdminService keycloakAdmin,
+    ILogger<CreateTenantHandler> logger) : ICommandHandler<CreateTenantCommand, TenantDto>
 {
     public async Task<Result<TenantDto>> Handle(
         CreateTenantCommand request,
@@ -47,6 +51,7 @@ public sealed class CreateTenantHandler(
 
         if (slugExists)
         {
+            logger.LogWarning("Tenant creation failed: slug {Slug} already taken", request.Slug);
             return Result<TenantDto>.Failure(
                 "lockey_identity_error_tenant_slug_taken",
                 new Dictionary<string, string> { ["slug"] = request.Slug });
@@ -56,6 +61,12 @@ public sealed class CreateTenantHandler(
         var tenant = Tenant.Create(request.Name, request.Slug);
 
         await platformDb.Tenants.AddAsync(tenant, cancellationToken);
+        await platformDb.SaveChangesAsync(cancellationToken);
+
+        // Provision Keycloak realm for this tenant
+        var realmName = $"tenant-{tenant.Slug}";
+        var createdRealmId = await keycloakAdmin.CreateRealmAsync(realmName, tenant.Name, cancellationToken);
+        tenant.SetRealmId(createdRealmId);
         await platformDb.SaveChangesAsync(cancellationToken);
 
         // Provision tenant schema + run migrations
@@ -78,6 +89,8 @@ public sealed class CreateTenantHandler(
             tenant.Status.ToString(),
             tenant.RealmId,
             DateTimeOffset.UtcNow);
+
+        logger.LogInformation("Tenant {TenantId} created with slug {Slug}", tenant.Id, tenant.Slug);
 
         return Result<TenantDto>.Success(dto,
             new LocalizedMessage("lockey_identity_tenant_created"));
