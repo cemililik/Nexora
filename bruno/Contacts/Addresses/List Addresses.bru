@@ -1,0 +1,15 @@
+meta {
+  name: List Addresses
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/addresses
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

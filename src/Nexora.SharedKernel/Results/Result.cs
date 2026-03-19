@@ -22,6 +22,9 @@ public sealed class Result
     public static Result Failure(Error error) =>
         new(false, null, error);
 
+    public static Result Failure(LocalizedMessage message) =>
+        new(false, null, new Error(message));
+
     public static Result Failure(string localizationKey, Dictionary<string, string>? @params = null) =>
         new(false, null, new Error(new LocalizedMessage(localizationKey, @params)));
 
@@ -56,6 +59,9 @@ public sealed class Result<T>
 
     public static Result<T> Failure(Error error) =>
         new(false, default, null, error);
+
+    public static Result<T> Failure(LocalizedMessage message) =>
+        new(false, default, null, new Error(message));
 
     public static Result<T> Failure(string localizationKey, Dictionary<string, string>? @params = null) =>
         new(false, default, null, new Error(new LocalizedMessage(localizationKey, @params)));

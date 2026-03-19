@@ -1,0 +1,15 @@
+meta {
+  name: Remove Address
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/addresses/{{addressId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

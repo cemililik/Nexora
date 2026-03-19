@@ -1,0 +1,33 @@
+meta {
+  name: Start Import
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/import
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "fileName": "contacts.csv",
+    "fileFormat": "csv",
+    "fileContent": "Zmlyc3ROYW1lLGxhc3ROYW1lLGVtYWlsCkpvaG4sRG9lLGpvaG5AZXhhbXBsZS5jb20="
+  }
+}
+
+script:post-response {
+  if (res.status === 202) {
+    const body = res.getBody();
+    if (body.data && body.data.jobId) {
+      bru.setEnvVar("importJobId", body.data.jobId);
+      console.log("importJobId set to " + body.data.jobId);
+    }
+  }
+}

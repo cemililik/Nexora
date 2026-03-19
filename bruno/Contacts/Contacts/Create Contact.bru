@@ -1,0 +1,38 @@
+meta {
+  name: Create Contact
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "type": "Individual",
+    "firstName": "John",
+    "lastName": "Doe",
+    "companyName": null,
+    "email": "john.doe@example.com",
+    "phone": "+905551234567",
+    "source": "Manual",
+    "title": "Mr."
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("contactId", body.data.id);
+      console.log("contactId set to " + body.data.id);
+    }
+  }
+}

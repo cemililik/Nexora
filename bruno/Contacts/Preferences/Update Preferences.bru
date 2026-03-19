@@ -1,0 +1,36 @@
+meta {
+  name: Update Preferences
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/preferences
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "preferences": [
+      {
+        "channel": "Email",
+        "optedIn": true,
+        "optInSource": "Web Form"
+      },
+      {
+        "channel": "Sms",
+        "optedIn": false
+      },
+      {
+        "channel": "WhatsApp",
+        "optedIn": true,
+        "optInSource": "Mobile App"
+      }
+    ]
+  }
+}
