@@ -84,9 +84,15 @@ Nexora is a **modular, multi-tenant enterprise platform** that provides:
 
 ## 7. Deployment Models
 
-- **Nexora Cloud (SaaS)**: Fully managed, per-tenant pricing
-- **Nexora Self-Hosted**: On-premise or private cloud deployment
-- **Nexora Hybrid**: Core in cloud, sensitive data on-premise
+| Model | Description | Target | Setup Time |
+|-------|-------------|--------|------------|
+| **Nexora Cloud (SaaS)** | Fully managed, shared infrastructure, schema-per-tenant isolation. We handle backups, updates, scaling. | SMBs, NGOs, startups | Minutes |
+| **Nexora Dedicated** | Single-tenant managed deployment in customer's preferred region. We manage ops, customer controls data location. | Enterprise, regulated orgs | 1-2 days |
+| **Nexora Self-Hosted** | Customer installs via Helm chart on their own Kubernetes cluster. Full data sovereignty, air-gapped support. | Government, military, healthcare | ~1 week |
+
+All models use the **same codebase, same Helm chart, same container images**. Module licensing controls feature activation. Pricing tiers: Starter (25 users, 2 modules), Professional (100 users, 6 modules), Enterprise (unlimited).
+
+> **Details**: [ADR-003: Deployment Strategy](./decisions/ADR-003-deployment-strategy.md) | [Tenant Operations](./operations/TENANT_OPERATIONS.md) | [Helm Installation Guide](./operations/HELM_INSTALLATION.md)
 
 ## 8. Success Metrics
 

@@ -24,6 +24,7 @@
 |----------|-------------|
 | [ADR-001](./decisions/ADR-001-modular-monolith.md) | Modular Monolith architecture |
 | [ADR-002](./decisions/ADR-002-multi-tenancy.md) | Schema-per-tenant multi-tenancy |
+| [ADR-003](./decisions/ADR-003-deployment-strategy.md) | Deployment strategy (SaaS, Dedicated, Self-Hosted) |
 
 ### Module Specifications
 | Module | Spec | Phase |
@@ -46,6 +47,12 @@
 | Fleet Management | [SPEC](./modules/fleet/SPEC.md) | Phase 4 |
 | Inventory & Assets | [SPEC](./modules/inventory/SPEC.md) | Phase 4 |
 | Project Management | [SPEC](./modules/projects/SPEC.md) | Phase 4 |
+
+### Operations & Deployment
+| Document | Description |
+|----------|-------------|
+| [Tenant Provisioning & Operations](./operations/TENANT_OPERATIONS.md) | Tenant lifecycle, provisioning, backup, monitoring, CLI |
+| [Helm Installation Guide](./operations/HELM_INSTALLATION.md) | Quick start, production install, scenarios, upgrading |
 
 ### Roadmap
 | Document | Description |
