@@ -1,0 +1,23 @@
+meta {
+  name: Start Export
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/export
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "format": "csv",
+    "statusFilter": null,
+    "typeFilter": null
+  }
+}

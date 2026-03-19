@@ -1,0 +1,25 @@
+meta {
+  name: Update Address
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/addresses/{{addressId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "type": "Home",
+    "street1": "456 Oak Ave",
+    "city": "Ankara",
+    "countryCode": "TR",
+    "postalCode": "06000"
+  }
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Create Tag
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/tags
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Donor",
+    "category": "Donor",
+    "color": "#4CAF50"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("tagId", body.data.id);
+      console.log("tagId set to " + body.data.id);
+    }
+  }
+}

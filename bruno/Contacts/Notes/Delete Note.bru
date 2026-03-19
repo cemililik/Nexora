@@ -1,0 +1,15 @@
+meta {
+  name: Delete Note
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/notes/{{noteId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: List Consents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/consents
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

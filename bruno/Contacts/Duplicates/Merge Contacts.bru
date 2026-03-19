@@ -1,0 +1,24 @@
+meta {
+  name: Merge Contacts
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/merge
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "primaryContactId": "{{contactId}}",
+    "secondaryContactId": "{{relatedContactId}}",
+    "useSecondaryEmail": false,
+    "useSecondaryPhone": false
+  }
+}

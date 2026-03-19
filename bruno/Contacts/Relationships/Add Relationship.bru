@@ -1,0 +1,32 @@
+meta {
+  name: Add Relationship
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/relationships
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "relatedContactId": "{{relatedContactId}}",
+    "type": "ParentOf"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("relationshipId", body.data.id);
+      console.log("relationshipId set to " + body.data.id);
+    }
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Import Status
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contacts/contacts/import/{{importJobId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

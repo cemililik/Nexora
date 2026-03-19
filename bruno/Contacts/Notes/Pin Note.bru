@@ -1,0 +1,21 @@
+meta {
+  name: Pin Note
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/notes/{{noteId}}/pin
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "pin": true
+  }
+}

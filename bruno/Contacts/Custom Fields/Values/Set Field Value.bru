@@ -1,0 +1,21 @@
+meta {
+  name: Set Contact Field Value
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/custom-fields/{{customFieldDefinitionId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "value": "Turkish"
+  }
+}

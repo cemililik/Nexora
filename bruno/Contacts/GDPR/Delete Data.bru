@@ -1,0 +1,21 @@
+meta {
+  name: GDPR Delete
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/gdpr/delete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "reason": "Contact requested data erasure per GDPR Article 17"
+  }
+}

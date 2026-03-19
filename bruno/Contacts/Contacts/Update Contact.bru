@@ -1,0 +1,31 @@
+meta {
+  name: Update Contact
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "companyName": null,
+    "email": "jane.smith@example.com",
+    "phone": "+905559876543",
+    "mobile": null,
+    "website": "https://example.com",
+    "taxId": null,
+    "language": "tr",
+    "currency": "TRY",
+    "title": "Ms."
+  }
+}
