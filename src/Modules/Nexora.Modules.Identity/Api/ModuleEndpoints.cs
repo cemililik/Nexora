@@ -40,9 +40,16 @@ public static class ModuleEndpoints
         group.MapDelete("/{moduleName}", async (Guid tenantId, string moduleName, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new UninstallModuleCommand(tenantId, moduleName), ct);
-            return result.IsSuccess
-                ? Results.NoContent()
-                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+
+            if (result.IsSuccess)
+                return Results.NoContent();
+
+            return result.Error!.Message.Key switch
+            {
+                "lockey_identity_error_module_not_installed" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
+                "lockey_identity_error_tenant_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
+            };
         });
     }
 }

@@ -65,8 +65,8 @@ public sealed class CreateTenantHandler(
 
         // Provision Keycloak realm for this tenant
         var realmName = $"tenant-{tenant.Slug}";
-        await keycloakAdmin.CreateRealmAsync(realmName, tenant.Name, cancellationToken);
-        tenant.SetRealmId(realmName);
+        var createdRealmId = await keycloakAdmin.CreateRealmAsync(realmName, tenant.Name, cancellationToken);
+        tenant.SetRealmId(createdRealmId);
         await platformDb.SaveChangesAsync(cancellationToken);
 
         // Provision tenant schema + run migrations

@@ -77,11 +77,19 @@ public static class OrganizationEndpoints
         {
             var command = new AddOrganizationMemberCommand(id, request.UserId, request.IsDefault);
             var result = await sender.Send(command, ct);
-            return result.IsSuccess
-                ? Results.Created(
+
+            if (result.IsSuccess)
+                return Results.Created(
                     $"/api/v1/identity/organizations/{id}/members",
-                    ApiEnvelope<OrganizationMemberDto>.Success(result.Value!, result.Message))
-                : Results.BadRequest(ApiEnvelope<OrganizationMemberDto>.Fail(result.Error!));
+                    ApiEnvelope<OrganizationMemberDto>.Success(result.Value!, result.Message));
+
+            return result.Error!.Message.Key switch
+            {
+                "lockey_identity_error_org_not_found" => Results.NotFound(ApiEnvelope<OrganizationMemberDto>.Fail(result.Error)),
+                "lockey_identity_error_user_not_found" => Results.NotFound(ApiEnvelope<OrganizationMemberDto>.Fail(result.Error)),
+                "lockey_identity_error_user_already_member" => Results.Conflict(ApiEnvelope<OrganizationMemberDto>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<OrganizationMemberDto>.Fail(result.Error))
+            };
         });
 
         group.MapDelete("/{id:guid}/members/{userId:guid}", async (Guid id, Guid userId, ISender sender, CancellationToken ct) =>

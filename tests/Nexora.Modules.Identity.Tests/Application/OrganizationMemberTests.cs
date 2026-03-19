@@ -146,6 +146,8 @@ public sealed class OrganizationMemberTests : IDisposable
             new GetOrganizationMembersQuery(Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error.Should().NotBeNull();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_org_not_found");
     }
 
     public void Dispose() => _dbContext.Dispose();

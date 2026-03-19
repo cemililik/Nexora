@@ -16,6 +16,7 @@ public sealed class KeycloakAdminService(
     ILogger<KeycloakAdminService> logger) : IKeycloakAdminService
 {
     private readonly KeycloakOptions _options = options.Value;
+    private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private string? _cachedToken;
     private DateTime _tokenExpiry = DateTime.MinValue;
 
@@ -138,29 +139,45 @@ public sealed class KeycloakAdminService(
             return;
         }
 
-        var adminPassword = await secretProvider.GetSecretAsync("nexora/keycloak/admin-password", ct);
-
-        var tokenUrl = $"/realms/{_options.AdminRealm}/protocol/openid-connect/token";
-        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        await _tokenLock.WaitAsync(ct);
+        try
         {
-            ["grant_type"] = "client_credentials",
-            ["client_id"] = _options.AdminClientId,
-            ["client_secret"] = adminPassword
-        });
+            // Double-check after acquiring lock — another thread may have refreshed
+            if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
+            {
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _cachedToken);
+                return;
+            }
 
-        var response = await httpClient.PostAsync(tokenUrl, content, ct);
-        response.EnsureSuccessStatusCode();
+            var adminPassword = await secretProvider.GetSecretAsync("nexora/keycloak/admin-password", ct);
 
-        var token = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
-            ?? throw new InvalidOperationException("Failed to deserialize Keycloak token response.");
+            var tokenUrl = $"/realms/{_options.AdminRealm}/protocol/openid-connect/token";
+            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = _options.AdminClientId,
+                ["client_secret"] = adminPassword
+            });
 
-        _cachedToken = token.AccessToken;
-        // Expire 30 seconds early to avoid edge cases
-        _tokenExpiry = DateTime.UtcNow.AddSeconds(token.ExpiresIn - 30);
+            var response = await httpClient.PostAsync(tokenUrl, content, ct);
+            response.EnsureSuccessStatusCode();
 
-        httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _cachedToken);
+            var token = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
+                ?? throw new InvalidOperationException("Failed to deserialize Keycloak token response.");
 
-        logger.LogDebug("Obtained Keycloak admin token, expires in {ExpiresIn}s", token.ExpiresIn);
+            _cachedToken = token.AccessToken;
+            // Expire 30 seconds early to avoid edge cases
+            _tokenExpiry = DateTime.UtcNow.AddSeconds(token.ExpiresIn - 30);
+
+            httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", _cachedToken);
+
+            logger.LogDebug("Obtained Keycloak admin token, expires in {ExpiresIn}s", token.ExpiresIn);
+        }
+        finally
+        {
+            _tokenLock.Release();
+        }
     }
 }

@@ -335,11 +335,11 @@ public sealed class GlobalExceptionHandler(
 | **Result pattern öncelikli** | Handler'larda beklenen hatalar için exception fırlatma, `Result.Failure()` kullan |
 | **DomainException sadece domain'de** | Sadece entity/value object/aggregate root içinden fırlatılır. Handler'lardan ASLA fırlatılmaz |
 | **catch(Exception) yasak** | Generic catch-all sadece 2 yerde: `GlobalExceptionHandler` ve `NexoraJob`. Modül kodunda yasak |
-| **catch ve yut yasak** | Exception yakalayıp sessizce yutma yasak. Ya loglayıp rethrow, ya da explicit intent ile dökümante et |
+| **catch ve yut yasak** | Exception yakalayıp sessizce yutma yasak. Ya loglayıp rethrow, ya da explicit intent ile dokümante et |
 | **throw; tercih et** | `throw ex;` yerine `throw;` kullan — stack trace korunur |
 | **Exception mesajı İngilizce** | System exception'lar İngilizce message alır. User-facing hatalar `lockey_` key ile `Result.Failure()` döner |
 | **DomainException = lockey_ key** | `DomainException` constructor'ı `lockey_` prefix zorlar |
-| **Inner exception koru** | Wrap ederken inner exception'ı kaybet me: `new InvalidOperationException("msg", ex)` |
+| **Inner exception koru** | Wrap ederken inner exception'ı kaybetme: `new InvalidOperationException("msg", ex)` |
 
 ### 3.5 Forbidden Patterns
 
