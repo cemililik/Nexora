@@ -20,6 +20,7 @@ using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Secrets;
+using Microsoft.Extensions.Logging;
 
 namespace Nexora.Infrastructure;
 
@@ -31,6 +32,13 @@ public static class InfrastructureServiceRegistration
     {
         // Multi-tenancy
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
+        services.AddSingleton<ITenantSchemaManager>(sp =>
+        {
+            var connStr = configuration.GetConnectionString("Default")!;
+            var migrations = sp.GetServices<IModuleMigration>();
+            var logger = sp.GetRequiredService<ILogger<TenantSchemaManager>>();
+            return new TenantSchemaManager(connStr, migrations, logger);
+        });
 
         // Domain event dispatching
         services.AddScoped<DomainEventDispatcher>();

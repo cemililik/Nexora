@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Identity.Api;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Modules;
+using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity;
@@ -12,12 +13,13 @@ namespace Nexora.Modules.Identity;
 public sealed class IdentityModule : IModule
 {
     public string Name => "identity";
-    public string DisplayName => "Identity & Access Management";
+    public string DisplayName => "lockey_identity_module_display_name";
     public string Version => "1.0.0";
     public IReadOnlyList<string> Dependencies => [];
 
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
+        // Tenant-scoped DbContext (per-request, resolves tenant schema)
         services.AddDbContext<IdentityDbContext>((sp, options) =>
         {
             var connectionString = configuration.GetConnectionString("Default");
@@ -27,7 +29,17 @@ public sealed class IdentityModule : IModule
             });
         });
 
+        // Platform-level DbContext (public schema — tenant management)
+        services.AddDbContext<PlatformDbContext>(options =>
+        {
+            var connectionString = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connectionString);
+        });
+
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(IdentityModule).Assembly));
+
+        // Register module migration for tenant provisioning
+        services.AddSingleton<IModuleMigration, IdentityModuleMigration>();
     }
 
     public void ConfigureEventHandlers(IServiceCollection services)
@@ -38,6 +50,9 @@ public sealed class IdentityModule : IModule
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapOrganizationEndpoints();
+        endpoints.MapTenantEndpoints();
+        endpoints.MapUserEndpoints();
+        endpoints.MapRoleEndpoints();
     }
 
     public void ConfigureJobs(IJobScheduler scheduler)

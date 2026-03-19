@@ -19,8 +19,17 @@ public abstract class BaseDbContext(
     {
         base.OnModelCreating(modelBuilder);
 
-        var schema = TenantContextAccessor.Current.SchemaName;
-        modelBuilder.HasDefaultSchema(schema);
+        try
+        {
+            var schema = TenantContextAccessor.Current.SchemaName;
+            if (!string.IsNullOrEmpty(schema))
+                modelBuilder.HasDefaultSchema(schema);
+        }
+        catch (InvalidOperationException)
+        {
+            // Tenant context not set — used during migrations or design-time
+            // Schema will be applied at runtime via connection
+        }
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
@@ -37,7 +46,16 @@ public abstract class BaseDbContext(
     private void SetAuditFields()
     {
         var now = DateTimeOffset.UtcNow;
-        var userId = TenantContextAccessor.Current.UserId;
+        string? userId = null;
+
+        try
+        {
+            userId = TenantContextAccessor.Current.UserId;
+        }
+        catch (InvalidOperationException)
+        {
+            // Tenant context not available (e.g., during provisioning)
+        }
 
         foreach (var entry in ChangeTracker.Entries())
         {

@@ -58,7 +58,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Repository structure (solution, projects, folder conventions)
 - [x] Development environment setup (Docker Compose for all infra)
 - [ ] CI/CD pipeline (GitHub Actions: build, test, lint, security scan)
-- [ ] PostgreSQL multi-tenant infrastructure (schema management, migrations)
+- [x] PostgreSQL multi-tenant infrastructure (schema management, migrations)
 - [ ] Keycloak setup (realm configuration, tenant-aware authentication)
 - [ ] APISIX gateway configuration (routing, rate limiting, JWT validation)
 - [x] Dapr sidecar setup (pub/sub, state store, secret store bindings)
@@ -75,18 +75,21 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 ### Technical Milestones
 1. [x] `docker compose up` brings entire stack online
 2. [ ] A request flows: APISIX → .NET App → Dapr → PostgreSQL → Response
-3. [ ] Tenant A and Tenant B have isolated schemas
+3. [x] Tenant A and Tenant B have isolated schemas
 4. [ ] Keycloak issues JWT, APISIX validates it, .NET resolves tenant
 
 ### Completed Work
 - **Solution structure**: 8 projects (Host, SharedKernel, Infrastructure, Identity module, 4 test projects)
-- **SharedKernel**: Entity/AuditableEntity base classes, strongly-typed IDs, Result<T> pattern, PagedResult<T>, LocalizedMessage (lockey_ enforcement), DomainException, value objects (Money, DateRange, EmailAddress, PhoneNumber), CQRS interfaces, ICacheService, ISecretProvider, IJobScheduler, IModule, IModuleAvailability, ITenantContext
-- **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant), DaprCacheService (L1+L2 with prefix invalidation), DaprEventBus, DaprSecretProvider (generic overload), HangfireJobScheduler, TenantJobFilter, ValidationBehavior (all errors), LoggingBehavior, DatabaseTenantConfiguration
-- **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role protection)
-- **Identity module (partial)**: Domain entities (Tenant, Organization, User, Role, Permission, Department + join entities), strongly-typed IDs, domain events, EF configurations, CreateOrganization command/handler/validator, GetOrganizations query, API endpoints with envelope format
+- **SharedKernel**: Entity/AuditableEntity base classes, strongly-typed IDs, Result<T> pattern, PagedResult<T>, LocalizedMessage (lockey_ enforcement), DomainException, value objects (Money, DateRange, EmailAddress, PhoneNumber), CQRS interfaces, ICacheService, ISecretProvider (generic overload), IJobScheduler, IModule, IModuleAvailability, ITenantContext, ITenantSchemaManager, IModuleMigration, JobQueues, ApiEnvelope<T>
+- **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant, public path skip), DaprCacheService (L1+L2 with prefix invalidation + key tracking), DaprEventBus, DaprSecretProvider, HangfireJobScheduler, TenantJobFilter (tenant context capture/restore), TenantSchemaManager (PostgreSQL schema lifecycle), ValidationBehavior (all errors in Error.Details), LoggingBehavior, DatabaseTenantConfiguration, HangfireAuthFilters
+- **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role-based auth)
+- **Identity module**: Domain entities (Tenant, Organization, User, Role, Permission, Department + join entities), strongly-typed IDs, domain events, EF configurations, PlatformDbContext (public schema), IdentityModuleMigration (seed 16 permissions + Platform Admin role)
+- **Identity CQRS**: CreateTenant (with schema provisioning), CreateUser, CreateRole, UpdateTenantStatus, CreateOrganization — all with validators + lockey_ keys
+- **Identity Queries**: GetTenants (paginated), GetTenantById (with modules), GetUsers (tenant-isolated), GetRoles (with permissions), GetPermissions (module filter), GetOrganizations
+- **Identity API**: TenantEndpoints, UserEndpoints, RoleEndpoints, OrganizationEndpoints — all with ApiEnvelope<T> response format
 - **Docker Compose**: PostgreSQL 17, Redis 7, Kafka (KRaft), Keycloak 26, MinIO, Dapr
-- **Standards audit**: 8 critical + 12 minor violations found and fixed
-- **Tests**: 130 tests passing (SharedKernel: 58, Infrastructure: 9, Architecture: 19, Identity: 44)
+- **Standards compliance**: 3 rounds of audit — 8 critical + 12 minor + 2 critical + 2 minor violations found and fixed
+- **Tests**: 196 tests passing (SharedKernel: 64, Infrastructure: 26, Architecture: 19, Identity: 87)
 
 ---
 
@@ -100,8 +103,13 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] User management — domain model (create, update profile, activate/deactivate, record login + domain events)
 - [x] Role-based access control — domain model (Role, Permission, RolePermission with assign/revoke + domain events)
 - [x] Permission system — module.resource.action format
-- [ ] Tenant management — API endpoints, Keycloak realm provisioning
-- [ ] User management — API endpoints, Keycloak user sync
+- [x] Tenant management — CQRS (CreateTenant with schema provisioning, UpdateTenantStatus, GetTenants, GetTenantById) + API endpoints
+- [x] User management — CQRS (CreateUser with email uniqueness, GetUsers with tenant isolation) + API endpoints
+- [x] Role management — CQRS (CreateRole with permission assignment, GetRoles, GetPermissions) + API endpoints
+- [x] Platform DbContext — public schema for tenant + module management
+- [x] Module migration system — IdentityModuleMigration (seed permissions + Platform Admin role)
+- [ ] Keycloak realm provisioning (tenant create → realm create)
+- [ ] Keycloak user sync (user create → KC user create)
 - [ ] Organization management — remaining endpoints (update, delete, members)
 - [ ] User profile & preferences
 - [ ] Login audit trail
