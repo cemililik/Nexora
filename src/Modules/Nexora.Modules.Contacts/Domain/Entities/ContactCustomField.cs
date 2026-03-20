@@ -14,6 +14,7 @@ public sealed class ContactCustomField : Entity<ContactCustomFieldId>
 
     private ContactCustomField() { }
 
+    /// <summary>Creates a new custom field value for a contact.</summary>
     public static ContactCustomField Create(
         ContactId contactId,
         CustomFieldDefinitionId fieldDefinitionId,
@@ -28,6 +29,7 @@ public sealed class ContactCustomField : Entity<ContactCustomFieldId>
         };
     }
 
+    /// <summary>Updates the custom field value.</summary>
     public void UpdateValue(string? value)
     {
         Value = value;

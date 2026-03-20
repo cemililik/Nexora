@@ -5,8 +5,10 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 
 namespace Nexora.Modules.Identity.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the Permission entity.</summary>
 public sealed class PermissionConfiguration : IEntityTypeConfiguration<Permission>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<Permission> builder)
     {
         builder.ToTable("identity_permissions");

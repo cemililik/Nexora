@@ -17,7 +17,7 @@ public sealed class TenantJobFilter(IServiceProvider serviceProvider)
     private const string TenantIdKey = "TenantId";
     private const string OrganizationIdKey = "OrganizationId";
 
-    // Capture tenant context when job is created
+    /// <summary>Captures current tenant context and stores it as job parameters.</summary>
     public void OnCreating(CreatingContext context)
     {
         using var scope = serviceProvider.CreateScope();
@@ -38,9 +38,10 @@ public sealed class TenantJobFilter(IServiceProvider serviceProvider)
         }
     }
 
+    /// <summary>No-op after job creation.</summary>
     public void OnCreated(CreatedContext context) { }
 
-    // Restore tenant context when job executes
+    /// <summary>Restores tenant context from job parameters before execution.</summary>
     public void OnPerforming(PerformingContext context)
     {
         var tenantId = context.GetJobParameter<string>(TenantIdKey);
@@ -52,5 +53,6 @@ public sealed class TenantJobFilter(IServiceProvider serviceProvider)
         accessor.SetTenant(tenantId, orgId);
     }
 
+    /// <summary>No-op after job execution.</summary>
     public void OnPerformed(PerformedContext context) { }
 }

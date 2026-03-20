@@ -18,6 +18,7 @@ public sealed class Tag : AuditableEntity<TagId>, IAggregateRoot
 
     private Tag() { }
 
+    /// <summary>Creates a new tag definition.</summary>
     public static Tag Create(Guid tenantId, string name, TagCategory category, string? color = null)
     {
         var tag = new Tag
@@ -34,6 +35,7 @@ public sealed class Tag : AuditableEntity<TagId>, IAggregateRoot
         return tag;
     }
 
+    /// <summary>Updates the tag properties.</summary>
     public void Update(string name, TagCategory category, string? color)
     {
         Name = name.Trim();
@@ -41,6 +43,8 @@ public sealed class Tag : AuditableEntity<TagId>, IAggregateRoot
         Color = color;
     }
 
+    /// <summary>Deactivates the tag.</summary>
     public void Deactivate() => IsActive = false;
+    /// <summary>Activates the tag.</summary>
     public void Activate() => IsActive = true;
 }

@@ -20,6 +20,7 @@ public sealed class ContactActivity : Entity<ContactActivityId>
 
     private ContactActivity() { }
 
+    /// <summary>Creates a new activity entry for a contact's timeline.</summary>
     public static ContactActivity Create(
         ContactId contactId,
         Guid organizationId,

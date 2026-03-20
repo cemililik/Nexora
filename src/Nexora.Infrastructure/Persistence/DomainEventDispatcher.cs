@@ -10,6 +10,7 @@ namespace Nexora.Infrastructure.Persistence;
 /// </summary>
 public sealed class DomainEventDispatcher(IPublisher publisher)
 {
+    /// <summary>Collects and publishes domain events from tracked entities, then clears them.</summary>
     public async Task DispatchEventsAsync(DbContext context, CancellationToken ct)
     {
         var entities = context.ChangeTracker

@@ -16,6 +16,7 @@ public sealed class ContactNote : AuditableEntity<ContactNoteId>
 
     private ContactNote() { }
 
+    /// <summary>Creates a new note on a contact.</summary>
     public static ContactNote Create(
         ContactId contactId,
         Guid authorUserId,
@@ -33,11 +34,14 @@ public sealed class ContactNote : AuditableEntity<ContactNoteId>
         };
     }
 
+    /// <summary>Updates the note content.</summary>
     public void Update(string content)
     {
         Content = content.Trim();
     }
 
+    /// <summary>Pins this note for quick access.</summary>
     public void Pin() => IsPinned = true;
+    /// <summary>Unpins this note.</summary>
     public void Unpin() => IsPinned = false;
 }

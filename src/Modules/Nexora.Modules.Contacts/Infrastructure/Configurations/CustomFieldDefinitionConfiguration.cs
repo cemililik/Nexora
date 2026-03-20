@@ -5,8 +5,10 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the CustomFieldDefinition entity.</summary>
 public sealed class CustomFieldDefinitionConfiguration : IEntityTypeConfiguration<CustomFieldDefinition>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<CustomFieldDefinition> builder)
     {
         builder.ToTable("contacts_custom_field_definitions");

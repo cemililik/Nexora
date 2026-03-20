@@ -11,6 +11,7 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
     ILogger<LoggingBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
+    /// <summary>Logs request handling start, completion, and warns on slow requests (&gt;500ms).</summary>
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,

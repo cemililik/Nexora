@@ -3,6 +3,7 @@ using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
+/// <summary>Represents a department within an organization.</summary>
 public sealed class Department : AuditableEntity<DepartmentId>
 {
     public OrganizationId OrganizationId { get; private set; }
@@ -12,6 +13,7 @@ public sealed class Department : AuditableEntity<DepartmentId>
 
     private Department() { }
 
+    /// <summary>Creates a new department for an organization.</summary>
     public static Department Create(OrganizationId organizationId, string name, DepartmentId? parentId = null)
     {
         return new Department

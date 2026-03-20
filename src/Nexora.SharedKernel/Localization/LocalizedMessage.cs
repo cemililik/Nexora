@@ -20,6 +20,7 @@ public sealed record LocalizedMessage
         Params = @params ?? [];
     }
 
+    /// <summary>Creates a new localized message with the given key and optional parameters.</summary>
     public static LocalizedMessage Of(string key, Dictionary<string, string>? @params = null) =>
         new(key, @params);
 }

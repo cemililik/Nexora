@@ -18,6 +18,7 @@ public sealed class Permission : Entity<PermissionId>
 
     private Permission() { }
 
+    /// <summary>Creates a new permission entry.</summary>
     public static Permission Create(string module, string resource, string action, string? description = null)
     {
         return new Permission

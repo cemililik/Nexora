@@ -13,13 +13,19 @@ using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Contacts;
 
+/// <summary>Contacts module providing unified contact registry, tagging, and 360-degree view.</summary>
 public sealed class ContactsModule : IModule
 {
+    /// <inheritdoc />
     public string Name => "contacts";
+    /// <inheritdoc />
     public string DisplayName => "lockey_contacts_module_display_name";
+    /// <inheritdoc />
     public string Version => "1.0.0";
+    /// <inheritdoc />
     public IReadOnlyList<string> Dependencies => ["identity"];
 
+    /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<ContactsDbContext>((sp, options) =>
@@ -46,6 +52,7 @@ public sealed class ContactsModule : IModule
         services.AddScoped<ContactActivityContributorAggregator>();
     }
 
+    /// <inheritdoc />
     public void ConfigureEventHandlers(IServiceCollection services)
     {
         // Domain event handlers are auto-registered via MediatR assembly scanning.
@@ -56,6 +63,7 @@ public sealed class ContactsModule : IModule
             OrganizationCreatedIntegrationEventHandler>();
     }
 
+    /// <inheritdoc />
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         var module = endpoints.MapGroup("/api/v1/contacts");
@@ -74,6 +82,7 @@ public sealed class ContactsModule : IModule
         module.MapGdprEndpoints();
     }
 
+    /// <inheritdoc />
     public void ConfigureJobs(IJobScheduler scheduler)
     {
         // Import/export jobs are triggered on-demand via commands, not scheduled.
@@ -81,11 +90,13 @@ public sealed class ContactsModule : IModule
         // scheduler.AddRecurring<ContactImportCleanupJob>("contacts:import-cleanup", "0 3 * * *", "maintenance");
     }
 
+    /// <inheritdoc />
     public Task<HealthCheckResult> CheckHealthAsync(CancellationToken ct)
     {
         return Task.FromResult(HealthCheckResult.Healthy());
     }
 
+    /// <inheritdoc />
     public Task OnStartupAsync(CancellationToken ct)
     {
         // TODO: Register Contacts module permissions (e.g., contacts.contact.read, contacts.contact.write,
@@ -95,11 +106,13 @@ public sealed class ContactsModule : IModule
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task OnInstallAsync(TenantInstallContext context, CancellationToken ct)
     {
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task OnUninstallAsync(TenantInstallContext context, CancellationToken ct)
     {
         return Task.CompletedTask;

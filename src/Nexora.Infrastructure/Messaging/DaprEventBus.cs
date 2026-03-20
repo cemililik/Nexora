@@ -11,6 +11,7 @@ public sealed class DaprEventBus(DaprClient daprClient) : IEventBus
 {
     private const string PubSubName = "pubsub";
 
+    /// <inheritdoc />
     public async Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
         where TEvent : IIntegrationEvent
     {

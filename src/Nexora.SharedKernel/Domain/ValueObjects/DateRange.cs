@@ -19,9 +19,12 @@ public sealed record DateRange
         End = end;
     }
 
+    /// <summary>Gets the total duration of the range.</summary>
     public TimeSpan Duration => End - Start;
 
+    /// <summary>Checks whether a point in time falls within this range (inclusive).</summary>
     public bool Contains(DateTimeOffset point) => point >= Start && point <= End;
 
+    /// <summary>Checks whether this range overlaps with another range.</summary>
     public bool Overlaps(DateRange other) => Start < other.End && End > other.Start;
 }

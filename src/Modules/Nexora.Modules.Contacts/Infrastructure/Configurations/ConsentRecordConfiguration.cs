@@ -5,8 +5,10 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the ConsentRecord entity.</summary>
 public sealed class ConsentRecordConfiguration : IEntityTypeConfiguration<ConsentRecord>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<ConsentRecord> builder)
     {
         builder.ToTable("contacts_consent_records");

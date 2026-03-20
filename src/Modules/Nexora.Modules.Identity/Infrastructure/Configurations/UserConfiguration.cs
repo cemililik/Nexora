@@ -5,8 +5,10 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 
 namespace Nexora.Modules.Identity.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the User entity.</summary>
 public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<User> builder)
     {
         builder.ToTable("identity_users");

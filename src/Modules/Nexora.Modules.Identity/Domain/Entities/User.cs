@@ -4,6 +4,7 @@ using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
+/// <summary>Represents a user within a tenant.</summary>
 public sealed class User : AuditableEntity<UserId>, IAggregateRoot
 {
     public TenantId TenantId { get; private set; }
@@ -23,6 +24,7 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
 
     private User() { }
 
+    /// <summary>Creates a new user linked to a Keycloak identity.</summary>
     public static User Create(
         TenantId tenantId,
         string keycloakUserId,
@@ -44,6 +46,7 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
         return user;
     }
 
+    /// <summary>Updates the user's profile information.</summary>
     public void UpdateProfile(string firstName, string lastName, string? phone)
     {
         FirstName = firstName;
@@ -51,11 +54,15 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
         Phone = phone;
     }
 
+    /// <summary>Records the current timestamp as the user's last login.</summary>
     public void RecordLogin() => LastLoginAt = DateTimeOffset.UtcNow;
+    /// <summary>Deactivates the user account.</summary>
     public void Deactivate() { Status = UserStatus.Inactive; AddDomainEvent(new UserDeactivatedEvent(Id)); }
+    /// <summary>Activates the user account.</summary>
     public void Activate() => Status = UserStatus.Active;
 }
 
+/// <summary>Represents the status of a user account.</summary>
 public enum UserStatus
 {
     Active,

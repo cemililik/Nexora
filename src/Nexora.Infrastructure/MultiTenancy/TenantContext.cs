@@ -13,13 +13,18 @@ public sealed class TenantContext : ITenantContext
     public string? UserId { get; set; }
 }
 
+/// <summary>
+/// Provides access to the current tenant context using AsyncLocal storage.
+/// </summary>
 public sealed class TenantContextAccessor : ITenantContextAccessor
 {
     private static readonly AsyncLocal<TenantContext?> _current = new();
 
+    /// <inheritdoc />
     public ITenantContext Current =>
         _current.Value ?? throw new InvalidOperationException("Tenant context not set.");
 
+    /// <inheritdoc />
     public void SetTenant(string tenantId, string? organizationId = null, string? userId = null)
     {
         _current.Value = new TenantContext

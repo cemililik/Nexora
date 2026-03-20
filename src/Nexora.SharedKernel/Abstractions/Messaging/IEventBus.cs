@@ -7,6 +7,7 @@ namespace Nexora.SharedKernel.Abstractions.Messaging;
 /// </summary>
 public interface IEventBus
 {
+    /// <summary>Publishes an integration event to the message broker.</summary>
     Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
         where TEvent : IIntegrationEvent;
 }
@@ -16,5 +17,6 @@ public interface IEventBus
 /// </summary>
 public interface IIntegrationEventHandler<in TEvent> where TEvent : IIntegrationEvent
 {
+    /// <summary>Handles the received integration event.</summary>
     Task HandleAsync(TEvent @event, CancellationToken ct);
 }

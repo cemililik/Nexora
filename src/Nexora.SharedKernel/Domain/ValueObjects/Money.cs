@@ -19,20 +19,24 @@ public sealed record Money
         Currency = currency.ToUpperInvariant();
     }
 
+    /// <summary>Creates a zero-amount Money in the specified currency.</summary>
     public static Money Zero(string currency) => new(0, currency);
 
+    /// <summary>Adds another Money value. Both must share the same currency.</summary>
     public Money Add(Money other)
     {
         EnsureSameCurrency(other);
         return new Money(Amount + other.Amount, Currency);
     }
 
+    /// <summary>Subtracts another Money value. Both must share the same currency.</summary>
     public Money Subtract(Money other)
     {
         EnsureSameCurrency(other);
         return new Money(Amount - other.Amount, Currency);
     }
 
+    /// <summary>Multiplies the amount by the given factor.</summary>
     public Money Multiply(decimal factor) => new(Amount * factor, Currency);
 
     private void EnsureSameCurrency(Money other)

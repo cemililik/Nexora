@@ -17,5 +17,6 @@ public static class JobQueues
     /// <summary>Cleanup, archival, maintenance tasks</summary>
     public const string Maintenance = "maintenance";
 
+    /// <summary>All available queue names.</summary>
     public static readonly string[] All = [Critical, Default, Bulk, Maintenance];
 }

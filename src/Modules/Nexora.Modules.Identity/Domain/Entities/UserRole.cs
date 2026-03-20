@@ -3,6 +3,7 @@ using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
+/// <summary>Represents a role assignment for a user within an organization.</summary>
 public sealed class UserRole : Entity<UserRoleId>
 {
     public OrganizationUserId OrganizationUserId { get; private set; }
@@ -10,6 +11,7 @@ public sealed class UserRole : Entity<UserRoleId>
 
     private UserRole() { }
 
+    /// <summary>Creates a new user-role assignment.</summary>
     public static UserRole Create(OrganizationUserId organizationUserId, RoleId roleId)
     {
         return new UserRole
