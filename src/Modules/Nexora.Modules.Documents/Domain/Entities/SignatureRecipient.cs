@@ -92,6 +92,9 @@ public sealed class SignatureRecipient : AuditableEntity<SignatureRecipientId>
     /// <summary>Marks the recipient as expired.</summary>
     public void MarkExpired()
     {
+        if (Status is SignatureRecipientStatus.Signed or SignatureRecipientStatus.Declined)
+            return; // Already in terminal state, skip
+
         Status = SignatureRecipientStatus.Expired;
     }
 }

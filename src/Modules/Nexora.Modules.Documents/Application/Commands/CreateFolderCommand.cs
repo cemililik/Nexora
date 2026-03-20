@@ -27,7 +27,8 @@ public sealed class CreateFolderValidator : AbstractValidator<CreateFolderComman
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("lockey_documents_validation_folder_name_required")
-            .MaximumLength(255).WithMessage("lockey_documents_validation_folder_name_max_length");
+            .MaximumLength(255).WithMessage("lockey_documents_validation_folder_name_max_length")
+            .Matches(@"^[^/\\\p{Cc}]+$").WithMessage("lockey_documents_validation_folder_name_invalid_characters");
 
         RuleFor(x => x.ModuleName)
             .MaximumLength(50).WithMessage("lockey_documents_validation_module_name_max_length");
@@ -73,9 +74,10 @@ public sealed class CreateFolderHandler(
             parentFolderId = parentId;
         }
 
-        // TODO: OwnerUserId should come from JWT claims; using orgId as placeholder
+        var userId = tenantContextAccessor.Current.UserId is { } uid && Guid.TryParse(uid, out var parsedUid)
+            ? parsedUid : orgId; // Fallback to orgId if user context unavailable
         var folder = Folder.Create(
-            tenantId, orgId, request.Name, orgId,
+            tenantId, orgId, request.Name, userId,
             parentPath, parentFolderId,
             request.ModuleName, request.ModuleRef, request.IsSystem);
 

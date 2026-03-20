@@ -1,0 +1,23 @@
+meta {
+  name: Update Provider
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/notifications/providers/{{notificationProviderId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "config": "{\"apiKey\": \"SG.updated\", \"fromEmail\": \"noreply@nexora.io\"}",
+    "dailyLimit": 50000,
+    "isDefault": true
+  }
+}

@@ -21,7 +21,8 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(d => d.MimeType).HasMaxLength(100).IsRequired();
         builder.Property(d => d.StorageKey).HasMaxLength(1000).IsRequired();
         builder.Property(d => d.LinkedEntityType).HasMaxLength(100);
-        builder.Property(d => d.Tags).HasColumnType("jsonb");
+        // Tags are modeled as a comma-separated string, so map to a simple string column instead of jsonb.
+        builder.Property(d => d.Tags).HasMaxLength(2000);
         builder.Property(d => d.Status).HasConversion<string>().HasMaxLength(50);
 
         builder.HasIndex(d => new { d.TenantId, d.FolderId });

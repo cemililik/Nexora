@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\Modules\Nexora.Modules.Identity\Nexora.Modules.Identity.csproj" />
     <ProjectReference Include="..\..\src\Modules\Nexora.Modules.Contacts\Nexora.Modules.Contacts.csproj" />
     <ProjectReference Include="..\..\src\Modules\Nexora.Modules.Documents\Nexora.Modules.Documents.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Nexora.Modules.Notifications\Nexora.Modules.Notifications.csproj" />
     <ProjectReference Include="..\..\src\Nexora.Host\Nexora.Host.csproj" />
   </ItemGroup>
 

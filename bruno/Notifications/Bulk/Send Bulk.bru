@@ -1,0 +1,35 @@
+meta {
+  name: Send Bulk
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notifications/bulk
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "channel": "Email",
+    "recipients": [
+      {
+        "contactId": "{{contactId}}",
+        "address": "user1@example.com"
+      },
+      {
+        "contactId": "00000000-0000-0000-0000-000000000002",
+        "address": "user2@example.com"
+      }
+    ],
+    "templateCode": "welcome",
+    "variables": {
+      "name": "Team"
+    }
+  }
+}

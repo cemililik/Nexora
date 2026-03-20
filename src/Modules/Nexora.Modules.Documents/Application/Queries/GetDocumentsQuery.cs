@@ -37,8 +37,7 @@ public sealed class GetDocumentsHandler(
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
         var query = dbContext.Documents
-            .Where(d => d.TenantId == tenantId)
-            .AsQueryable();
+            .Where(d => d.TenantId == tenantId);
 
         if (request.FolderId.HasValue)
         {
@@ -49,7 +48,7 @@ public sealed class GetDocumentsHandler(
         if (!string.IsNullOrWhiteSpace(request.Search))
             query = query.Where(d => d.Name.Contains(request.Search));
 
-        if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse<DocumentStatus>(request.Status, out var status))
+        if (!string.IsNullOrWhiteSpace(request.Status) && Enum.TryParse<DocumentStatus>(request.Status, ignoreCase: true, out var status))
             query = query.Where(d => d.Status == status);
 
         if (request.LinkedEntityId.HasValue)

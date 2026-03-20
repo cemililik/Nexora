@@ -1,0 +1,21 @@
+meta {
+  name: Test Provider
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notifications/providers/{{notificationProviderId}}/test
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "testRecipient": "test@nexora.io"
+  }
+}

@@ -29,8 +29,13 @@ public sealed class GrantDocumentAccessValidator : AbstractValidator<GrantDocume
             .WithMessage("lockey_documents_validation_permission_invalid");
 
         RuleFor(x => x)
-            .Must(x => x.UserId.HasValue || x.RoleId.HasValue)
-            .WithMessage("lockey_documents_validation_user_or_role_required");
+            .Must(x =>
+            {
+                var hasUser = x.UserId.HasValue && x.UserId.Value != Guid.Empty;
+                var hasRole = x.RoleId.HasValue && x.RoleId.Value != Guid.Empty;
+                return hasUser ^ hasRole;
+            })
+            .WithMessage("lockey_documents_validation_exactly_one_principal_required");
     }
 }
 

@@ -1,0 +1,23 @@
+meta {
+  name: Update Template
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/notifications/templates/{{notificationTemplateId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "subject": "Welcome {{name}} to Nexora",
+    "body": "<h1>Welcome {{name}}</h1><p>Your account has been set up successfully.</p>",
+    "format": "Html"
+  }
+}

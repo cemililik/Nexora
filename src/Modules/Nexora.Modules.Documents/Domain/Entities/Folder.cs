@@ -52,6 +52,9 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
         Guid? moduleRef = null,
         bool isSystem = false)
     {
+        if (name.Contains('/') || name.Contains('\\'))
+            throw new DomainException("lockey_documents_error_folder_name_invalid_characters");
+
         var folder = new Folder
         {
             Id = FolderId.New(),
@@ -75,7 +78,6 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
         if (IsSystem)
             throw new DomainException("lockey_documents_error_cannot_rename_system_folder");
 
-        var oldName = Name;
         Name = newName.Trim();
         // Path will be updated by the handler to cascade changes
     }
@@ -83,6 +85,9 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
     /// <summary>Updates the folder path.</summary>
     public void UpdatePath(string newPath)
     {
+        if (IsSystem)
+            throw new DomainException("lockey_documents_error_cannot_rename_system_folder");
+
         Path = newPath;
     }
 

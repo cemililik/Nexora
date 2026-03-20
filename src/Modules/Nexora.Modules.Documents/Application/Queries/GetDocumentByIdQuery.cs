@@ -41,7 +41,7 @@ public sealed class GetDocumentByIdHandler(
         }
 
         var folder = await dbContext.Folders.FirstOrDefaultAsync(
-            f => f.Id == document.FolderId, cancellationToken);
+            f => f.Id == document.FolderId && f.TenantId == tenantId, cancellationToken);
 
         var versionDtos = document.Versions
             .OrderByDescending(v => v.VersionNumber)

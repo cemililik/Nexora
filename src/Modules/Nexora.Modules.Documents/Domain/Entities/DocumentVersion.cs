@@ -37,12 +37,19 @@ public sealed class DocumentVersion : AuditableEntity<DocumentVersionId>
         Guid uploadedByUserId,
         string? changeNote = null)
     {
+        if (string.IsNullOrWhiteSpace(storageKey))
+            throw new ArgumentException("Storage key is required.", nameof(storageKey));
+        if (versionNumber <= 0)
+            throw new ArgumentException("Version number must be positive.", nameof(versionNumber));
+        if (fileSize <= 0)
+            throw new ArgumentException("File size must be positive.", nameof(fileSize));
+
         return new DocumentVersion
         {
             Id = DocumentVersionId.New(),
             DocumentId = documentId,
             VersionNumber = versionNumber,
-            StorageKey = storageKey,
+            StorageKey = storageKey.Trim(),
             FileSize = fileSize,
             UploadedByUserId = uploadedByUserId,
             ChangeNote = changeNote?.Trim()

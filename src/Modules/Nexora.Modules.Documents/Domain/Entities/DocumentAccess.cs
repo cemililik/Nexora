@@ -1,5 +1,6 @@
 using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Documents.Domain.Entities;
 
@@ -29,6 +30,9 @@ public sealed class DocumentAccess : AuditableEntity<DocumentAccessId>
         Guid? roleId,
         AccessPermission permission)
     {
+        if (userId is null && roleId is null)
+            throw new DomainException("lockey_documents_error_access_requires_user_or_role");
+
         return new DocumentAccess
         {
             Id = DocumentAccessId.New(),

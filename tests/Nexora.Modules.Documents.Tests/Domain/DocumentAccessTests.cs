@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Nexora.Modules.Documents.Domain.Entities;
 using Nexora.Modules.Documents.Domain.ValueObjects;
 
