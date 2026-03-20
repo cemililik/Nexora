@@ -55,6 +55,9 @@ public sealed class UploadDocumentValidator : AbstractValidator<UploadDocumentCo
 
         RuleFor(x => x.LinkedEntityType)
             .MaximumLength(100).WithMessage("lockey_documents_validation_entity_type_max_length");
+
+        RuleFor(x => x.Tags)
+            .MaximumLength(2000).WithMessage("lockey_documents_validation_tags_max_length");
     }
 }
 
@@ -87,8 +90,10 @@ public sealed class UploadDocumentHandler(
                 LocalizedMessage.Of("lockey_documents_error_folder_not_found"));
         }
 
+        var uploadedByUserId = tenantContextAccessor.Current.UserId is { } uid && Guid.TryParse(uid, out var parsedUid)
+            ? parsedUid : orgId; // Fallback to orgId if user context unavailable
         var document = Document.Create(
-            tenantId, orgId, folderId, orgId, // TODO: uploadedByUserId from JWT
+            tenantId, orgId, folderId, uploadedByUserId,
             request.Name, request.MimeType, request.FileSize, request.StorageKey,
             request.Description, request.LinkedEntityId, request.LinkedEntityType, request.Tags);
 

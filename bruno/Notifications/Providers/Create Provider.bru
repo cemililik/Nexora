@@ -1,0 +1,35 @@
+meta {
+  name: Create Provider
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notifications/providers
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "channel": "Email",
+    "providerName": "SendGrid",
+    "config": "{\"apiKey\": \"SG.xxx\", \"fromEmail\": \"noreply@nexora.io\"}",
+    "dailyLimit": 10000,
+    "isDefault": true
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("notificationProviderId", body.data.id);
+      console.log("notificationProviderId set to " + body.data.id);
+    }
+  }
+}

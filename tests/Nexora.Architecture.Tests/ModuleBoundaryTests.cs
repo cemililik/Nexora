@@ -9,6 +9,7 @@ public sealed class ModuleBoundaryTests
     private const string IdentityNamespace = "Nexora.Modules.Identity";
     private const string ContactsNamespace = "Nexora.Modules.Contacts";
     private const string DocumentsNamespace = "Nexora.Modules.Documents";
+    private const string NotificationsNamespace = "Nexora.Modules.Notifications";
     private const string HostNamespace = "Nexora.Host";
 
     [Fact]
@@ -45,6 +46,12 @@ public sealed class ModuleBoundaryTests
             .HaveDependencyOn(DocumentsNamespace)
             .GetResult()
             .IsSuccessful.Should().BeTrue("SharedKernel must not depend on Documents module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(NotificationsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("SharedKernel must not depend on Notifications module");
     }
 
     [Fact]
@@ -81,6 +88,12 @@ public sealed class ModuleBoundaryTests
             .HaveDependencyOn(DocumentsNamespace)
             .GetResult()
             .IsSuccessful.Should().BeTrue("Infrastructure must not depend on Documents module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(NotificationsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Infrastructure must not depend on Notifications module");
     }
 
     [Fact]
@@ -117,6 +130,12 @@ public sealed class ModuleBoundaryTests
             .HaveDependencyOn(DocumentsNamespace)
             .GetResult()
             .IsSuccessful.Should().BeTrue("Identity module must not depend on Documents module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(NotificationsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Identity module must not depend on Notifications module");
     }
 
     [Fact]
@@ -141,6 +160,12 @@ public sealed class ModuleBoundaryTests
             .HaveDependencyOn(DocumentsNamespace)
             .GetResult()
             .IsSuccessful.Should().BeTrue("Contacts module must not depend on Documents module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(NotificationsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Contacts module must not depend on Notifications module");
     }
 
     [Fact]
@@ -167,5 +192,41 @@ public sealed class ModuleBoundaryTests
             .HaveDependencyOn("Nexora.Modules.CRM")
             .GetResult()
             .IsSuccessful.Should().BeTrue("Documents module must not depend on CRM module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(NotificationsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Documents module must not depend on Notifications module");
+    }
+
+    [Fact]
+    public void NotificationsModule_ShouldNotDependOnOtherModules()
+    {
+        var assembly = typeof(Modules.Notifications.NotificationsModule).Assembly;
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(IdentityNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Notifications module must not depend on Identity module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(ContactsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Notifications module must not depend on Contacts module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(DocumentsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Notifications module must not depend on Documents module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn("Nexora.Modules.CRM")
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Notifications module must not depend on CRM module");
     }
 }

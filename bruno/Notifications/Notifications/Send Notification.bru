@@ -1,0 +1,38 @@
+meta {
+  name: Send Notification
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notifications/notifications/send
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "channel": "Email",
+    "contactId": "{{contactId}}",
+    "recipientAddress": "user@example.com",
+    "templateCode": "welcome",
+    "variables": {
+      "name": "John Doe"
+    },
+    "languageCode": "en"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("notificationId", body.data.id);
+      console.log("notificationId set to " + body.data.id);
+    }
+  }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Add Translation
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notifications/templates/{{notificationTemplateId}}/translations
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "languageCode": "tr",
+    "subject": "Hosgeldiniz {{name}}",
+    "body": "<h1>Hosgeldiniz {{name}}</h1><p>Hesabiniz olusturuldu.</p>"
+  }
+}

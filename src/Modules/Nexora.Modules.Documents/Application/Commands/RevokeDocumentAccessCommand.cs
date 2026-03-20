@@ -51,6 +51,13 @@ public sealed class RevokeDocumentAccessHandler(
         }
 
         var accessId = DocumentAccessId.From(request.AccessId);
+        if (!document.AccessList.Any(a => a.Id == accessId))
+        {
+            logger.LogWarning("Access {AccessId} not found on document {DocumentId} for tenant {TenantId}",
+                request.AccessId, document.Id, tenantId);
+            return Result.Failure(LocalizedMessage.Of("lockey_documents_error_access_not_found"));
+        }
+
         document.RevokeAccess(accessId);
         await dbContext.SaveChangesAsync(cancellationToken);
 

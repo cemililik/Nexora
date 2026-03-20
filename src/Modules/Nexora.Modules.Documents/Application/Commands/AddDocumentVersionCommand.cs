@@ -51,6 +51,10 @@ public sealed class AddDocumentVersionHandler(
         if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
             return Result<DocumentVersionDto>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
+
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+            return Result<DocumentVersionDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
         var documentId = DocumentId.From(request.DocumentId);
 
         var document = await dbContext.Documents
@@ -63,10 +67,6 @@ public sealed class AddDocumentVersionHandler(
             return Result<DocumentVersionDto>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
-
-        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
-            return Result<DocumentVersionDto>.Failure(
-                LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
         var version = document.AddVersion(request.StorageKey, request.FileSize, orgId, request.ChangeNote);
         await dbContext.SaveChangesAsync(cancellationToken);
 

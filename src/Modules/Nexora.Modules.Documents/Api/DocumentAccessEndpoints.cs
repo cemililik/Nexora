@@ -34,7 +34,9 @@ public static class DocumentAccessEndpoints
                 ? Results.Created(
                     $"/api/v1/documents/documents/{documentId}/access/{result.Value!.Id}",
                     ApiEnvelope<DocumentAccessDto>.Success(result.Value, result.Message))
-                : Results.BadRequest(ApiEnvelope<DocumentAccessDto>.Fail(result.Error!));
+                : result.Error!.Message.Key == "lockey_documents_error_document_not_found"
+                    ? Results.NotFound(ApiEnvelope<DocumentAccessDto>.Fail(result.Error))
+                    : Results.BadRequest(ApiEnvelope<DocumentAccessDto>.Fail(result.Error));
         });
 
         group.MapDelete("/{accessId:guid}", async (Guid documentId, Guid accessId, ISender sender, CancellationToken ct) =>

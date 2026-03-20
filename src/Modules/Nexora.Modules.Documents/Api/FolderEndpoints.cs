@@ -49,7 +49,9 @@ public static class FolderEndpoints
             var result = await sender.Send(new RenameFolderCommand(id, request.NewName), ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<FolderDto>.Success(result.Value!, result.Message))
-                : Results.NotFound(ApiEnvelope<FolderDto>.Fail(result.Error!));
+                : result.Error!.Message.Key == "lockey_documents_error_folder_not_found"
+                    ? Results.NotFound(ApiEnvelope<FolderDto>.Fail(result.Error))
+                    : Results.BadRequest(ApiEnvelope<FolderDto>.Fail(result.Error));
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>

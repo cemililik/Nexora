@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Nexora.SharedKernel\Nexora.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

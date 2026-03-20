@@ -1,5 +1,6 @@
 using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Documents.Domain.Entities;
 
@@ -44,6 +45,11 @@ public sealed class DocumentTemplate : AuditableEntity<DocumentTemplateId>, IAgg
         string templateStorageKey,
         string? variableDefinitions = null)
     {
+        if (tenantId == Guid.Empty) throw new DomainException("lockey_documents_error_invalid_tenant");
+        if (organizationId == Guid.Empty) throw new DomainException("lockey_documents_error_invalid_organization");
+        if (string.IsNullOrWhiteSpace(name)) throw new DomainException("lockey_documents_error_template_name_required");
+        if (string.IsNullOrWhiteSpace(templateStorageKey)) throw new DomainException("lockey_documents_error_template_storage_key_required");
+
         return new DocumentTemplate
         {
             Id = DocumentTemplateId.New(),
@@ -61,6 +67,8 @@ public sealed class DocumentTemplate : AuditableEntity<DocumentTemplateId>, IAgg
     /// <summary>Updates the template metadata.</summary>
     public void Update(string name, TemplateCategory category, TemplateFormat format, string? variableDefinitions)
     {
+        if (string.IsNullOrWhiteSpace(name)) throw new DomainException("lockey_documents_error_template_name_required");
+
         Name = name.Trim();
         Category = category;
         Format = format;

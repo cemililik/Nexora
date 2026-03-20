@@ -170,7 +170,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Version control (add versions, version history, max 100 versions)
 - [x] Access control records (grant/revoke per user or role — View/Edit/Manage)
 - [x] Integration events (DocumentUploaded, DocumentArchived, DocumentSigned, SignatureCompleted)
-- [x] Phase 2 domain shells modeled (SignatureRequest, SignatureRecipient, DocumentTemplate — tables created, full domain lifecycle)
+- [x] Phase 2 domain shells modeled (SignatureRequest, SignatureRecipient, DocumentTemplate — domain model and tables created, CQRS/API flows pending)
 
 **Phase 2 (deferred):**
 - [ ] MinIO file storage integration (actual upload/download — currently tracks StorageKey only, download returns 501)
