@@ -1,0 +1,20 @@
+meta {
+  name: List Folders
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/documents/folders
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~parentFolderId:
+  ~moduleName:
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

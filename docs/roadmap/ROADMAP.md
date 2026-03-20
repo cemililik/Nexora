@@ -80,7 +80,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 4. [ ] Keycloak issues JWT, APISIX validates it, .NET resolves tenant
 
 ### Completed Work
-- **Solution structure**: 10 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, 5 test projects)
+- **Solution structure**: 14 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, Notifications module, Documents module, 7 test projects)
 - **SharedKernel**: Entity/AuditableEntity base classes, strongly-typed IDs, Result<T> pattern, PagedResult<T>, LocalizedMessage (lockey_ enforcement), DomainException, value objects (Money, DateRange, EmailAddress, PhoneNumber), CQRS interfaces, ICacheService, ISecretProvider (generic overload), IJobScheduler, IModule, IModuleAvailability, ITenantContext, ITenantSchemaManager, IModuleMigration, JobQueues, ApiEnvelope<T>
 - **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant, public path skip), DaprCacheService (L1+L2 with prefix invalidation + key tracking), DaprEventBus, DaprSecretProvider, HangfireJobScheduler, TenantJobFilter (tenant context capture/restore), TenantSchemaManager (PostgreSQL schema lifecycle), ValidationBehavior (all errors in Error.Details), LoggingBehavior, DatabaseTenantConfiguration, HangfireAuthFilters
 - **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role-based auth)
@@ -92,7 +92,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Docker Compose**: PostgreSQL 17, Redis 7, Kafka (KRaft), Keycloak 26, MinIO, Dapr
 - **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
 - **Standards compliance**: 5 rounds of audit — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging)
-- **Tests**: 259 tests passing (SharedKernel: 64, Infrastructure: 26, Architecture: 19, Identity: 150)
+- **Tests**: 932 tests passing (Contacts: 394, Notifications: 177, Identity: 150, Documents: 80, SharedKernel: 64, Architecture: 41, Infrastructure: 26)
 - **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
 - **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
 - **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
@@ -102,6 +102,14 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Cross-module contracts**: IContactQueryService, IContactActivityContributor (SharedKernel)
 - **Architecture tests**: 10 ContactsModule layer dependency tests + updated ModuleBoundaryTests
 - **Tests after Phase 1.2**: 664 tests passing (Contacts: 394, Identity: 150, SharedKernel: 64, Architecture: 30, Infrastructure: 26)
+- **Document Management module (Phase 1)**: 7 domain entities (Folder, Document, DocumentVersion, DocumentAccess + Phase 2 shells: SignatureRequest, SignatureRecipient, DocumentTemplate), 7 strongly-typed IDs, 8 domain events, 7 EF configurations (documents_ prefix), DocumentsDbContext (7 DbSets), DocumentsModuleMigration
+- **Document CQRS Commands**: CreateFolder, RenameFolder, DeleteFolder, UploadDocument, UpdateDocumentMetadata, ArchiveDocument, RestoreDocument, MoveDocument, LinkDocumentToEntity, UnlinkDocumentFromEntity, AddDocumentVersion, GrantDocumentAccess, RevokeDocumentAccess — all with validators + lockey_ keys
+- **Document Queries**: GetFolders (filtered), GetFolderById, GetDocuments (paginated + status/search/folder/entity filters with pagination guard), GetDocumentById (detail with versions + access), GetDocumentVersions, GetDocumentAccess
+- **Document API**: FolderEndpoints (CRUD), DocumentEndpoints (CRUD + archive/restore/move/link/unlink/download-501), DocumentVersionEndpoints (list/add), DocumentAccessEndpoints (list/grant/revoke)
+- **Document Infrastructure**: 4 integration events (DocumentUploaded, DocumentArchived, DocumentSigned, SignatureCompleted), 4 domain event handlers, Phase 2 domain shells (SignatureRequest lifecycle, DocumentTemplate CRUD) modeled in domain + EF configs (tables created, no CQRS/API yet)
+- **Document Architecture tests**: 10 layer dependency tests + updated ModuleBoundaryTests
+- **Bruno API collection**: 20 requests for Documents module (Folders: 5, Documents: 10, Versions: 2, Access: 3) with auto-populated env vars
+- **Tests after Phase 1.4**: 932 tests passing (Contacts: 394, Notifications: 177, Identity: 150, Documents: 80, SharedKernel: 64, Architecture: 41, Infrastructure: 26)
 
 ---
 
@@ -155,12 +163,20 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 ### 1.4 Document Management
 **Spec**: [modules/documents/SPEC.md](../modules/documents/SPEC.md)
-- [ ] File upload/download (MinIO backend)
-- [ ] Folder structure (per module, per entity)
-- [ ] Digital signature (Sign module — send, sign, archive)
-- [ ] Document templates with variable substitution
-- [ ] Version control
-- [ ] Access control (who can see/edit)
+
+**Phase 1 (complete):**
+- [x] Folder structure (hierarchical, module-scoped, system folders)
+- [x] Document CRUD (upload tracking, metadata, archive/restore, entity linking)
+- [x] Version control (add versions, version history, max 100 versions)
+- [x] Access control records (grant/revoke per user or role — View/Edit/Manage)
+- [x] Integration events (DocumentUploaded, DocumentArchived, DocumentSigned, SignatureCompleted)
+- [x] Phase 2 domain shells modeled (SignatureRequest, SignatureRecipient, DocumentTemplate — tables created, full domain lifecycle)
+
+**Phase 2 (deferred):**
+- [ ] MinIO file storage integration (actual upload/download — currently tracks StorageKey only, download returns 501)
+- [ ] Digital signature workflow (Sign module — send, sign, archive — domain ready, CQRS/API pending)
+- [ ] Document templates with variable substitution (domain ready, CQRS/API pending)
+- [ ] Access control enforcement in query filters (records created, not enforced yet)
 - [ ] Automatic archival (signed docs → entity's folder)
 
 ### 1.5 Portal Framework

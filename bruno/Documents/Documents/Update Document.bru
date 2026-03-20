@@ -1,0 +1,23 @@
+meta {
+  name: Update Document
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/documents/documents/{{documentId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "report-2026-q1-final.pdf",
+    "description": "Q1 2026 quarterly report — final version",
+    "tags": "report,quarterly,final"
+  }
+}

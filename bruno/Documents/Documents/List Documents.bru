@@ -1,0 +1,25 @@
+meta {
+  name: List Documents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/documents/documents?page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  pageSize: 20
+  ~folderId:
+  ~search:
+  ~status:
+  ~linkedEntityId:
+  ~linkedEntityType:
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

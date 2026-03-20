@@ -1,0 +1,39 @@
+meta {
+  name: Upload Document
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "folderId": "{{folderId}}",
+    "name": "report-2026-q1.pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 204800,
+    "storageKey": "tenants/demo/documents/report-2026-q1.pdf",
+    "description": "Q1 2026 quarterly report",
+    "linkedEntityId": null,
+    "linkedEntityType": null,
+    "tags": "report,quarterly"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("documentId", body.data.id);
+      console.log("documentId set to " + body.data.id);
+    }
+  }
+}

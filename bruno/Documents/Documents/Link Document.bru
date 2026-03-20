@@ -1,0 +1,22 @@
+meta {
+  name: Link Document
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents/{{documentId}}/link
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "entityId": "{{contactId}}",
+    "entityType": "Contact"
+  }
+}

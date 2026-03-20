@@ -1,0 +1,21 @@
+meta {
+  name: Move Document
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents/{{documentId}}/move
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "targetFolderId": "{{folderId}}"
+  }
+}

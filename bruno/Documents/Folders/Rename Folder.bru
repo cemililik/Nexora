@@ -1,0 +1,21 @@
+meta {
+  name: Rename Folder
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/documents/folders/{{folderId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "newName": "Invoices"
+  }
+}
