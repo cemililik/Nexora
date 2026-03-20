@@ -20,7 +20,6 @@ public sealed class ContactArchivedDomainEventHandler(
             ContactId = notification.ContactId.Value
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-        logger.LogInformation("Published ContactArchivedIntegrationEvent for {ContactId}", notification.ContactId);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }

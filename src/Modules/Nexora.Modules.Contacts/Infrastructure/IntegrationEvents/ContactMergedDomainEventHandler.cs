@@ -21,8 +21,6 @@ public sealed class ContactMergedDomainEventHandler(
             SecondaryContactId = notification.SecondaryContactId.Value
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-        logger.LogInformation("Published ContactMergedIntegrationEvent: {SecondaryId} merged into {PrimaryId}",
-            notification.SecondaryContactId, notification.PrimaryContactId);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }

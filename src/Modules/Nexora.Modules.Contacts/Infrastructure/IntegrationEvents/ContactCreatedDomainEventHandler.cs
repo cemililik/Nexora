@@ -18,6 +18,7 @@ public sealed class ContactCreatedDomainEventHandler(
     public async Task Handle(ContactCreatedEvent notification, CancellationToken cancellationToken)
     {
         var contact = await dbContext.Contacts
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == notification.ContactId, cancellationToken);
 
         if (contact is null) return;
@@ -31,7 +32,6 @@ public sealed class ContactCreatedDomainEventHandler(
             DisplayName = contact.DisplayName
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-        logger.LogInformation("Published ContactCreatedIntegrationEvent for {ContactId}", contact.Id);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }

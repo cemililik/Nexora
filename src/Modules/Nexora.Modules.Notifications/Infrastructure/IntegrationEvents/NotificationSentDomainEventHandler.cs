@@ -26,9 +26,6 @@ public sealed class NotificationSentDomainEventHandler(
             RecipientCount = notification.RecipientCount
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-
-        logger.LogInformation("Published NotificationSentIntegrationEvent for notification {NotificationId} with {RecipientCount} recipients",
-            notification.NotificationId, notification.RecipientCount);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }

@@ -23,8 +23,6 @@ public sealed class ConsentChangedDomainEventHandler(
             Granted = notification.Granted
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-        logger.LogInformation("Published ConsentChangedIntegrationEvent for {ContactId}: {ConsentType} = {Granted}",
-            notification.ContactId, notification.ConsentType, notification.Granted);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }
