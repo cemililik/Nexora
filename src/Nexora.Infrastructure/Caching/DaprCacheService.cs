@@ -18,6 +18,7 @@ public sealed class DaprCacheService(
     private const string StateStoreName = "statestore";
     private static readonly ConcurrentDictionary<string, byte> _trackedKeys = new();
 
+    /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
         // L1: in-memory
@@ -35,6 +36,7 @@ public sealed class DaprCacheService(
         return state;
     }
 
+    /// <inheritdoc />
     public async Task<T> GetOrSetAsync<T>(
         string key,
         Func<CancellationToken, Task<T>> factory,
@@ -50,6 +52,7 @@ public sealed class DaprCacheService(
         return value;
     }
 
+    /// <inheritdoc />
     public async Task SetAsync<T>(
         string key,
         T value,
@@ -73,6 +76,7 @@ public sealed class DaprCacheService(
         await daprClient.SaveStateAsync(StateStoreName, key, value, metadata: metadata, cancellationToken: ct);
     }
 
+    /// <inheritdoc />
     public async Task RemoveAsync(string key, CancellationToken ct = default)
     {
         memoryCache.Remove(key);
@@ -80,6 +84,7 @@ public sealed class DaprCacheService(
         await daprClient.DeleteStateAsync(StateStoreName, key, cancellationToken: ct);
     }
 
+    /// <inheritdoc />
     public async Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
     {
         var keysToRemove = _trackedKeys.Keys

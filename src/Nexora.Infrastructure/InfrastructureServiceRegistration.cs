@@ -24,8 +24,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Nexora.Infrastructure;
 
+/// <summary>
+/// Registers all cross-cutting infrastructure services (tenancy, caching, messaging, jobs, etc.).
+/// </summary>
 public static class InfrastructureServiceRegistration
 {
+    /// <summary>Adds Nexora infrastructure services to the DI container.</summary>
     public static IServiceCollection AddNexoraInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)

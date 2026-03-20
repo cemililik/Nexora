@@ -10,8 +10,10 @@ namespace Nexora.Modules.Contacts.Infrastructure;
 /// </summary>
 public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : IModuleMigration
 {
+    /// <inheritdoc />
     public string ModuleName => "contacts";
 
+    /// <inheritdoc />
     public async Task MigrateAsync(string schemaName, CancellationToken ct = default)
     {
         using var scope = serviceProvider.CreateScope();
@@ -23,6 +25,7 @@ public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : 
         await dbContext.Database.MigrateAsync(ct);
     }
 
+    /// <inheritdoc />
     public Task SeedAsync(string schemaName, CancellationToken ct = default)
     {
         // Contacts module permissions are seeded by Identity module's permission system.

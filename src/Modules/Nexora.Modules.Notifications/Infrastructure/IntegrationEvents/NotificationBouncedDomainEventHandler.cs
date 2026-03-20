@@ -23,9 +23,6 @@ public sealed class NotificationBouncedDomainEventHandler(
             Email = notification.Email
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-
-        logger.LogInformation("Published NotificationBouncedIntegrationEvent for contact {ContactId} of notification {NotificationId}",
-            notification.ContactId, notification.NotificationId);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }

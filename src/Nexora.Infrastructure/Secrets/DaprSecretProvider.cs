@@ -11,6 +11,7 @@ public sealed class DaprSecretProvider(DaprClient daprClient) : ISecretProvider
 {
     private const string SecretStoreName = "secretstore";
 
+    /// <inheritdoc />
     public async Task<string> GetSecretAsync(string key, CancellationToken ct = default)
     {
         var secret = await daprClient.GetSecretAsync(SecretStoreName, key, cancellationToken: ct);
@@ -19,6 +20,7 @@ public sealed class DaprSecretProvider(DaprClient daprClient) : ISecretProvider
             : throw new KeyNotFoundException($"Secret '{key}' not found in store.");
     }
 
+    /// <inheritdoc />
     public async Task<T> GetSecretAsync<T>(string key, CancellationToken ct = default) where T : class
     {
         var json = await GetSecretAsync(key, ct);
@@ -26,6 +28,7 @@ public sealed class DaprSecretProvider(DaprClient daprClient) : ISecretProvider
             ?? throw new InvalidOperationException($"Failed to deserialize secret '{key}' to {typeof(T).Name}.");
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyDictionary<string, string>> GetSecretsAsync(string prefix, CancellationToken ct = default)
     {
         var secrets = await daprClient.GetBulkSecretAsync(SecretStoreName, cancellationToken: ct);

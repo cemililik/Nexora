@@ -16,6 +16,7 @@ public sealed class TenantMiddleware(RequestDelegate next)
         "/admin/hangfire"
     ];
 
+    /// <summary>Extracts tenant context from JWT claims and sets it for the current request.</summary>
     public async Task InvokeAsync(HttpContext context, ITenantContextAccessor accessor)
     {
         var path = context.Request.Path.Value ?? "";

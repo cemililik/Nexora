@@ -13,6 +13,7 @@ public sealed class ContactQueryService(
     ITenantContextAccessor tenantContextAccessor,
     ICacheService cache) : IContactQueryService
 {
+    /// <inheritdoc />
     public async Task<ContactSummary?> GetByIdAsync(Guid contactId, CancellationToken ct = default)
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
@@ -36,6 +37,7 @@ public sealed class ContactQueryService(
             ct: ct);
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ContactSummary>> GetByIdsAsync(
         IEnumerable<Guid> contactIds, CancellationToken ct = default)
     {
@@ -51,6 +53,7 @@ public sealed class ContactQueryService(
             .ToListAsync(ct);
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<ContactSummary>> SearchAsync(
         string query, int maxResults = 10, CancellationToken ct = default)
     {

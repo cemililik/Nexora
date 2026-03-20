@@ -17,6 +17,7 @@ public sealed class CommunicationPreference : AuditableEntity<CommunicationPrefe
 
     private CommunicationPreference() { }
 
+    /// <summary>Creates a new communication preference for a contact.</summary>
     public static CommunicationPreference Create(
         ContactId contactId,
         CommunicationChannel channel,
@@ -40,6 +41,7 @@ public sealed class CommunicationPreference : AuditableEntity<CommunicationPrefe
         return pref;
     }
 
+    /// <summary>Opts the contact in for this communication channel.</summary>
     public void OptIn(string? source = null)
     {
         OptedIn = true;
@@ -48,6 +50,7 @@ public sealed class CommunicationPreference : AuditableEntity<CommunicationPrefe
         OptInSource = source;
     }
 
+    /// <summary>Opts the contact out of this communication channel.</summary>
     public void OptOut()
     {
         OptedIn = false;

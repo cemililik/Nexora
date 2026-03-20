@@ -39,6 +39,7 @@ public sealed class Contact : AuditableEntity<ContactId>, IAggregateRoot
 
     private Contact() { }
 
+    /// <summary>Creates a new contact with the specified details.</summary>
     public static Contact Create(
         Guid tenantId,
         Guid organizationId,
@@ -72,6 +73,7 @@ public sealed class Contact : AuditableEntity<ContactId>, IAggregateRoot
         return contact;
     }
 
+    /// <summary>Updates the contact's profile information.</summary>
     public void Update(
         string? firstName,
         string? lastName,
@@ -101,6 +103,7 @@ public sealed class Contact : AuditableEntity<ContactId>, IAggregateRoot
         AddDomainEvent(new ContactUpdatedEvent(Id));
     }
 
+    /// <summary>Archives the contact, preventing further modifications.</summary>
     public void Archive()
     {
         if (Status is ContactStatus.Archived or ContactStatus.Merged)
@@ -110,6 +113,7 @@ public sealed class Contact : AuditableEntity<ContactId>, IAggregateRoot
         AddDomainEvent(new ContactArchivedEvent(Id));
     }
 
+    /// <summary>Restores an archived contact back to active status.</summary>
     public void Restore()
     {
         if (Status is not ContactStatus.Archived)
@@ -119,6 +123,7 @@ public sealed class Contact : AuditableEntity<ContactId>, IAggregateRoot
         AddDomainEvent(new ContactRestoredEvent(Id));
     }
 
+    /// <summary>Marks this contact as merged into the specified primary contact.</summary>
     public void MarkMerged(ContactId primaryContactId)
     {
         if (Status is ContactStatus.Merged)

@@ -10,6 +10,7 @@ namespace Nexora.Infrastructure.Configuration;
 public sealed class DatabaseTenantConfiguration(
     TenantConfigDbContext dbContext) : ITenantConfiguration
 {
+    /// <inheritdoc />
     public async Task<T> GetAsync<T>(string key, CancellationToken ct = default)
     {
         var entry = await dbContext.Configurations
@@ -21,6 +22,7 @@ public sealed class DatabaseTenantConfiguration(
         return JsonSerializer.Deserialize<T>(entry.Value)!;
     }
 
+    /// <inheritdoc />
     public async Task SetAsync<T>(string key, T value, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(value);

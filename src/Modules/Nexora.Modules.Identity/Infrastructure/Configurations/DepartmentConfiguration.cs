@@ -5,8 +5,10 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 
 namespace Nexora.Modules.Identity.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the Department entity.</summary>
 public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Department>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<Department> builder)
     {
         builder.ToTable("identity_departments");

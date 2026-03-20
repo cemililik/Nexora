@@ -20,6 +20,7 @@ public sealed class ContactAddress : AuditableEntity<ContactAddressId>
 
     private ContactAddress() { }
 
+    /// <summary>Creates a new address for a contact.</summary>
     public static ContactAddress Create(
         ContactId contactId,
         AddressType type,
@@ -46,6 +47,7 @@ public sealed class ContactAddress : AuditableEntity<ContactAddressId>
         };
     }
 
+    /// <summary>Updates the address details.</summary>
     public void Update(
         AddressType type,
         string street1,
@@ -64,8 +66,10 @@ public sealed class ContactAddress : AuditableEntity<ContactAddressId>
         CountryCode = countryCode.ToUpperInvariant();
     }
 
+    /// <summary>Sets whether this address is the primary address.</summary>
     public void SetPrimary(bool isPrimary) => IsPrimary = isPrimary;
 
+    /// <summary>Sets the geographic coordinates for this address.</summary>
     public void SetCoordinates(double latitude, double longitude)
     {
         Latitude = latitude;

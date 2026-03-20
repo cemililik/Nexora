@@ -18,6 +18,7 @@ public sealed class CustomFieldDefinition : AuditableEntity<CustomFieldDefinitio
 
     private CustomFieldDefinition() { }
 
+    /// <summary>Creates a new custom field definition.</summary>
     public static CustomFieldDefinition Create(
         Guid tenantId,
         string fieldName,
@@ -38,6 +39,7 @@ public sealed class CustomFieldDefinition : AuditableEntity<CustomFieldDefinitio
         };
     }
 
+    /// <summary>Updates the field definition properties.</summary>
     public void Update(string fieldName, string? options, bool isRequired, int displayOrder)
     {
         FieldName = fieldName.Trim();
@@ -46,5 +48,6 @@ public sealed class CustomFieldDefinition : AuditableEntity<CustomFieldDefinitio
         DisplayOrder = displayOrder;
     }
 
+    /// <summary>Deactivates the custom field definition.</summary>
     public void Deactivate() => IsActive = false;
 }

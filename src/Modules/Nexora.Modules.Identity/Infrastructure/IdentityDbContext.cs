@@ -5,6 +5,7 @@ using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Modules.Identity.Infrastructure;
 
+/// <summary>Tenant-scoped DbContext for the Identity module.</summary>
 public sealed class IdentityDbContext(
     DbContextOptions<IdentityDbContext> options,
     ITenantContextAccessor tenantContextAccessor,

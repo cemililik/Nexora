@@ -5,8 +5,10 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 
 namespace Nexora.Modules.Identity.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the TenantModule entity.</summary>
 public sealed class TenantModuleConfiguration : IEntityTypeConfiguration<TenantModule>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<TenantModule> builder)
     {
         builder.ToTable("identity_tenant_modules");
