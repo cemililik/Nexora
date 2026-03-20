@@ -1,7 +1,7 @@
 # CodeRabbit Configuration
 # Docs: https://docs.coderabbit.ai/guides/configure-coderabbit
 
-language: tr-TR
+language: tr
 
 reviews:
   profile: assertive

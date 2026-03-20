@@ -58,7 +58,7 @@ public sealed class GrantDocumentAccessHandler(
                 LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
 
-        var permission = Enum.Parse<AccessPermission>(request.Permission);
+        var permission = Enum.Parse<AccessPermission>(request.Permission, ignoreCase: true);
         var access = document.GrantAccess(request.UserId, request.RoleId, permission);
         await dbContext.SaveChangesAsync(cancellationToken);
 

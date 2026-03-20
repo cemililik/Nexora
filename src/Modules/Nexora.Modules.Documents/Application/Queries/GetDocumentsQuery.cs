@@ -31,6 +31,8 @@ public sealed class GetDocumentsHandler(
         CancellationToken cancellationToken)
     {
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
         var query = dbContext.Documents
             .Where(d => d.TenantId == tenantId)
@@ -58,8 +60,8 @@ public sealed class GetDocumentsHandler(
 
         var items = await query
             .OrderByDescending(d => d.CreatedAt)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(d => new DocumentDto(
                 d.Id.Value, d.FolderId.Value, d.Name, d.Description,
                 d.MimeType, d.FileSize, d.StorageKey, d.Status.ToString(),
@@ -74,8 +76,8 @@ public sealed class GetDocumentsHandler(
         {
             Items = items,
             TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
+            Page = page,
+            PageSize = pageSize
         };
         return Result<PagedResult<DocumentDto>>.Success(pagedResult,
             LocalizedMessage.Of("lockey_documents_documents_listed"));

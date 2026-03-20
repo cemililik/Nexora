@@ -90,6 +90,12 @@ public sealed class SignatureRequest : AuditableEntity<SignatureRequestId>, IAgg
     /// <summary>Records a signature from a recipient.</summary>
     public void RecordSignature(SignatureRecipientId recipientId, string signatureData, string ipAddress)
     {
+        if (Status is not (SignatureRequestStatus.Sent or SignatureRequestStatus.PartiallySigned))
+            throw new DomainException("lockey_documents_error_cannot_sign_in_current_status");
+
+        if (ExpiresAt is not null && ExpiresAt <= DateOnly.FromDateTime(DateTime.UtcNow))
+            throw new DomainException("lockey_documents_error_signature_request_expired");
+
         var recipient = _recipients.FirstOrDefault(r => r.Id == recipientId)
             ?? throw new DomainException("lockey_documents_error_recipient_not_found");
 

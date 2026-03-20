@@ -121,6 +121,81 @@ public sealed class UploadDocumentTests : IDisposable
         count.Should().Be(1);
     }
 
+    [Fact]
+    public void Validate_ZeroFileSize_ShouldFail()
+    {
+        // Arrange
+        var validator = new UploadDocumentValidator();
+        var command = new UploadDocumentCommand(Guid.NewGuid(), "test.pdf", "application/pdf", 0, "storage/key");
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "FileSize");
+    }
+
+    [Fact]
+    public void Validate_NegativeFileSize_ShouldFail()
+    {
+        // Arrange
+        var validator = new UploadDocumentValidator();
+        var command = new UploadDocumentCommand(Guid.NewGuid(), "test.pdf", "application/pdf", -1, "storage/key");
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "FileSize");
+    }
+
+    [Fact]
+    public void Validate_ExceedsMaxFileSize_ShouldFail()
+    {
+        // Arrange
+        var validator = new UploadDocumentValidator();
+        var command = new UploadDocumentCommand(Guid.NewGuid(), "test.pdf", "application/pdf", 52_428_801, "storage/key");
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "FileSize");
+    }
+
+    [Fact]
+    public void Validate_EmptyName_ShouldFail()
+    {
+        // Arrange
+        var validator = new UploadDocumentValidator();
+        var command = new UploadDocumentCommand(Guid.NewGuid(), "", "application/pdf", 1024, "storage/key");
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "Name");
+    }
+
+    [Fact]
+    public void Validate_EmptyStorageKey_ShouldFail()
+    {
+        // Arrange
+        var validator = new UploadDocumentValidator();
+        var command = new UploadDocumentCommand(Guid.NewGuid(), "test.pdf", "application/pdf", 1024, "");
+
+        // Act
+        var result = validator.Validate(command);
+
+        // Assert
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == "StorageKey");
+    }
+
     public void Dispose() => _dbContext.Dispose();
 
     private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)

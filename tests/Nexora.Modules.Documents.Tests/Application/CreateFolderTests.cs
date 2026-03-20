@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Modules.Documents.Application.Commands;
+using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.Modules.Documents.Infrastructure;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -116,6 +117,47 @@ public sealed class CreateFolderTests : IDisposable
 
         // Assert
         r1.Value!.Id.Should().NotBe(r2.Value!.Id);
+    }
+
+    [Fact]
+    public async Task Handle_WithModuleScope_ShouldPersistModuleFields()
+    {
+        // Arrange
+        var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
+        var moduleRef = Guid.NewGuid();
+        var command = new CreateFolderCommand("ModuleFolder", ModuleName: "CRM", ModuleRef: moduleRef);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.ModuleName.Should().Be("CRM");
+
+        var persisted = await _dbContext.Folders
+            .AsNoTracking()
+            .FirstAsync(f => f.Id == FolderId.From(result.Value.Id));
+        persisted.ModuleName.Should().Be("CRM");
+        persisted.ModuleRef.Should().Be(moduleRef);
+    }
+
+    [Fact]
+    public async Task Handle_SystemFolderWithParent_ShouldSetFlagsAndPath()
+    {
+        // Arrange
+        var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
+        var parentResult = await handler.Handle(new CreateFolderCommand("Parent"), CancellationToken.None);
+        var command = new CreateFolderCommand("SystemChild", parentResult.Value!.Id, IsSystem: true);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.IsSystem.Should().BeTrue();
+        result.Value.Path.Should().StartWith("/Parent/");
+        result.Value.Path.Should().EndWith("SystemChild");
+        result.Value.ParentFolderId.Should().Be(parentResult.Value.Id);
     }
 
     public void Dispose() => _dbContext.Dispose();

@@ -133,6 +133,71 @@ public sealed class DocumentQueryTests : IDisposable
         result.Value.Items[0].Name.Should().Be("mine.pdf");
     }
 
+    [Fact]
+    public async Task Handle_WithStatusFilter_ShouldReturnOnlyMatchingStatus()
+    {
+        // Arrange
+        var folderId = await SeedFolderAsync();
+        var activeDoc = CreateDocument(folderId, "active.pdf");
+        var archivedDoc = CreateDocument(folderId, "archived.pdf");
+        archivedDoc.Archive();
+        await _dbContext.Documents.AddRangeAsync(activeDoc, archivedDoc);
+        await _dbContext.SaveChangesAsync();
+        var handler = new GetDocumentsHandler(_dbContext, _tenantAccessor, NullLogger<GetDocumentsHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(new GetDocumentsQuery(Status: "Archived"), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.TotalCount.Should().Be(1);
+        result.Value.Items[0].Name.Should().Be("archived.pdf");
+    }
+
+    [Fact]
+    public async Task Handle_WithLinkedEntityIdFilter_ShouldReturnOnlyLinkedDocument()
+    {
+        // Arrange
+        var folderId = await SeedFolderAsync();
+        var entityId = Guid.NewGuid();
+        var linkedDoc = CreateDocument(folderId, "linked.pdf");
+        linkedDoc.LinkToEntity(entityId, "Contact");
+        var unlinkedDoc = CreateDocument(folderId, "unlinked.pdf");
+        await _dbContext.Documents.AddRangeAsync(linkedDoc, unlinkedDoc);
+        await _dbContext.SaveChangesAsync();
+        var handler = new GetDocumentsHandler(_dbContext, _tenantAccessor, NullLogger<GetDocumentsHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(new GetDocumentsQuery(LinkedEntityId: entityId), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.TotalCount.Should().Be(1);
+        result.Value.Items[0].Name.Should().Be("linked.pdf");
+    }
+
+    [Fact]
+    public async Task Handle_WithLinkedEntityTypeFilter_ShouldReturnOnlyMatchingType()
+    {
+        // Arrange
+        var folderId = await SeedFolderAsync();
+        var contactDoc = CreateDocument(folderId, "contact.pdf");
+        contactDoc.LinkToEntity(Guid.NewGuid(), "Contact");
+        var orderDoc = CreateDocument(folderId, "order.pdf");
+        orderDoc.LinkToEntity(Guid.NewGuid(), "Order");
+        await _dbContext.Documents.AddRangeAsync(contactDoc, orderDoc);
+        await _dbContext.SaveChangesAsync();
+        var handler = new GetDocumentsHandler(_dbContext, _tenantAccessor, NullLogger<GetDocumentsHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(new GetDocumentsQuery(LinkedEntityType: "Contact"), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.TotalCount.Should().Be(1);
+        result.Value.Items[0].Name.Should().Be("contact.pdf");
+    }
+
     public void Dispose() => _dbContext.Dispose();
 
     private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)

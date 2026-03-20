@@ -229,4 +229,53 @@ public sealed class SignatureRequestTests
         // Assert
         request.Recipients[0].Status.Should().Be(SignatureRecipientStatus.Expired);
     }
+
+    [Fact]
+    public void RecordSignature_WhenDraft_ShouldThrow()
+    {
+        // Arrange
+        var request = CreateRequest();
+        request.AddRecipient(Guid.NewGuid(), "a@b.com", "Alice", 1);
+        var recipientId = request.Recipients[0].Id;
+
+        // Act
+        var act = () => request.RecordSignature(recipientId, "sig-data", "127.0.0.1");
+
+        // Assert
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void RecordSignature_WhenCancelled_ShouldThrow()
+    {
+        // Arrange
+        var request = CreateRequest();
+        request.AddRecipient(Guid.NewGuid(), "a@b.com", "Alice", 1);
+        request.Send();
+        request.Cancel();
+        var recipientId = request.Recipients[0].Id;
+
+        // Act
+        var act = () => request.RecordSignature(recipientId, "sig-data", "127.0.0.1");
+
+        // Assert
+        act.Should().Throw<DomainException>();
+    }
+
+    [Fact]
+    public void RecordSignature_WhenExpired_ShouldThrow()
+    {
+        // Arrange
+        var request = SignatureRequest.Create(_tenantId, _orgId, _documentId, _userId, "Expiring",
+            DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1)));
+        request.AddRecipient(Guid.NewGuid(), "a@b.com", "Alice", 1);
+        request.Send();
+        var recipientId = request.Recipients[0].Id;
+
+        // Act
+        var act = () => request.RecordSignature(recipientId, "sig-data", "127.0.0.1");
+
+        // Assert
+        act.Should().Throw<DomainException>();
+    }
 }
