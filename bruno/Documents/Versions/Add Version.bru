@@ -1,0 +1,23 @@
+meta {
+  name: Add Version
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents/{{documentId}}/versions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "storageKey": "tenants/demo/documents/report-2026-q1-v2.pdf",
+    "fileSize": 215040,
+    "changeNote": "Updated financials section with final Q1 numbers"
+  }
+}

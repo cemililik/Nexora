@@ -1,0 +1,33 @@
+meta {
+  name: Grant Access
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents/{{documentId}}/access
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "userId": "{{userId}}",
+    "roleId": null,
+    "permission": "View"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("accessId", body.data.id);
+      console.log("accessId set to " + body.data.id);
+    }
+  }
+}

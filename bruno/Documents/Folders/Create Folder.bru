@@ -1,0 +1,35 @@
+meta {
+  name: Create Folder
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/folders
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Reports",
+    "parentFolderId": null,
+    "moduleName": null,
+    "moduleRef": null,
+    "isSystem": false
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("folderId", body.data.id);
+      console.log("folderId set to " + body.data.id);
+    }
+  }
+}
