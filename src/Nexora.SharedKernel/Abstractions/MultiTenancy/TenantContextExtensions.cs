@@ -16,4 +16,20 @@ public static class TenantContextExtensions
         ArgumentNullException.ThrowIfNull(context);
         return Guid.TryParse(context.OrganizationId, out var id) ? id : null;
     }
+
+    /// <summary>
+    /// Safely retrieves the current tenant context without throwing.
+    /// Returns null if tenant context is not available (e.g., outside request scope).
+    /// </summary>
+    public static ITenantContext? TryGetCurrent(this ITenantContextAccessor accessor)
+    {
+        try
+        {
+            return accessor.Current;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
 }

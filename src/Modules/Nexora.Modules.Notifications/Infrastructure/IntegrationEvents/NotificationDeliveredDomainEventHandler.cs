@@ -13,16 +13,30 @@ public sealed class NotificationDeliveredDomainEventHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<NotificationDeliveredDomainEventHandler> logger) : INotificationHandler<NotificationDeliveredEvent>
 {
+    /// <summary>
+    /// Handles a <see cref="NotificationDeliveredEvent"/> by publishing a <see cref="NotificationDeliveredIntegrationEvent"/> to the event bus.
+    /// </summary>
     public async Task Handle(NotificationDeliveredEvent notification, CancellationToken cancellationToken)
     {
+        var tenantContext = tenantContextAccessor.TryGetCurrent();
+        if (tenantContext is null)
+        {
+            logger.LogWarning("Tenant context unavailable when handling NotificationDeliveredEvent for notification {NotificationId}",
+                notification.NotificationId.Value);
+            return;
+        }
+
         var integrationEvent = new NotificationDeliveredIntegrationEvent
         {
-            TenantId = tenantContextAccessor.Current.TenantId,
+            TenantId = tenantContext.TenantId,
             NotificationId = notification.NotificationId.Value,
             RecipientId = notification.RecipientId.Value,
             ContactId = notification.ContactId
         };
 
         await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+
+        logger.LogDebug("NotificationDelivered context — NotificationId: {NotificationId}, RecipientId: {RecipientId}, ContactId: {ContactId}",
+            notification.NotificationId.Value, notification.RecipientId.Value, notification.ContactId);
     }
 }

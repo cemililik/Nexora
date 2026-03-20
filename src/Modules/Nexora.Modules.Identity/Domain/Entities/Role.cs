@@ -7,13 +7,24 @@ namespace Nexora.Modules.Identity.Domain.Entities;
 /// <summary>Represents a role with assignable permissions within a tenant.</summary>
 public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
 {
+    /// <summary>Gets the tenant this role belongs to.</summary>
     public TenantId TenantId { get; private set; }
+
+    /// <summary>Gets the display name of the role.</summary>
     public string Name { get; private set; } = default!;
+
+    /// <summary>Gets the optional description of the role.</summary>
     public string? Description { get; private set; }
+
+    /// <summary>Gets a value indicating whether this is a system-defined role.</summary>
     public bool IsSystemRole { get; private set; }
+
+    /// <summary>Gets a value indicating whether this role is active.</summary>
     public bool IsActive { get; private set; } = true;
 
     private readonly List<RolePermission> _permissions = [];
+
+    /// <summary>Gets the permissions assigned to this role.</summary>
     public IReadOnlyList<RolePermission> Permissions => _permissions.AsReadOnly();
 
     private Role() { }
@@ -38,7 +49,7 @@ public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
             return;
 
         _permissions.Add(RolePermission.Create(Id, permission.Id));
-        AddDomainEvent(new RolePermissionChangedEvent(Id, PermissionAction.Assigned));
+        AddDomainEvent(new RolePermissionChangedEvent(Id, permission.Id, PermissionAction.Assigned));
     }
 
     /// <summary>Revokes a permission from this role.</summary>
@@ -48,7 +59,7 @@ public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
         if (rp is not null)
         {
             _permissions.Remove(rp);
-            AddDomainEvent(new RolePermissionChangedEvent(Id, PermissionAction.Revoked));
+            AddDomainEvent(new RolePermissionChangedEvent(Id, permissionId, PermissionAction.Revoked));
         }
     }
 }

@@ -75,7 +75,7 @@ public sealed class CreateFolderHandler(
         }
 
         var userId = tenantContextAccessor.Current.UserId is { } uid && Guid.TryParse(uid, out var parsedUid)
-            ? parsedUid : orgId; // Fallback to orgId if user context unavailable
+            ? parsedUid : Guid.Empty;
         var folder = Folder.Create(
             tenantId, orgId, request.Name, userId,
             parentPath, parentFolderId,

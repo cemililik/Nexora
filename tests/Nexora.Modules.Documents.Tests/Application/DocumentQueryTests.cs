@@ -15,6 +15,7 @@ public sealed class DocumentQueryTests : IDisposable
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public DocumentQueryTests()
     {
@@ -29,14 +30,14 @@ public sealed class DocumentQueryTests : IDisposable
 
     private async Task<FolderId> SeedFolderAsync()
     {
-        var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _orgId);
+        var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _userId);
         await _dbContext.Folders.AddAsync(folder);
         await _dbContext.SaveChangesAsync();
         return folder.Id;
     }
 
     private Document CreateDocument(FolderId folderId, string name = "test.pdf") =>
-        Document.Create(_tenantId, _orgId, folderId, _orgId, name, "application/pdf", 1024, $"storage/{name}");
+        Document.Create(_tenantId, _orgId, folderId, _userId, name, "application/pdf", 1024, $"storage/{name}");
 
     [Fact]
     public async Task Handle_EmptyDatabase_ShouldReturnEmptyList()

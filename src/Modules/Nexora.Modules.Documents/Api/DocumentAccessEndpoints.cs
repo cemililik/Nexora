@@ -32,7 +32,7 @@ public static class DocumentAccessEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    $"/api/v1/documents/documents/{documentId}/access/{result.Value!.Id}",
+                    $"/api/v1/documents/{documentId}/access/{result.Value!.Id}",
                     ApiEnvelope<DocumentAccessDto>.Success(result.Value, result.Message))
                 : result.Error!.Message.Key == "lockey_documents_error_document_not_found"
                     ? Results.NotFound(ApiEnvelope<DocumentAccessDto>.Fail(result.Error))

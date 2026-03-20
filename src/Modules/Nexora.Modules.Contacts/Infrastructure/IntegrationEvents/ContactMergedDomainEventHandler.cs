@@ -12,11 +12,22 @@ public sealed class ContactMergedDomainEventHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ContactMergedDomainEventHandler> logger) : INotificationHandler<ContactMergedEvent>
 {
+    /// <summary>
+    /// Handles a <see cref="ContactMergedEvent"/> by publishing a <see cref="ContactMergedIntegrationEvent"/> to the event bus.
+    /// </summary>
     public async Task Handle(ContactMergedEvent notification, CancellationToken cancellationToken)
     {
+        var tenantContext = tenantContextAccessor.TryGetCurrent();
+        if (tenantContext is null)
+        {
+            logger.LogWarning("Tenant context unavailable when handling ContactMergedEvent for primary contact {PrimaryContactId}",
+                notification.PrimaryContactId.Value);
+            return;
+        }
+
         var integrationEvent = new ContactMergedIntegrationEvent
         {
-            TenantId = tenantContextAccessor.Current.TenantId,
+            TenantId = tenantContext.TenantId,
             PrimaryContactId = notification.PrimaryContactId.Value,
             SecondaryContactId = notification.SecondaryContactId.Value
         };
