@@ -23,9 +23,6 @@ public sealed class NotificationDeliveredDomainEventHandler(
             ContactId = notification.ContactId
         };
 
-        await eventBus.PublishAsync(integrationEvent, cancellationToken);
-
-        logger.LogInformation("Published NotificationDeliveredIntegrationEvent for recipient {RecipientId} of notification {NotificationId}",
-            notification.RecipientId, notification.NotificationId);
+        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
     }
 }

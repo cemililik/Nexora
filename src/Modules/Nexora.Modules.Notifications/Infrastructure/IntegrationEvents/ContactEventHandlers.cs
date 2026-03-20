@@ -23,7 +23,11 @@ public sealed class ConsentChangedIntegrationEventHandler(
             return;
         }
 
-        var tenantId = Guid.Parse(@event.TenantId);
+        if (!Guid.TryParse(@event.TenantId, out var tenantId))
+        {
+            logger.LogError("Invalid TenantId {TenantId} in ConsentChangedIntegrationEvent", @event.TenantId);
+            return;
+        }
 
         // Find pending scheduled notifications for this contact
         var pendingSchedules = await (from s in dbContext.NotificationSchedules
