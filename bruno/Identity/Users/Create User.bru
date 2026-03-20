@@ -1,0 +1,34 @@
+meta {
+  name: Create User
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/identity/users
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "email": "john.doe@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "temporaryPassword": "Welcome123!"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("userId", body.data.id);
+      console.log("userId set to " + body.data.id);
+    }
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: List Installed Modules
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/identity/tenants/{{tenantId}}/modules
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

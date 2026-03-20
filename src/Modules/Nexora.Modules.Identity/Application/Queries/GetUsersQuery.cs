@@ -4,6 +4,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
@@ -48,6 +49,6 @@ public sealed class GetUsersHandler(
             TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
-        });
+        }, new LocalizedMessage("lockey_identity_users_listed"));
     }
 }

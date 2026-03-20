@@ -4,13 +4,16 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
 
+/// <summary>Paginated query to list organizations within the current tenant.</summary>
 public sealed record GetOrganizationsQuery(int Page = 1, int PageSize = 20)
     : IQuery<PagedResult<OrganizationDto>>;
 
+/// <summary>Returns a paginated list of organizations filtered by tenant context.</summary>
 public sealed class GetOrganizationsHandler(
     IdentityDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetOrganizationsQuery, PagedResult<OrganizationDto>>
@@ -49,6 +52,7 @@ public sealed class GetOrganizationsHandler(
             PageSize = request.PageSize
         };
 
-        return Result<PagedResult<OrganizationDto>>.Success(result);
+        return Result<PagedResult<OrganizationDto>>.Success(result,
+            new LocalizedMessage("lockey_identity_orgs_listed"));
     }
 }

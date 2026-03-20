@@ -1,0 +1,32 @@
+meta {
+  name: Add Note
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/notes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "authorUserId": "{{userId}}",
+    "content": "Met with client to discuss new sponsorship opportunities. Very interested in the education program."
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("noteId", body.data.id);
+      console.log("noteId set to " + body.data.id);
+    }
+  }
+}

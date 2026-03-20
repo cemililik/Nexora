@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
@@ -11,10 +12,12 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to create a new organization within the current tenant.</summary>
 public sealed record CreateOrganizationCommand(
     string Name,
     string Slug) : ICommand<OrganizationDto>;
 
+/// <summary>Validates organization creation input.</summary>
 public sealed class CreateOrganizationValidator : AbstractValidator<CreateOrganizationCommand>
 {
     public CreateOrganizationValidator()
@@ -30,9 +33,11 @@ public sealed class CreateOrganizationValidator : AbstractValidator<CreateOrgani
     }
 }
 
+/// <summary>Creates an organization and persists it to the database.</summary>
 public sealed class CreateOrganizationHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : ICommandHandler<CreateOrganizationCommand, OrganizationDto>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<CreateOrganizationHandler> logger) : ICommandHandler<CreateOrganizationCommand, OrganizationDto>
 {
     public async Task<Result<OrganizationDto>> Handle(
         CreateOrganizationCommand request,
@@ -45,6 +50,7 @@ public sealed class CreateOrganizationHandler(
 
         if (slugExists)
         {
+            logger.LogWarning("Organization creation failed: slug {Slug} already taken for tenant {TenantId}", request.Slug, tenantId);
             return Result<OrganizationDto>.Failure(
                 "lockey_identity_error_org_slug_taken",
                 new Dictionary<string, string> { ["slug"] = request.Slug });
@@ -63,6 +69,8 @@ public sealed class CreateOrganizationHandler(
             organization.DefaultCurrency,
             organization.DefaultLanguage,
             organization.IsActive);
+
+        logger.LogInformation("Organization {OrganizationId} created with slug {Slug} for tenant {TenantId}", organization.Id, organization.Slug, tenantId);
 
         return Result<OrganizationDto>.Success(dto,
             new LocalizedMessage("lockey_identity_org_created"));

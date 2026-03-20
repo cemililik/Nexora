@@ -1,0 +1,21 @@
+meta {
+  name: Update Note
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/notes/{{noteId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "content": "Updated note: Follow-up meeting scheduled for next week regarding the education sponsorship."
+  }
+}

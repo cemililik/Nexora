@@ -1,0 +1,24 @@
+meta {
+  name: Update Field Definition
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/contacts/custom-fields/{{customFieldDefinitionId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "fieldName": "Preferred Language",
+    "options": "Turkish,English,Arabic,German,French",
+    "isRequired": true,
+    "displayOrder": 1
+  }
+}

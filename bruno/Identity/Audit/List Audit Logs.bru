@@ -1,0 +1,24 @@
+meta {
+  name: List Audit Logs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/identity/audit-logs?page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  pageSize: 20
+  ~userId:
+  ~action: login
+  ~from: 2026-01-01T00:00:00Z
+  ~to: 2026-12-31T23:59:59Z
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Remove Tag from Contact
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/tags/{{tagId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

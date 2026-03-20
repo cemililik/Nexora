@@ -21,7 +21,9 @@ public sealed class IdentityDbContext(
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<TenantModule> TenantModules => Set<TenantModule>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

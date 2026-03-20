@@ -1,0 +1,23 @@
+meta {
+  name: Update Tag
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/contacts/tags/{{tagId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "VIP Donor",
+    "category": "Donor",
+    "color": "#FF9800"
+  }
+}

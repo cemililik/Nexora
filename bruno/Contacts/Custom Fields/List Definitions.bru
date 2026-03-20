@@ -1,0 +1,19 @@
+meta {
+  name: List Field Definitions
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contacts/contacts/custom-fields
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~isActive:
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

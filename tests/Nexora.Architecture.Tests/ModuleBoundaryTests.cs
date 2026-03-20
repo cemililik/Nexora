@@ -7,6 +7,7 @@ public sealed class ModuleBoundaryTests
     private const string SharedKernelNamespace = "Nexora.SharedKernel";
     private const string InfrastructureNamespace = "Nexora.Infrastructure";
     private const string IdentityNamespace = "Nexora.Modules.Identity";
+    private const string ContactsNamespace = "Nexora.Modules.Contacts";
     private const string HostNamespace = "Nexora.Host";
 
     [Fact]
@@ -24,13 +25,19 @@ public sealed class ModuleBoundaryTests
     [Fact]
     public void SharedKernel_ShouldNotDependOnModules()
     {
-        var result = Types.InAssembly(typeof(SharedKernel.Domain.Base.Entity<>).Assembly)
+        var assembly = typeof(SharedKernel.Domain.Base.Entity<>).Assembly;
+
+        Types.InAssembly(assembly)
             .ShouldNot()
             .HaveDependencyOn(IdentityNamespace)
-            .GetResult();
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("SharedKernel must not depend on Identity module");
 
-        result.IsSuccessful.Should().BeTrue(
-            "SharedKernel must not depend on any module");
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(ContactsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("SharedKernel must not depend on Contacts module");
     }
 
     [Fact]
@@ -48,13 +55,19 @@ public sealed class ModuleBoundaryTests
     [Fact]
     public void Infrastructure_ShouldNotDependOnModules()
     {
-        var result = Types.InAssembly(typeof(Infrastructure.InfrastructureServiceRegistration).Assembly)
+        var assembly = typeof(Infrastructure.InfrastructureServiceRegistration).Assembly;
+
+        Types.InAssembly(assembly)
             .ShouldNot()
             .HaveDependencyOn(IdentityNamespace)
-            .GetResult();
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Infrastructure must not depend on Identity module");
 
-        result.IsSuccessful.Should().BeTrue(
-            "Infrastructure must not depend on any module");
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(ContactsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Infrastructure must not depend on Contacts module");
     }
 
     [Fact]
@@ -72,14 +85,36 @@ public sealed class ModuleBoundaryTests
     [Fact]
     public void IdentityModule_ShouldNotDependOnOtherModules()
     {
-        // Identity is the foundational module — it should not reference other modules.
-        // When we add more modules, each module should be tested here.
-        var result = Types.InAssembly(typeof(Modules.Identity.IdentityModule).Assembly)
+        var assembly = typeof(Modules.Identity.IdentityModule).Assembly;
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(ContactsNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Identity module must not depend on Contacts module");
+
+        Types.InAssembly(assembly)
             .ShouldNot()
             .HaveDependencyOn("Nexora.Modules.CRM")
-            .GetResult();
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Identity module must not depend on CRM module");
+    }
 
-        result.IsSuccessful.Should().BeTrue(
-            "Identity module must not depend on CRM module");
+    [Fact]
+    public void ContactsModule_ShouldNotDependOnOtherModules()
+    {
+        var assembly = typeof(Modules.Contacts.ContactsModule).Assembly;
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn(IdentityNamespace)
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Contacts module must not depend on Identity module");
+
+        Types.InAssembly(assembly)
+            .ShouldNot()
+            .HaveDependencyOn("Nexora.Modules.CRM")
+            .GetResult()
+            .IsSuccessful.Should().BeTrue("Contacts module must not depend on CRM module");
     }
 }

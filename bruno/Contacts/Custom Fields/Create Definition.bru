@@ -1,0 +1,35 @@
+meta {
+  name: Create Field Definition
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/custom-fields
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "fieldName": "Preferred Language",
+    "fieldType": "select",
+    "options": "Turkish,English,Arabic,German",
+    "isRequired": false,
+    "displayOrder": 1
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("customFieldDefinitionId", body.data.id);
+      console.log("customFieldDefinitionId set to " + body.data.id);
+    }
+  }
+}

@@ -1,0 +1,38 @@
+meta {
+  name: Add Address
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/addresses
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "type": "Work",
+    "street1": "123 Main St",
+    "street2": "Suite 400",
+    "city": "Istanbul",
+    "state": "Istanbul",
+    "postalCode": "34000",
+    "countryCode": "TR",
+    "isPrimary": true
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("addressId", body.data.id);
+      console.log("addressId set to " + body.data.id);
+    }
+  }
+}

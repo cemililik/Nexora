@@ -1,0 +1,15 @@
+meta {
+  name: GDPR Export
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/gdpr/export
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

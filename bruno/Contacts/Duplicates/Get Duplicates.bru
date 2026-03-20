@@ -1,0 +1,19 @@
+meta {
+  name: Get Duplicates
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contacts/contacts/{{contactId}}/duplicates
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~threshold: 40
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

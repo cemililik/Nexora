@@ -1,0 +1,23 @@
+meta {
+  name: Update Profile
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/identity/users/{{userId}}/profile
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "firstName": "Jane",
+    "lastName": "Smith",
+    "phone": "+905551234567"
+  }
+}

@@ -3,6 +3,7 @@ using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
@@ -43,6 +44,7 @@ public sealed class GetTenantByIdHandler(
             tenant.CreatedAt,
             installedModules);
 
-        return Result<TenantDetailDto>.Success(dto);
+        return Result<TenantDetailDto>.Success(dto,
+            new LocalizedMessage("lockey_identity_tenant_retrieved"));
     }
 }

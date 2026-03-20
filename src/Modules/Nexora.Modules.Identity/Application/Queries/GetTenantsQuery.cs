@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
@@ -41,6 +42,7 @@ public sealed class GetTenantsHandler(
             PageSize = request.PageSize
         };
 
-        return Result<PagedResult<TenantDto>>.Success(result);
+        return Result<PagedResult<TenantDto>>.Success(result,
+            new LocalizedMessage("lockey_identity_tenants_listed"));
     }
 }

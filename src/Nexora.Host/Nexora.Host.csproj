@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Nexora.SharedKernel\Nexora.SharedKernel.csproj" />
     <ProjectReference Include="..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Identity\Nexora.Modules.Identity.csproj" />
+    <ProjectReference Include="..\Modules\Nexora.Modules.Contacts\Nexora.Modules.Contacts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

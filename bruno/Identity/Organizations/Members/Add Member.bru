@@ -1,0 +1,22 @@
+meta {
+  name: Add Member
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/identity/organizations/{{organizationId}}/members
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "userId": "{{userId}}",
+    "isDefault": false
+  }
+}

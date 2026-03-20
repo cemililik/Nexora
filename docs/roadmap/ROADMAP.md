@@ -59,14 +59,15 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Development environment setup (Docker Compose for all infra)
 - [ ] CI/CD pipeline (GitHub Actions: build, test, lint, security scan)
 - [x] PostgreSQL multi-tenant infrastructure (schema management, migrations)
-- [ ] Keycloak setup (realm configuration, tenant-aware authentication)
+- [x] Keycloak setup — Admin API integration (realm-per-tenant, user provisioning via KeycloakAdminService)
 - [ ] APISIX gateway configuration (routing, rate limiting, JWT validation)
 - [x] Dapr sidecar setup (pub/sub, state store, secret store bindings)
 - [x] Redis configuration (caching layer, session management)
 - [x] Kafka topic design and cluster setup
 - [ ] HashiCorp Vault integration (secret management)
 - [x] MinIO setup (object storage, bucket-per-tenant)
-- [ ] Observability stack (OpenTelemetry, Grafana, Loki, Tempo)
+- [x] Observability standards & foundation (OBSERVABILITY_STANDARDS.md, GlobalExceptionHandler, structured logging)
+- [ ] Observability stack deployment (OpenTelemetry collectors, Grafana dashboards, Loki, Tempo)
 - [x] Shared kernel library (common types, base entities, multi-tenant middleware)
 - [x] Module loader & plugin architecture
 - [x] API documentation infrastructure (OpenAPI/Swagger)
@@ -79,17 +80,28 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 4. [ ] Keycloak issues JWT, APISIX validates it, .NET resolves tenant
 
 ### Completed Work
-- **Solution structure**: 8 projects (Host, SharedKernel, Infrastructure, Identity module, 4 test projects)
+- **Solution structure**: 10 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, 5 test projects)
 - **SharedKernel**: Entity/AuditableEntity base classes, strongly-typed IDs, Result<T> pattern, PagedResult<T>, LocalizedMessage (lockey_ enforcement), DomainException, value objects (Money, DateRange, EmailAddress, PhoneNumber), CQRS interfaces, ICacheService, ISecretProvider (generic overload), IJobScheduler, IModule, IModuleAvailability, ITenantContext, ITenantSchemaManager, IModuleMigration, JobQueues, ApiEnvelope<T>
 - **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant, public path skip), DaprCacheService (L1+L2 with prefix invalidation + key tracking), DaprEventBus, DaprSecretProvider, HangfireJobScheduler, TenantJobFilter (tenant context capture/restore), TenantSchemaManager (PostgreSQL schema lifecycle), ValidationBehavior (all errors in Error.Details), LoggingBehavior, DatabaseTenantConfiguration, HangfireAuthFilters
 - **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role-based auth)
 - **Identity module**: Domain entities (Tenant, Organization, User, Role, Permission, Department + join entities), strongly-typed IDs, domain events, EF configurations, PlatformDbContext (public schema), IdentityModuleMigration (seed 16 permissions + Platform Admin role)
-- **Identity CQRS**: CreateTenant (with schema provisioning), CreateUser, CreateRole, UpdateTenantStatus, CreateOrganization — all with validators + lockey_ keys
-- **Identity Queries**: GetTenants (paginated), GetTenantById (with modules), GetUsers (tenant-isolated), GetRoles (with permissions), GetPermissions (module filter), GetOrganizations
-- **Identity API**: TenantEndpoints, UserEndpoints, RoleEndpoints, OrganizationEndpoints — all with ApiEnvelope<T> response format
+- **Identity CQRS Commands**: CreateTenant (schema + KC realm), CreateUser (KC user sync), CreateRole, CreateOrganization, UpdateOrganization, DeleteOrganization (soft), AddOrganizationMember, RemoveOrganizationMember, UpdateTenantStatus, UpdateUserProfile (KC sync), UpdateUserStatus (KC sync), RecordAuditLog, InstallModule (dependency check), UninstallModule (OnUninstallAsync) — all with validators + lockey_ keys
+- **Identity Queries**: GetTenants, GetTenantById, GetUsers, GetUserById (org memberships), GetCurrentUser (/me from JWT), GetRoles (with permissions), GetPermissions (module filter), GetOrganizations, GetOrganizationById (member count), GetOrganizationMembers (paginated), GetAuditLogs (filterable: user, action, date range), GetTenantModules
+- **Identity API**: TenantEndpoints, UserEndpoints (profile, status, /me), RoleEndpoints, OrganizationEndpoints (CRUD + members), AuditEndpoints, ModuleEndpoints — all with ApiEnvelope<T> response format
+- **Keycloak Integration**: KeycloakAdminService (HttpClient + token cache + ISecretProvider), realm-per-tenant provisioning, user create/update/enable/disable sync
 - **Docker Compose**: PostgreSQL 17, Redis 7, Kafka (KRaft), Keycloak 26, MinIO, Dapr
-- **Standards compliance**: 3 rounds of audit — 8 critical + 12 minor + 2 critical + 2 minor violations found and fixed
-- **Tests**: 196 tests passing (SharedKernel: 64, Infrastructure: 26, Architecture: 19, Identity: 87)
+- **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
+- **Standards compliance**: 5 rounds of audit — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging)
+- **Tests**: 259 tests passing (SharedKernel: 64, Infrastructure: 26, Architecture: 19, Identity: 150)
+- **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
+- **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
+- **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
+- **Contact API**: ContactEndpoints (CRUD + archive/restore + 360-view), TagEndpoints, ContactAddressEndpoints, ContactRelationshipEndpoints, CommunicationPreferenceEndpoints, ContactNoteEndpoints, ConsentEndpoints, ContactActivityEndpoints, CustomFieldEndpoints, DuplicateEndpoints, ImportExportEndpoints, GdprEndpoints
+- **Contact Domain Services**: DuplicateDetectionService (email/phone/name/company scoring), ContactMergeService (relationship/tag/preference/field transfer)
+- **Contact Infrastructure**: ContactQueryService (IContactQueryService impl), ContactActivityContributorAggregator, Integration events (5 types), Domain event handlers (5), Identity event handlers (UserCreated → contact, OrgCreated → tags), Background jobs (ContactImportJob, ContactExportJob)
+- **Cross-module contracts**: IContactQueryService, IContactActivityContributor (SharedKernel)
+- **Architecture tests**: 10 ContactsModule layer dependency tests + updated ModuleBoundaryTests
+- **Tests after Phase 1.2**: 664 tests passing (Contacts: 394, Identity: 150, SharedKernel: 64, Architecture: 30, Infrastructure: 26)
 
 ---
 
@@ -108,24 +120,26 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Role management — CQRS (CreateRole with permission assignment, GetRoles, GetPermissions) + API endpoints
 - [x] Platform DbContext — public schema for tenant + module management
 - [x] Module migration system — IdentityModuleMigration (seed permissions + Platform Admin role)
-- [ ] Keycloak realm provisioning (tenant create → realm create)
-- [ ] Keycloak user sync (user create → KC user create)
-- [ ] Organization management — remaining endpoints (update, delete, members)
-- [ ] User profile & preferences
-- [ ] Login audit trail
-- [ ] Module install/uninstall management API
+- [x] Keycloak Admin Service (IKeycloakAdminService, HttpClient + token cache + ISecretProvider)
+- [x] Keycloak realm provisioning (tenant create → realm create, SetRealmId)
+- [x] Keycloak user sync (user create → KC user create, profile/status sync)
+- [x] Organization management — full CRUD (update, soft-delete, add/remove members, get by id, paginated members)
+- [x] User profile update (with KC sync), user status (activate/deactivate with KC sync)
+- [x] User detail query (with org memberships), /me endpoint (JWT sub → user resolve)
+- [x] Login audit trail (AuditLog entity, record command, filterable query — user, action, date range)
+- [x] Module install/uninstall management API (dependency check, OnUninstallAsync callback)
 
 ### 1.2 Contact Management (Unified)
 **Spec**: [modules/contacts/SPEC.md](../modules/contacts/SPEC.md)
-- [ ] Contact CRUD (individuals & organizations)
-- [ ] Contact types & tags (donor, parent, volunteer, vendor — multiple)
-- [ ] 360-degree view (aggregated from all modules via IContactActivityContributor)
-- [ ] Address management (multiple addresses per contact)
-- [ ] Communication preferences (email, SMS, WhatsApp opt-in/out)
-- [ ] Contact merge & deduplication
-- [ ] Import/Export (CSV, Excel)
-- [ ] Custom fields (tenant-configurable)
-- [ ] KVKK/GDPR compliance (consent tracking, data export, right to delete)
+- [x] Contact CRUD (individuals & organizations)
+- [x] Contact types & tags (donor, parent, volunteer, vendor — multiple)
+- [x] 360-degree view (aggregated from all modules via IContactActivityContributor)
+- [x] Address management (multiple addresses per contact)
+- [x] Communication preferences (email, SMS, WhatsApp opt-in/out)
+- [x] Contact merge & deduplication
+- [x] Import/Export (CSV, Excel)
+- [x] Custom fields (tenant-configurable)
+- [x] KVKK/GDPR compliance (consent tracking, data export, right to delete)
 
 ### 1.3 Notification Engine
 **Spec**: [modules/notifications/SPEC.md](../modules/notifications/SPEC.md)
