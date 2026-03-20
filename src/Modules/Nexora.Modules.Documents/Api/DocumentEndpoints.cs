@@ -63,7 +63,7 @@ public static class DocumentEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<DocumentDto>.Success(result.Value!, result.Message))
-                : Results.NotFound(ApiEnvelope<DocumentDto>.Fail(result.Error!));
+                : MapDocumentError(result.Error!);
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>

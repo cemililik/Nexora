@@ -11,7 +11,6 @@ namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 public sealed class DocumentCreatedDomainEventHandler(
     IEventBus eventBus,
     DocumentsDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor,
     ILogger<DocumentCreatedDomainEventHandler> logger) : INotificationHandler<DocumentCreatedEvent>
 {
     public async Task Handle(DocumentCreatedEvent notification, CancellationToken cancellationToken)
@@ -19,11 +18,15 @@ public sealed class DocumentCreatedDomainEventHandler(
         var document = await dbContext.Documents
             .FirstOrDefaultAsync(d => d.Id == notification.DocumentId, cancellationToken);
 
-        if (document is null) return;
+        if (document is null)
+        {
+            logger.LogWarning("Document {DocumentId} not found for domain event, skipping integration event", notification.DocumentId);
+            return;
+        }
 
         var integrationEvent = new DocumentUploadedIntegrationEvent
         {
-            TenantId = tenantContextAccessor.Current.TenantId,
+            TenantId = document.TenantId.ToString(),
             DocumentId = document.Id.Value,
             Name = document.Name,
             MimeType = document.MimeType,
@@ -72,7 +75,17 @@ public sealed class DocumentSignedDomainEventHandler(
         var recipient = await dbContext.SignatureRecipients
             .FirstOrDefaultAsync(r => r.Id == notification.RecipientId, cancellationToken);
 
-        if (request is null || recipient is null) return;
+        if (request is null)
+        {
+            logger.LogWarning("SignatureRequest {RequestId} not found for DocumentSignedEvent", notification.RequestId);
+            return;
+        }
+
+        if (recipient is null)
+        {
+            logger.LogWarning("SignatureRecipient {RecipientId} not found for DocumentSignedEvent", notification.RecipientId);
+            return;
+        }
 
         var integrationEvent = new DocumentSignedIntegrationEvent
         {

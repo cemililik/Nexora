@@ -32,6 +32,9 @@ public sealed class UpdateDocumentMetadataValidator : AbstractValidator<UpdateDo
 
         RuleFor(x => x.Description)
             .MaximumLength(2000).WithMessage("lockey_documents_validation_description_max_length");
+
+        RuleFor(x => x.Tags)
+            .MaximumLength(2000).WithMessage("lockey_documents_validation_tags_max_length");
     }
 }
 

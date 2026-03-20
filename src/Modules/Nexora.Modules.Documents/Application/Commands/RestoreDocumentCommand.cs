@@ -47,6 +47,13 @@ public sealed class RestoreDocumentHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
 
+        if (document.Status is not DocumentStatus.Archived)
+        {
+            logger.LogWarning("Document {DocumentId} is not archived (status: {Status}), cannot restore",
+                request.DocumentId, document.Status);
+            return Result.Failure(LocalizedMessage.Of("lockey_documents_error_only_archived_can_restore"));
+        }
+
         document.Restore();
         await dbContext.SaveChangesAsync(cancellationToken);
 

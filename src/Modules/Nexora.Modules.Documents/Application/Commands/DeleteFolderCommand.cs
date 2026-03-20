@@ -53,20 +53,16 @@ public sealed class DeleteFolderHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_documents_error_cannot_delete_system_folder"));
         }
 
-        var hasDocuments = await dbContext.Documents
-            .AnyAsync(d => d.FolderId == folderId, cancellationToken);
-
-        var hasSubfolders = await dbContext.Folders
-            .AnyAsync(f => f.ParentFolderId == folderId, cancellationToken);
-
-        if (hasDocuments || hasSubfolders)
+        dbContext.Folders.Remove(folder);
+        try
         {
-            logger.LogWarning("Folder {FolderId} is not empty", request.FolderId);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            logger.LogWarning("Folder {FolderId} is not empty, cannot delete", request.FolderId);
             return Result.Failure(LocalizedMessage.Of("lockey_documents_error_folder_not_empty"));
         }
-
-        dbContext.Folders.Remove(folder);
-        await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Folder {FolderId} deleted for tenant {TenantId}", folder.Id, tenantId);
         return Result.Success(LocalizedMessage.Of("lockey_documents_folder_deleted"));

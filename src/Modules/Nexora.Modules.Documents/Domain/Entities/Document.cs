@@ -10,6 +10,9 @@ namespace Nexora.Modules.Documents.Domain.Entities;
 /// </summary>
 public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
 {
+    /// <summary>The maximum number of versions allowed per document.</summary>
+    public const int MaxVersionCount = 100;
+
     /// <summary>Gets the tenant identifier.</summary>
     public Guid TenantId { get; private set; }
 
@@ -104,7 +107,7 @@ public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
     /// <summary>Adds a new version to the document.</summary>
     public DocumentVersion AddVersion(string storageKey, long fileSize, Guid uploadedByUserId, string? changeNote = null)
     {
-        if (CurrentVersion >= 100)
+        if (CurrentVersion >= MaxVersionCount)
             throw new DomainException("lockey_documents_error_max_versions_exceeded");
 
         CurrentVersion++;
@@ -178,6 +181,10 @@ public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
         if (userId is null && roleId is null)
             throw new DomainException("lockey_documents_error_access_requires_user_or_role");
 
+        var existing = _accessList.FirstOrDefault(a => a.UserId == userId && a.RoleId == roleId);
+        if (existing is not null)
+            return existing;
+
         var access = DocumentAccess.Create(Id, userId, roleId, permission);
         _accessList.Add(access);
         AddDomainEvent(new DocumentAccessGrantedEvent(Id, userId, roleId, permission));
@@ -187,8 +194,8 @@ public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
     /// <summary>Revokes a previously granted access permission.</summary>
     public void RevokeAccess(DocumentAccessId accessId)
     {
-        var access = _accessList.FirstOrDefault(a => a.Id == accessId);
-        if (access is not null)
-            _accessList.Remove(access);
+        var access = _accessList.FirstOrDefault(a => a.Id == accessId)
+            ?? throw new DomainException("lockey_documents_error_access_not_found");
+        _accessList.Remove(access);
     }
 }

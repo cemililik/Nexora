@@ -45,6 +45,10 @@ public sealed class DocumentsModuleMigration(
         var connectionString = sp.GetRequiredService<IConfiguration>()
             .GetConnectionString("Default");
 
+        if (string.IsNullOrEmpty(connectionString))
+            throw new InvalidOperationException(
+                "Connection string 'Default' is not configured. DocumentsDbContext requires a valid connection string.");
+
         return new DbContextOptionsBuilder<DocumentsDbContext>()
             .UseNpgsql(connectionString, npgsql =>
             {

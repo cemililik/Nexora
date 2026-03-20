@@ -70,6 +70,9 @@ public sealed class SignatureRequest : AuditableEntity<SignatureRequestId>, IAgg
         if (Status is not SignatureRequestStatus.Draft)
             throw new DomainException("lockey_documents_error_cannot_add_recipient_after_sent");
 
+        if (_recipients.Any(r => r.ContactId == contactId || r.Email.Equals(email.Trim(), StringComparison.OrdinalIgnoreCase)))
+            throw new DomainException("lockey_documents_error_duplicate_recipient");
+
         var recipient = SignatureRecipient.Create(Id, contactId, email, name, signingOrder);
         _recipients.Add(recipient);
     }
