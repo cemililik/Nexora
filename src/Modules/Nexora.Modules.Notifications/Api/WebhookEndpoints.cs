@@ -27,9 +27,7 @@ public static class WebhookEndpoints
 
             foreach (var webhookEvent in events)
             {
-                // Find notification by scanning recipients — in production, use a lookup index
                 var command = new UpdateDeliveryStatusCommand(
-                    Guid.Empty, // Will be resolved by handler via provider message ID
                     webhookEvent.ProviderMessageId,
                     webhookEvent.Status,
                     webhookEvent.FailureReason);
@@ -54,7 +52,6 @@ public static class WebhookEndpoints
                 return Results.Ok();
 
             var command = new UpdateDeliveryStatusCommand(
-                Guid.Empty,
                 webhookEvent.ProviderMessageId,
                 webhookEvent.Status,
                 webhookEvent.FailureReason);

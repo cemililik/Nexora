@@ -42,6 +42,7 @@ public sealed class IdentityEventHandlerTests
                 r.TemplateCode == "welcome" &&
                 r.Channel == "Email" &&
                 r.ContactId == userId &&
+                r.RecipientAddress == "newuser@test.com" &&
                 r.Variables["email"] == "newuser@test.com"),
             Arg.Any<CancellationToken>());
     }

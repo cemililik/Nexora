@@ -97,7 +97,7 @@ public sealed class SendNotificationHandler(
         }
 
         var notification = Notification.Create(
-            tenantId, channel, subject, body, "api",
+            tenantId, channel, subject, body, TriggerSource.Api,
             templateId, triggeredByUserId: null, organizationId: orgId);
 
         notification.AddRecipient(request.ContactId, request.RecipientAddress);

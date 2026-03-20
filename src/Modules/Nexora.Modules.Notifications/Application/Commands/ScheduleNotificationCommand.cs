@@ -41,7 +41,7 @@ public sealed class ScheduleNotificationValidator : AbstractValidator<ScheduleNo
             .NotEmpty().WithMessage("lockey_notifications_validation_send_address_required");
 
         RuleFor(x => x.ScheduledAt)
-            .GreaterThan(DateTime.UtcNow).WithMessage("lockey_notifications_validation_schedule_must_be_future");
+            .Must(date => date > DateTime.UtcNow).WithMessage("lockey_notifications_validation_schedule_must_be_future");
 
         RuleFor(x => x)
             .Must(x => !string.IsNullOrWhiteSpace(x.TemplateCode) || (!string.IsNullOrWhiteSpace(x.Subject) && !string.IsNullOrWhiteSpace(x.Body)))
@@ -97,7 +97,7 @@ public sealed class ScheduleNotificationHandler(
         }
 
         var notification = Notification.Create(
-            tenantId, channel, subject, body, "scheduled",
+            tenantId, channel, subject, body, TriggerSource.Scheduled,
             templateId, triggeredByUserId: null, organizationId: orgId);
         notification.AddRecipient(request.ContactId, request.RecipientAddress);
 

@@ -13,7 +13,7 @@ namespace Nexora.Modules.Notifications.Application.Commands;
 /// <summary>Command to test a notification provider by sending a test message.</summary>
 public sealed record TestNotificationProviderCommand(
     Guid Id,
-    string TestAddress) : ICommand<object>;
+    string TestRecipient) : ICommand<object>;
 
 /// <summary>Validates provider test input.</summary>
 public sealed class TestNotificationProviderValidator : AbstractValidator<TestNotificationProviderCommand>
@@ -23,9 +23,9 @@ public sealed class TestNotificationProviderValidator : AbstractValidator<TestNo
         RuleFor(x => x.Id)
             .NotEmpty().WithMessage("lockey_notifications_validation_provider_id_required");
 
-        RuleFor(x => x.TestAddress)
-            .NotEmpty().WithMessage("lockey_notifications_validation_test_address_required")
-            .MaximumLength(256).WithMessage("lockey_notifications_validation_test_address_max_length");
+        RuleFor(x => x.TestRecipient)
+            .NotEmpty().WithMessage("lockey_notifications_validation_test_recipient_required")
+            .MaximumLength(256).WithMessage("lockey_notifications_validation_test_recipient_max_length");
     }
 }
 
@@ -58,8 +58,8 @@ public sealed class TestNotificationProviderHandler(
         }
 
         // Actual provider test (API call) will be implemented in Batch 4 with delivery jobs
-        logger.LogInformation("Provider {ProviderId} ({ProviderName}) test initiated for address {TestAddress} in tenant {TenantId}",
-            provider.Id, provider.ProviderName, request.TestAddress, tenantId);
+        logger.LogInformation("Provider {ProviderId} ({ProviderName}) test initiated for recipient {TestRecipient} in tenant {TenantId}",
+            provider.Id, provider.ProviderName, request.TestRecipient, tenantId);
 
         return Result<object>.Success(null!,
             LocalizedMessage.Of("lockey_notifications_provider_test_initiated"));

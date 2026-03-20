@@ -18,7 +18,7 @@ public sealed class NotificationService(
         var command = new SendNotificationCommand(
             request.Channel,
             request.ContactId,
-            request.ContactId.ToString(),
+            request.RecipientAddress,
             TemplateCode: request.TemplateCode,
             Variables: request.Variables);
 
@@ -39,8 +39,8 @@ public sealed class NotificationService(
     /// <inheritdoc />
     public async Task<Guid> SendBulkAsync(SendBulkNotificationRequest request, CancellationToken ct = default)
     {
-        var recipients = request.ContactIds
-            .Select(id => new BulkRecipient(id, id.ToString()))
+        var recipients = request.Recipients
+            .Select(r => new BulkRecipient(r.ContactId, r.Address))
             .ToList();
 
         var command = new SendBulkNotificationCommand(
@@ -54,12 +54,12 @@ public sealed class NotificationService(
         if (result.IsSuccess)
         {
             logger.LogInformation("Bulk notification {NotificationId} queued via {Channel} for {RecipientCount} contacts",
-                result.Value!.NotificationId, request.Channel, request.ContactIds.Count);
+                result.Value!.NotificationId, request.Channel, request.Recipients.Count);
             return result.Value!.NotificationId;
         }
 
         logger.LogWarning("Failed to send bulk notification via {Channel} for {RecipientCount} contacts",
-            request.Channel, request.ContactIds.Count);
+            request.Channel, request.Recipients.Count);
         return Guid.Empty;
     }
 
@@ -69,7 +69,7 @@ public sealed class NotificationService(
         var command = new ScheduleNotificationCommand(
             request.Channel,
             request.ContactId,
-            request.ContactId.ToString(),
+            request.RecipientAddress,
             request.ScheduledAt,
             TemplateCode: request.TemplateCode,
             Variables: request.Variables);

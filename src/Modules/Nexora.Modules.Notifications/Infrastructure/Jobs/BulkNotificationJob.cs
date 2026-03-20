@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
@@ -24,12 +23,10 @@ public sealed class BulkNotificationJob(
 {
     protected override async Task ExecuteAsync(BulkNotificationJobParams parameters, CancellationToken ct)
     {
-        var notificationId = NotificationId.From(parameters.NotificationId);
         var tenantId = Guid.Parse(parameters.TenantId);
 
-        var notification = await dbContext.Notifications
-            .Include(n => n.Recipients)
-            .FirstOrDefaultAsync(n => n.Id == notificationId && n.TenantId == tenantId, ct);
+        var notification = await DeliveryJobHelper.LoadNotificationAsync(
+            dbContext, parameters.NotificationId, tenantId, ct);
 
         if (notification is null)
         {
@@ -37,19 +34,15 @@ public sealed class BulkNotificationJob(
             return;
         }
 
-        var provider = await dbContext.NotificationProviders
-            .FirstOrDefaultAsync(p => p.TenantId == tenantId &&
-                                      p.Channel == notification.Channel &&
-                                      p.IsActive && p.IsDefault, ct);
+        var provider = await DeliveryJobHelper.FindDefaultProviderAsync(
+            dbContext, tenantId, notification.Channel, ct);
 
         if (provider is null)
         {
             logger.LogWarning("No active default provider found for channel {Channel} in tenant {TenantId}",
                 notification.Channel, tenantId);
-            foreach (var r in notification.Recipients.Where(r => r.Status == RecipientStatus.Pending))
-                r.MarkFailed("lockey_notifications_error_no_active_provider");
-            notification.MarkFailed();
-            await dbContext.SaveChangesAsync(ct);
+            await DeliveryJobHelper.FailAllPendingAsync(
+                dbContext, notification, "lockey_notifications_error_no_active_provider", ct);
             return;
         }
 
@@ -57,41 +50,25 @@ public sealed class BulkNotificationJob(
             .Where(r => r.Status == RecipientStatus.Pending)
             .ToList();
 
-        var allSucceeded = true;
         var anySucceeded = false;
+        var allSucceeded = true;
         var processedCount = 0;
 
         foreach (var batch in pendingRecipients.Chunk(parameters.BatchSize))
         {
-            foreach (var recipient in batch)
-            {
-                if (!provider.HasDailyCapacity())
-                {
-                    recipient.MarkFailed("lockey_notifications_error_provider_daily_limit_exceeded");
-                    allSucceeded = false;
-                    continue;
-                }
+            var (batchAny, batchAll) = DeliveryJobHelper.ProcessRecipients(
+                batch, provider, "bulk_", logger);
 
-                // In production: call provider API
-                var providerMessageId = $"bulk_{Guid.NewGuid():N}";
-                recipient.MarkSent(providerMessageId);
-                provider.IncrementSentToday();
-                anySucceeded = true;
-                processedCount++;
-            }
+            anySucceeded |= batchAny;
+            allSucceeded &= batchAll;
+            processedCount += batch.Count(r => r.Status == RecipientStatus.Sent);
 
             // Save after each batch to avoid large transactions
             await dbContext.SaveChangesAsync(ct);
         }
 
-        if (anySucceeded && allSucceeded)
-            notification.MarkSent();
-        else if (anySucceeded)
-            notification.MarkPartialFailure();
-        else
-            notification.MarkFailed();
-
-        notification.UpdateCounts(0, notification.Recipients.Count(r => r.Status is RecipientStatus.Failed or RecipientStatus.Bounced), 0, 0);
+        DeliveryJobHelper.FinalizeNotificationStatus(notification, anySucceeded, allSucceeded);
+        DeliveryJobHelper.UpdateNotificationCounts(notification);
 
         await dbContext.SaveChangesAsync(ct);
 

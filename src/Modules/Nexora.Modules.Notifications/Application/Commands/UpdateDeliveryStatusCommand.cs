@@ -12,7 +12,6 @@ namespace Nexora.Modules.Notifications.Application.Commands;
 
 /// <summary>Command to update delivery status from a webhook callback.</summary>
 public sealed record UpdateDeliveryStatusCommand(
-    Guid NotificationId,
     string ProviderMessageId,
     string Status,
     string? FailureReason = null) : ICommand<object>;
@@ -24,9 +23,6 @@ public sealed class UpdateDeliveryStatusValidator : AbstractValidator<UpdateDeli
 
     public UpdateDeliveryStatusValidator()
     {
-        RuleFor(x => x.NotificationId)
-            .NotEmpty().WithMessage("lockey_notifications_validation_delivery_notification_id_required");
-
         RuleFor(x => x.ProviderMessageId)
             .NotEmpty().WithMessage("lockey_notifications_validation_delivery_provider_message_id_required");
 
@@ -46,27 +42,20 @@ public sealed class UpdateDeliveryStatusHandler(
         UpdateDeliveryStatusCommand request,
         CancellationToken cancellationToken)
     {
-        var notificationId = NotificationId.From(request.NotificationId);
-
+        // Lookup notification via recipient's ProviderMessageId (webhook callback only has this)
         var notification = await dbContext.Notifications
             .Include(n => n.Recipients)
-            .FirstOrDefaultAsync(n => n.Id == notificationId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.Recipients.Any(r => r.ProviderMessageId == request.ProviderMessageId),
+                cancellationToken);
 
         if (notification is null)
         {
-            logger.LogWarning("Notification {NotificationId} not found for delivery status update", request.NotificationId);
+            logger.LogWarning("No notification found with provider message {ProviderMessageId}", request.ProviderMessageId);
             return Result<object>.Failure(LocalizedMessage.Of("lockey_notifications_error_notification_not_found"));
         }
 
         var recipient = notification.Recipients
-            .FirstOrDefault(r => r.ProviderMessageId == request.ProviderMessageId);
-
-        if (recipient is null)
-        {
-            logger.LogWarning("Recipient with provider message {ProviderMessageId} not found in notification {NotificationId}",
-                request.ProviderMessageId, request.NotificationId);
-            return Result<object>.Failure(LocalizedMessage.Of("lockey_notifications_error_recipient_not_found"));
-        }
+            .First(r => r.ProviderMessageId == request.ProviderMessageId);
 
         switch (request.Status.ToLowerInvariant())
         {
@@ -94,7 +83,7 @@ public sealed class UpdateDeliveryStatusHandler(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Delivery status updated to {Status} for recipient {ProviderMessageId} in notification {NotificationId}",
-            request.Status, request.ProviderMessageId, request.NotificationId);
+            request.Status, request.ProviderMessageId, notification.Id);
 
         return Result<object>.Success(null!,
             LocalizedMessage.Of("lockey_notifications_delivery_status_updated"));

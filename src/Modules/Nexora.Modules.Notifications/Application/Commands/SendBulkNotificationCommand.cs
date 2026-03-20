@@ -93,7 +93,7 @@ public sealed class SendBulkNotificationHandler(
         }
 
         var notification = Notification.Create(
-            tenantId, channel, subject, body, "bulk_api",
+            tenantId, channel, subject, body, TriggerSource.BulkApi,
             templateId, triggeredByUserId: null, organizationId: orgId);
 
         var skipped = 0;

@@ -19,6 +19,7 @@ public sealed class UserCreatedIntegrationEventHandler(
             TemplateCode: "welcome",
             Channel: "Email",
             ContactId: @event.UserId,
+            RecipientAddress: @event.Email,
             Variables: new Dictionary<string, string>
             {
                 ["email"] = @event.Email

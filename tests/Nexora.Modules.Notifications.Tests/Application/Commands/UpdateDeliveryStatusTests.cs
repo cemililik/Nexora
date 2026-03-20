@@ -31,7 +31,7 @@ public sealed class UpdateDeliveryStatusTests : IDisposable
         // Arrange
         var (notification, messageId) = await SeedNotificationWithSentRecipient();
         var handler = new UpdateDeliveryStatusHandler(_dbContext, NullLogger<UpdateDeliveryStatusHandler>.Instance);
-        var command = new UpdateDeliveryStatusCommand(notification.Id.Value, messageId, "delivered");
+        var command = new UpdateDeliveryStatusCommand(messageId, "delivered");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -55,7 +55,7 @@ public sealed class UpdateDeliveryStatusTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new UpdateDeliveryStatusHandler(_dbContext, NullLogger<UpdateDeliveryStatusHandler>.Instance);
-        var command = new UpdateDeliveryStatusCommand(notification.Id.Value, messageId, "opened");
+        var command = new UpdateDeliveryStatusCommand(messageId, "opened");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -70,7 +70,7 @@ public sealed class UpdateDeliveryStatusTests : IDisposable
         // Arrange
         var (notification, messageId) = await SeedNotificationWithSentRecipient();
         var handler = new UpdateDeliveryStatusHandler(_dbContext, NullLogger<UpdateDeliveryStatusHandler>.Instance);
-        var command = new UpdateDeliveryStatusCommand(notification.Id.Value, messageId, "bounced", "Mailbox full");
+        var command = new UpdateDeliveryStatusCommand(messageId, "bounced", "Mailbox full");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -88,7 +88,7 @@ public sealed class UpdateDeliveryStatusTests : IDisposable
     {
         // Arrange
         var handler = new UpdateDeliveryStatusHandler(_dbContext, NullLogger<UpdateDeliveryStatusHandler>.Instance);
-        var command = new UpdateDeliveryStatusCommand(Guid.NewGuid(), "msg_123", "delivered");
+        var command = new UpdateDeliveryStatusCommand("msg_nonexistent", "delivered");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -99,19 +99,19 @@ public sealed class UpdateDeliveryStatusTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_NonExistentRecipient_ShouldReturnFailure()
+    public async Task Handle_NonExistentProviderMessageId_ShouldReturnFailure()
     {
         // Arrange
-        var (notification, _) = await SeedNotificationWithSentRecipient();
+        await SeedNotificationWithSentRecipient();
         var handler = new UpdateDeliveryStatusHandler(_dbContext, NullLogger<UpdateDeliveryStatusHandler>.Instance);
-        var command = new UpdateDeliveryStatusCommand(notification.Id.Value, "nonexistent_msg", "delivered");
+        var command = new UpdateDeliveryStatusCommand("nonexistent_msg", "delivered");
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeFalse();
-        result.Error!.Message.Key.Should().Be("lockey_notifications_error_recipient_not_found");
+        result.Error!.Message.Key.Should().Be("lockey_notifications_error_notification_not_found");
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public sealed class UpdateDeliveryStatusTests : IDisposable
 
         // Act
         await handler.Handle(
-            new UpdateDeliveryStatusCommand(notification.Id.Value, messageId, "delivered"),
+            new UpdateDeliveryStatusCommand(messageId, "delivered"),
             CancellationToken.None);
 
         // Assert

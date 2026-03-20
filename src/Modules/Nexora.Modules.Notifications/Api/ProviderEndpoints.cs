@@ -54,7 +54,7 @@ public static class ProviderEndpoints
 
         group.MapPost("/{id:guid}/test", async (Guid id, TestProviderRequest request, ISender sender, CancellationToken ct) =>
         {
-            var command = new TestNotificationProviderCommand(id, request.TestAddress);
+            var command = new TestNotificationProviderCommand(id, request.TestRecipient);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
@@ -67,4 +67,4 @@ public static class ProviderEndpoints
 public sealed record UpdateProviderRequest(string Config, int DailyLimit, bool IsDefault);
 
 /// <summary>Request body for testing a notification provider.</summary>
-public sealed record TestProviderRequest(string TestAddress);
+public sealed record TestProviderRequest(string TestRecipient);

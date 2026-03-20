@@ -21,6 +21,7 @@ public sealed record SendNotificationRequest(
     string TemplateCode,
     string Channel,
     Guid ContactId,
+    string RecipientAddress,
     Dictionary<string, string> Variables,
     string? OrganizationId = null);
 
@@ -28,15 +29,19 @@ public sealed record SendNotificationRequest(
 public sealed record SendBulkNotificationRequest(
     string TemplateCode,
     string Channel,
-    IReadOnlyList<Guid> ContactIds,
+    IReadOnlyList<BulkNotificationRecipient> Recipients,
     Dictionary<string, string> Variables,
     string? OrganizationId = null);
+
+/// <summary>A recipient in a bulk notification request.</summary>
+public sealed record BulkNotificationRecipient(Guid ContactId, string Address);
 
 /// <summary>Request to schedule a notification for future delivery.</summary>
 public sealed record ScheduleNotificationRequest(
     string TemplateCode,
     string Channel,
     Guid ContactId,
+    string RecipientAddress,
     Dictionary<string, string> Variables,
     DateTime ScheduledAt,
     string? OrganizationId = null);

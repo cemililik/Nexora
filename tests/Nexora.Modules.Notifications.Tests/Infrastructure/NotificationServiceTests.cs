@@ -35,7 +35,7 @@ public sealed class NotificationServiceTests
 
         var request = new SendNotificationRequest(
             "welcome", "Email", Guid.NewGuid(),
-            new() { ["name"] = "Test" });
+            "user@test.com", new() { ["name"] = "Test" });
 
         // Act
         var result = await _service.SendAsync(request);
@@ -53,7 +53,7 @@ public sealed class NotificationServiceTests
             .Returns(Result<NotificationDto>.Failure("lockey_notifications_error_template_not_found"));
 
         var request = new SendNotificationRequest(
-            "nonexistent", "Email", Guid.NewGuid(), new());
+            "nonexistent", "Email", Guid.NewGuid(), "user@test.com", new());
 
         // Act
         var result = await _service.SendAsync(request);
@@ -73,7 +73,9 @@ public sealed class NotificationServiceTests
             .Returns(Result<BulkNotificationResultDto>.Success(dto, LocalizedMessage.Of("lockey_notifications_bulk_notification_queued")));
 
         var request = new SendBulkNotificationRequest(
-            "welcome", "Email", [Guid.NewGuid()], new());
+            "welcome", "Email",
+            [new BulkNotificationRecipient(Guid.NewGuid(), "user@test.com")],
+            new());
 
         // Act
         var result = await _service.SendBulkAsync(request);
@@ -94,7 +96,8 @@ public sealed class NotificationServiceTests
             .Returns(Result<NotificationScheduleDto>.Success(dto, LocalizedMessage.Of("lockey_notifications_notification_scheduled")));
 
         var request = new ScheduleNotificationRequest(
-            "welcome", "Email", Guid.NewGuid(), new(), DateTime.UtcNow.AddHours(1));
+            "welcome", "Email", Guid.NewGuid(), "user@test.com",
+            new(), DateTime.UtcNow.AddHours(1));
 
         // Act
         var result = await _service.ScheduleAsync(request);
