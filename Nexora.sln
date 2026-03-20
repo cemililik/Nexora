@@ -29,6 +29,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Contacts", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Contacts.Tests", "tests\Nexora.Modules.Contacts.Tests\Nexora.Modules.Contacts.Tests.csproj", "{492E44E1-980F-4A63-87B4-BD61999CC8FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Documents", "src\Modules\Nexora.Modules.Documents\Nexora.Modules.Documents.csproj", "{7E55BB2F-C56C-4B52-B150-689D43523DD8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Documents.Tests", "tests\Nexora.Modules.Documents.Tests\Nexora.Modules.Documents.Tests.csproj", "{C15A34AC-C9D2-4943-B864-D2E65C6E5179}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Notifications", "src\Modules\Nexora.Modules.Notifications\Nexora.Modules.Notifications.csproj", "{08DFA349-6AC4-4FE5-85A3-AEB9E4A8DE74}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Notifications.Tests", "tests\Nexora.Modules.Notifications.Tests\Nexora.Modules.Notifications.Tests.csproj", "{976A2E06-445C-4410-B0F8-78A79C9DB736}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -78,6 +86,22 @@ Global
 		{492E44E1-980F-4A63-87B4-BD61999CC8FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{492E44E1-980F-4A63-87B4-BD61999CC8FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{492E44E1-980F-4A63-87B4-BD61999CC8FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E55BB2F-C56C-4B52-B150-689D43523DD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E55BB2F-C56C-4B52-B150-689D43523DD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E55BB2F-C56C-4B52-B150-689D43523DD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E55BB2F-C56C-4B52-B150-689D43523DD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C15A34AC-C9D2-4943-B864-D2E65C6E5179}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C15A34AC-C9D2-4943-B864-D2E65C6E5179}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C15A34AC-C9D2-4943-B864-D2E65C6E5179}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C15A34AC-C9D2-4943-B864-D2E65C6E5179}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08DFA349-6AC4-4FE5-85A3-AEB9E4A8DE74}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08DFA349-6AC4-4FE5-85A3-AEB9E4A8DE74}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08DFA349-6AC4-4FE5-85A3-AEB9E4A8DE74}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08DFA349-6AC4-4FE5-85A3-AEB9E4A8DE74}.Release|Any CPU.Build.0 = Release|Any CPU
+		{976A2E06-445C-4410-B0F8-78A79C9DB736}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{976A2E06-445C-4410-B0F8-78A79C9DB736}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{976A2E06-445C-4410-B0F8-78A79C9DB736}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{976A2E06-445C-4410-B0F8-78A79C9DB736}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5DC212CE-9A03-4BF4-BE61-0874B4D6749E} = {6DA7CA5E-2DBB-459C-8A8C-229F9C5624F9}
@@ -91,5 +115,9 @@ Global
 		{88B6FB11-DD77-4BC0-A4BE-7F18681AE094} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
 		{B733D8DC-2F94-4294-B908-7B54AFEB2164} = {F7005014-649E-446D-B6E1-2408DB9B52BC}
 		{492E44E1-980F-4A63-87B4-BD61999CC8FC} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
+		{7E55BB2F-C56C-4B52-B150-689D43523DD8} = {F7005014-649E-446D-B6E1-2408DB9B52BC}
+		{C15A34AC-C9D2-4943-B864-D2E65C6E5179} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
+		{08DFA349-6AC4-4FE5-85A3-AEB9E4A8DE74} = {F7005014-649E-446D-B6E1-2408DB9B52BC}
+		{976A2E06-445C-4410-B0F8-78A79C9DB736} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
 	EndGlobalSection
 EndGlobal

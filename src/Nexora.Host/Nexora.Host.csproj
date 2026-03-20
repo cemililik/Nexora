@@ -5,6 +5,8 @@
     <ProjectReference Include="..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Identity\Nexora.Modules.Identity.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Contacts\Nexora.Modules.Contacts.csproj" />
+    <ProjectReference Include="..\Modules\Nexora.Modules.Documents\Nexora.Modules.Documents.csproj" />
+    <ProjectReference Include="..\Modules\Nexora.Modules.Notifications\Nexora.Modules.Notifications.csproj" />
   </ItemGroup>
 
   <ItemGroup>
