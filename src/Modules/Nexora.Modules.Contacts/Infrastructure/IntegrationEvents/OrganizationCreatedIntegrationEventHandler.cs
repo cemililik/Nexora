@@ -1,0 +1,56 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Nexora.Modules.Contacts.Domain.Entities;
+using Nexora.Modules.Contacts.Domain.ValueObjects;
+using Nexora.SharedKernel.Abstractions.Messaging;
+using Nexora.SharedKernel.Domain.Events;
+
+namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
+
+/// <summary>
+/// Handles OrganizationCreatedIntegrationEvent from the Identity module.
+/// Creates default tags for the tenant when a new organization is created.
+/// </summary>
+public sealed class OrganizationCreatedIntegrationEventHandler(
+    ContactsDbContext dbContext,
+    ILogger<OrganizationCreatedIntegrationEventHandler> logger) : IIntegrationEventHandler<OrganizationCreatedIntegrationEvent>
+{
+    private static readonly (string Name, TagCategory Category, string Color)[] DefaultTags =
+    [
+        ("Donor", TagCategory.Donor, "#22c55e"),
+        ("Volunteer", TagCategory.Volunteer, "#3b82f6"),
+        ("Parent", TagCategory.Parent, "#f59e0b"),
+        ("Student", TagCategory.Student, "#8b5cf6"),
+        ("Staff", TagCategory.Staff, "#ef4444"),
+        ("Vendor", TagCategory.Vendor, "#6b7280")
+    ];
+
+    public async Task HandleAsync(OrganizationCreatedIntegrationEvent @event, CancellationToken ct)
+    {
+        var tenantId = Guid.Parse(@event.TenantId);
+
+        // Only create default tags if no tags exist for this tenant yet
+        var existingTagCount = await dbContext.Tags
+            .CountAsync(t => t.TenantId == tenantId, ct);
+
+        if (existingTagCount > 0)
+        {
+            logger.LogDebug(
+                "Tenant {TenantId} already has {TagCount} tags, skipping default tag creation",
+                tenantId, existingTagCount);
+            return;
+        }
+
+        foreach (var (name, category, color) in DefaultTags)
+        {
+            var tag = Tag.Create(tenantId, name, category, color);
+            await dbContext.Tags.AddAsync(tag, ct);
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Created {Count} default tags for tenant {TenantId} on organization {OrganizationId} creation",
+            DefaultTags.Length, tenantId, @event.OrganizationId);
+    }
+}
