@@ -14,6 +14,7 @@ public sealed class PlatformDbContext(
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<TenantModule> TenantModules => Set<TenantModule>();
 
+    /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

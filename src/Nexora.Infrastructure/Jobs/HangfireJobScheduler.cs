@@ -9,6 +9,7 @@ namespace Nexora.Infrastructure.Jobs;
 /// </summary>
 public sealed class HangfireJobScheduler : IJobScheduler
 {
+    /// <inheritdoc />
     public void AddOrUpdate<TJob>(
         string jobId,
         string cronExpression,

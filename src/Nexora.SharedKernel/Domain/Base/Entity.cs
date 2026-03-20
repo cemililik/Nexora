@@ -7,7 +7,10 @@ namespace Nexora.SharedKernel.Domain.Base;
 /// </summary>
 public interface IHasDomainEvents
 {
+    /// <summary>Gets the list of uncommitted domain events.</summary>
     IReadOnlyList<IDomainEvent> DomainEvents { get; }
+
+    /// <summary>Clears all pending domain events.</summary>
     void ClearDomainEvents();
 }
 

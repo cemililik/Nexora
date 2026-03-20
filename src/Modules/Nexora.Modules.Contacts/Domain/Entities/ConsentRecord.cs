@@ -20,6 +20,7 @@ public sealed class ConsentRecord : Entity<ConsentRecordId>
 
     private ConsentRecord() { }
 
+    /// <summary>Creates a new consent record for a contact.</summary>
     public static ConsentRecord Create(
         ContactId contactId,
         ConsentType consentType,
@@ -41,6 +42,7 @@ public sealed class ConsentRecord : Entity<ConsentRecordId>
         return record;
     }
 
+    /// <summary>Revokes this consent record.</summary>
     public void Revoke()
     {
         Granted = false;

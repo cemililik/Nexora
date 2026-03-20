@@ -51,10 +51,16 @@ public interface IModule
 /// </summary>
 public sealed record HealthCheckResult(bool IsHealthy, string? Message = null)
 {
+    /// <summary>Creates a healthy result.</summary>
     public static HealthCheckResult Healthy() => new(true);
+
+    /// <summary>Creates an unhealthy result with an error message.</summary>
     public static HealthCheckResult Unhealthy(string message) => new(false, message);
 }
 
+/// <summary>
+/// Context provided to modules during tenant install/uninstall operations.
+/// </summary>
 public sealed record TenantInstallContext(
     string TenantId,
     string SchemaName,
@@ -65,6 +71,7 @@ public sealed record TenantInstallContext(
 /// </summary>
 public interface IJobScheduler
 {
+    /// <summary>Registers or updates a recurring job with the given cron schedule.</summary>
     void AddOrUpdate<TJob>(
         string jobId,
         string cronExpression,
@@ -76,6 +83,9 @@ public interface IJobScheduler
 /// </summary>
 public interface IModuleAvailability
 {
+    /// <summary>Checks whether a module is installed for the current tenant.</summary>
     Task<bool> IsInstalledAsync(string moduleName, CancellationToken ct = default);
+
+    /// <summary>Gets the list of installed module names for the current tenant.</summary>
     Task<IReadOnlyList<string>> GetInstalledModulesAsync(CancellationToken ct = default);
 }

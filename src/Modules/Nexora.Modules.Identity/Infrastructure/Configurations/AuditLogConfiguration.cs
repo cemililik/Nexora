@@ -8,6 +8,7 @@ namespace Nexora.Modules.Identity.Infrastructure.Configurations;
 /// <summary>EF Core configuration for identity_audit_logs table.</summary>
 public sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<AuditLog> builder)
     {
         builder.ToTable("identity_audit_logs");

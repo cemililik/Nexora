@@ -15,6 +15,7 @@ public sealed class ContactRelationship : Entity<ContactRelationshipId>
 
     private ContactRelationship() { }
 
+    /// <summary>Creates a new relationship between two contacts.</summary>
     public static ContactRelationship Create(
         ContactId contactId,
         ContactId relatedContactId,

@@ -5,5 +5,6 @@ namespace Nexora.SharedKernel.Domain.Base;
 /// </summary>
 public interface IUnitOfWork
 {
+    /// <summary>Persists all pending changes to the database.</summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

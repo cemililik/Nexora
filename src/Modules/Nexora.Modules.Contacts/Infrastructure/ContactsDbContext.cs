@@ -5,6 +5,7 @@ using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Modules.Contacts.Infrastructure;
 
+/// <summary>EF Core DbContext for the Contacts module.</summary>
 public sealed class ContactsDbContext(
     DbContextOptions<ContactsDbContext> options,
     ITenantContextAccessor tenantContextAccessor,

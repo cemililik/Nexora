@@ -5,8 +5,10 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the CommunicationPreference entity.</summary>
 public sealed class CommunicationPreferenceConfiguration : IEntityTypeConfiguration<CommunicationPreference>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<CommunicationPreference> builder)
     {
         builder.ToTable("contacts_communication_preferences");

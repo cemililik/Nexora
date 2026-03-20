@@ -17,6 +17,7 @@ public sealed class ContactTag : Entity<ContactTagId>
 
     private ContactTag() { }
 
+    /// <summary>Creates a new tag assignment for a contact within an organization.</summary>
     public static ContactTag Create(ContactId contactId, TagId tagId, Guid organizationId)
     {
         var tag = new ContactTag

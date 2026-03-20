@@ -3,6 +3,9 @@ using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Infrastructure.Configuration;
 
+/// <summary>
+/// EF Core context for tenant-specific key-value configuration stored in the tenant schema.
+/// </summary>
 public sealed class TenantConfigDbContext(
     DbContextOptions<TenantConfigDbContext> options,
     ITenantContextAccessor tenantContextAccessor) : DbContext(options)

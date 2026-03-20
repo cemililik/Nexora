@@ -5,8 +5,10 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 
 namespace Nexora.Modules.Identity.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the Organization entity.</summary>
 public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organization>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<Organization> builder)
     {
         builder.ToTable("identity_organizations");

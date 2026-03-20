@@ -3,6 +3,7 @@ using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
+/// <summary>Represents a module installed for a tenant.</summary>
 public sealed class TenantModule : Entity<TenantModuleId>
 {
     public TenantId TenantId { get; private set; }
@@ -13,6 +14,7 @@ public sealed class TenantModule : Entity<TenantModuleId>
 
     private TenantModule() { }
 
+    /// <summary>Creates a new tenant module installation record.</summary>
     public static TenantModule Create(TenantId tenantId, string moduleName, string? installedBy = null)
     {
         return new TenantModule
@@ -25,5 +27,6 @@ public sealed class TenantModule : Entity<TenantModuleId>
         };
     }
 
+    /// <summary>Deactivates this module installation.</summary>
     public void Deactivate() => IsActive = false;
 }

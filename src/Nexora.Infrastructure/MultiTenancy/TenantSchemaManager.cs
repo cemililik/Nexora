@@ -13,6 +13,7 @@ public sealed class TenantSchemaManager(
     IEnumerable<IModuleMigration> moduleMigrations,
     ILogger<TenantSchemaManager> logger) : ITenantSchemaManager
 {
+    /// <inheritdoc />
     public async Task CreateSchemaAsync(string schemaName, CancellationToken ct = default)
     {
         ValidateSchemaName(schemaName);
@@ -34,6 +35,7 @@ public sealed class TenantSchemaManager(
             schemaName, moduleMigrations.Count());
     }
 
+    /// <inheritdoc />
     public async Task MigrateModuleAsync(string schemaName, string moduleName, CancellationToken ct = default)
     {
         var migration = moduleMigrations.FirstOrDefault(m => m.ModuleName == moduleName)
@@ -45,6 +47,7 @@ public sealed class TenantSchemaManager(
         await migration.SeedAsync(schemaName, ct);
     }
 
+    /// <inheritdoc />
     public async Task MigrateAllModulesAsync(string schemaName, CancellationToken ct = default)
     {
         foreach (var migration in moduleMigrations)
@@ -57,6 +60,7 @@ public sealed class TenantSchemaManager(
         }
     }
 
+    /// <inheritdoc />
     public async Task DropSchemaAsync(string schemaName, CancellationToken ct = default)
     {
         ValidateSchemaName(schemaName);
@@ -73,6 +77,7 @@ public sealed class TenantSchemaManager(
         logger.LogInformation("Tenant schema '{Schema}' dropped", schemaName);
     }
 
+    /// <inheritdoc />
     public async Task<bool> SchemaExistsAsync(string schemaName, CancellationToken ct = default)
     {
         await using var conn = new NpgsqlConnection(connectionString);

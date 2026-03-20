@@ -5,8 +5,10 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the ContactActivity entity.</summary>
 public sealed class ContactActivityConfiguration : IEntityTypeConfiguration<ContactActivity>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<ContactActivity> builder)
     {
         builder.ToTable("contacts_activities");

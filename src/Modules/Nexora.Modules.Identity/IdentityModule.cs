@@ -11,6 +11,7 @@ using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity;
 
+/// <summary>Identity module providing authentication, tenants, organizations, users, and RBAC.</summary>
 public sealed class IdentityModule : IModule
 {
     public string Name => "identity";
@@ -18,6 +19,7 @@ public sealed class IdentityModule : IModule
     public string Version => "1.0.0";
     public IReadOnlyList<string> Dependencies => [];
 
+    /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         // Tenant-scoped DbContext (per-request, resolves tenant schema)
@@ -51,11 +53,13 @@ public sealed class IdentityModule : IModule
         });
     }
 
+    /// <inheritdoc />
     public void ConfigureEventHandlers(IServiceCollection services)
     {
         // Identity module is the event source, not consumer — no handlers to register yet
     }
 
+    /// <inheritdoc />
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapOrganizationEndpoints();
@@ -66,25 +70,30 @@ public sealed class IdentityModule : IModule
         endpoints.MapModuleEndpoints();
     }
 
+    /// <inheritdoc />
     public void ConfigureJobs(IJobScheduler scheduler)
     {
     }
 
+    /// <inheritdoc />
     public Task<HealthCheckResult> CheckHealthAsync(CancellationToken ct)
     {
         return Task.FromResult(HealthCheckResult.Healthy());
     }
 
+    /// <inheritdoc />
     public Task OnStartupAsync(CancellationToken ct)
     {
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task OnInstallAsync(TenantInstallContext context, CancellationToken ct)
     {
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task OnUninstallAsync(TenantInstallContext context, CancellationToken ct)
     {
         throw new DomainException("lockey_identity_error_cannot_uninstall");

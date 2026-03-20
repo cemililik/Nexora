@@ -4,6 +4,7 @@ using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
+/// <summary>Represents an organization within a tenant.</summary>
 public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRoot
 {
     public TenantId TenantId { get; private set; }
@@ -20,6 +21,7 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
 
     private Organization() { }
 
+    /// <summary>Creates a new organization for a tenant.</summary>
     public static Organization Create(TenantId tenantId, string name, string slug)
     {
         var org = new Organization
@@ -33,6 +35,7 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
         return org;
     }
 
+    /// <summary>Updates the organization's profile settings.</summary>
     public void Update(string name, string timezone, string currency, string language)
     {
         Name = name;
@@ -41,6 +44,8 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
         DefaultLanguage = language;
     }
 
+    /// <summary>Deactivates the organization.</summary>
     public void Deactivate() => IsActive = false;
+    /// <summary>Activates the organization.</summary>
     public void Activate() => IsActive = true;
 }

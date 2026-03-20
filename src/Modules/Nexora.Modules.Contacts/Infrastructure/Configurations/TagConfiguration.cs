@@ -5,8 +5,10 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Configurations;
 
+/// <summary>EF Core configuration for the Tag entity.</summary>
 public sealed class TagConfiguration : IEntityTypeConfiguration<Tag>
 {
+    /// <inheritdoc />
     public void Configure(EntityTypeBuilder<Tag> builder)
     {
         builder.ToTable("contacts_tags");

@@ -32,6 +32,7 @@ public abstract class BaseDbContext(
         }
     }
 
+    /// <summary>Saves changes, sets audit fields, and dispatches domain events.</summary>
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         SetAuditFields();

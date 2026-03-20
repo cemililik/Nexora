@@ -13,6 +13,7 @@ public sealed class IdentityModuleMigration(IServiceProvider serviceProvider) : 
 {
     public string ModuleName => "identity";
 
+    /// <inheritdoc />
     public async Task MigrateAsync(string schemaName, CancellationToken ct = default)
     {
         using var scope = serviceProvider.CreateScope();
@@ -24,6 +25,7 @@ public sealed class IdentityModuleMigration(IServiceProvider serviceProvider) : 
         await dbContext.Database.MigrateAsync(ct);
     }
 
+    /// <inheritdoc />
     public async Task SeedAsync(string schemaName, CancellationToken ct = default)
     {
         using var scope = serviceProvider.CreateScope();
