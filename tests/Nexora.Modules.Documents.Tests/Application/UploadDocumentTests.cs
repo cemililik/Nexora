@@ -16,6 +16,7 @@ public sealed class UploadDocumentTests : IDisposable
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public UploadDocumentTests()
     {
@@ -30,7 +31,7 @@ public sealed class UploadDocumentTests : IDisposable
 
     private async Task<Guid> SeedFolderAsync()
     {
-        var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _orgId);
+        var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _userId);
         await _dbContext.Folders.AddAsync(folder);
         await _dbContext.SaveChangesAsync();
         return folder.Id.Value;

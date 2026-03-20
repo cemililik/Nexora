@@ -13,11 +13,22 @@ public sealed class ConsentChangedDomainEventHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ConsentChangedDomainEventHandler> logger) : INotificationHandler<ConsentChangedEvent>
 {
+    /// <summary>
+    /// Handles a <see cref="ConsentChangedEvent"/> by publishing a <see cref="ConsentChangedIntegrationEvent"/> to the event bus.
+    /// </summary>
     public async Task Handle(ConsentChangedEvent notification, CancellationToken cancellationToken)
     {
+        var tenantContext = tenantContextAccessor.TryGetCurrent();
+        if (tenantContext is null)
+        {
+            logger.LogWarning("Tenant context unavailable when handling ConsentChangedEvent for contact {ContactId}",
+                notification.ContactId.Value);
+            return;
+        }
+
         var integrationEvent = new ConsentChangedIntegrationEvent
         {
-            TenantId = tenantContextAccessor.Current.TenantId,
+            TenantId = tenantContext.TenantId,
             ContactId = notification.ContactId.Value,
             ConsentType = notification.ConsentType.ToString(),
             Granted = notification.Granted

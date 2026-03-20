@@ -32,8 +32,8 @@ public static class DocumentVersionEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    $"/api/v1/documents/documents/{documentId}/versions",
-                    ApiEnvelope<DocumentVersionDto>.Success(result.Value!, result.Message))
+                    $"/api/v1/documents/{documentId}/versions/{result.Value!.Id}",
+                    ApiEnvelope<DocumentVersionDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<DocumentVersionDto>.Fail(result.Error!));
         });
     }

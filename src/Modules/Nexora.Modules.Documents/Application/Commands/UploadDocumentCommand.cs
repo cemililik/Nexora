@@ -91,7 +91,7 @@ public sealed class UploadDocumentHandler(
         }
 
         var uploadedByUserId = tenantContextAccessor.Current.UserId is { } uid && Guid.TryParse(uid, out var parsedUid)
-            ? parsedUid : orgId; // Fallback to orgId if user context unavailable
+            ? parsedUid : Guid.Empty;
         var document = Document.Create(
             tenantId, orgId, folderId, uploadedByUserId,
             request.Name, request.MimeType, request.FileSize, request.StorageKey,

@@ -16,16 +16,30 @@ public sealed class NotificationSentDomainEventHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<NotificationSentDomainEventHandler> logger) : INotificationHandler<NotificationSentEvent>
 {
+    /// <summary>
+    /// Handles a <see cref="NotificationSentEvent"/> by publishing a <see cref="NotificationSentIntegrationEvent"/> to the event bus.
+    /// </summary>
     public async Task Handle(NotificationSentEvent notification, CancellationToken cancellationToken)
     {
+        var tenantContext = tenantContextAccessor.TryGetCurrent();
+        if (tenantContext is null)
+        {
+            logger.LogWarning("Tenant context unavailable when handling NotificationSentEvent for notification {NotificationId}",
+                notification.NotificationId.Value);
+            return;
+        }
+
         var integrationEvent = new NotificationSentIntegrationEvent
         {
-            TenantId = tenantContextAccessor.Current.TenantId,
+            TenantId = tenantContext.TenantId,
             NotificationId = notification.NotificationId.Value,
             Channel = notification.Channel.ToString(),
             RecipientCount = notification.RecipientCount
         };
 
         await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+
+        logger.LogDebug("NotificationSent context — NotificationId: {NotificationId}, Channel: {Channel}, RecipientCount: {RecipientCount}",
+            notification.NotificationId.Value, notification.Channel, notification.RecipientCount);
     }
 }
