@@ -44,8 +44,13 @@ public sealed class CreateFolderHandler(
         CreateFolderCommand request,
         CancellationToken cancellationToken)
     {
-        var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
-        var orgId = Guid.Parse(tenantContextAccessor.Current.OrganizationId!);
+        if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
+            return Result<FolderDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
+
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+            return Result<FolderDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
 
         string? parentPath = null;
         FolderId? parentFolderId = null;

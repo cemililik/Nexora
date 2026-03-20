@@ -23,7 +23,9 @@ public sealed class GetDocumentVersionsHandler(
         GetDocumentVersionsQuery request,
         CancellationToken cancellationToken)
     {
-        var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
+        if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
+            return Result<IReadOnlyList<DocumentVersionDto>>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
         var documentId = DocumentId.From(request.DocumentId);
 
         var documentExists = await dbContext.Documents

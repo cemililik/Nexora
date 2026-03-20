@@ -72,11 +72,7 @@ public static class DocumentEndpoints
             if (result.IsSuccess)
                 return Results.NoContent();
 
-            return result.Error!.Message.Key switch
-            {
-                "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
-                _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
-            };
+            return MapDocumentError(result.Error!);
         });
 
         group.MapPost("/{id:guid}/restore", async (Guid id, ISender sender, CancellationToken ct) =>
@@ -85,11 +81,7 @@ public static class DocumentEndpoints
             if (result.IsSuccess)
                 return Results.Ok(ApiEnvelope<object>.Success(new { }, result.Message));
 
-            return result.Error!.Message.Key switch
-            {
-                "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
-                _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
-            };
+            return MapDocumentError(result.Error!);
         });
 
         group.MapPost("/{id:guid}/move", async (Guid id, MoveDocumentRequest request, ISender sender, CancellationToken ct) =>
@@ -116,6 +108,15 @@ public static class DocumentEndpoints
 
             return Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
+    }
+
+    private static IResult MapDocumentError(Error error)
+    {
+        return error.Message.Key switch
+        {
+            "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(error)),
+            _ => Results.BadRequest(ApiEnvelope<object>.Fail(error))
+        };
     }
 }
 

@@ -23,7 +23,9 @@ public sealed class GetFolderByIdHandler(
         GetFolderByIdQuery request,
         CancellationToken cancellationToken)
     {
-        var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
+        if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
+            return Result<FolderDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
         var folderId = FolderId.From(request.FolderId);
 
         var folder = await dbContext.Folders

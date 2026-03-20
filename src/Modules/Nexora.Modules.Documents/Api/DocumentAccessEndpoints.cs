@@ -32,8 +32,8 @@ public static class DocumentAccessEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    $"/api/v1/documents/documents/{documentId}/access",
-                    ApiEnvelope<DocumentAccessDto>.Success(result.Value!, result.Message))
+                    $"/api/v1/documents/documents/{documentId}/access/{result.Value!.Id}",
+                    ApiEnvelope<DocumentAccessDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<DocumentAccessDto>.Fail(result.Error!));
         });
 

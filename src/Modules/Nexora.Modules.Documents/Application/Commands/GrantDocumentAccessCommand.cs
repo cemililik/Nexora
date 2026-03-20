@@ -25,7 +25,7 @@ public sealed class GrantDocumentAccessValidator : AbstractValidator<GrantDocume
 
         RuleFor(x => x.Permission)
             .NotEmpty().WithMessage("lockey_documents_validation_permission_required")
-            .Must(p => p is "View" or "Edit" or "Manage")
+            .Must(p => Enum.TryParse<AccessPermission>(p, ignoreCase: true, out _))
             .WithMessage("lockey_documents_validation_permission_invalid");
 
         RuleFor(x => x)
@@ -44,7 +44,9 @@ public sealed class GrantDocumentAccessHandler(
         GrantDocumentAccessCommand request,
         CancellationToken cancellationToken)
     {
-        var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
+        if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
+            return Result<DocumentAccessDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
         var documentId = DocumentId.From(request.DocumentId);
 
         var document = await dbContext.Documents
