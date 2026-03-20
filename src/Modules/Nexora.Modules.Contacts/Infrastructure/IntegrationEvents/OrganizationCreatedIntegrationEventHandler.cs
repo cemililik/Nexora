@@ -27,7 +27,11 @@ public sealed class OrganizationCreatedIntegrationEventHandler(
 
     public async Task HandleAsync(OrganizationCreatedIntegrationEvent @event, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(@event.TenantId);
+        if (!Guid.TryParse(@event.TenantId, out var tenantId))
+        {
+            logger.LogError("Invalid TenantId {TenantId} in OrganizationCreatedIntegrationEvent", @event.TenantId);
+            return;
+        }
 
         // Only create default tags if no tags exist for this tenant yet
         var existingTagCount = await dbContext.Tags

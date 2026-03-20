@@ -17,7 +17,11 @@ public sealed class UserCreatedIntegrationEventHandler(
 {
     public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(@event.TenantId);
+        if (!Guid.TryParse(@event.TenantId, out var tenantId))
+        {
+            logger.LogError("Invalid TenantId {TenantId} in UserCreatedIntegrationEvent", @event.TenantId);
+            return;
+        }
 
         // Check if a contact with this email already exists for the tenant
         var existingContact = await dbContext.Contacts
