@@ -1,0 +1,38 @@
+meta {
+  name: Schedule Notification
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/notifications/schedule
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "channel": "Email",
+    "contactId": "{{contactId}}",
+    "recipientAddress": "user@example.com",
+    "scheduledAt": "2026-04-01T10:00:00Z",
+    "templateCode": "welcome",
+    "variables": {
+      "name": "John"
+    }
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("notificationScheduleId", body.data.id);
+      console.log("notificationScheduleId set to " + body.data.id);
+    }
+  }
+}

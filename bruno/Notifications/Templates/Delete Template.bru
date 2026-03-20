@@ -1,0 +1,15 @@
+meta {
+  name: Delete Template
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/notifications/templates/{{notificationTemplateId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
