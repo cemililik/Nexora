@@ -58,7 +58,7 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
         if (Status == TenantStatus.Active) return;
 
         if (Status is not (TenantStatus.Trial or TenantStatus.Suspended))
-            throw new DomainException("lockey_identity_error_invalid_tenant_transition");
+            throw new DomainException("lockey_identity_error_tenant_activation_not_allowed");
 
         Status = TenantStatus.Active;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Active));
@@ -73,7 +73,7 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
         if (Status == TenantStatus.Suspended) return;
 
         if (Status is not TenantStatus.Active)
-            throw new DomainException("lockey_identity_error_invalid_tenant_transition");
+            throw new DomainException("lockey_identity_error_tenant_suspension_not_allowed");
 
         Status = TenantStatus.Suspended;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Suspended));

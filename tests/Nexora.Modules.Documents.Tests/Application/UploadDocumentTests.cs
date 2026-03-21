@@ -38,7 +38,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidDocument_ShouldCreateDocument()
+    public async Task Handle_ValidDocument_CreatesDocument()
     {
         // Arrange
         var folderId = await SeedFolderAsync();
@@ -73,7 +73,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WithDescription_ShouldSetDescription()
+    public async Task Handle_WithDescription_SetsDescription()
     {
         // Arrange
         var folderId = await SeedFolderAsync();
@@ -89,7 +89,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WithLinkedEntity_ShouldSetEntityFields()
+    public async Task Handle_WithLinkedEntity_SetsEntityFields()
     {
         // Arrange
         var folderId = await SeedFolderAsync();
@@ -108,7 +108,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldPersistToDatabase()
+    public async Task Handle_ValidCommand_PersistsToDatabase()
     {
         // Arrange
         var folderId = await SeedFolderAsync();
@@ -124,7 +124,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public void Validate_ZeroFileSize_ShouldFail()
+    public void Validate_ZeroFileSize_FailsValidation()
     {
         // Arrange
         var validator = new UploadDocumentValidator();
@@ -139,7 +139,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public void Validate_NegativeFileSize_ShouldFail()
+    public void Validate_NegativeFileSize_FailsValidation()
     {
         // Arrange
         var validator = new UploadDocumentValidator();
@@ -154,7 +154,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public void Validate_ExceedsMaxFileSize_ShouldFail()
+    public void Validate_ExceedsMaxFileSize_FailsValidation()
     {
         // Arrange
         var validator = new UploadDocumentValidator();
@@ -169,7 +169,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public void Validate_EmptyName_ShouldFail()
+    public void Validate_EmptyName_FailsValidation()
     {
         // Arrange
         var validator = new UploadDocumentValidator();
@@ -184,7 +184,7 @@ public sealed class UploadDocumentTests : IDisposable
     }
 
     [Fact]
-    public void Validate_EmptyStorageKey_ShouldFail()
+    public void Validate_EmptyStorageKey_FailsValidation()
     {
         // Arrange
         var validator = new UploadDocumentValidator();
@@ -196,6 +196,24 @@ public sealed class UploadDocumentTests : IDisposable
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == "StorageKey");
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserIdMissingFromContext_ShouldReturnFailure()
+    {
+        // Arrange — tenant context without UserId
+        var folderId = await SeedFolderAsync();
+        var accessor = new TenantContextAccessor();
+        accessor.SetTenant(_tenantId.ToString(), _orgId.ToString());
+        var handler = new UploadDocumentHandler(_dbContext, accessor, NullLogger<UploadDocumentHandler>.Instance);
+        var command = new UploadDocumentCommand(folderId, "test.pdf", "application/pdf", 1024, "storage/key");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_documents_error_missing_user_context");
     }
 
     public void Dispose() => _dbContext.Dispose();

@@ -34,17 +34,51 @@ public static class DocumentEndpoints
         group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new GetDocumentByIdQuery(id), ct);
-            return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<DocumentDetailDto>.Success(result.Value!))
-                : Results.NotFound(ApiEnvelope<DocumentDetailDto>.Fail(result.Error!));
+            if (result.IsSuccess)
+                return Results.Ok(ApiEnvelope<DocumentDetailDto>.Success(result.Value!));
+
+            return result.Error!.Message.Key switch
+            {
+                "lockey_documents_error_access_denied" =>
+                    Results.Json(ApiEnvelope<DocumentDetailDto>.Fail(result.Error), statusCode: 403),
+                "lockey_documents_error_document_not_found" =>
+                    Results.NotFound(ApiEnvelope<DocumentDetailDto>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<DocumentDetailDto>.Fail(result.Error))
+            };
         });
 
-        group.MapGet("/{id:guid}/download", (Guid id) =>
+        group.MapGet("/{id:guid}/download", async (Guid id, ISender sender, CancellationToken ct) =>
         {
-            // Phase 2: Actual MinIO download via presigned URL
-            return Results.Json(
-                ApiEnvelope<object>.Fail(new Error(Nexora.SharedKernel.Localization.LocalizedMessage.Of("lockey_documents_error_download_not_implemented"))),
-                statusCode: StatusCodes.Status501NotImplemented);
+            var result = await sender.Send(new GetDocumentDownloadUrlQuery(id), ct);
+            if (result.IsSuccess)
+                return Results.Ok(ApiEnvelope<DownloadUrlDto>.Success(result.Value!));
+
+            return result.Error!.Message.Key switch
+            {
+                "lockey_documents_error_access_denied" =>
+                    Results.Json(ApiEnvelope<DownloadUrlDto>.Fail(result.Error), statusCode: 403),
+                "lockey_documents_error_document_not_found" =>
+                    Results.NotFound(ApiEnvelope<DownloadUrlDto>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<DownloadUrlDto>.Fail(result.Error))
+            };
+        });
+
+        group.MapPost("/upload-url", async (GenerateUploadUrlCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<UploadUrlDto>.Success(result.Value!, result.Message))
+                : Results.BadRequest(ApiEnvelope<UploadUrlDto>.Fail(result.Error!));
+        });
+
+        group.MapPost("/confirm-upload", async (ConfirmUploadCommand command, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Created(
+                    $"/api/v1/documents/{result.Value!.Id}",
+                    ApiEnvelope<DocumentDto>.Success(result.Value, result.Message))
+                : Results.BadRequest(ApiEnvelope<DocumentDto>.Fail(result.Error!));
         });
 
         group.MapPost("/", async (UploadDocumentCommand command, ISender sender, CancellationToken ct) =>

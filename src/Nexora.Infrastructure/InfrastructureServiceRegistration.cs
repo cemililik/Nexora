@@ -13,6 +13,7 @@ using Nexora.Infrastructure.Jobs;
 using Nexora.Infrastructure.Messaging;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Infrastructure.Secrets;
+using Nexora.Infrastructure.Storage;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.Configuration;
 using Nexora.SharedKernel.Abstractions.Messaging;
@@ -20,6 +21,7 @@ using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Secrets;
+using Nexora.SharedKernel.Abstractions.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Nexora.Infrastructure;
@@ -56,6 +58,13 @@ public static class InfrastructureServiceRegistration
 
         // Secrets
         services.AddScoped<ISecretProvider, DaprSecretProvider>();
+
+        // File Storage (MinIO)
+        services.Configure<MinioStorageOptions>(
+            configuration.GetSection(MinioStorageOptions.SectionName));
+        services.Configure<StorageOptions>(
+            configuration.GetSection(StorageOptions.SectionName));
+        services.AddSingleton<IFileStorageService, MinioFileStorageService>();
 
         // Tenant configuration
         services.AddScoped<ITenantConfiguration, DatabaseTenantConfiguration>();

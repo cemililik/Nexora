@@ -4,9 +4,14 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Documents.Api;
+using Nexora.Modules.Documents.Application.Services;
 using Nexora.Modules.Documents.Infrastructure;
+using Nexora.Modules.Documents.Infrastructure.Jobs;
+using Nexora.Modules.Documents.Infrastructure.Services;
+using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using DocumentService = Nexora.Modules.Documents.Infrastructure.Services.DocumentService;
 
 namespace Nexora.Modules.Documents;
 
@@ -33,6 +38,15 @@ public sealed class DocumentsModule : IModule
 
         // Register module migration for tenant provisioning
         services.AddSingleton<IModuleMigration, DocumentsModuleMigration>();
+
+        // Access control
+        services.AddScoped<IDocumentAccessChecker, DocumentAccessChecker>();
+
+        // Archival service
+        services.AddScoped<IDocumentArchivalService, DocumentArchivalService>();
+
+        // Cross-module document service
+        services.AddScoped<IDocumentService, DocumentService>();
     }
 
     /// <inheritdoc />
@@ -52,12 +66,22 @@ public sealed class DocumentsModule : IModule
         module.MapDocumentEndpoints();
         module.MapDocumentVersionEndpoints();
         module.MapDocumentAccessEndpoints();
+        module.MapSignatureEndpoints();
+        module.MapTemplateEndpoints();
     }
 
     /// <inheritdoc />
     public void ConfigureJobs(IJobScheduler scheduler)
     {
-        // Signature expiry job will be registered when signature CQRS is implemented in Phase 2.
+        scheduler.AddOrUpdate<SignatureExpiryJob>(
+            "documents:signature-expiry",
+            "0 1 * * *", // Every day at 01:00 UTC
+            JobQueues.Default);
+
+        scheduler.AddOrUpdate<SignatureReminderJob>(
+            "documents:signature-reminder",
+            "0 8 * * *", // Every day at 08:00 UTC
+            JobQueues.Default);
     }
 
     /// <inheritdoc />

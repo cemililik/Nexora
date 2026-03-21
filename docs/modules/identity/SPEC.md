@@ -156,15 +156,15 @@ erDiagram
 title: Tenant Lifecycle
 ---
 stateDiagram-v2
-    [*] --> Provisioning: Register tenant
-    Provisioning --> Active: Schema + Realm created
-    Provisioning --> Failed: Provisioning error
+    [*] --> Trial: Register tenant
+    Trial --> Active: Activate (payment confirmed)
+    Trial --> Terminated: Cancel before activation
     Active --> Suspended: Admin suspends
-    Active --> Active: Update settings
+    Active --> Terminated: Admin terminates
+    Active --> Active: Update settings (no-op)
     Suspended --> Active: Admin reactivates
-    Suspended --> Archived: After retention period
-    Failed --> Provisioning: Retry
-    Archived --> [*]
+    Suspended --> Terminated: Admin terminates
+    Terminated --> [*]
 ```
 
 ```mermaid

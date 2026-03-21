@@ -1,0 +1,15 @@
+meta {
+  name: Send Signature Request
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/signatures/{{signatureRequestId}}/send
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
