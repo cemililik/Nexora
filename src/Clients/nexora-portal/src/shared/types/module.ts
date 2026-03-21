@@ -1,4 +1,4 @@
-import type { ComponentType, LazyExoticComponent } from 'react';
+import type { LazyExoticComponent, FC } from 'react';
 
 /** Portal module manifest for navigation and section registration. */
 export interface PortalModuleManifest {
@@ -29,7 +29,7 @@ export interface PortalSection {
   id: string;
   position: SectionPosition;
   order: number;
-  component: LazyExoticComponent<ComponentType>;
+  component: LazyExoticComponent<FC>;
   permissions: string[];
 }
 

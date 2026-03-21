@@ -24,5 +24,7 @@
   "lockey_common_profile_currency": "Currency",
   "lockey_common_powered_by": "Powered by Nexora",
   "lockey_common_try_again": "Try again",
-  "lockey_common_toggle_sidebar": "Toggle sidebar"
+  "lockey_common_toggle_sidebar": "Toggle sidebar",
+  "lockey_common_locale_en": "English",
+  "lockey_common_locale_tr": "Turkish"
 }

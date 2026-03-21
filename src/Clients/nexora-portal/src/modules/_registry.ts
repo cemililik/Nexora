@@ -1,17 +1,19 @@
 import type { PortalModuleManifest } from '@/shared/types/module';
 
 /**
- * Registry of all portal module manifests.
- * Add new module manifests here as they are implemented.
+ * Portal Module Registry
  *
- * Each module contributes:
- * - navigation: sidebar links
- * - permissions: required permissions to access the module
- * - sections: dashboard widgets and page builder slots
+ * Add module manifests here as portal modules are implemented.
+ * Each entry must implement PortalModuleManifest (src/shared/types/module.ts).
+ *
+ * Pattern:
+ * 1. Create: src/modules/{moduleName}/manifest.ts
+ * 2. Export: export const {moduleName}Manifest: PortalModuleManifest = { ... }
+ * 3. Register: import here and add to allPortalModules array
+ *
+ * See: docs/architecture/MODULE_SYSTEM.md Section 7 (Portal UI Integration)
  */
 export const allPortalModules: PortalModuleManifest[] = [
-  // Module manifests will be added here as portal modules are built.
-  // Example:
   // donationsManifest,
   // sponsorshipsManifest,
   // eventsManifest,

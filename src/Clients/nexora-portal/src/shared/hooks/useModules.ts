@@ -8,6 +8,8 @@ import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { allPortalModules } from '@/modules/_registry';
 import type { TenantModuleDto } from '@/shared/types/module';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const moduleKeys = {
   installed: (tenantId: string) =>
     ['identity', 'modules', tenantId] as const,
@@ -24,9 +26,9 @@ export function useModules() {
     queryKey: moduleKeys.installed(tenantId ?? ''),
     queryFn: () =>
       api.get<TenantModuleDto[]>(
-        `/identity/tenants/${tenantId}/modules`,
+        `/identity/tenants/${encodeURIComponent(tenantId!)}/modules`,
       ),
-    enabled: !!tenantId,
+    enabled: !!tenantId && UUID_REGEX.test(tenantId),
     staleTime: 5 * 60 * 1000, // Modules change rarely
   });
 
@@ -51,7 +53,7 @@ export function useModules() {
   return {
     activeModules,
     hasModule,
-    isLoading: query.isLoading,
+    isLoading: query.isPending,
     installedModuleNames,
   };
 }

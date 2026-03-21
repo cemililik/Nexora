@@ -25,7 +25,9 @@ describe('formatMoney', () => {
 
   it('should handle negative amounts', () => {
     const result = formatMoney({ amount: -50, currency: 'USD' });
-    expect(result).toBe('-$50.00');
+    // Normalize unicode minus (U+2212) to ASCII minus for cross-platform comparison
+    const normalized = result.replace(/\u2212/g, '-');
+    expect(normalized).toBe('-$50.00');
   });
 
   it('should pad to two decimal places', () => {

@@ -6,6 +6,7 @@ import { useModules } from '@/shared/hooks/useModules';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import type { SectionPosition } from '@/shared/types/module';
 
+import { ErrorBoundary } from '../feedback/ErrorBoundary';
 import { LoadingSkeleton } from '../feedback/LoadingSkeleton';
 
 interface SectionRendererProps {
@@ -20,6 +21,9 @@ interface SectionRendererProps {
  * This is the core of the page builder infrastructure: modules register
  * sections in their manifests, and this component composites them
  * into the correct page slots.
+ *
+ * Each section is wrapped in ErrorBoundary for isolation — a bug in one
+ * module's section does not break other modules' sections.
  */
 export function SectionRenderer({ position, className }: SectionRendererProps) {
   const { activeModules } = useModules();
@@ -41,12 +45,11 @@ export function SectionRenderer({ position, className }: SectionRendererProps) {
   return (
     <div className={className}>
       {sections.map((section) => (
-        <Suspense
-          key={section.id}
-          fallback={<LoadingSkeleton className="h-32" />}
-        >
-          <section.component />
-        </Suspense>
+        <ErrorBoundary key={section.id}>
+          <Suspense fallback={<LoadingSkeleton className="h-32" />}>
+            <section.component />
+          </Suspense>
+        </ErrorBoundary>
       ))}
     </div>
   );

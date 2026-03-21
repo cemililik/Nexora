@@ -39,11 +39,11 @@
   --color-ring: var(--ring);
   --color-brand-primary: var(--brand-primary);
   --color-brand-primary-foreground: var(--brand-primary-foreground);
-  --radius: var(--radius);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Dark mode: OS preference only (user-controlled toggle planned for Phase 2) */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;

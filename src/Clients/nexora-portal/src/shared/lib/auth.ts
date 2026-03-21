@@ -23,12 +23,25 @@ declare module '@auth/core/jwt' {
   }
 }
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `[nexora-portal] Missing required environment variable: ${name}. ` +
+      `Check .env.local and ensure all AUTH_* variables are set.`
+    );
+  }
+  return value;
+}
+
 const authConfig: NextAuthConfig = {
   providers: [
     KeycloakProvider({
-      clientId: process.env.AUTH_KEYCLOAK_ID!,
-      clientSecret: process.env.AUTH_KEYCLOAK_SECRET!,
-      issuer: process.env.AUTH_KEYCLOAK_ISSUER!,
+      // Use process.env directly for provider config — these are evaluated at
+      // module load time during build. requireEnv is used in callbacks (runtime only).
+      clientId: process.env.AUTH_KEYCLOAK_ID ?? '',
+      clientSecret: process.env.AUTH_KEYCLOAK_SECRET ?? '',
+      issuer: process.env.AUTH_KEYCLOAK_ISSUER ?? '',
     }),
   ],
   pages: {
@@ -46,19 +59,23 @@ const authConfig: NextAuthConfig = {
         const keycloakProfile = profile as Record<string, unknown> | undefined;
         token.tenantId = keycloakProfile?.tenant_id as string | undefined;
         token.organizationId = keycloakProfile?.organization_id as string | undefined;
-        token.permissions = (keycloakProfile?.permissions as string[]) ?? [];
+
+        const rawPerms = keycloakProfile?.permissions;
+        token.permissions = Array.isArray(rawPerms)
+          ? rawPerms.filter((p): p is string => typeof p === 'string')
+          : [];
       }
 
       // Token refresh: if expired, attempt refresh
       if (token.expiresAt && Date.now() / 1000 > token.expiresAt) {
         try {
-          const issuer = process.env.AUTH_KEYCLOAK_ISSUER!;
+          const issuer = requireEnv('AUTH_KEYCLOAK_ISSUER');
           const response = await fetch(`${issuer}/protocol/openid-connect/token`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
-              client_id: process.env.AUTH_KEYCLOAK_ID!,
-              client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
+              client_id: requireEnv('AUTH_KEYCLOAK_ID'),
+              client_secret: requireEnv('AUTH_KEYCLOAK_SECRET'),
               grant_type: 'refresh_token',
               refresh_token: token.refreshToken ?? '',
             }),

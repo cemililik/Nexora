@@ -21,7 +21,7 @@ export function useOrganization() {
     queryKey: organizationKeys.detail(organizationId ?? ''),
     queryFn: () =>
       api.get<OrganizationBranding>(
-        `/identity/organizations/${organizationId}`,
+        `/identity/organizations/${encodeURIComponent(organizationId!)}`,
       ),
     enabled: !!organizationId,
     staleTime: 5 * 60 * 1000, // 5 minutes — branding changes rarely
@@ -29,6 +29,6 @@ export function useOrganization() {
 
   return {
     organization: query.data ?? null,
-    isLoading: query.isLoading,
+    isLoading: query.isPending,
   };
 }

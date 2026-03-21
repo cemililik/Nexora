@@ -61,6 +61,18 @@ describe('RequireAuth', () => {
     expect(mockReplace).toHaveBeenCalledWith('/auth/login');
   });
 
+  it('should not render children when unauthenticated', () => {
+    mockUseSession.mockReturnValue({ status: 'unauthenticated' });
+
+    render(
+      <RequireAuth>
+        <div data-testid="protected">Protected Content</div>
+      </RequireAuth>,
+    );
+
+    expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
+  });
+
   it('should render custom fallback when loading', () => {
     mockUseSession.mockReturnValue({ status: 'loading' });
 

@@ -13,6 +13,7 @@ import { routing } from '@/i18n/routing';
 
 export function Topbar() {
   const t = useTranslations();
+  const currentLocale = useLocale();
   const user = useAuthStore((s) => s.user);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
@@ -51,7 +52,7 @@ export function Topbar() {
             </Link>
 
             <button
-              onClick={() => signOut({ callbackUrl: '/' })}
+              onClick={() => signOut({ callbackUrl: `/${currentLocale}/auth/login` })}
               className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label={t('lockey_common_logout')}
             >
@@ -70,11 +71,6 @@ function LanguageSwitcher() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const localeLabels: Record<string, string> = {
-    en: 'English',
-    tr: 'Türkçe',
-  };
-
   return (
     <div className="relative">
       <select
@@ -87,7 +83,7 @@ function LanguageSwitcher() {
       >
         {routing.locales.map((locale) => (
           <option key={locale} value={locale}>
-            {localeLabels[locale] ?? locale}
+            {t(`lockey_common_locale_${locale}`)}
           </option>
         ))}
       </select>

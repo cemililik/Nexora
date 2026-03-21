@@ -11,6 +11,7 @@ import {
   HandCoins,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useMemo } from 'react';
 
 import { Link, usePathname } from '@/i18n/navigation';
 import { cn } from '@/shared/lib/utils';
@@ -40,13 +41,16 @@ export function Sidebar() {
   const { activeModules } = useModules();
   const { hasPermission } = usePermissions();
 
-  const allNavItems: PortalNavigationItem[] = [
-    { label: 'lockey_nav_dashboard', path: '/dashboard', icon: 'Home' },
-    ...activeModules.flatMap((m) => {
-      const canAccessModule = m.permissions.some((p) => hasPermission(p));
-      return canAccessModule ? m.navigation : [];
-    }),
-  ];
+  const allNavItems = useMemo<PortalNavigationItem[]>(
+    () => [
+      { label: 'lockey_nav_dashboard', path: '/dashboard', icon: 'Home' },
+      ...activeModules.flatMap((m) => {
+        const canAccessModule = m.permissions.some((p) => hasPermission(p));
+        return canAccessModule ? m.navigation : [];
+      }),
+    ],
+    [activeModules, hasPermission],
+  );
 
   return (
     <aside

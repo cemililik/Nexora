@@ -1,4 +1,6 @@
 'use client';
+// Required: useAuthStore (Zustand), useOrganization, useCurrency, and SectionRenderer need client context.
+// TODO: Refactor to pass user data from server layout when auth sync is removed.
 
 import { useTranslations } from 'next-intl';
 

@@ -26,7 +26,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
       <Topbar />
       <main
         className={cn(
-          'min-h-[calc(100vh-8rem)] p-6 pt-22 transition-all duration-300',
+          'min-h-[calc(100vh-8rem)] p-6 pt-20 transition-all duration-300',
           sidebarOpen ? 'ml-64' : 'ml-16',
         )}
       >

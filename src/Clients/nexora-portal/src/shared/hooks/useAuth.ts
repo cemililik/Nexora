@@ -2,6 +2,7 @@
 
 import { signOut, useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 import { api, setAuthToken } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
@@ -42,6 +43,7 @@ export function useAuth() {
           .catch(() => {
             setFetchFailed(true);
             clearSession();
+            toast.error('lockey_error_session_expired');
           });
       }
     } else if (status === 'unauthenticated') {

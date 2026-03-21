@@ -50,7 +50,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    console.error('[ErrorBoundary] Render error caught', { error, errorInfo });
+    // TODO Phase 2: Report to observability service (OpenTelemetry)
   }
 
   render(): ReactNode {

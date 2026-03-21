@@ -8,10 +8,17 @@ interface BrandingProviderProps {
   children: ReactNode;
 }
 
+const ALLOWED_IMAGE_HOSTNAMES = (process.env.NEXT_PUBLIC_ALLOWED_IMAGE_HOSTNAMES ?? 'cdn.nexora.io')
+  .split(',')
+  .map((h) => h.trim());
+
 function isSafeUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.protocol === 'https:';
+    if (parsed.protocol !== 'https:') return false;
+    return ALLOWED_IMAGE_HOSTNAMES.some(
+      (allowed) => parsed.hostname === allowed || parsed.hostname.endsWith(`.${allowed}`),
+    );
   } catch {
     return false;
   }

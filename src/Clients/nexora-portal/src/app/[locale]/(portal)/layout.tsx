@@ -21,7 +21,7 @@ export default async function PortalRouteLayout({
   const session = await auth();
   const { locale } = await params;
 
-  if (!session) {
+  if (!session || session.error === 'RefreshAccessTokenError') {
     redirect({ href: '/auth/login', locale });
   }
 

@@ -16,7 +16,9 @@ function createApiClient(): AxiosInstance {
     (response) => response,
     (error: AxiosError) => {
       if (error.response?.status === 401 && typeof window !== 'undefined') {
-        window.location.href = '/auth/login';
+        const pathSegments = window.location.pathname.split('/');
+        const currentLocale = ['en', 'tr'].includes(pathSegments[1]) ? pathSegments[1] : 'en';
+        window.location.href = `/${currentLocale}/auth/login`;
       }
       return Promise.reject(error);
     },
@@ -39,11 +41,18 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
+function unwrapEnvelope<T>(data: ApiEnvelope<T>, url: string): T {
+  if (data.data === undefined) {
+    throw new Error(`[api] Response envelope missing 'data' field for: ${url}`);
+  }
+  return data.data;
+}
+
 /** Typed API helpers that unwrap ApiEnvelope automatically. */
 export const api = {
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
     const response = await apiClient.get<ApiEnvelope<T>>(url, { params });
-    return response.data.data as T;
+    return unwrapEnvelope(response.data, url);
   },
 
   async post<T>(
@@ -52,12 +61,12 @@ export const api = {
     config?: AxiosRequestConfig,
   ): Promise<T> {
     const response = await apiClient.post<ApiEnvelope<T>>(url, data, config);
-    return response.data.data as T;
+    return unwrapEnvelope(response.data, url);
   },
 
   async put<T>(url: string, data?: unknown): Promise<T> {
     const response = await apiClient.put<ApiEnvelope<T>>(url, data);
-    return response.data.data as T;
+    return unwrapEnvelope(response.data, url);
   },
 
   async delete(url: string): Promise<void> {

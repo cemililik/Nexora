@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { lazy } from 'react';
+import { lazy, type FC } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SectionRenderer } from './SectionRenderer';
@@ -17,14 +17,18 @@ vi.mock('@/shared/hooks/usePermissions', () => ({
   usePermissions: () => ({ hasPermission: mockHasPermission }),
 }));
 
+// Mock ErrorBoundary to pass-through
+vi.mock('@/shared/components/feedback/ErrorBoundary', () => ({
+  ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 function createTestComponent(text: string) {
   return lazy(
-    () =>
-      new Promise((resolve) => {
-        resolve({
-          default: () => <div>{text}</div>,
-        } as never);
-      }),
+    async () => ({
+      default: function TestComponent() {
+        return <div>{text}</div>;
+      } as FC,
+    }),
   );
 }
 

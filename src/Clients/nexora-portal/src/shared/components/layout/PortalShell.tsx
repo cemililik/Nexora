@@ -11,12 +11,14 @@ interface PortalShellProps {
 }
 
 /**
- * Client component wrapper that initializes auth sync (session → Zustand)
+ * Client component wrapper that initializes auth sync (session -> Zustand)
  * and renders the portal layout. Separated from the server layout
- * to preserve SSR benefits.
+ * to preserve SSR benefits for page content passed as children.
  */
 export function PortalShell({ children }: PortalShellProps) {
   useAuth();
 
   return <PortalLayout>{children}</PortalLayout>;
 }
+
+PortalShell.displayName = 'PortalShell';

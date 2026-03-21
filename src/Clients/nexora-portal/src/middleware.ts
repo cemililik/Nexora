@@ -12,6 +12,14 @@ function isPublicPath(pathname: string): boolean {
   return publicPaths.some((p) => pathname.includes(p));
 }
 
+function extractLocale(pathname: string): string {
+  const segments = pathname.split('/');
+  const potentialLocale = segments[1];
+  return routing.locales.includes(potentialLocale as 'en' | 'tr')
+    ? potentialLocale
+    : routing.defaultLocale;
+}
+
 export default auth((req) => {
   const isAuth = !!req.auth;
   const { pathname } = req.nextUrl;
@@ -23,7 +31,7 @@ export default auth((req) => {
 
   // Redirect unauthenticated users to login
   if (!isAuth) {
-    const locale = pathname.split('/')[1] || 'en';
+    const locale = extractLocale(pathname);
     const loginUrl = new URL(`/${locale}/auth/login`, req.url);
     return NextResponse.redirect(loginUrl);
   }
