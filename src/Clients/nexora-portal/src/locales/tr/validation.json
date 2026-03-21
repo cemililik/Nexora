@@ -1,0 +1,7 @@
+{
+  "lockey_validation_required": "{field} zorunludur.",
+  "lockey_validation_email_invalid": "Lütfen geçerli bir e-posta adresi girin.",
+  "lockey_validation_min_length": "{field} en az {min} karakter olmalıdır.",
+  "lockey_validation_max_length": "{field} en fazla {max} karakter olmalıdır.",
+  "lockey_validation_failed": "Lütfen aşağıdaki hataları düzeltin."
+}

@@ -128,6 +128,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Cross-module contracts**: IDocumentService (GenerateFromTemplateAsync, GetDocumentsByEntityAsync), DocumentSummary, GenerateFromTemplateRequest/Result in SharedKernel
 - **Tests after Phase 1.4-P2**: 1186 tests passing (Contacts: 394, Notifications: 239, Documents: 281, Identity: 162, SharedKernel: 64, Architecture: 62, Infrastructure: 48)
 - **Translation Resolution (Phase 1.3 completion)**: ILocalizationService interface (SharedKernel — GetAsync, GetManyAsync, GetByModuleAsync, GetAllAsync), LocalizationResource entity (public schema — language_code, key, value, module), LocalizationOverride entity (public schema — tenant-specific overrides), LocalizationDbContext (public schema, unique indexes), DatabaseLocalizationService (DB queries + ICacheService L1=5min/L2=30min, tenant override merge), LocalizationEndpoints (GET /api/v1/localization/{lang} with module filter, GET /api/v1/localization/{lang}/{key} — AllowAnonymous), DI registration in InfrastructureServiceRegistration, 15 unit tests (base resolution, tenant overrides, module filtering, language normalization, empty/missing key handling)
+- **Portal Framework (Phase 1.5)**: Next.js 16 portal application (nexora-portal) with complete infrastructure — NextAuth.js v5 + Keycloak OIDC authentication (httpOnly cookie, JWT token refresh, tenant_id/permissions extraction), next-intl locale-based routing (en/tr with runtime language switching), TanStack Query v5 + Zustand state management, Axios API client with ApiEnvelope<T> unwrapping and 401 redirect, module manifest registry with useModules() hook and RequirePermission guard, tenant-specific branding (BrandingProvider with CSS custom properties, TenantLogo with fallback initials), multi-currency display (Intl.NumberFormat-based formatMoney + useCurrency hook), page builder section infrastructure (SectionRenderer compositing module-contributed widgets by position/order/permission), responsive PortalLayout (Sidebar with module-aware navigation, Topbar with language switcher and user menu, Footer), RTL support (direction-aware root layout), ErrorBoundary, LoadingSkeleton, 15 frontend tests (currency formatting + auth store), TypeScript strict mode with zero build errors
 
 ---
 
@@ -202,12 +203,12 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Bruno API collection (14 new requests — Storage: 3, Signatures: 7, Templates: 4)
 
 ### 1.5 Portal Framework
-- [ ] Portal authentication (separate from admin auth)
-- [ ] Portal page builder infrastructure
-- [ ] Tenant-specific branding (logo, colors, domain)
-- [ ] Multi-language support (runtime language switching)
-- [ ] Multi-currency display
-- [ ] Module-aware navigation (only show installed module pages)
+- [x] Portal authentication (separate from admin auth)
+- [x] Portal page builder infrastructure
+- [x] Tenant-specific branding (logo, colors, domain)
+- [x] Multi-language support (runtime language switching)
+- [x] Multi-currency display
+- [x] Module-aware navigation (only show installed module pages)
 
 ### 1.6 Reporting Engine
 - [ ] Report definition (SQL-based + LINQ-based)
