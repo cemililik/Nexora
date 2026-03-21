@@ -54,7 +54,23 @@ Before writing ANY code or documentation, you MUST read and strictly follow:
    - **NEVER** log secrets, passwords, tokens, or PII
    - **NEVER** use `catch(Exception)` in module code — only in GlobalExceptionHandler and NexoraJob
 
-6. **Module System**: `docs/architecture/MODULE_SYSTEM.md`
+6. **Frontend Standards**: `docs/standards/FRONTEND_STANDARDS.md`
+   - TypeScript strict, functional components, no `any`
+   - State: TanStack Query (server) + Zustand (client) + React Hook Form (forms)
+   - Styling: Tailwind CSS 4 + shadcn/ui, `cn()` utility
+   - Testing: Vitest + React Testing Library
+   - API integration patterns and query key conventions
+   - Module manifest structure for dynamic UI loading
+
+7. **API Integration Guide**: `docs/guides/API_INTEGRATION_GUIDE.md`
+   - ApiEnvelope<T> response format and TypeScript types
+   - Pagination with PagedResult<T>
+   - Error handling (status codes → user actions)
+   - TanStack Query patterns (query keys, hooks, cache invalidation)
+   - Authentication flow (Keycloak JWT)
+   - File upload (presigned URL pattern)
+
+8. **Module System**: `docs/architecture/MODULE_SYSTEM.md`
    - Modules are true plugins — installable/removable per tenant at runtime
    - Every module implements `IModule` interface
    - Modules declare their dependencies explicitly
@@ -77,6 +93,24 @@ src/
 └── Clients/
     ├── nexora-admin/               # React 19 admin dashboard
     └── nexora-portal/              # Next.js 16 public portal
+```
+
+## Frontend Module Structure
+```
+nexora-admin/src/                   # (same pattern for nexora-portal)
+├── app/                            # Application shell, providers, router
+├── modules/                        # Feature modules (mirrors backend modules)
+│   ├── identity/                   # components/, hooks/, pages/, types/, manifest.ts
+│   ├── contacts/
+│   ├── notifications/
+│   └── documents/
+├── shared/                         # Shared across all modules
+│   ├── components/ui/              # shadcn/ui primitives
+│   ├── hooks/                      # useAuth, usePermissions, usePagination
+│   ├── lib/                        # api client, i18n config, utils
+│   └── types/                      # ApiEnvelope, PagedResult, auth types
+├── layouts/                        # AppLayout, Sidebar, Topbar
+└── locales/{en,tr}/                # Translation files per module
 ```
 
 ## Module Architecture (Clean Architecture per module)
@@ -183,13 +217,57 @@ Nexora.Modules.{ModuleName}/
 - Never use `catch(Exception)` in module code
 
 ## When Writing Frontend Code
+**Full spec**: `docs/standards/FRONTEND_STANDARDS.md`
+**API guide**: `docs/guides/API_INTEGRATION_GUIDE.md`
+
+### General Rules
+- TypeScript strict mode — **NEVER** use `any`
+- Functional components only — no class components
 - **NEVER** write raw text in JSX — always use translation function:
   - React: `const { t } = useTranslation('module'); ... {t('lockey_module_label')}`
   - Next.js: `const t = useTranslations('module'); ... {t('lockey_module_label')}`
 - Translation files organized per module: `locales/{lang}/{module}.json`
 - All `lockey_` keys must exist in both `en` and `tr` translation files minimum
-- Support RTL for Arabic (use Tailwind RTL utilities)
-- Module UI loaded dynamically — use lazy imports and module manifests
+
+### State Management
+- **Server state**: TanStack Query v5 — `useQuery` for reads, `useMutation` for writes
+- **Client state**: Zustand — minimal stores (auth, theme, sidebar only)
+- **Form state**: React Hook Form + Zod validation
+- **URL state**: query params for search, filters, pagination
+- **NEVER**: Redux, Context for frequently changing data, direct fetch/useEffect for API calls
+
+### Styling
+- Tailwind CSS 4 utility-first + shadcn/ui components
+- Use `cn()` utility for conditional classes (clsx + tailwind-merge)
+- RTL support for Arabic: Tailwind `rtl:` prefix utilities
+- **NEVER**: inline `style={}`, CSS modules, styled-components
+
+### API Integration
+- Use custom hooks per resource: `useContacts()`, `useCreateContact()`
+- API responses are `ApiEnvelope<T>` — always unwrap `data` field
+- Error messages are `lockey_` keys — resolve with `t(key, meta)`
+- Validation errors: set field-level errors on form via `setError()`
+- Show success/error toasts with translated messages
+- Invalidate queries after mutations
+
+### Module System
+- Each module exposes a `ModuleManifest` (routes, navigation, permissions)
+- Module UI loaded dynamically — use `lazy()` imports
+- Check installed modules before rendering: `useInstalledModules()`
+- Permission guard: `hasPermission('module.resource.action')`
+
+### Component Conventions
+- Component files: `PascalCase.tsx` (e.g., `ContactList.tsx`)
+- Hooks: `use{Name}.ts` (e.g., `useContacts.ts`)
+- Props interface: `{ComponentName}Props` in same file
+- Shared components: named export; page components: default export
+- Tests co-located: `ContactList.test.tsx` next to `ContactList.tsx`
+
+### Security
+- **NEVER** use `dangerouslySetInnerHTML` (XSS risk)
+- **NEVER** store tokens in `localStorage` — use httpOnly cookies or secure memory
+- UI permission checks are for UX only — backend enforces authorization
+- All `VITE_` and `NEXT_PUBLIC_` env vars are public — never put secrets there
 
 ## When Writing Documentation
 - Always use Mermaid for diagrams — embedded inline in markdown

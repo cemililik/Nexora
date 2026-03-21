@@ -1,5 +1,6 @@
 using Hangfire;
 using Nexora.Host;
+using Nexora.Host.Endpoints;
 using Nexora.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Serilog;
@@ -49,6 +50,9 @@ try
 
     // Health check
     app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
+    // Platform endpoints (localization — not module-scoped)
+    app.MapLocalizationEndpoints();
 
     // Module endpoints
     app.MapNexoraModuleEndpoints();
