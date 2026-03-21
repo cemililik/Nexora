@@ -108,10 +108,10 @@ public sealed class GrantDocumentAccessTests : IDisposable
 
     public void Dispose() => _dbContext.Dispose();
 
-    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
+    private ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
     {
         var accessor = new TenantContextAccessor();
-        accessor.SetTenant(tenantId.ToString(), orgId.ToString());
+        accessor.SetTenant(tenantId.ToString(), orgId.ToString(), _userId.ToString());
         return accessor;
     }
 }

@@ -14,6 +14,7 @@ public sealed class CreateFolderTests : IDisposable
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public CreateFolderTests()
     {
@@ -162,10 +163,10 @@ public sealed class CreateFolderTests : IDisposable
 
     public void Dispose() => _dbContext.Dispose();
 
-    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
+    private ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
     {
         var accessor = new TenantContextAccessor();
-        accessor.SetTenant(tenantId.ToString(), orgId.ToString());
+        accessor.SetTenant(tenantId.ToString(), orgId.ToString(), _userId.ToString());
         return accessor;
     }
 }

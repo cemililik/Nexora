@@ -22,7 +22,7 @@ public sealed class DocumentSignedDomainEventHandler(
             .FirstOrDefaultAsync(r => r.Id == notification.RequestId, cancellationToken);
 
         var recipient = await dbContext.SignatureRecipients
-            .FirstOrDefaultAsync(r => r.Id == notification.RecipientId, cancellationToken);
+            .FirstOrDefaultAsync(r => r.Id == notification.RecipientId && r.RequestId == notification.RequestId, cancellationToken);
 
         if (request is null)
         {

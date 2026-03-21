@@ -38,7 +38,8 @@ public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
             TenantId = tenantId,
             Name = name,
             Description = description,
-            IsSystemRole = isSystem
+            IsSystemRole = isSystem,
+            IsActive = true
         };
     }
 
