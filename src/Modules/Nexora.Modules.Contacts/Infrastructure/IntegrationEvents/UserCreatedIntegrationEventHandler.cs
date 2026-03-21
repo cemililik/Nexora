@@ -15,6 +15,9 @@ public sealed class UserCreatedIntegrationEventHandler(
     ContactsDbContext dbContext,
     ILogger<UserCreatedIntegrationEventHandler> logger) : IIntegrationEventHandler<UserCreatedIntegrationEvent>
 {
+    /// <summary>
+    /// Handles a <see cref="UserCreatedIntegrationEvent"/> by auto-creating a contact record for the new user.
+    /// </summary>
     public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationToken ct)
     {
         if (!Guid.TryParse(@event.TenantId, out var tenantId))
@@ -32,8 +35,8 @@ public sealed class UserCreatedIntegrationEventHandler(
         if (existingContact is not null)
         {
             logger.LogDebug(
-                "Contact already exists for email {Email} in tenant {TenantId}, skipping auto-create",
-                @event.Email, tenantId);
+                "Contact already exists for user {UserId} in tenant {TenantId}, skipping auto-create",
+                @event.UserId, tenantId);
             return;
         }
 

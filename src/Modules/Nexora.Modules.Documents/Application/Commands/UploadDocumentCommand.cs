@@ -90,10 +90,15 @@ public sealed class UploadDocumentHandler(
                 LocalizedMessage.Of("lockey_documents_error_folder_not_found"));
         }
 
-        var uploadedByUserId = tenantContextAccessor.Current.UserId is { } uid && Guid.TryParse(uid, out var parsedUid)
-            ? parsedUid : orgId; // Fallback to orgId if user context unavailable
+        if (tenantContextAccessor.Current.UserId is not { } uid || !Guid.TryParse(uid, out var parsedUid))
+        {
+            logger.LogWarning("UserId missing or invalid in tenant context for document upload in tenant {TenantId}", tenantId);
+            return Result<DocumentDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_missing_user_context"));
+        }
+
         var document = Document.Create(
-            tenantId, orgId, folderId, uploadedByUserId,
+            tenantId, orgId, folderId, parsedUid,
             request.Name, request.MimeType, request.FileSize, request.StorageKey,
             request.Description, request.LinkedEntityId, request.LinkedEntityType, request.Tags);
 

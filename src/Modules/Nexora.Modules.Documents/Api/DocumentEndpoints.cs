@@ -52,7 +52,7 @@ public static class DocumentEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    $"/api/v1/documents/documents/{result.Value!.Id}",
+                    $"/api/v1/documents/{result.Value!.Id}",
                     ApiEnvelope<DocumentDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<DocumentDto>.Fail(result.Error!));
         });
@@ -61,9 +61,14 @@ public static class DocumentEndpoints
         {
             var command = new UpdateDocumentMetadataCommand(id, request.Name, request.Description, request.Tags);
             var result = await sender.Send(command, ct);
-            return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<DocumentDto>.Success(result.Value!, result.Message))
-                : MapDocumentError(result.Error!);
+            if (result.IsSuccess)
+                return Results.Ok(ApiEnvelope<DocumentDto>.Success(result.Value!, result.Message));
+
+            return result.Error!.Message.Key switch
+            {
+                "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<DocumentDto>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<DocumentDto>.Fail(result.Error))
+            };
         });
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
@@ -72,7 +77,12 @@ public static class DocumentEndpoints
             if (result.IsSuccess)
                 return Results.NoContent();
 
-            return MapDocumentError(result.Error!);
+            return result.Error!.Message.Key switch
+            {
+                "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
+                "lockey_documents_error_already_archived" => Results.Conflict(ApiEnvelope<object>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
+            };
         });
 
         group.MapPost("/{id:guid}/restore", async (Guid id, ISender sender, CancellationToken ct) =>
@@ -81,7 +91,12 @@ public static class DocumentEndpoints
             if (result.IsSuccess)
                 return Results.Ok(ApiEnvelope<object>.Success(new { }, result.Message));
 
-            return MapDocumentError(result.Error!);
+            return result.Error!.Message.Key switch
+            {
+                "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
+                "lockey_documents_error_only_archived_can_restore" => Results.Conflict(ApiEnvelope<object>.Fail(result.Error)),
+                _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
+            };
         });
 
         group.MapPost("/{id:guid}/move", async (Guid id, MoveDocumentRequest request, ISender sender, CancellationToken ct) =>
@@ -110,14 +125,6 @@ public static class DocumentEndpoints
         });
     }
 
-    private static IResult MapDocumentError(Error error)
-    {
-        return error.Message.Key switch
-        {
-            "lockey_documents_error_document_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(error)),
-            _ => Results.BadRequest(ApiEnvelope<object>.Fail(error))
-        };
-    }
 }
 
 /// <summary>Request body for updating document metadata.</summary>

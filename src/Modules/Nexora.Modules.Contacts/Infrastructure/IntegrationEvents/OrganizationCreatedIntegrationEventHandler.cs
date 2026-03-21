@@ -25,6 +25,9 @@ public sealed class OrganizationCreatedIntegrationEventHandler(
         ("Vendor", TagCategory.Vendor, "#6b7280")
     ];
 
+    /// <summary>
+    /// Handles an <see cref="OrganizationCreatedIntegrationEvent"/> by creating default tags for the new tenant.
+    /// </summary>
     public async Task HandleAsync(OrganizationCreatedIntegrationEvent @event, CancellationToken ct)
     {
         if (!Guid.TryParse(@event.TenantId, out var tenantId))
@@ -45,12 +48,8 @@ public sealed class OrganizationCreatedIntegrationEventHandler(
             return;
         }
 
-        foreach (var (name, category, color) in DefaultTags)
-        {
-            var tag = Tag.Create(tenantId, name, category, color);
-            await dbContext.Tags.AddAsync(tag, ct);
-        }
-
+        var tags = DefaultTags.Select(t => Tag.Create(tenantId, t.Name, t.Category, t.Color)).ToList();
+        await dbContext.Tags.AddRangeAsync(tags, ct);
         await dbContext.SaveChangesAsync(ct);
 
         logger.LogInformation(

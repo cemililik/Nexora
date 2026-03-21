@@ -74,10 +74,15 @@ public sealed class CreateFolderHandler(
             parentFolderId = parentId;
         }
 
-        var userId = tenantContextAccessor.Current.UserId is { } uid && Guid.TryParse(uid, out var parsedUid)
-            ? parsedUid : orgId; // Fallback to orgId if user context unavailable
+        if (tenantContextAccessor.Current.UserId is not { } uid || !Guid.TryParse(uid, out var parsedUid))
+        {
+            logger.LogWarning("UserId missing or invalid in tenant context for folder creation in tenant {TenantId}", tenantId);
+            return Result<FolderDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_missing_user_context"));
+        }
+
         var folder = Folder.Create(
-            tenantId, orgId, request.Name, userId,
+            tenantId, orgId, request.Name, parsedUid,
             parentPath, parentFolderId,
             request.ModuleName, request.ModuleRef, request.IsSystem);
 

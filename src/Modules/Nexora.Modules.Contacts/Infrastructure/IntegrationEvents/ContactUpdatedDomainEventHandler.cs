@@ -12,11 +12,22 @@ public sealed class ContactUpdatedDomainEventHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ContactUpdatedDomainEventHandler> logger) : INotificationHandler<ContactUpdatedEvent>
 {
+    /// <summary>
+    /// Handles a <see cref="ContactUpdatedEvent"/> by publishing a <see cref="ContactUpdatedIntegrationEvent"/> to the event bus.
+    /// </summary>
     public async Task Handle(ContactUpdatedEvent notification, CancellationToken cancellationToken)
     {
+        var tenantContext = tenantContextAccessor.TryGetCurrent();
+        if (tenantContext is null)
+        {
+            logger.LogWarning("Tenant context unavailable when handling ContactUpdatedEvent for contact {ContactId}",
+                notification.ContactId.Value);
+            return;
+        }
+
         var integrationEvent = new ContactUpdatedIntegrationEvent
         {
-            TenantId = tenantContextAccessor.Current.TenantId,
+            TenantId = tenantContext.TenantId,
             ContactId = notification.ContactId.Value
         };
 

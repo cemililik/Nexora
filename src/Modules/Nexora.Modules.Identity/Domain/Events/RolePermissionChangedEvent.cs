@@ -11,4 +11,4 @@ public enum PermissionAction
 }
 
 /// <summary>Raised when role permissions are changed.</summary>
-public sealed record RolePermissionChangedEvent(RoleId RoleId, PermissionAction Action) : DomainEventBase;
+public sealed record RolePermissionChangedEvent(RoleId RoleId, PermissionId PermissionId, PermissionAction Action) : DomainEventBase;

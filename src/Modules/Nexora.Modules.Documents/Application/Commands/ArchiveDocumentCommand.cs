@@ -47,6 +47,12 @@ public sealed class ArchiveDocumentHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
 
+        if (document.Status is DocumentStatus.Archived)
+        {
+            logger.LogWarning("Document {DocumentId} is already archived, cannot archive again", request.DocumentId);
+            return Result.Failure(LocalizedMessage.Of("lockey_documents_error_already_archived"));
+        }
+
         document.Archive();
         await dbContext.SaveChangesAsync(cancellationToken);
 

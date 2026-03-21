@@ -15,6 +15,7 @@ public sealed class GrantDocumentAccessTests : IDisposable
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public GrantDocumentAccessTests()
     {
@@ -29,9 +30,9 @@ public sealed class GrantDocumentAccessTests : IDisposable
 
     private async Task<Guid> SeedDocumentAsync()
     {
-        var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _orgId);
+        var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _userId);
         await _dbContext.Folders.AddAsync(folder);
-        var document = Document.Create(_tenantId, _orgId, folder.Id, _orgId,
+        var document = Document.Create(_tenantId, _orgId, folder.Id, _userId,
             "test.pdf", "application/pdf", 1024, "key");
         await _dbContext.Documents.AddAsync(document);
         await _dbContext.SaveChangesAsync();
@@ -107,10 +108,10 @@ public sealed class GrantDocumentAccessTests : IDisposable
 
     public void Dispose() => _dbContext.Dispose();
 
-    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
+    private ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
     {
         var accessor = new TenantContextAccessor();
-        accessor.SetTenant(tenantId.ToString(), orgId.ToString());
+        accessor.SetTenant(tenantId.ToString(), orgId.ToString(), _userId.ToString());
         return accessor;
     }
 }
