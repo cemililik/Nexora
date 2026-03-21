@@ -35,8 +35,5 @@ public sealed class NotificationBouncedDomainEventHandler(
         };
 
         await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
-
-        logger.LogDebug("NotificationBounced context — NotificationId: {NotificationId}, ContactId: {ContactId}",
-            notification.NotificationId.Value, notification.ContactId);
     }
 }

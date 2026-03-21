@@ -38,8 +38,5 @@ public sealed class NotificationSentDomainEventHandler(
         };
 
         await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
-
-        logger.LogDebug("NotificationSent context — NotificationId: {NotificationId}, Channel: {Channel}, RecipientCount: {RecipientCount}",
-            notification.NotificationId.Value, notification.Channel, notification.RecipientCount);
     }
 }

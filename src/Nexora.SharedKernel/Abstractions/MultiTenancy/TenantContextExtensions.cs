@@ -23,6 +23,8 @@ public static class TenantContextExtensions
     /// </summary>
     public static ITenantContext? TryGetCurrent(this ITenantContextAccessor accessor)
     {
+        if (accessor is null) return null;
+
         try
         {
             return accessor.Current;

@@ -35,8 +35,5 @@ public sealed class NotificationDeliveredDomainEventHandler(
         };
 
         await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
-
-        logger.LogDebug("NotificationDelivered context — NotificationId: {NotificationId}, RecipientId: {RecipientId}, ContactId: {ContactId}",
-            notification.NotificationId.Value, notification.RecipientId.Value, notification.ContactId);
     }
 }

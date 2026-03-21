@@ -1,6 +1,7 @@
 using Nexora.Modules.Identity.Domain.Events;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
@@ -48,38 +49,69 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
         return tenant;
     }
 
-    /// <summary>Activates the tenant. No-op if already active.</summary>
+    /// <summary>
+    /// Activates the tenant. No-op if already active.
+    /// Only Trial and Suspended tenants can be activated.
+    /// </summary>
     public void Activate()
     {
         if (Status == TenantStatus.Active) return;
+
+        if (Status is not (TenantStatus.Trial or TenantStatus.Suspended))
+            throw new DomainException("lockey_identity_error_invalid_tenant_transition");
+
         Status = TenantStatus.Active;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Active));
     }
 
-    /// <summary>Suspends the tenant. No-op if already suspended.</summary>
+    /// <summary>
+    /// Suspends the tenant. No-op if already suspended.
+    /// Only Active tenants can be suspended.
+    /// </summary>
     public void Suspend()
     {
         if (Status == TenantStatus.Suspended) return;
+
+        if (Status is not TenantStatus.Active)
+            throw new DomainException("lockey_identity_error_invalid_tenant_transition");
+
         Status = TenantStatus.Suspended;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Suspended));
     }
 
-    /// <summary>Terminates the tenant. No-op if already terminated.</summary>
+    /// <summary>
+    /// Terminates the tenant. No-op if already terminated.
+    /// Any non-terminated tenant can be terminated.
+    /// </summary>
     public void Terminate()
     {
         if (Status == TenantStatus.Terminated) return;
         Status = TenantStatus.Terminated;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Terminated));
     }
+
     /// <summary>Sets the Keycloak realm identifier for this tenant.</summary>
-    public void SetRealmId(string realmId) => RealmId = realmId;
+    public void SetRealmId(string realmId)
+    {
+        if (string.IsNullOrWhiteSpace(realmId))
+            throw new DomainException("lockey_identity_error_realm_id_required");
+
+        RealmId = realmId.Trim();
+    }
 }
 
 /// <summary>Represents the lifecycle status of a tenant.</summary>
 public enum TenantStatus
 {
+    /// <summary>Limited-time onboarding period before full activation.</summary>
     Trial,
+
+    /// <summary>Fully provisioned and allowed access.</summary>
     Active,
+
+    /// <summary>Access temporarily revoked; can be reactivated.</summary>
     Suspended,
+
+    /// <summary>Account permanently closed; terminal state.</summary>
     Terminated
 }
