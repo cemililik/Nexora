@@ -29,8 +29,7 @@ public sealed class GetFoldersHandler(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
 
         var query = dbContext.Folders
-            .Where(f => f.TenantId == tenantId)
-            .AsQueryable();
+            .Where(f => f.TenantId == tenantId);
 
         if (request.ParentFolderId.HasValue)
         {

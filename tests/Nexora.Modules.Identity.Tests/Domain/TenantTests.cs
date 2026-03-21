@@ -6,7 +6,7 @@ namespace Nexora.Modules.Identity.Tests.Domain;
 public sealed class TenantTests
 {
     [Fact]
-    public void Create_ShouldSetProperties()
+    public void Create_ValidTenant_SetsProperties()
     {
         var tenant = Tenant.Create("Acme Corp", "acme-corp");
 
@@ -18,7 +18,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Create_ShouldRaiseDomainEvent()
+    public void Create_ValidTenant_RaisesDomainEvent()
     {
         var tenant = Tenant.Create("Acme Corp", "acme-corp");
 
@@ -27,7 +27,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Create_ShouldNormalizeSlug()
+    public void Create_UppercaseSlug_NormalizesSlug()
     {
         var tenant = Tenant.Create("Test", "UPPER-SLUG");
 
@@ -35,7 +35,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Activate_ShouldChangeStatus()
+    public void Activate_TrialTenant_ChangesStatus()
     {
         var tenant = Tenant.Create("Test", "test");
 
@@ -45,7 +45,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Activate_ShouldRaiseDomainEvent()
+    public void Activate_TrialTenant_RaisesDomainEvent()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.ClearDomainEvents();
@@ -57,7 +57,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Suspend_ShouldChangeStatus()
+    public void Suspend_ActiveTenant_ChangesStatus()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.Activate();
@@ -68,7 +68,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Terminate_ShouldChangeStatus()
+    public void Terminate_TrialTenant_ChangesStatus()
     {
         var tenant = Tenant.Create("Test", "test");
 
@@ -78,7 +78,75 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Activate_WhenAlreadyActive_ShouldBeNoOp()
+    public void Activate_FromTrial_RaisesDomainEvent()
+    {
+        var tenant = Tenant.Create("Test", "test");
+        tenant.ClearDomainEvents();
+
+        tenant.Activate();
+
+        tenant.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<Nexora.Modules.Identity.Domain.Events.TenantStatusChangedEvent>();
+    }
+
+    [Fact]
+    public void Suspend_ActiveTenant_ChangesStatusAndRaisesDomainEvent()
+    {
+        var tenant = Tenant.Create("Test", "test");
+        tenant.Activate();
+        tenant.ClearDomainEvents();
+
+        tenant.Suspend();
+
+        tenant.Status.Should().Be(TenantStatus.Suspended);
+        tenant.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<Nexora.Modules.Identity.Domain.Events.TenantStatusChangedEvent>();
+    }
+
+    [Fact]
+    public void Suspend_SuspendedTenant_IsNoOp()
+    {
+        var tenant = Tenant.Create("Test", "test");
+        tenant.Activate();
+        tenant.Suspend();
+        tenant.ClearDomainEvents();
+
+        tenant.Suspend();
+
+        tenant.Status.Should().Be(TenantStatus.Suspended);
+        tenant.DomainEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Terminate_SuspendedTenant_ChangesStatusAndRaisesDomainEvent()
+    {
+        var tenant = Tenant.Create("Test", "test");
+        tenant.Activate();
+        tenant.Suspend();
+        tenant.ClearDomainEvents();
+
+        tenant.Terminate();
+
+        tenant.Status.Should().Be(TenantStatus.Terminated);
+        tenant.DomainEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<Nexora.Modules.Identity.Domain.Events.TenantStatusChangedEvent>();
+    }
+
+    [Fact]
+    public void Terminate_TerminatedTenant_IsNoOp()
+    {
+        var tenant = Tenant.Create("Test", "test");
+        tenant.Terminate();
+        tenant.ClearDomainEvents();
+
+        tenant.Terminate();
+
+        tenant.Status.Should().Be(TenantStatus.Terminated);
+        tenant.DomainEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Activate_ActiveTenant_IsNoOp()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.Activate();
@@ -91,39 +159,42 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void Suspend_FromTrial_ShouldThrow()
+    public void Suspend_TrialTenant_ThrowsDomainException()
     {
         var tenant = Tenant.Create("Test", "test");
 
         var act = () => tenant.Suspend();
 
-        act.Should().Throw<DomainException>();
+        act.Should().Throw<DomainException>()
+            .Which.LocalizationKey.Should().Be("lockey_identity_error_tenant_suspension_not_allowed");
     }
 
     [Fact]
-    public void Suspend_FromTerminated_ShouldThrow()
+    public void Suspend_TerminatedTenant_ThrowsDomainException()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.Terminate();
 
         var act = () => tenant.Suspend();
 
-        act.Should().Throw<DomainException>();
+        act.Should().Throw<DomainException>()
+            .Which.LocalizationKey.Should().Be("lockey_identity_error_tenant_suspension_not_allowed");
     }
 
     [Fact]
-    public void Activate_FromTerminated_ShouldThrow()
+    public void Activate_TerminatedTenant_ThrowsDomainException()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.Terminate();
 
         var act = () => tenant.Activate();
 
-        act.Should().Throw<DomainException>();
+        act.Should().Throw<DomainException>()
+            .Which.LocalizationKey.Should().Be("lockey_identity_error_tenant_activation_not_allowed");
     }
 
     [Fact]
-    public void Activate_FromSuspended_ShouldChangeStatus()
+    public void Activate_SuspendedTenant_ChangesStatus()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.Activate();
@@ -135,7 +206,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void SetRealmId_ShouldSetValue()
+    public void SetRealmId_ValidRealmId_SetsValue()
     {
         var tenant = Tenant.Create("Test", "test");
 
@@ -145,7 +216,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void SetRealmId_ShouldTrimValue()
+    public void SetRealmId_RealmIdWithWhitespace_TrimsValue()
     {
         var tenant = Tenant.Create("Test", "test");
 
@@ -155,7 +226,7 @@ public sealed class TenantTests
     }
 
     [Fact]
-    public void SetRealmId_NullOrEmpty_ShouldThrow()
+    public void SetRealmId_NullOrEmptyValue_ThrowsDomainException()
     {
         var tenant = Tenant.Create("Test", "test");
 

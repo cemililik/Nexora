@@ -2,6 +2,7 @@ using FluentValidation;
 using Hangfire;
 using Hangfire.PostgreSql;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,16 +11,20 @@ using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Caching;
 using Nexora.Infrastructure.Configuration;
 using Nexora.Infrastructure.Jobs;
+using Nexora.Infrastructure.Localization;
 using Nexora.Infrastructure.Messaging;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Infrastructure.Secrets;
+using Nexora.Infrastructure.Storage;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.Configuration;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Secrets;
+using Nexora.SharedKernel.Abstractions.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Nexora.Infrastructure;
@@ -57,8 +62,23 @@ public static class InfrastructureServiceRegistration
         // Secrets
         services.AddScoped<ISecretProvider, DaprSecretProvider>();
 
+        // File Storage (MinIO)
+        services.Configure<MinioStorageOptions>(
+            configuration.GetSection(MinioStorageOptions.SectionName));
+        services.Configure<StorageOptions>(
+            configuration.GetSection(StorageOptions.SectionName));
+        services.AddSingleton<IFileStorageService, MinioFileStorageService>();
+
         // Tenant configuration
         services.AddScoped<ITenantConfiguration, DatabaseTenantConfiguration>();
+
+        // Localization
+        services.AddDbContext<LocalizationDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
+        services.AddScoped<ILocalizationService, DatabaseLocalizationService>();
 
         // Job scheduler
         services.AddSingleton<IJobScheduler, HangfireJobScheduler>();

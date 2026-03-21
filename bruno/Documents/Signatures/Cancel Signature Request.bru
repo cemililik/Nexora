@@ -1,0 +1,15 @@
+meta {
+  name: Cancel Signature Request
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/documents/signatures/{{signatureRequestId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

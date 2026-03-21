@@ -28,7 +28,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidFolder_ShouldCreateFolder()
+    public async Task Handle_ValidFolder_CreatesFolder()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -46,7 +46,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WithParentFolder_ShouldBuildNestedPath()
+    public async Task Handle_WithParentFolder_BuildsNestedPath()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -77,7 +77,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldPersistToDatabase()
+    public async Task Handle_ValidCommand_PersistsToDatabase()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -92,7 +92,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_SystemFolder_ShouldSetIsSystem()
+    public async Task Handle_SystemFolder_SetsIsSystem()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -107,7 +107,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_MultipleFolders_ShouldHaveDistinctIds()
+    public async Task Handle_MultipleFolders_HaveDistinctIds()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -121,7 +121,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WithModuleScope_ShouldPersistModuleFields()
+    public async Task Handle_WithModuleScope_PersistsModuleFields()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -143,7 +143,7 @@ public sealed class CreateFolderTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_SystemFolderWithParent_ShouldSetFlagsAndPath()
+    public async Task Handle_SystemFolderWithParent_SetsAllProperties()
     {
         // Arrange
         var handler = new CreateFolderHandler(_dbContext, _tenantAccessor, NullLogger<CreateFolderHandler>.Instance);
@@ -159,6 +159,23 @@ public sealed class CreateFolderTests : IDisposable
         result.Value.Path.Should().StartWith("/Parent/");
         result.Value.Path.Should().EndWith("SystemChild");
         result.Value.ParentFolderId.Should().Be(parentResult.Value.Id);
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserIdMissingFromContext_ShouldReturnFailure()
+    {
+        // Arrange — tenant context without UserId
+        var accessor = new TenantContextAccessor();
+        accessor.SetTenant(_tenantId.ToString(), _orgId.ToString());
+        var handler = new CreateFolderHandler(_dbContext, accessor, NullLogger<CreateFolderHandler>.Instance);
+        var command = new CreateFolderCommand("TestFolder");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_documents_error_missing_user_context");
     }
 
     public void Dispose() => _dbContext.Dispose();

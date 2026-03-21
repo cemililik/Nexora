@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Documents.Domain.Events;
 using Nexora.SharedKernel.Abstractions.Messaging;
-using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 
@@ -11,35 +10,25 @@ namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 public sealed class DocumentArchivedDomainEventHandler(
     IEventBus eventBus,
     DocumentsDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor,
     ILogger<DocumentArchivedDomainEventHandler> logger) : INotificationHandler<DocumentArchivedEvent>
 {
     /// <summary>
     /// Handles a <see cref="DocumentArchivedEvent"/> by publishing a <see cref="DocumentArchivedIntegrationEvent"/> to the event bus.
-    /// Falls back to loading TenantId from the database when tenant context is unavailable.
+    /// Reads TenantId from the document entity (same transaction scope as the domain event).
     /// </summary>
     public async Task Handle(DocumentArchivedEvent notification, CancellationToken cancellationToken)
     {
-        var tenantContext = tenantContextAccessor.TryGetCurrent();
-        string? tenantId = tenantContext?.TenantId;
+        var tenantId = await dbContext.Documents
+            .AsNoTracking()
+            .Where(d => d.Id == notification.DocumentId)
+            .Select(d => d.TenantId.ToString())
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (tenantId is null)
         {
-            logger.LogWarning("Tenant context unavailable when handling DocumentArchivedEvent for document {DocumentId}, falling back to DB lookup",
+            logger.LogWarning("Document {DocumentId} not found for DocumentArchivedEvent, skipping integration event",
                 notification.DocumentId.Value);
-
-            var document = await dbContext.Documents
-                .AsNoTracking()
-                .FirstOrDefaultAsync(d => d.Id == notification.DocumentId, cancellationToken);
-
-            if (document is null)
-            {
-                logger.LogWarning("Document {DocumentId} not found for DocumentArchivedEvent, skipping integration event",
-                    notification.DocumentId.Value);
-                return;
-            }
-
-            tenantId = document.TenantId.ToString();
+            return;
         }
 
         var integrationEvent = new DocumentArchivedIntegrationEvent

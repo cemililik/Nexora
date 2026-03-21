@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Documents.Application.DTOs;
+using Nexora.Modules.Documents.Application.Services;
 using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.Modules.Documents.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
@@ -20,10 +21,11 @@ public sealed record GetDocumentsQuery(
     Guid? LinkedEntityId = null,
     string? LinkedEntityType = null) : IQuery<PagedResult<DocumentDto>>;
 
-/// <summary>Returns a paginated list of documents.</summary>
+/// <summary>Returns a paginated list of documents filtered by user access.</summary>
 public sealed class GetDocumentsHandler(
     DocumentsDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
+    IDocumentAccessChecker accessChecker,
     ILogger<GetDocumentsHandler> logger) : IQueryHandler<GetDocumentsQuery, PagedResult<DocumentDto>>
 {
     public async Task<Result<PagedResult<DocumentDto>>> Handle(
@@ -33,6 +35,11 @@ public sealed class GetDocumentsHandler(
         if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
             return Result<PagedResult<DocumentDto>>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
+
+        if (tenantContextAccessor.Current.UserId is not { } uid || !Guid.TryParse(uid, out var userId))
+            return Result<PagedResult<DocumentDto>>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_user_context"));
+
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
@@ -57,6 +64,9 @@ public sealed class GetDocumentsHandler(
         if (!string.IsNullOrWhiteSpace(request.LinkedEntityType))
             query = query.Where(d => d.LinkedEntityType == request.LinkedEntityType);
 
+        // Apply access filtering at DB level — no materialization
+        query = accessChecker.ApplyAccessFilter(query, userId, tenantId);
+
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query
@@ -71,7 +81,7 @@ public sealed class GetDocumentsHandler(
             .ToListAsync(cancellationToken);
 
         if (totalCount == 0)
-            logger.LogDebug("No documents found for tenant {TenantId}", tenantId);
+            logger.LogDebug("No documents found for user {UserId} in tenant {TenantId}", userId, tenantId);
 
         var pagedResult = new PagedResult<DocumentDto>
         {

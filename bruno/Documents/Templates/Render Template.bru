@@ -1,0 +1,37 @@
+meta {
+  name: Render Template
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/templates/{{documentTemplateId}}/render
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "folderId": "{{folderId}}",
+    "outputName": "NDA-Acme-Corp-2026.pdf",
+    "variables": {
+      "companyName": "Acme Corp",
+      "signerName": "John Smith",
+      "date": "2026-03-21"
+    }
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.documentId) {
+      bru.setEnvVar("documentId", body.data.documentId);
+      console.log("rendered documentId set to " + body.data.documentId);
+    }
+  }
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Confirm Upload
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents/confirm-upload
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "folderId": "{{folderId}}",
+    "storageKey": "{{storageKey}}",
+    "name": "contract-2026.pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 512000,
+    "description": "Uploaded via presigned URL"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("documentId", body.data.id);
+      console.log("documentId set to " + body.data.id);
+    }
+  }
+}
