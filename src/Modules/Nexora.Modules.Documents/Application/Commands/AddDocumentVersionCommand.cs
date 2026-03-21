@@ -55,6 +55,14 @@ public sealed class AddDocumentVersionHandler(
         if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
             return Result<DocumentVersionDto>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
+
+        if (tenantContextAccessor.Current.UserId is not { } uid || !Guid.TryParse(uid, out var userId))
+        {
+            logger.LogWarning("UserId missing or invalid in tenant context for adding document version in tenant {TenantId}", tenantId);
+            return Result<DocumentVersionDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_missing_user_context"));
+        }
+
         var documentId = DocumentId.From(request.DocumentId);
 
         var document = await dbContext.Documents
@@ -67,7 +75,8 @@ public sealed class AddDocumentVersionHandler(
             return Result<DocumentVersionDto>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
-        var version = document.AddVersion(request.StorageKey, request.FileSize, orgId, request.ChangeNote);
+
+        var version = document.AddVersion(request.StorageKey, request.FileSize, userId, request.ChangeNote);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Version {VersionNumber} added to document {DocumentId} for tenant {TenantId}",

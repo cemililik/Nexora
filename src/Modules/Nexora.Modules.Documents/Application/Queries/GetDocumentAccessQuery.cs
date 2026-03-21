@@ -40,6 +40,7 @@ public sealed class GetDocumentAccessHandler(
 
         var accessList = await dbContext.DocumentAccesses
             .Where(a => a.DocumentId == documentId)
+            .OrderBy(a => a.Id)
             .Select(a => new DocumentAccessDto(
                 a.Id.Value, a.UserId, a.RoleId, a.Permission.ToString()))
             .ToListAsync(cancellationToken);
