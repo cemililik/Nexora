@@ -1,0 +1,35 @@
+meta {
+  name: Generate Upload URL
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/documents/upload-url
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "folderId": "{{folderId}}",
+    "fileName": "contract-2026.pdf",
+    "mimeType": "application/pdf",
+    "fileSize": 512000
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    const body = res.getBody();
+    if (body.data) {
+      bru.setEnvVar("uploadUrl", body.data.uploadUrl);
+      bru.setEnvVar("storageKey", body.data.storageKey);
+      console.log("uploadUrl set");
+    }
+  }
+}

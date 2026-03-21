@@ -104,6 +104,37 @@ public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
         return document;
     }
 
+    /// <summary>Creates a document record pending file rendering from a template.</summary>
+    public static Document CreatePendingRender(
+        Guid tenantId,
+        Guid organizationId,
+        FolderId folderId,
+        Guid uploadedByUserId,
+        string name,
+        string mimeType,
+        string storageKey,
+        DocumentTemplateId templateId,
+        string? description = null)
+    {
+        var document = new Document
+        {
+            Id = DocumentId.New(),
+            TenantId = tenantId,
+            OrganizationId = organizationId,
+            FolderId = folderId,
+            UploadedByUserId = uploadedByUserId,
+            Name = name.Trim(),
+            Description = description?.Trim(),
+            MimeType = mimeType,
+            FileSize = 0,
+            StorageKey = storageKey,
+            Status = DocumentStatus.PendingRender,
+            CurrentVersion = 1
+        };
+        document.AddDomainEvent(new DocumentRenderRequestedEvent(document.Id, templateId));
+        return document;
+    }
+
     /// <summary>Adds a new version to the document.</summary>
     public DocumentVersion AddVersion(string storageKey, long fileSize, Guid uploadedByUserId, string? changeNote = null)
     {

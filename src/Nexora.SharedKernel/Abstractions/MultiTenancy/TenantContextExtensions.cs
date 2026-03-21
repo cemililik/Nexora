@@ -21,7 +21,7 @@ public static class TenantContextExtensions
     /// Safely retrieves the current tenant context without throwing.
     /// Returns null if tenant context is not available (e.g., outside request scope).
     /// </summary>
-    public static ITenantContext? TryGetCurrent(this ITenantContextAccessor accessor)
+    public static ITenantContext? TryGetCurrent(this ITenantContextAccessor? accessor)
     {
         if (accessor is null) return null;
 

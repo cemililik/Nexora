@@ -1,0 +1,23 @@
+meta {
+  name: Sign Document
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/signatures/{{signatureRequestId}}/sign
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "recipientId": "{{signatureRecipientId}}",
+    "signatureData": "base64-encoded-signature-data",
+    "ipAddress": "192.168.1.100"
+  }
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Update Template
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/documents/templates/{{documentTemplateId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "NDA Template v2",
+    "category": "Legal",
+    "format": "Pdf",
+    "variableDefinitions": "companyName:required,signerName:required,date:required,department:optional"
+  }
+}

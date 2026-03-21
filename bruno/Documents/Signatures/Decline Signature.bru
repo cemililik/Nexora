@@ -1,0 +1,21 @@
+meta {
+  name: Decline Signature
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/documents/signatures/{{signatureRequestId}}/decline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "recipientId": "{{signatureRecipientId}}"
+  }
+}

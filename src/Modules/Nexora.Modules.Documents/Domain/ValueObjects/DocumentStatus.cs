@@ -10,5 +10,8 @@ public enum DocumentStatus
     Archived,
 
     /// <summary>Document is soft-deleted.</summary>
-    Deleted
+    Deleted,
+
+    /// <summary>Document is pending file rendering from a template.</summary>
+    PendingRender
 }
