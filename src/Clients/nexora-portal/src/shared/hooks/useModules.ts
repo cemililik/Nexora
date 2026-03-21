@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
@@ -43,8 +43,10 @@ export function useModules() {
     [installedModuleNames],
   );
 
-  const hasModule = (moduleName: string): boolean =>
-    installedModuleNames.has(moduleName);
+  const hasModule = useCallback(
+    (moduleName: string): boolean => installedModuleNames.has(moduleName),
+    [installedModuleNames],
+  );
 
   return {
     activeModules,

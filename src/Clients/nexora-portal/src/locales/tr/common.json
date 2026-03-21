@@ -22,5 +22,7 @@
   "lockey_common_profile_email": "E-posta",
   "lockey_common_profile_organization": "Kuruluş",
   "lockey_common_profile_currency": "Para Birimi",
-  "lockey_common_powered_by": "Nexora tarafından desteklenmektedir"
+  "lockey_common_powered_by": "Nexora tarafından desteklenmektedir",
+  "lockey_common_try_again": "Tekrar dene",
+  "lockey_common_toggle_sidebar": "Kenar çubuğunu aç/kapat"
 }

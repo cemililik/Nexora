@@ -42,12 +42,10 @@ export function Sidebar() {
 
   const allNavItems: PortalNavigationItem[] = [
     { label: 'lockey_nav_dashboard', path: '/dashboard', icon: 'Home' },
-    ...activeModules
-      .flatMap((m) =>
-        m.navigation.filter(() =>
-          m.permissions.some((p) => hasPermission(p)),
-        ),
-      ),
+    ...activeModules.flatMap((m) => {
+      const canAccessModule = m.permissions.some((p) => hasPermission(p));
+      return canAccessModule ? m.navigation : [];
+    }),
   ];
 
   return (

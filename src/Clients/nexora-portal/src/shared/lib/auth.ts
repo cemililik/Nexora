@@ -7,6 +7,7 @@ declare module 'next-auth' {
     tenantId?: string;
     organizationId?: string;
     permissions?: string[];
+    error?: 'RefreshAccessTokenError';
   }
 }
 
@@ -18,14 +19,8 @@ declare module '@auth/core/jwt' {
     tenantId?: string;
     organizationId?: string;
     permissions?: string[];
+    error?: 'RefreshAccessTokenError';
   }
-}
-
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  const parts = token.split('.');
-  if (parts.length !== 3) return {};
-  const payload = Buffer.from(parts[1], 'base64').toString('utf-8');
-  return JSON.parse(payload) as Record<string, unknown>;
 }
 
 const authConfig: NextAuthConfig = {
@@ -40,16 +35,18 @@ const authConfig: NextAuthConfig = {
     signIn: '/auth/login',
   },
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
+        token.error = undefined;
 
-        const claims = decodeJwtPayload(account.access_token);
-        token.tenantId = claims.tenant_id as string | undefined;
-        token.organizationId = claims.organization_id as string | undefined;
-        token.permissions = (claims.permissions as string[]) ?? [];
+        // Use profile from Keycloak's verified ID token claims
+        const keycloakProfile = profile as Record<string, unknown> | undefined;
+        token.tenantId = keycloakProfile?.tenant_id as string | undefined;
+        token.organizationId = keycloakProfile?.organization_id as string | undefined;
+        token.permissions = (keycloakProfile?.permissions as string[]) ?? [];
       }
 
       // Token refresh: if expired, attempt refresh
@@ -67,26 +64,27 @@ const authConfig: NextAuthConfig = {
             }),
           });
 
-          if (response.ok) {
-            const data = await response.json();
-            token.accessToken = data.access_token;
-            token.refreshToken = data.refresh_token ?? token.refreshToken;
-            token.expiresAt = Math.floor(Date.now() / 1000) + data.expires_in;
-
-            const claims = decodeJwtPayload(data.access_token);
-            token.tenantId = claims.tenant_id as string | undefined;
-            token.organizationId = claims.organization_id as string | undefined;
-            token.permissions = (claims.permissions as string[]) ?? [];
+          if (!response.ok) {
+            return { ...token, error: 'RefreshAccessTokenError' as const };
           }
+
+          const data = await response.json();
+          token.accessToken = data.access_token;
+          token.refreshToken = data.refresh_token ?? token.refreshToken;
+          token.expiresAt = Math.floor(Date.now() / 1000) + data.expires_in;
+          token.error = undefined;
         } catch {
-          // Refresh failed — session will be invalidated on next request
-          token.accessToken = undefined;
+          return { ...token, error: 'RefreshAccessTokenError' as const };
         }
       }
 
       return token;
     },
     async session({ session, token }) {
+      if (token.error === 'RefreshAccessTokenError') {
+        session.error = 'RefreshAccessTokenError';
+      }
+
       session.accessToken = token.accessToken;
       session.tenantId = token.tenantId;
       session.organizationId = token.organizationId;

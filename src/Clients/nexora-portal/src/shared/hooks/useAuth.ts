@@ -1,7 +1,7 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
-import { useEffect } from 'react';
+import { signOut, useSession } from 'next-auth/react';
+import { useEffect, useState } from 'react';
 
 import { api, setAuthToken } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
@@ -10,17 +10,25 @@ import type { UserInfo } from '@/shared/types/auth';
 /**
  * Syncs NextAuth session data into Zustand auth store
  * and fetches full user info from the /users/me endpoint.
+ * Handles refresh token errors by redirecting to login.
  */
 export function useAuth() {
   const { data: session, status } = useSession();
   const { setSession, clearSession, user, isAuthenticated } = useAuthStore();
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
+    // Handle refresh token errors — force re-login
+    if (session?.error === 'RefreshAccessTokenError') {
+      signOut({ callbackUrl: '/auth/login' });
+      return;
+    }
+
     if (status === 'authenticated' && session?.accessToken) {
       setAuthToken(session.accessToken);
 
-      // Fetch full user info only if not already loaded
-      if (!user) {
+      // Fetch full user info only if not already loaded and not previously failed
+      if (!user && !fetchFailed) {
         api
           .get<UserInfo>('/identity/users/me')
           .then((userInfo) => {
@@ -32,15 +40,16 @@ export function useAuth() {
             });
           })
           .catch(() => {
-            // User fetch failed — clear session
+            setFetchFailed(true);
             clearSession();
           });
       }
     } else if (status === 'unauthenticated') {
       setAuthToken(null);
       clearSession();
+      setFetchFailed(false);
     }
-  }, [session, status, user, setSession, clearSession]);
+  }, [session, status, user, fetchFailed, setSession, clearSession]);
 
   return {
     user,

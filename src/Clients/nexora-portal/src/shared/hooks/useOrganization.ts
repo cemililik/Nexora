@@ -24,6 +24,7 @@ export function useOrganization() {
         `/identity/organizations/${organizationId}`,
       ),
     enabled: !!organizationId,
+    staleTime: 5 * 60 * 1000, // 5 minutes — branding changes rarely
   });
 
   return {

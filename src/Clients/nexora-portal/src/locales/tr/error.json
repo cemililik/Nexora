@@ -6,5 +6,6 @@
   "lockey_error_network": "Sunucuya bağlanılamıyor. Lütfen bağlantınızı kontrol edin.",
   "lockey_error_forbidden": "Bu kaynağa erişim izniniz yok.",
   "lockey_error_tenant_context_missing": "Kuruluş bağlamı eksik. Lütfen tekrar giriş yapın.",
-  "lockey_error_server": "Bir sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin."
+  "lockey_error_server": "Bir sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.",
+  "lockey_error_something_went_wrong": "Bir hata oluştu"
 }

@@ -1,26 +1,29 @@
-'use client';
-
 import { type ReactNode } from 'react';
 
-import { RequireAuth } from '@/shared/components/guards/RequireAuth';
-import { PortalLayout } from '@/shared/components/layout/PortalLayout';
-import { useAuth } from '@/shared/hooks/useAuth';
+import { auth } from '@/shared/lib/auth';
+import { redirect } from '@/i18n/navigation';
+import { PortalShell } from '@/shared/components/layout/PortalShell';
 
 interface PortalRouteLayoutProps {
   children: ReactNode;
+  params: Promise<{ locale: string }>;
 }
 
 /**
- * Authenticated portal layout.
- * Wraps all portal pages with auth guard and the main layout shell.
+ * Authenticated portal layout — server component.
+ * Checks session server-side and redirects unauthenticated users.
+ * Client-side auth sync is handled by PortalShell.
  */
-export default function PortalRouteLayout({ children }: PortalRouteLayoutProps) {
-  // Initialize auth sync (session → zustand store)
-  useAuth();
+export default async function PortalRouteLayout({
+  children,
+  params,
+}: PortalRouteLayoutProps) {
+  const session = await auth();
+  const { locale } = await params;
 
-  return (
-    <RequireAuth>
-      <PortalLayout>{children}</PortalLayout>
-    </RequireAuth>
-  );
+  if (!session) {
+    redirect({ href: '/auth/login', locale });
+  }
+
+  return <PortalShell>{children}</PortalShell>;
 }

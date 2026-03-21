@@ -13,7 +13,7 @@ interface TenantLogoProps {
 
 /**
  * Renders the organization logo. Falls back to organization name initials
- * when no logo URL is available.
+ * when no logo URL is available, or a skeleton while loading.
  */
 export function TenantLogo({ className, size = 32 }: TenantLogoProps) {
   const { organization } = useOrganization();
@@ -22,13 +22,11 @@ export function TenantLogo({ className, size = 32 }: TenantLogoProps) {
     return (
       <div
         className={cn(
-          'flex items-center justify-center rounded-md bg-accent text-accent-foreground font-semibold',
+          'animate-pulse rounded-md bg-muted',
           className,
         )}
-        style={{ width: size, height: size, fontSize: size * 0.4 }}
-      >
-        N
-      </div>
+        style={{ width: size, height: size }}
+      />
     );
   }
 

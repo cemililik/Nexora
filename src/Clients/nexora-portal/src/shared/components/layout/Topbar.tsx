@@ -2,7 +2,7 @@
 
 import { LogOut, Menu, User } from 'lucide-react';
 import { signOut } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import { Link, usePathname, useRouter } from '@/i18n/navigation';
 import { cn } from '@/shared/lib/utils';
@@ -28,7 +28,7 @@ export function Topbar() {
         <button
           onClick={toggleSidebar}
           className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label="Toggle sidebar"
+          aria-label={t('lockey_common_toggle_sidebar')}
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -66,6 +66,7 @@ export function Topbar() {
 
 function LanguageSwitcher() {
   const t = useTranslations();
+  const currentLocale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -77,6 +78,7 @@ function LanguageSwitcher() {
   return (
     <div className="relative">
       <select
+        value={currentLocale}
         onChange={(e) => {
           router.replace(pathname, { locale: e.target.value });
         }}
