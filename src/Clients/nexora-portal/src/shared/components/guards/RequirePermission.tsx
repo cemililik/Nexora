@@ -27,9 +27,10 @@ export function RequirePermission({
   const t = useTranslations();
 
   const hasAccess =
-    mode === 'all'
+    required.length === 0 ||
+    (mode === 'all'
       ? required.every((p) => hasPermission(p))
-      : hasAnyPermission(required);
+      : hasAnyPermission(required));
 
   if (!hasAccess) {
     return (

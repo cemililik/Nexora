@@ -26,6 +26,7 @@ function ErrorBoundaryFallback({ onReset }: { onReset: () => void }) {
         {t('lockey_error_something_went_wrong')}
       </p>
       <button
+        type="button"
         onClick={onReset}
         className="rounded-md bg-accent px-4 py-2 text-sm text-accent-foreground hover:bg-accent/90"
       >

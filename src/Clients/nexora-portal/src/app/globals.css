@@ -17,6 +17,10 @@
   --ring: #2563eb;
   --radius: 0.5rem;
 
+  /* Sidebar layout dimensions — used across PortalLayout, Topbar, Footer */
+  --sidebar-width-open: 16rem;   /* 256px = w-64 */
+  --sidebar-width-closed: 4rem;  /* 64px  = w-16 */
+
   /* Tenant branding overrides (set by BrandingProvider) */
   --brand-primary: var(--accent);
   --brand-primary-foreground: var(--accent-foreground);

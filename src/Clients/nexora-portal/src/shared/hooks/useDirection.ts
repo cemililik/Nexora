@@ -6,9 +6,10 @@ const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 
 /**
  * Returns the text direction ('ltr' or 'rtl') based on the current locale.
- * Future-proofed for Arabic locale support.
+ * Normalizes locale to base language (e.g., 'ar-SA' → 'ar') for RTL check.
  */
 export function useDirection(): 'ltr' | 'rtl' {
   const locale = useLocale();
-  return RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
+  const baseLocale = locale.split('-')[0] ?? locale;
+  return RTL_LOCALES.has(baseLocale) ? 'rtl' : 'ltr';
 }

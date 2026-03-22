@@ -13,7 +13,7 @@ export function Footer() {
     <footer
       className={cn(
         'border-t border-border bg-background px-6 py-4 text-center text-sm text-muted-foreground transition-all duration-300',
-        sidebarOpen ? 'ml-64' : 'ml-16',
+        sidebarOpen ? 'ms-[var(--sidebar-width-open)]' : 'ms-[var(--sidebar-width-closed)]',
       )}
     >
       <p>{t('lockey_common_powered_by')}</p>

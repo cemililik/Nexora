@@ -22,7 +22,7 @@ export default async function PortalRouteLayout({
   const { locale } = await params;
 
   if (!session || session.error === 'RefreshAccessTokenError') {
-    redirect({ href: '/auth/login', locale });
+    return redirect({ href: '/auth/login', locale });
   }
 
   return <PortalShell>{children}</PortalShell>;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 
 import { useRouter } from '@/i18n/navigation';
 
@@ -18,7 +18,13 @@ export function RequireAuth({ children, fallback }: RequireAuthProps) {
   const { status } = useSession();
   const router = useRouter();
 
-  if (status === 'loading') {
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.replace('/auth/login');
+    }
+  }, [status, router]);
+
+  if (status === 'loading' || status === 'unauthenticated') {
     return (
       fallback ?? (
         <div className="flex min-h-screen items-center justify-center">
@@ -26,11 +32,6 @@ export function RequireAuth({ children, fallback }: RequireAuthProps) {
         </div>
       )
     );
-  }
-
-  if (status === 'unauthenticated') {
-    router.replace('/auth/login');
-    return null;
   }
 
   return <>{children}</>;

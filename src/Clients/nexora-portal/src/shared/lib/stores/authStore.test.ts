@@ -51,6 +51,7 @@ describe('authStore', () => {
     useAuthStore.getState().setSession({
       user: mockUser,
       tenantId: 'tenant-1',
+      organizationId: 'org-1',
       permissions: ['contacts.contacts.read'],
     });
 
@@ -58,6 +59,8 @@ describe('authStore', () => {
 
     const state = useAuthStore.getState();
     expect(state.user).toBeNull();
+    expect(state.tenantId).toBeNull();
+    expect(state.organizationId).toBeNull();
     expect(state.isAuthenticated).toBe(false);
     expect(state.permissions).toEqual([]);
   });

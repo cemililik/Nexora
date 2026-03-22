@@ -5,6 +5,7 @@ import axios, {
 } from 'axios';
 
 import type { ApiEnvelope } from '@/shared/types/api';
+import { routing } from '@/i18n/routing';
 
 function createApiClient(): AxiosInstance {
   const client = axios.create({
@@ -17,7 +18,10 @@ function createApiClient(): AxiosInstance {
     (error: AxiosError) => {
       if (error.response?.status === 401 && typeof window !== 'undefined') {
         const pathSegments = window.location.pathname.split('/');
-        const currentLocale = ['en', 'tr'].includes(pathSegments[1]) ? pathSegments[1] : 'en';
+        const firstSegment = pathSegments[1] ?? '';
+        const currentLocale = (routing.locales as readonly string[]).includes(firstSegment)
+          ? firstSegment
+          : routing.defaultLocale;
         window.location.href = `/${currentLocale}/auth/login`;
       }
       return Promise.reject(error);
@@ -69,8 +73,9 @@ export const api = {
     return unwrapEnvelope(response.data, url);
   },
 
-  async delete(url: string): Promise<void> {
-    await apiClient.delete(url);
+  async delete<T = void>(url: string): Promise<T> {
+    const response = await apiClient.delete<ApiEnvelope<T>>(url);
+    return unwrapEnvelope(response.data, url);
   },
 
   /**

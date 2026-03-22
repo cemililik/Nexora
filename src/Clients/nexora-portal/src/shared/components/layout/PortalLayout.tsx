@@ -27,7 +27,7 @@ export function PortalLayout({ children }: PortalLayoutProps) {
       <main
         className={cn(
           'min-h-[calc(100vh-8rem)] p-6 pt-20 transition-all duration-300',
-          sidebarOpen ? 'ml-64' : 'ml-16',
+          sidebarOpen ? 'ms-[var(--sidebar-width-open)]' : 'ms-[var(--sidebar-width-closed)]',
         )}
       >
         {children}

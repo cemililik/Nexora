@@ -1,6 +1,7 @@
 'use client';
 
 import { signOut, useSession } from 'next-auth/react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -17,11 +18,13 @@ export function useAuth() {
   const { data: session, status } = useSession();
   const { setSession, clearSession, user, isAuthenticated } = useAuthStore();
   const [fetchFailed, setFetchFailed] = useState(false);
+  const locale = useLocale();
+  const t = useTranslations();
 
   useEffect(() => {
     // Handle refresh token errors — force re-login
     if (session?.error === 'RefreshAccessTokenError') {
-      signOut({ callbackUrl: '/auth/login' });
+      signOut({ callbackUrl: `/${locale}/auth/login` });
       return;
     }
 
@@ -43,7 +46,7 @@ export function useAuth() {
           .catch(() => {
             setFetchFailed(true);
             clearSession();
-            toast.error('lockey_error_session_expired');
+            toast.error(t('lockey_error_session_expired'));
           });
       }
     } else if (status === 'unauthenticated') {
@@ -51,7 +54,7 @@ export function useAuth() {
       clearSession();
       setFetchFailed(false);
     }
-  }, [session, status, user, fetchFailed, setSession, clearSession]);
+  }, [session, status, user, fetchFailed, setSession, clearSession, locale, t]);
 
   return {
     user,

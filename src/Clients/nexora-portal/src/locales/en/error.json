@@ -7,5 +7,5 @@
   "lockey_error_forbidden": "You do not have permission to access this resource.",
   "lockey_error_tenant_context_missing": "Tenant context is missing. Please log in again.",
   "lockey_error_server": "A server error occurred. Please try again later.",
-  "lockey_error_something_went_wrong": "Something went wrong"
+  "lockey_error_something_went_wrong": "Something went wrong."
 }
