@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router';
 import {
+  Building2,
   ChevronDown,
   LayoutDashboard,
   type LucideIcon,
+  Server,
   Shield,
+  ShieldCheck,
   Users,
   FileText,
   Bell,
@@ -26,8 +29,11 @@ import { useModules } from '@/shared/hooks/useModules';
 import type { AdminNavigationItem } from '@/shared/types/module';
 
 const iconMap: Record<string, LucideIcon> = {
+  Building2,
   LayoutDashboard,
+  Server,
   Shield,
+  ShieldCheck,
   Users,
   FileText,
   Bell,
@@ -58,7 +64,7 @@ function NavItem({
   item: AdminNavigationItem;
   collapsed: boolean;
 }) {
-  const { t } = useTranslation('navigation');
+  const { t } = useTranslation(['navigation', 'identity']);
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const Icon = iconMap[item.icon];

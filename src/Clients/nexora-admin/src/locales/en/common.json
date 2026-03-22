@@ -35,5 +35,6 @@
   "lockey_common_not_found_description": "The page you are looking for does not exist.",
   "lockey_common_go_to_dashboard": "Go to Dashboard",
   "lockey_common_previous": "Previous",
-  "lockey_common_next": "Next"
+  "lockey_common_next": "Next",
+  "lockey_common_close": "Close"
 }

@@ -35,5 +35,6 @@
   "lockey_common_not_found_description": "Aradığınız sayfa mevcut değil.",
   "lockey_common_go_to_dashboard": "Gösterge Paneline Git",
   "lockey_common_previous": "Önceki",
-  "lockey_common_next": "Sonraki"
+  "lockey_common_next": "Sonraki",
+  "lockey_common_close": "Kapat"
 }
