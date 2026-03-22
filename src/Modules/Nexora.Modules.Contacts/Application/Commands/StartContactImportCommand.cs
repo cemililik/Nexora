@@ -1,7 +1,9 @@
 using FluentValidation;
+using Hangfire;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexora.Modules.Contacts.Application.DTOs;
+using Nexora.Modules.Contacts.Infrastructure.Jobs;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
@@ -41,6 +43,7 @@ public sealed class StartContactImportHandler(
     IFileStorageService fileStorageService,
     ITenantContextAccessor tenantContextAccessor,
     IOptions<StorageOptions> storageOptions,
+    IBackgroundJobClient backgroundJobClient,
     ILogger<StartContactImportHandler> logger) : ICommandHandler<StartContactImportCommand, ImportJobDto>
 {
     public async Task<Result<ImportJobDto>> Handle(
@@ -79,9 +82,17 @@ public sealed class StartContactImportHandler(
 
         var jobId = Guid.NewGuid();
 
-        // In production, this would enqueue a Hangfire job:
-        // BackgroundJob.Enqueue<ContactImportJob>(j => j.RunAsync(params, ct));
-        // For now, we return a job tracking DTO
+        backgroundJobClient.Enqueue<ContactImportJob>(j => j.RunAsync(
+            new ContactImportJobParams
+            {
+                TenantId = tenantId.ToString(),
+                OrganizationId = orgId.ToString(),
+                OrganizationIdGuid = orgId,
+                FileName = request.FileName,
+                FileFormat = request.FileFormat,
+                StorageKey = request.StorageKey,
+            },
+            CancellationToken.None));
 
         logger.LogInformation(
             "Contact import job {JobId} started for tenant {TenantId} with file {FileName} (key: {StorageKey})",

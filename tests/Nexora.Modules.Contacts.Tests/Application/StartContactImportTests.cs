@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Nexora.Infrastructure.MultiTenancy;
@@ -14,12 +15,14 @@ public sealed class StartContactImportTests
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly IFileStorageService _fileStorageService;
     private readonly IOptions<StorageOptions> _storageOptions;
+    private readonly IBackgroundJobClient _backgroundJobClient;
 
     public StartContactImportTests()
     {
         _tenantAccessor = CreateTenantAccessor(Guid.NewGuid(), _orgId);
         _fileStorageService = Substitute.For<IFileStorageService>();
         _storageOptions = Options.Create(new StorageOptions());
+        _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
     }
 
     [Fact]
@@ -30,7 +33,7 @@ public sealed class StartContactImportTests
             .Returns(true);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
@@ -51,7 +54,7 @@ public sealed class StartContactImportTests
             .Returns(false);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
@@ -71,7 +74,7 @@ public sealed class StartContactImportTests
             .Returns(true);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var before = DateTimeOffset.UtcNow;
@@ -93,7 +96,7 @@ public sealed class StartContactImportTests
             .Returns(true);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
@@ -114,7 +117,7 @@ public sealed class StartContactImportTests
         // Arrange
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
         var wrongOrgId = Guid.NewGuid();
 
         // Act

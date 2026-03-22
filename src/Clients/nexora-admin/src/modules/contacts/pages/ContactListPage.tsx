@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
@@ -15,10 +15,27 @@ export default function ContactListPage() {
   const { t, i18n } = useTranslation('contacts');
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<ContactStatus | undefined>(undefined);
-  const [typeFilter, setTypeFilter] = useState<ContactType | undefined>(undefined);
+  const search = searchParams.get('search') ?? '';
+  const statusFilter = (searchParams.get('status') as ContactStatus | null) ?? undefined;
+  const typeFilter = (searchParams.get('type') as ContactType | null) ?? undefined;
+
+  const updateFilter = useCallback(
+    (key: string, value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set(key, value);
+        } else {
+          next.delete(key);
+        }
+        next.set('page', '1');
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   const { data, isPending } = useContacts({
     page,
@@ -34,25 +51,25 @@ export default function ContactListPage() {
     ]);
   }, [setBreadcrumbs]);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
-  }, [setPage]);
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      updateFilter('search', value);
+    },
+    [updateFilter],
+  );
 
   const handleStatusChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setStatusFilter(e.target.value ? (e.target.value as ContactStatus) : undefined);
-      setPage(1);
+      updateFilter('status', e.target.value);
     },
-    [setPage],
+    [updateFilter],
   );
 
   const handleTypeChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      setTypeFilter(e.target.value ? (e.target.value as ContactType) : undefined);
-      setPage(1);
+      updateFilter('type', e.target.value);
     },
-    [setPage],
+    [updateFilter],
   );
 
   const columns: ColumnDef<ContactDto>[] = [

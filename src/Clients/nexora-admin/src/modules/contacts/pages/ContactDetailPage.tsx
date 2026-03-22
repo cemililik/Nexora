@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -10,6 +13,7 @@ import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { ContactStatusBadge, ContactTypeBadge } from '../components/ContactStatusBadge';
 import {
   useContact,
@@ -42,6 +46,7 @@ export default function ContactDetailPage() {
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
 
+  const { hasPermission } = usePermissions();
   const { data: contact, isPending } = useContact(id);
   const updateContact = useUpdateContact(id);
   const archiveContact = useArchiveContact();
@@ -83,23 +88,25 @@ export default function ContactDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {contact.status === 'Active' ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmAction('archive')}
-            >
-              {t('lockey_contacts_action_archive')}
-            </Button>
-          ) : contact.status === 'Archived' ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmAction('restore')}
-            >
-              {t('lockey_contacts_action_restore')}
-            </Button>
-          ) : null}
+          {hasPermission('contacts.contact.update') && (
+            contact.status === 'Active' ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmAction('archive')}
+              >
+                {t('lockey_contacts_action_archive')}
+              </Button>
+            ) : contact.status === 'Archived' ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmAction('restore')}
+              >
+                {t('lockey_contacts_action_restore')}
+              </Button>
+            ) : null
+          )}
           <Button
             type="button"
             variant="outline"
@@ -334,6 +341,8 @@ function TagsTab({ contactId, t }: TagsTabProps) {
   const removeTag = useRemoveTag();
   const { data: contact } = useContact(contactId);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
+  const canManageTags = hasPermission('contacts.tag.update');
 
   const assignedTagIds = new Set(contact?.tags.map((ct) => ct.tagId) ?? []);
 
@@ -361,44 +370,48 @@ function TagsTab({ contactId, t }: TagsTabProps) {
                 />
               )}
               {ct.name}
-              <button
-                type="button"
-                className="ms-1 text-xs hover:text-destructive"
-                onClick={() => removeTag.mutate({ contactId, tagId: ct.tagId }, { onError: (err) => handleApiError(err) })}
-                aria-label={t('lockey_common_remove', { ns: 'common' })}
-              >
-                &times;
-              </button>
+              {canManageTags && (
+                <button
+                  type="button"
+                  className="ms-1 text-xs hover:text-destructive"
+                  onClick={() => removeTag.mutate({ contactId, tagId: ct.tagId }, { onError: (err) => handleApiError(err) })}
+                  aria-label={t('lockey_common_remove', { ns: 'common' })}
+                >
+                  &times;
+                </button>
+              )}
             </Badge>
           ))}
         </div>
 
         {/* Available tags to assign */}
-        <div>
-          <h4 className="text-sm font-medium mb-2">{t('lockey_contacts_available_tags')}</h4>
-          <div className="flex flex-wrap gap-2">
-            {allTags
-              ?.filter((tag) => tag.isActive && !assignedTagIds.has(tag.id))
-              .map((tag) => (
-                <Button
-                  key={tag.id}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => assignTag.mutate({ contactId, tagId: tag.id }, { onError: (err) => handleApiError(err) })}
-                >
-                  {tag.color && (
-                    <span
-                      className="inline-block h-2 w-2 rounded-full me-1"
-                      // Inline style required: dynamic tag color from data
-                      style={{ backgroundColor: tag.color }}
-                    />
-                  )}
-                  {tag.name}
-                </Button>
-              ))}
+        {canManageTags && (
+          <div>
+            <h4 className="text-sm font-medium mb-2">{t('lockey_contacts_available_tags')}</h4>
+            <div className="flex flex-wrap gap-2">
+              {allTags
+                ?.filter((tag) => tag.isActive && !assignedTagIds.has(tag.id))
+                .map((tag) => (
+                  <Button
+                    key={tag.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => assignTag.mutate({ contactId, tagId: tag.id }, { onError: (err) => handleApiError(err) })}
+                  >
+                    {tag.color && (
+                      <span
+                        className="inline-block h-2 w-2 rounded-full me-1"
+                        // Inline style required: dynamic tag color from data
+                        style={{ backgroundColor: tag.color }}
+                      />
+                    )}
+                    {tag.name}
+                  </Button>
+                ))}
+            </div>
           </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -412,47 +425,79 @@ interface RelationshipsTabProps {
   i18n: ReturnType<typeof useTranslation>['i18n'];
 }
 
+const createRelationshipSchema = (t: (key: string, options?: Record<string, unknown>) => string) =>
+  z.object({
+    relatedContactId: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+    type: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+  });
+
+type RelationshipFormValues = z.infer<ReturnType<typeof createRelationshipSchema>>;
+
 function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const { data: relationships, isPending } = useRelationships(contactId);
   const addRelationship = useAddRelationship(contactId);
   const removeRelationship = useRemoveRelationship(contactId);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('contacts.relationship.create');
+  const canDelete = hasPermission('contacts.relationship.delete');
   const [showForm, setShowForm] = useState(false);
-  const [relatedId, setRelatedId] = useState('');
-  const [relType, setRelType] = useState<RelationshipType>('ContactOf');
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<RelationshipFormValues>({
+    resolver: zodResolver(createRelationshipSchema(t)),
+    defaultValues: { relatedContactId: '', type: 'ContactOf' },
+  });
 
   const relationshipTypes: RelationshipType[] = [
     'ParentOf', 'ChildOf', 'SpouseOf', 'SiblingOf',
     'EmployeeOf', 'EmployerOf', 'ContactOf', 'GuardianOf', 'WardOf',
   ];
 
+  const onSubmit = (data: RelationshipFormValues) => {
+    addRelationship.mutate(
+      { relatedContactId: data.relatedContactId, type: data.type as RelationshipType },
+      {
+        onSuccess: () => { reset(); setShowForm(false); },
+        onError: (err) => handleApiError(err),
+      },
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t('lockey_contacts_tab_relationships')}</CardTitle>
-        <Button type="button" size="sm" onClick={() => setShowForm(!showForm)}>
-          {showForm
-            ? t('lockey_common_cancel', { ns: 'common' })
-            : t('lockey_contacts_relationship_add')}
-        </Button>
+        {canCreate && (
+          <Button type="button" size="sm" onClick={() => setShowForm(!showForm)}>
+            {showForm
+              ? t('lockey_common_cancel', { ns: 'common' })
+              : t('lockey_contacts_relationship_add')}
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
-        {showForm && (
-          <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md border p-3">
+        {showForm && canCreate && (
+          <form onSubmit={handleSubmit(onSubmit)} className="mb-4 flex flex-wrap items-end gap-3 rounded-md border p-3">
             <div>
               <label className="text-sm font-medium">{t('lockey_contacts_related_contact_id')}</label>
               <input
                 type="text"
-                value={relatedId}
-                onChange={(e) => setRelatedId(e.target.value)}
+                {...register('relatedContactId')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
+              {errors.relatedContactId && (
+                <p className="text-xs text-destructive mt-1">{errors.relatedContactId.message}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium">{t('lockey_contacts_relationship_type')}</label>
               <select
-                value={relType}
-                onChange={(e) => setRelType(e.target.value as RelationshipType)}
+                {...register('type')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 {relationshipTypes.map((rt) => (
@@ -463,19 +508,13 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
               </select>
             </div>
             <Button
-              type="button"
+              type="submit"
               size="sm"
-              disabled={!relatedId || addRelationship.isPending}
-              onClick={() => {
-                addRelationship.mutate(
-                  { relatedContactId: relatedId, type: relType },
-                  { onSuccess: () => { setRelatedId(''); setShowForm(false); }, onError: (err) => handleApiError(err) },
-                );
-              }}
+              disabled={addRelationship.isPending}
             >
               {t('lockey_contacts_relationship_add')}
             </Button>
-          </div>
+          </form>
         )}
 
         {isPending ? (
@@ -497,15 +536,17 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
                     {new Date(rel.createdAt).toLocaleDateString(i18n.language)}
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeRelationship.mutate(rel.id, { onError: (err) => handleApiError(err) })}
-                  disabled={removeRelationship.isPending}
-                >
-                  {t('lockey_common_remove', { ns: 'common' })}
-                </Button>
+                {canDelete && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeRelationship.mutate(rel.id, { onError: (err) => handleApiError(err) })}
+                    disabled={removeRelationship.isPending}
+                  >
+                    {t('lockey_common_remove', { ns: 'common' })}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -523,13 +564,41 @@ interface NotesTabProps {
   i18n: ReturnType<typeof useTranslation>['i18n'];
 }
 
+const createNoteSchema = (t: (key: string, options?: Record<string, unknown>) => string) =>
+  z.object({
+    content: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+  });
+
+type NoteFormValues = z.infer<ReturnType<typeof createNoteSchema>>;
+
 function NotesTab({ contactId, t, i18n }: NotesTabProps) {
   const { data: notes, isPending } = useNotes(contactId);
   const addNote = useAddNote(contactId);
   const deleteNote = useDeleteNote(contactId);
   const pinNote = usePinNote(contactId);
   const { handleApiError } = useApiError();
-  const [newContent, setNewContent] = useState('');
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('contacts.note.create');
+  const canUpdate = hasPermission('contacts.note.update');
+  const canDelete = hasPermission('contacts.note.delete');
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isValid },
+  } = useForm<NoteFormValues>({
+    resolver: zodResolver(createNoteSchema(t)),
+    defaultValues: { content: '' },
+    mode: 'onChange',
+  });
+
+  const onSubmit = (data: NoteFormValues) => {
+    addNote.mutate({ content: data.content.trim() }, {
+      onSuccess: () => reset(),
+      onError: (err) => handleApiError(err),
+    });
+  };
 
   return (
     <Card>
@@ -537,28 +606,28 @@ function NotesTab({ contactId, t, i18n }: NotesTabProps) {
         <CardTitle>{t('lockey_contacts_tab_notes')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 flex gap-2">
-          <textarea
-            value={newContent}
-            onChange={(e) => setNewContent(e.target.value)}
-            placeholder={t('lockey_contacts_note_placeholder')}
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            rows={2}
-          />
-          <Button
-            type="button"
-            size="sm"
-            disabled={!newContent.trim() || addNote.isPending}
-            onClick={() => {
-              addNote.mutate({ content: newContent.trim() }, {
-                onSuccess: () => setNewContent(''),
-                onError: (err) => handleApiError(err),
-              });
-            }}
-          >
-            {t('lockey_contacts_notes_add')}
-          </Button>
-        </div>
+        {canCreate && (
+          <form onSubmit={handleSubmit(onSubmit)} className="mb-4 flex gap-2">
+            <div className="flex-1">
+              <textarea
+                {...register('content')}
+                placeholder={t('lockey_contacts_note_placeholder')}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                rows={2}
+              />
+              {errors.content && (
+                <p className="text-xs text-destructive mt-1">{errors.content.message}</p>
+              )}
+            </div>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!isValid || addNote.isPending}
+            >
+              {t('lockey_contacts_notes_add')}
+            </Button>
+          </form>
+        )}
 
         {isPending ? (
           <LoadingSkeleton lines={3} />
@@ -580,26 +649,30 @@ function NotesTab({ contactId, t, i18n }: NotesTabProps) {
                     </span>
                   </div>
                   <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        pinNote.mutate({ noteId: note.id, data: { pin: !note.isPinned } }, { onError: (err) => handleApiError(err) })
-                      }
-                    >
-                      {note.isPinned
-                        ? t('lockey_contacts_action_unpin')
-                        : t('lockey_contacts_action_pin')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteNote.mutate(note.id, { onError: (err) => handleApiError(err) })}
-                    >
-                      {t('lockey_common_delete', { ns: 'common' })}
-                    </Button>
+                    {canUpdate && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          pinNote.mutate({ noteId: note.id, data: { pin: !note.isPinned } }, { onError: (err) => handleApiError(err) })
+                        }
+                      >
+                        {note.isPinned
+                          ? t('lockey_contacts_action_unpin')
+                          : t('lockey_contacts_action_pin')}
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteNote.mutate(note.id, { onError: (err) => handleApiError(err) })}
+                      >
+                        {t('lockey_common_delete', { ns: 'common' })}
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <p className="text-sm whitespace-pre-wrap">{note.content}</p>
@@ -668,17 +741,49 @@ interface CustomFieldsTabProps {
   t: ReturnType<typeof useTranslation>['t'];
 }
 
+const createCustomFieldSchema = (_t: (key: string, options?: Record<string, unknown>) => string) =>
+  z.object({
+    value: z.string().optional(),
+  });
+
+type CustomFieldFormValues = z.infer<ReturnType<typeof createCustomFieldSchema>>;
+
 function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
   const { data: definitions } = useCustomFieldDefinitions();
   const { data: fieldValues, isPending } = useContactCustomFields(contactId);
   const setFieldValue = useSetCustomFieldValue(contactId);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
+  const canManage = hasPermission('contacts.custom-field.manage');
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+  } = useForm<CustomFieldFormValues>({
+    resolver: zodResolver(createCustomFieldSchema(t)),
+    defaultValues: { value: '' },
+  });
 
   const valueMap = new Map(
     fieldValues?.map((fv) => [fv.fieldDefinitionId, fv.value]) ?? [],
   );
+
+  const startEditing = (defId: string) => {
+    setEditingField(defId);
+    reset({ value: valueMap.get(defId) ?? '' });
+  };
+
+  const onSubmit = (defId: string) => (data: CustomFieldFormValues) => {
+    setFieldValue.mutate(
+      { definitionId: defId, data: { value: data.value || undefined } },
+      {
+        onSuccess: () => { setEditingField(null); reset(); },
+        onError: (err) => handleApiError(err),
+      },
+    );
+  };
 
   return (
     <Card>
@@ -705,11 +810,10 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
                       {def.isRequired && <span className="text-destructive ms-1">*</span>}
                     </dt>
                     {editingField === def.id ? (
-                      <div className="flex items-center gap-2 mt-1">
+                      <form onSubmit={handleSubmit(onSubmit(def.id))} className="flex items-center gap-2 mt-1">
                         {def.fieldType === 'boolean' ? (
                           <select
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
+                            {...register('value')}
                             className="rounded-md border border-input bg-background px-3 py-1 text-sm"
                           >
                             <option value="true">{t('lockey_common_yes', { ns: 'common' })}</option>
@@ -717,8 +821,7 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
                           </select>
                         ) : def.fieldType === 'dropdown' && def.options ? (
                           <select
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
+                            {...register('value')}
                             className="rounded-md border border-input bg-background px-3 py-1 text-sm"
                           >
                             <option value="">{t('lockey_common_select', { ns: 'common' })}</option>
@@ -729,21 +832,14 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
                         ) : (
                           <input
                             type={def.fieldType === 'number' ? 'number' : def.fieldType === 'date' ? 'date' : 'text'}
-                            value={editValue}
-                            onChange={(e) => setEditValue(e.target.value)}
+                            {...register('value')}
                             className="rounded-md border border-input bg-background px-3 py-1 text-sm"
                           />
                         )}
                         <Button
-                          type="button"
+                          type="submit"
                           size="sm"
                           disabled={setFieldValue.isPending}
-                          onClick={() => {
-                            setFieldValue.mutate(
-                              { definitionId: def.id, data: { value: editValue || undefined } },
-                              { onSuccess: () => setEditingField(null), onError: (err) => handleApiError(err) },
-                            );
-                          }}
                         >
                           {t('lockey_common_save', { ns: 'common' })}
                         </Button>
@@ -755,22 +851,19 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
                         >
                           {t('lockey_common_cancel', { ns: 'common' })}
                         </Button>
-                      </div>
+                      </form>
                     ) : (
                       <dd className="text-sm text-muted-foreground mt-1">
                         {valueMap.get(def.id) ?? '—'}
                       </dd>
                     )}
                   </div>
-                  {editingField !== def.id && (
+                  {editingField !== def.id && canManage && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        setEditingField(def.id);
-                        setEditValue(valueMap.get(def.id) ?? '');
-                      }}
+                      onClick={() => startEditing(def.id)}
                     >
                       {t('lockey_contacts_action_edit')}
                     </Button>
@@ -792,6 +885,13 @@ interface GdprTabProps {
   i18n: ReturnType<typeof useTranslation>['i18n'];
 }
 
+const createGdprDeleteSchema = (t: (key: string, options?: Record<string, unknown>) => string) =>
+  z.object({
+    reason: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+  });
+
+type GdprDeleteFormValues = z.infer<ReturnType<typeof createGdprDeleteSchema>>;
+
 function GdprTab({ contactId, t, i18n }: GdprTabProps) {
   const { data: consents, isPending: consentsPending } = useConsents(contactId);
   const recordConsent = useRecordConsent(contactId);
@@ -800,8 +900,21 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
   const gdprExport = useGdprExport(contactId);
   const gdprDelete = useGdprDelete(contactId);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
+  const canExport = hasPermission('contacts.gdpr.export');
+  const canDelete = hasPermission('contacts.gdpr.delete');
 
-  const [gdprReason, setGdprReason] = useState('');
+  const {
+    register,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<GdprDeleteFormValues>({
+    resolver: zodResolver(createGdprDeleteSchema(t)),
+    defaultValues: { reason: '' },
+  });
+
+  const reasonValue = watch('reason');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const consentTypes: ConsentType[] = ['EmailMarketing', 'SmsMarketing', 'DataProcessing'];
@@ -924,41 +1037,49 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
       </Card>
 
       {/* GDPR Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('lockey_contacts_gdpr_actions_title')}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={gdprExport.isPending}
-            onClick={() => gdprExport.mutate(undefined, { onError: (err) => handleApiError(err) })}
-          >
-            {t('lockey_contacts_gdpr_export')}
-          </Button>
-          <div className="flex items-end gap-2">
-            <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_gdpr_delete_reason')}</label>
-              <input
-                type="text"
-                value={gdprReason}
-                onChange={(e) => setGdprReason(e.target.value)}
-                className="mt-1 block rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder={t('lockey_contacts_gdpr_delete_reason_placeholder')}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!gdprReason.trim() || gdprDelete.isPending}
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              {t('lockey_contacts_gdpr_delete')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {(canExport || canDelete) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('lockey_contacts_gdpr_actions_title')}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-4">
+            {canExport && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={gdprExport.isPending}
+                onClick={() => gdprExport.mutate(undefined, { onError: (err) => handleApiError(err) })}
+              >
+                {t('lockey_contacts_gdpr_export')}
+              </Button>
+            )}
+            {canDelete && (
+              <div className="flex items-end gap-2">
+                <div>
+                  <label className="text-sm font-medium">{t('lockey_contacts_gdpr_delete_reason')}</label>
+                  <input
+                    type="text"
+                    {...register('reason')}
+                    className="mt-1 block rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder={t('lockey_contacts_gdpr_delete_reason_placeholder')}
+                  />
+                  {errors.reason && (
+                    <p className="text-xs text-destructive mt-1">{errors.reason.message}</p>
+                  )}
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!reasonValue.trim() || gdprDelete.isPending}
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  {t('lockey_contacts_gdpr_delete')}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <ConfirmDialog
         open={showDeleteConfirm}
@@ -968,9 +1089,9 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
         variant="destructive"
         onConfirm={() => {
           gdprDelete.mutate(
-            { reason: gdprReason.trim() },
+            { reason: reasonValue.trim() },
             {
-              onSuccess: () => setShowDeleteConfirm(false),
+              onSuccess: () => { setShowDeleteConfirm(false); reset(); },
               onError: (err) => {
                 setShowDeleteConfirm(false);
                 handleApiError(err);

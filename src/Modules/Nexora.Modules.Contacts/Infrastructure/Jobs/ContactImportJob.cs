@@ -1,3 +1,7 @@
+using System.Globalization;
+using ClosedXML.Excel;
+using CsvHelper;
+using CsvHelper.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -103,20 +107,84 @@ public sealed class ContactImportJob(
             totalRows, successCount, errorCount);
     }
 
-    private static List<ImportRow> ParseFile(byte[] content, string format)
+    private static List<ContactImportRow> ParseFile(byte[] content, string format)
     {
-        // In production, use CsvHelper for CSV or EPPlus/ClosedXML for XLSX.
-        // This is a placeholder that returns an empty list.
-        // Real implementation would parse headers and map columns to ImportRow fields.
-        _ = content;
-        _ = format;
-        return [];
+        return format.ToLowerInvariant() switch
+        {
+            "csv" => ParseCsv(content),
+            "xlsx" => ParseXlsx(content),
+            _ => throw new NotSupportedException($"Unsupported import format: {format}")
+        };
     }
 
-    private sealed record ImportRow(
-        string FirstName,
-        string LastName,
-        string? CompanyName,
-        string? Email,
-        string? Phone);
+    private static List<ContactImportRow> ParseCsv(byte[] content)
+    {
+        using var reader = new StreamReader(new MemoryStream(content));
+        using var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            HasHeaderRecord = true,
+            HeaderValidated = null,
+            MissingFieldFound = null,
+        });
+
+        return csv.GetRecords<ContactImportRow>().ToList();
+    }
+
+    private static List<ContactImportRow> ParseXlsx(byte[] content)
+    {
+        using var workbook = new XLWorkbook(new MemoryStream(content));
+        var worksheet = workbook.Worksheet(1);
+        var rows = new List<ContactImportRow>();
+
+        var headerRow = worksheet.Row(1);
+        var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        for (var col = 1; col <= headerRow.LastCellUsed()?.Address.ColumnNumber; col++)
+        {
+            var headerValue = headerRow.Cell(col).GetString().Trim();
+            if (!string.IsNullOrEmpty(headerValue))
+                headers[headerValue] = col;
+        }
+
+        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+
+        for (var rowNum = 2; rowNum <= lastRow; rowNum++)
+        {
+            var row = worksheet.Row(rowNum);
+
+            rows.Add(new ContactImportRow
+            {
+                Type = GetCellValue(row, headers, "Type"),
+                FirstName = GetCellValue(row, headers, "FirstName"),
+                LastName = GetCellValue(row, headers, "LastName"),
+                CompanyName = GetCellValue(row, headers, "CompanyName"),
+                Email = GetCellValue(row, headers, "Email"),
+                Phone = GetCellValue(row, headers, "Phone"),
+                Title = GetCellValue(row, headers, "Title"),
+            });
+        }
+
+        return rows;
+    }
+
+    private static string? GetCellValue(IXLRow row, Dictionary<string, int> headers, string columnName)
+    {
+        if (!headers.TryGetValue(columnName, out var colIndex))
+            return null;
+
+        var value = row.Cell(colIndex).GetString().Trim();
+        return string.IsNullOrEmpty(value) ? null : value;
+    }
+}
+
+/// <summary>Represents a single row from a contact import file.</summary>
+public sealed record ContactImportRow
+{
+    public string? Type { get; init; }
+    public string? FirstName { get; init; }
+    public string? LastName { get; init; }
+    public string? CompanyName { get; init; }
+    public string? Email { get; init; }
+    public string? Phone { get; init; }
+    public string? Title { get; init; }
 }
