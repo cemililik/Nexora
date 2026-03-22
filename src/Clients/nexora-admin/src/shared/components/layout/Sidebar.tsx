@@ -127,6 +127,7 @@ function NavItem({
 
 /** Admin sidebar with module-aware navigation and collapse support. */
 export function Sidebar() {
+  const { t } = useTranslation('common');
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const { activeModules } = useModules();
 
@@ -141,9 +142,9 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center justify-center border-b px-4">
         {sidebarOpen ? (
-          <span className="text-lg font-semibold">Nexora</span>
+          <span className="text-lg font-semibold">{t('lockey_common_brand_name')}</span>
         ) : (
-          <span className="text-lg font-semibold">N</span>
+          <span className="text-lg font-semibold">{t('lockey_common_brand_short')}</span>
         )}
       </div>
 

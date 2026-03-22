@@ -36,5 +36,8 @@
   "lockey_common_go_to_dashboard": "Go to Dashboard",
   "lockey_common_previous": "Previous",
   "lockey_common_next": "Next",
-  "lockey_common_close": "Close"
+  "lockey_common_close": "Close",
+  "lockey_common_brand_name": "Nexora",
+  "lockey_common_brand_short": "N",
+  "lockey_error_logout_failed": "Logout failed. Redirecting to login."
 }

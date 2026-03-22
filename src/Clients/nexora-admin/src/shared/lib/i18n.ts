@@ -57,12 +57,18 @@ export function registerModuleLocales(
   }
 }
 
+const RTL_LOCALES = ['ar', 'he', 'fa'];
+
 // Sync API client Accept-Language header with current and future language changes
 i18n.on('initialized', () => {
   setApiLanguage(i18n.language || 'en');
 });
 i18n.on('languageChanged', (lang: string) => {
   setApiLanguage(lang);
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = RTL_LOCALES.includes(lang) ? 'rtl' : 'ltr';
+  }
 });
 
 export default i18n;

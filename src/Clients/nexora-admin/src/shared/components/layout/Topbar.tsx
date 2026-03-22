@@ -1,6 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { LogOut, Menu, Moon, Sun, Monitor, Languages } from 'lucide-react';
 
+import { toast } from 'sonner';
+
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -26,13 +28,16 @@ export function Topbar() {
   const theme = useUiStore((s) => s.theme);
 
   const initials = user
-    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`
-    : '??';
+    ? `${user.firstName?.charAt(0) ?? ''}${user.lastName?.charAt(0) ?? ''}` || '?'
+    : '?';
 
   const handleLogout = () => {
     const keycloak = getKeycloak();
     if (keycloak) {
       void keycloak.logout({ redirectUri: window.location.origin + '/login' });
+    } else {
+      toast.error(t('lockey_error_logout_failed'));
+      window.location.href = '/login';
     }
   };
 
@@ -63,7 +68,7 @@ export function Topbar() {
         {/* Language Switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="icon">
+            <Button type="button" variant="ghost" size="icon" aria-label={t('lockey_common_language')}>
               <Languages className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
@@ -82,7 +87,7 @@ export function Topbar() {
         {/* Theme Toggle */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="icon">
+            <Button type="button" variant="ghost" size="icon" aria-label={t('lockey_common_theme')}>
               {theme === 'dark' ? (
                 <Moon className="h-5 w-5" />
               ) : theme === 'light' ? (

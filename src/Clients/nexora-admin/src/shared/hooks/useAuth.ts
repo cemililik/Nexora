@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import type { TFunction } from 'i18next';
 
 import { api, setAuthToken } from '@/shared/lib/api';
 import { createKeycloak, parseTokenClaims } from '@/shared/lib/auth';
@@ -16,6 +17,8 @@ export function useAuth() {
   const { setSession, clearSession, updateToken, user, isAuthenticated } =
     useAuthStore();
   const { t } = useTranslation();
+  const tRef = useRef<TFunction>(t);
+  tRef.current = t;
   const [isInitializing, setIsInitializing] = useState(true);
   const initRef = useRef(false);
 
@@ -25,6 +28,22 @@ export function useAuth() {
     initRef.current = true;
 
     const keycloak = createKeycloak();
+
+    keycloak.onTokenExpired = () => {
+      keycloak
+        .updateToken(30)
+        .then(() => {
+          if (keycloak.token) {
+            setAuthToken(keycloak.token);
+            updateToken(keycloak.token);
+          }
+        })
+        .catch(() => {
+          setAuthToken(null);
+          clearSession();
+          keycloak.login();
+        });
+    };
 
     keycloak
       .init({ onLoad: 'login-required', pkceMethod: 'S256' })
@@ -48,9 +67,10 @@ export function useAuth() {
             organizationId: claims.organization_id,
             permissions: claims.permissions,
           });
-        } catch {
+        } catch (error) {
+          console.error('[useAuth]', error);
           clearSession();
-          toast.error(t('lockey_error_session_expired'));
+          toast.error(tRef.current('lockey_error_session_expired'));
         }
 
         setIsInitializing(false);
@@ -60,22 +80,7 @@ export function useAuth() {
         setIsInitializing(false);
       });
 
-    keycloak.onTokenExpired = () => {
-      keycloak
-        .updateToken(30)
-        .then(() => {
-          if (keycloak.token) {
-            setAuthToken(keycloak.token);
-            updateToken(keycloak.token);
-          }
-        })
-        .catch(() => {
-          setAuthToken(null);
-          clearSession();
-          keycloak.login();
-        });
-    };
-  }, [setSession, clearSession, updateToken, t]);
+  }, [setSession, clearSession, updateToken]);
 
   return { user, isAuthenticated, isLoading: isInitializing };
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export interface Breadcrumb {
   label: string;
@@ -34,19 +35,32 @@ function applyThemeToDOM(theme: Theme): void {
   }
 }
 
-export const useUiStore = create<UiState>((set) => ({
-  sidebarOpen: true,
-  theme: 'system',
-  breadcrumbs: [],
+export const useUiStore = create<UiState>()(
+  persist(
+    (set) => ({
+      sidebarOpen: true,
+      theme: 'system',
+      breadcrumbs: [],
 
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
-  setTheme: (theme: Theme) => {
-    applyThemeToDOM(theme);
-    set({ theme });
-  },
-  setBreadcrumbs: (crumbs: Breadcrumb[]) => set({ breadcrumbs: crumbs }),
-}));
+      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      setSidebarOpen: (open: boolean) => set({ sidebarOpen: open }),
+      setTheme: (theme: Theme) => {
+        applyThemeToDOM(theme);
+        set({ theme });
+      },
+      setBreadcrumbs: (crumbs: Breadcrumb[]) => set({ breadcrumbs: crumbs }),
+    }),
+    {
+      name: 'ui-store',
+      partialize: (state) => ({ theme: state.theme }),
+      onRehydrateStorage: () => (state) => {
+        if (state?.theme) {
+          applyThemeToDOM(state.theme);
+        }
+      },
+    },
+  ),
+);
 
 // Apply the initial theme to the DOM immediately so it takes effect
 // before React mounts, preventing a flash of unstyled content.
@@ -60,3 +74,14 @@ useUiStore.subscribe(
     }
   },
 );
+
+// Listen for OS theme changes and re-apply when the stored theme is 'system'.
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => {
+      if (useUiStore.getState().theme === 'system') {
+        applyThemeToDOM('system');
+      }
+    });
+}

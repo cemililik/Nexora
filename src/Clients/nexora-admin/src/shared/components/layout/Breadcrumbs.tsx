@@ -16,8 +16,8 @@ export function Breadcrumbs() {
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
         return (
-          <span key={crumb.label} className="flex items-center gap-1">
-            {index > 0 && <ChevronRight className="h-3 w-3" />}
+          <span key={crumb.path ?? index} className="flex items-center gap-1">
+            {index > 0 && <ChevronRight className="h-3 w-3 rtl:rotate-180" />}
             {crumb.path && !isLast ? (
               <Link to={crumb.path} className="hover:text-foreground">
                 {t(crumb.label)}

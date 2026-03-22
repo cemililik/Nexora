@@ -36,5 +36,8 @@
   "lockey_common_go_to_dashboard": "Gösterge Paneline Git",
   "lockey_common_previous": "Önceki",
   "lockey_common_next": "Sonraki",
-  "lockey_common_close": "Kapat"
+  "lockey_common_close": "Kapat",
+  "lockey_common_brand_name": "Nexora",
+  "lockey_common_brand_short": "N",
+  "lockey_error_logout_failed": "Çıkış başarısız oldu. Giriş sayfasına yönlendiriliyorsunuz."
 }

@@ -10,7 +10,7 @@ interface RequireAuthProps {
 
 /**
  * Guard component that redirects unauthenticated users to login.
- * Shows a loading spinner while auth state is being determined.
+ * Renders an optional fallback when not authenticated, otherwise navigates to `/login`.
  */
 export function RequireAuth({ children, fallback }: RequireAuthProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

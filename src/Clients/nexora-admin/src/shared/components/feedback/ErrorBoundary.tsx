@@ -28,6 +28,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     if (import.meta.env.DEV) {
       console.error('[ErrorBoundary]', error, errorInfo);
+    } else {
+      // TODO: report to observability service (OpenTelemetry/Sentry)
     }
   }
 

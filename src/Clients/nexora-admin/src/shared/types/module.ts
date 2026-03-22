@@ -12,7 +12,7 @@ export interface AdminModuleManifest {
 /** Lazy-loaded route for a module page. */
 export interface AdminRoute {
   path: string;
-  component: LazyExoticComponent<ComponentType>;
+  component: LazyExoticComponent<ComponentType<Record<string, unknown>>>;
 }
 
 /** Navigation item rendered in the admin sidebar. */
@@ -23,6 +23,8 @@ export interface AdminNavigationItem {
   path: string;
   /** Lucide icon name (e.g., 'Users', 'Shield'). */
   icon: string;
+  /** Permission(s) required to see this navigation item. */
+  permission?: string | string[];
   /** Child navigation items for collapsible groups. */
   children?: AdminNavigationItem[];
 }
