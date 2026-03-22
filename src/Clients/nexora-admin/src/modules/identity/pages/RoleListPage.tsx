@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,18 +25,22 @@ import { useApiError } from '@/shared/hooks/useApiError';
 import { useRoles, useCreateRole } from '../hooks/useRoles';
 import type { RoleDto } from '../types';
 
-const createRoleSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().optional(),
-});
+function createRoleSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
+  return z.object({
+    name: z.string().trim().min(1, { message: t('lockey_identity_validation_role_name_required') }).max(100, { message: t('lockey_identity_validation_role_name_max') }),
+    description: z.string().max(500, { message: t('lockey_identity_validation_role_description_max') }).optional(),
+  });
+}
 
 export default function RoleListPage() {
   const { t } = useTranslation('identity');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data: roles, isPending } = useRoles();
+  const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
   const { handleApiError } = useApiError();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const createRoleSchema = useMemo(() => createRoleSchemaFactory(t), [t]);
 
   const form = useForm({
     resolver: zodResolver(createRoleSchema),
@@ -59,6 +63,20 @@ export default function RoleListPage() {
       onError: (err) => handleApiError(err, form.setError),
     });
   });
+
+  if (isError) {
+    return (
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground">
+          {t('lockey_error_something_went_wrong', { ns: 'error' })}
+        </p>
+        <p className="text-sm text-muted-foreground">{error?.message}</p>
+        <Button type="button" onClick={() => window.location.reload()}>
+          {t('lockey_common_try_again', { ns: 'common' })}
+        </Button>
+      </div>
+    );
+  }
 
   if (isPending) return <LoadingSkeleton lines={6} />;
 

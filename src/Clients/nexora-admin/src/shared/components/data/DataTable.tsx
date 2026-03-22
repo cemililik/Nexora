@@ -6,7 +6,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export interface ColumnDef<T> {
   key: string;
-  header: string;
+  header: ReactNode;
   render: (row: T) => ReactNode;
   className?: string;
 }
@@ -48,43 +48,41 @@ export function DataTable<T>({
     );
   }
 
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-12 text-muted-foreground">
-        {emptyMessage ?? t('lockey_common_no_results')}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-md border">
-        <table className="w-full text-sm">
-          <thead className="border-b bg-muted/50">
-            <tr>
-              {columns.map((col) => (
-                <th
-                  key={col.key}
-                  className="px-4 py-3 text-start font-medium text-muted-foreground"
-                >
-                  {col.header}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row, index) => (
-              <tr key={keyExtractor(row, index)} className="border-b last:border-0">
+      {data.length === 0 ? (
+        <div className="flex items-center justify-center p-12 text-muted-foreground">
+          {emptyMessage ?? t('lockey_common_no_results')}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-md border">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-muted/50">
+              <tr>
                 {columns.map((col) => (
-                  <td key={col.key} className={col.className ?? 'px-4 py-3'}>
-                    {col.render(row)}
-                  </td>
+                  <th
+                    key={col.key}
+                    className="px-4 py-3 text-start font-medium text-muted-foreground"
+                  >
+                    {col.header}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {data.map((row, index) => (
+                <tr key={keyExtractor(row, index)} className="border-b last:border-0">
+                  {columns.map((col) => (
+                    <td key={col.key} className={col.className ?? 'px-4 py-3'}>
+                      {col.render(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">

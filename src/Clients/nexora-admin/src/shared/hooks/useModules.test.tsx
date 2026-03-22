@@ -11,9 +11,10 @@ vi.mock('@/shared/lib/api', () => ({
 
 // Mock auth store
 let storeTenantId: string | null = null;
+let storeToken: string | null = 'mock-token';
 vi.mock('@/shared/lib/stores/authStore', () => ({
-  useAuthStore: (selector: (s: { tenantId: string | null }) => unknown) =>
-    selector({ tenantId: storeTenantId }),
+  useAuthStore: (selector: (s: { tenantId: string | null; token: string | null }) => unknown) =>
+    selector({ tenantId: storeTenantId, token: storeToken }),
 }));
 
 // Mock registry
@@ -43,6 +44,7 @@ describe('useModules', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     storeTenantId = null;
+    storeToken = 'mock-token';
   });
 
   it('should not fetch when tenantId is null', () => {

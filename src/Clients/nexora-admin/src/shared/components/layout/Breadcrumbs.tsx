@@ -6,18 +6,18 @@ import { useUiStore } from '@/shared/lib/stores/uiStore';
 
 /** Breadcrumb trail from uiStore state. */
 export function Breadcrumbs() {
-  const { t } = useTranslation('navigation');
+  const { t } = useTranslation(['navigation', 'identity', 'contacts', 'common']);
   const breadcrumbs = useUiStore((s) => s.breadcrumbs);
 
   if (breadcrumbs.length === 0) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1 text-sm text-muted-foreground">
+    <nav aria-label={t('lockey_common_breadcrumb')} className="mb-4 flex items-center gap-1 text-sm text-muted-foreground">
       {breadcrumbs.map((crumb, index) => {
         const isLast = index === breadcrumbs.length - 1;
         return (
           <span key={crumb.path ?? index} className="flex items-center gap-1">
-            {index > 0 && <ChevronRight className="h-3 w-3 rtl:rotate-180" />}
+            {index > 0 && <ChevronRight className="h-3 w-3 rtl:rotate-180" aria-hidden="true" />}
             {crumb.path && !isLast ? (
               <Link to={crumb.path} className="hover:text-foreground">
                 {t(crumb.label)}

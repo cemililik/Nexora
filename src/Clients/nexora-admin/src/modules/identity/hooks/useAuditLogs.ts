@@ -22,5 +22,6 @@ export function useAuditLogs(params: AuditLogFilterParams) {
         page: params.page ?? 1,
         pageSize: params.pageSize ?? 20,
       }),
+    staleTime: 5 * 60 * 1000,
   });
 }

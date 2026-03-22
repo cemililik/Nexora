@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
+import { Button } from '@/shared/components/ui/button';
+
 import { Input } from '@/shared/components/ui/input';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -10,7 +12,7 @@ import { useAuditLogs } from '../hooks/useAuditLogs';
 import type { AuditLogDto } from '../types';
 
 export default function AuditLogPage() {
-  const { t } = useTranslation('identity');
+  const { t, i18n } = useTranslation('identity');
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -19,7 +21,7 @@ export default function AuditLogPage() {
   const filterFrom = searchParams.get('from') ?? undefined;
   const filterTo = searchParams.get('to') ?? undefined;
 
-  const { data, isPending } = useAuditLogs({
+  const { data, isPending, isError, error } = useAuditLogs({
     action: filterAction,
     from: filterFrom,
     to: filterTo,
@@ -41,6 +43,7 @@ export default function AuditLogPage() {
     } else {
       params.delete(key);
     }
+    params.set('page', '1');
     setSearchParams(params);
   };
 
@@ -58,9 +61,23 @@ export default function AuditLogPage() {
     {
       key: 'timestamp',
       header: t('lockey_identity_col_timestamp'),
-      render: (row) => new Date(row.timestamp).toLocaleString(),
+      render: (row) => new Date(row.timestamp).toLocaleString(i18n.language),
     },
   ];
+
+  if (isError) {
+    return (
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground">
+          {t('lockey_error_something_went_wrong', { ns: 'error' })}
+        </p>
+        <p className="text-sm text-muted-foreground">{error?.message}</p>
+        <Button type="button" onClick={() => window.location.reload()}>
+          {t('lockey_common_try_again', { ns: 'common' })}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

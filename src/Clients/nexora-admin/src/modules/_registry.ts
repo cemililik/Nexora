@@ -1,5 +1,6 @@
 import type { AdminModuleManifest } from '@/shared/types/module';
 import { identityManifest } from '@/modules/identity/manifest';
+import { contactsManifest } from '@/modules/contacts/manifest';
 
 /**
  * Admin Module Registry
@@ -16,7 +17,7 @@ import { identityManifest } from '@/modules/identity/manifest';
  */
 export const allAdminModules: AdminModuleManifest[] = [
   identityManifest,
-  // contactsManifest,       — Phase C
+  contactsManifest,
   // documentsManifest,      — Phase D
   // notificationsManifest,  — Phase E
 ];

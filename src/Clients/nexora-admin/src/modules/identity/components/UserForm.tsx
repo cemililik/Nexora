@@ -112,7 +112,7 @@ function CreateForm({
         <label htmlFor="temporaryPassword" className="text-sm font-medium">
           {t('lockey_identity_form_password')}
         </label>
-        <Input id="temporaryPassword" type="password" {...form.register('temporaryPassword')} />
+        <Input id="temporaryPassword" type="password" autoComplete="new-password" {...form.register('temporaryPassword')} />
         {form.formState.errors.temporaryPassword && (
           <p className="text-sm text-destructive">{form.formState.errors.temporaryPassword.message}</p>
         )}

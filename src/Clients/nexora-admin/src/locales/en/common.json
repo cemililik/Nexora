@@ -39,5 +39,11 @@
   "lockey_common_close": "Close",
   "lockey_common_brand_name": "Nexora",
   "lockey_common_brand_short": "N",
-  "lockey_error_logout_failed": "Logout failed. Redirecting to login."
+  "lockey_common_default": "Default",
+  "lockey_common_breadcrumb": "Breadcrumb",
+  "lockey_common_remove": "Remove",
+  "lockey_common_yes": "Yes",
+  "lockey_common_no": "No",
+  "lockey_common_select": "Select...",
+  "lockey_common_module_not_installed": "This module is not installed for your organization."
 }

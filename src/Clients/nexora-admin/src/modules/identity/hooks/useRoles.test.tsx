@@ -5,11 +5,19 @@ import { type ReactNode } from 'react';
 
 // Mock API
 const mockApiGet = vi.fn();
+const mockApiPost = vi.fn();
 vi.mock('@/shared/lib/api', () => ({
-  api: { get: (...args: unknown[]) => mockApiGet(...args) },
+  api: {
+    get: (...args: unknown[]) => mockApiGet(...args),
+    post: (...args: unknown[]) => mockApiPost(...args),
+  },
 }));
 
-import { roleKeys, useRoles, usePermissions } from './useRoles';
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+import { roleKeys, useRoles, usePermissions, useCreateRole } from './useRoles';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -101,5 +109,29 @@ describe('usePermissions', () => {
     });
 
     expect(mockApiGet).toHaveBeenCalledWith('/identity/permissions', { module: 'contacts' });
+  });
+});
+
+describe('useCreateRole', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should call api.post with correct endpoint and payload', async () => {
+    const createdRole = { id: 'r1', name: 'Editor', isSystemRole: false, isActive: true, permissions: [] };
+    mockApiPost.mockResolvedValue(createdRole);
+
+    const { result } = renderHook(() => useCreateRole(), {
+      wrapper: createWrapper(),
+    });
+
+    const payload = { name: 'Editor', description: 'Can edit content' };
+    result.current.mutate(payload);
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiPost).toHaveBeenCalledWith('/identity/roles', payload);
   });
 });
