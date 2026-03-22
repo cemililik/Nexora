@@ -165,7 +165,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Address management (multiple addresses per contact)
 - [x] Communication preferences (email, SMS, WhatsApp opt-in/out)
 - [x] Contact merge & deduplication
-- [x] Import/Export (CSV, Excel)
+- [x] Import/Export (CSV, Excel) — presigned URL upload pattern (3-step: upload-url → MinIO → confirm-import)
 - [x] Custom fields (tenant-configurable)
 - [x] KVKK/GDPR compliance (consent tracking, data export, right to delete)
 
@@ -215,7 +215,23 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] 47 frontend tests (8 test files: api, authStore, useAuth, useModules, currency, SectionRenderer, RequireAuth, RequirePermission)
 - [x] CODE_REVIEW_STANDARDS.md — 65+ checklist items, 10 categories, severity classification
 
-### 1.6 Reporting Engine
+### 1.6 Admin Dashboard (nexora-admin)
+- [x] Scaffold: Vite 6 + React 19 + React Router v7 + TypeScript strict
+- [x] Auth: Keycloak JS adapter (PKCE S256, token in memory via Zustand)
+- [x] i18n: react-i18next + registerModuleLocales() pattern (en/tr)
+- [x] UI: shadcn/ui (11 components), AppLayout, Sidebar, Topbar, Breadcrumbs
+- [x] Shared: DataTable, SearchInput, ErrorBoundary, ConfirmDialog, LoadingSkeleton
+- [x] Guards: RequireAuth, RequirePermission, RequireModule
+- [x] Identity Module UI: 12 pages, 6 hooks, 2 components, manifest (11 routes, 16 permissions)
+- [x] Contacts Module UI: 7 pages, 11 hooks, 10 components, manifest (7 routes, 15 permissions)
+- [x] Presigned URL import: 3-step flow (upload-url → MinIO direct upload → confirm-import)
+- [x] Backend: GenerateImportUploadUrlCommand, IFileStorageService.GetObjectAsync, StartContactImport with StorageKey
+- [x] Code review fixes: 9 rounds, ~85 findings resolved
+- [x] 19 test suites, 118 frontend tests passing
+- [ ] Documents Module UI (folder tree, document browser, version history, signature workflow)
+- [ ] Notifications Module UI (template editor, provider config, send/bulk send)
+
+### 1.7 Reporting Engine
 - [ ] Report definition (SQL-based + LINQ-based)
 - [ ] Dashboard builder (widgets, charts, KPIs)
 - [ ] Cross-module data aggregation
