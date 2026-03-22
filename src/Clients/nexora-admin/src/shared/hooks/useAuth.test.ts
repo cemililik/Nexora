@@ -56,6 +56,7 @@ vi.mock('@/shared/lib/stores/authStore', () => ({
   }),
 }));
 
+import { setAuthToken } from '@/shared/lib/api';
 import { useAuth } from './useAuth';
 
 describe('useAuth', () => {
@@ -120,6 +121,38 @@ describe('useAuth', () => {
 
     await waitFor(() => {
       expect(mockClearSession).toHaveBeenCalled();
+    });
+  });
+
+  it('onTokenExpired_UpdateTokenFails_ClearsAuthBeforeSession', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockResolvedValue({ id: 'u1', firstName: 'Admin', lastName: 'User' });
+
+    renderHook(() => useAuth());
+
+    // Wait for init to complete and onTokenExpired handler to be registered
+    await waitFor(() => {
+      expect(mockOnTokenExpired).not.toBeNull();
+    });
+
+    // Simulate updateToken rejection
+    mockUpdateToken.mockRejectedValue(new Error('Token refresh failed'));
+
+    const callOrder: string[] = [];
+    const mockSetAuthToken = vi.mocked(setAuthToken);
+    mockSetAuthToken.mockImplementation(() => { callOrder.push('setAuthToken(null)'); });
+    mockClearSession.mockImplementation(() => { callOrder.push('clearSession'); });
+
+    // Trigger the onTokenExpired handler
+    mockOnTokenExpired!();
+
+    await waitFor(() => {
+      expect(mockSetAuthToken).toHaveBeenCalledWith(null);
+      expect(mockClearSession).toHaveBeenCalled();
+      expect(callOrder.indexOf('setAuthToken(null)')).toBeLessThan(
+        callOrder.indexOf('clearSession'),
+      );
     });
   });
 });

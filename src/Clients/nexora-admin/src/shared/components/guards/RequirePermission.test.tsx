@@ -69,6 +69,22 @@ describe('RequirePermission', () => {
     expect(screen.getByText('Any Mode Content')).toBeInTheDocument();
   });
 
+  it('should deny access in "any" mode when no permissions match', () => {
+    mockPermissions = ['identity.users.read'];
+
+    render(
+      <RequirePermission
+        required={['identity.roles.delete', 'identity.roles.write']}
+        mode="any"
+      >
+        <div>Any Mode Content</div>
+      </RequirePermission>,
+    );
+
+    expect(screen.queryByText('Any Mode Content')).not.toBeInTheDocument();
+    expect(screen.getByText('lockey_common_no_permission')).toBeInTheDocument();
+  });
+
   it('should show custom fallback when provided', () => {
     mockPermissions = [];
 

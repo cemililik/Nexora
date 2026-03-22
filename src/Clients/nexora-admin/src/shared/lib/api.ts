@@ -2,9 +2,12 @@ import axios, {
   type AxiosError,
   type AxiosInstance,
   type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
 } from 'axios';
 
 import type { ApiEnvelope } from '@/shared/types/api';
+import { useAuthStore } from '@/shared/lib/stores/authStore';
+import { getKeycloak } from '@/shared/lib/auth';
 
 let currentLanguage = 'en';
 
@@ -14,9 +17,12 @@ export function setApiLanguage(lang: string): void {
   apiClient.defaults.headers.common['Accept-Language'] = lang;
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
 function createApiClient(): AxiosInstance {
   const client = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL ?? '/api/v1',
+    timeout: Number(import.meta.env.VITE_API_TIMEOUT_MS) || 10_000,
     headers: {
       'Content-Type': 'application/json',
       'Accept-Language': currentLanguage,
@@ -25,9 +31,49 @@ function createApiClient(): AxiosInstance {
 
   client.interceptors.response.use(
     (response) => response,
-    (error: AxiosError) => {
-      if (error.response?.status === 401 && typeof window !== 'undefined') {
-        window.location.href = '/login';
+    async (error: AxiosError) => {
+      const originalRequest = error.config as
+        | (InternalAxiosRequestConfig & { _retry?: boolean })
+        | undefined;
+
+      if (
+        error.response?.status === 401 &&
+        typeof window !== 'undefined' &&
+        originalRequest &&
+        !originalRequest._retry
+      ) {
+        originalRequest._retry = true;
+
+        const kc = getKeycloak();
+        if (kc) {
+          try {
+            if (!refreshPromise) {
+              refreshPromise = kc
+                .updateToken(5)
+                .then(() => true)
+                .catch(() => false)
+                .finally(() => {
+                  refreshPromise = null;
+                });
+            }
+
+            const refreshed = await refreshPromise;
+
+            if (refreshed && kc.token) {
+              setAuthToken(kc.token);
+              originalRequest.headers['Authorization'] = `Bearer ${kc.token}`;
+              return client(originalRequest);
+            }
+          } catch {
+            // fall through to redirect
+          }
+        }
+
+        setAuthToken(null);
+        useAuthStore.getState().clearSession();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       return Promise.reject(error);
     },
@@ -51,7 +97,7 @@ export function setAuthToken(token: string | null): void {
 }
 
 function unwrapEnvelope<T>(data: ApiEnvelope<T>, url: string): T {
-  if (data.data === undefined) {
+  if (data.data == null) {
     throw new Error(`[api] Response envelope missing 'data' field for: ${url}`);
   }
   return data.data;
@@ -79,8 +125,8 @@ export const api = {
   },
 
   async delete<T = void>(url: string): Promise<T> {
-    const response = await apiClient.delete<ApiEnvelope<T>>(url);
-    return unwrapEnvelope(response.data, url);
+    await apiClient.delete(url);
+    return undefined as T;
   },
 
   /**
@@ -121,4 +167,3 @@ export function extractApiError(error: unknown): {
   };
 }
 
-export { apiClient };

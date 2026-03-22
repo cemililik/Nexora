@@ -20,14 +20,14 @@ void i18n
       en: {
         common: enCommon,
         error: enError,
-        validation: enValidation,
         navigation: enNavigation,
+        validation: enValidation,
       },
       tr: {
         common: trCommon,
         error: trError,
-        validation: trValidation,
         navigation: trNavigation,
+        validation: trValidation,
       },
     },
     defaultNS: 'common',
@@ -40,12 +40,35 @@ void i18n
     },
   });
 
+/**
+ * Register locale resources for a feature module at runtime.
+ * Call this from each module's init/manifest file to decouple
+ * module translations from the core i18n setup.
+ *
+ * @param moduleName - Namespace for the module (e.g., 'identity')
+ * @param locales - Map of language codes to translation objects (e.g., { en: {...}, tr: {...} })
+ */
+export function registerModuleLocales(
+  moduleName: string,
+  locales: Record<string, Record<string, string>>,
+): void {
+  for (const [lang, translations] of Object.entries(locales)) {
+    i18n.addResourceBundle(lang, moduleName, translations, true, true);
+  }
+}
+
+const RTL_LOCALES = ['ar', 'he', 'fa'];
+
 // Sync API client Accept-Language header with current and future language changes
 i18n.on('initialized', () => {
   setApiLanguage(i18n.language || 'en');
 });
 i18n.on('languageChanged', (lang: string) => {
   setApiLanguage(lang);
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = RTL_LOCALES.includes(lang) ? 'rtl' : 'ltr';
+  }
 });
 
 export default i18n;

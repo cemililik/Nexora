@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { useAuth } from '@/shared/hooks/useAuth';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -15,15 +16,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   if (isLoading) {
     return (
-      <div
-        className="flex min-h-screen items-center justify-center"
-        role="status"
-        aria-label="Loading"
-      >
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      <div className="flex min-h-screen items-center justify-center">
+        <LoadingSkeleton />
       </div>
     );
   }
 
-  return <>{children}</>;
+  return children;
 }

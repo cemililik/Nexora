@@ -9,6 +9,13 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { useTranslation } from 'react-i18next';
 
+/**
+ * Props for {@link ConfirmDialog}.
+ *
+ * `isPending` is controlled externally by the parent component.
+ * Parents must set it to `true` immediately when `onConfirm` is invoked
+ * to disable the confirm button and avoid duplicate submissions.
+ */
 interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;

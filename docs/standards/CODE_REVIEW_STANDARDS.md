@@ -32,28 +32,33 @@ Every finding MUST be assigned exactly one severity level:
 
 ### Severity Decision Guide
 
-```
-Is it a security vulnerability or data leak?
-  └─ Yes → CRITICAL
+```mermaid
+flowchart TD
+    Q1{"Q1: Security vulnerability\nor data leak?"}
+    Q2{"Q2: Breaks functionality\nor loses data?"}
+    Q3{"Q3: Violates a MUST rule\nin standards?"}
+    Q4{"Q4: Incorrect behavior\nunder normal conditions?"}
+    Q5{"Q5: Architectural anti-pattern\ncausing maintenance debt?"}
+    Q6{"Q6: Affects code quality,\nreadability, or minor\nstandard compliance?"}
 
-Does it break functionality or lose data?
-  └─ Yes → CRITICAL
+    CRITICAL([CRITICAL])
+    MAJOR([MAJOR])
+    MINOR([MINOR])
+    SUGGESTION([SUGGESTION])
 
-Does it violate a MUST/REQUIRED rule in a standards document?
-  └─ Yes, zero-tolerance rule → CRITICAL
-  └─ Yes, other MUST rule → MAJOR
-
-Does it cause incorrect behavior under normal conditions?
-  └─ Yes → MAJOR
-
-Is it an architectural anti-pattern that will cause maintenance debt?
-  └─ Yes → MAJOR
-
-Does it affect code quality, readability, or minor standard compliance?
-  └─ Yes → MINOR
-
-Is it a best practice that would improve the code?
-  └─ Yes → SUGGESTION
+    Q1 -->|Yes| CRITICAL
+    Q1 -->|No| Q2
+    Q2 -->|Yes| CRITICAL
+    Q2 -->|No| Q3
+    Q3 -->|"Yes (zero-tolerance)"| CRITICAL
+    Q3 -->|"Yes (other MUST)"| MAJOR
+    Q3 -->|No| Q4
+    Q4 -->|Yes| MAJOR
+    Q4 -->|No| Q5
+    Q5 -->|Yes| MAJOR
+    Q5 -->|No| Q6
+    Q6 -->|Yes| MINOR
+    Q6 -->|No| SUGGESTION
 ```
 
 ### Zero-Tolerance Rules (Always CRITICAL)
@@ -278,26 +283,40 @@ EF Core migrations run automatically and are irreversible in production. These c
 
 ### 5.1 Workflow
 
-```
-Author Self-Review (Section 5.6 checklist) → PR Created
-    ↓
-Auto-checks (CI/CD, lint, build, tests) — must pass before human review starts
-    ↓
-Reviewer Assigned
-  ├─ Standard modules: min 1 reviewer
-  └─ Security-Sensitive modules (§5.7): min 2 reviewers, including module owner
-    ↓
-Review Performed (using this checklist, all applicable §4 items)
-    ↓
-Findings Documented (inline comments + review summary in docs/code-reviews/)
-    ↓
-Verdict Issued
-    ↓
-Author Fixes → Re-review
-  ├─ Reviewer verifies each fix is correct AND checks for regressions
-  └─ Any fix that introduces a new CRITICAL/MAJOR restarts the cycle
-    ↓
-Approved → Squash Merge to development (never directly to main)
+```mermaid
+flowchart TD
+    SelfReview["Author Self-Review\n(Section 5.6 checklist)"]
+    PRCreated["PR Created"]
+    AutoChecks{"Auto-checks\n(CI/CD, lint, build, tests)"}
+    ReviewerAssigned["Reviewer Assigned"]
+    SecurityCheck{"Security-Sensitive\nmodule?"}
+    OneReviewer["Min 1 reviewer"]
+    TwoReviewers["Min 2 reviewers\n(including module owner)"]
+    ReviewPerformed["Review Performed\n(all applicable §4 items)"]
+    FindingsDocumented["Findings Documented\n(inline comments + review summary)"]
+    VerdictIssued["Verdict Issued"]
+    AuthorFixes["Author Fixes"]
+    ReReview{"Re-review:\nnew CRITICAL/MAJOR\nintroduced?"}
+    Approved["Approved"]
+    Merged["Squash Merge to development"]
+
+    SelfReview --> PRCreated
+    PRCreated --> AutoChecks
+    AutoChecks -->|Fail| PRCreated
+    AutoChecks -->|Pass| ReviewerAssigned
+    ReviewerAssigned --> SecurityCheck
+    SecurityCheck -->|No| OneReviewer
+    SecurityCheck -->|Yes| TwoReviewers
+    OneReviewer --> ReviewPerformed
+    TwoReviewers --> ReviewPerformed
+    ReviewPerformed --> FindingsDocumented
+    FindingsDocumented --> VerdictIssued
+    VerdictIssued -->|Changes Requested| AuthorFixes
+    AuthorFixes --> ReReview
+    ReReview -->|Yes| ReviewPerformed
+    ReReview -->|No| Approved
+    VerdictIssued -->|Approved| Approved
+    Approved --> Merged
 ```
 
 ### 5.2 Verdicts

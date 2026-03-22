@@ -21,7 +21,7 @@ This standard defines the **mandatory contract** between Nexora backend APIs and
 
 All API endpoints MUST follow this pattern:
 
-```
+```text
 /api/v{version}/{module}/{resource}
 ```
 
@@ -194,7 +194,7 @@ interface JwtClaims {
 
 Every authenticated request MUST include:
 
-```
+```text
 Authorization: Bearer <access_token>
 Content-Type: application/json
 ```
@@ -278,19 +278,31 @@ apiClient.interceptors.response.use(
 export const api = {
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
     const { data } = await apiClient.get<ApiEnvelope<T>>(url, { params });
-    return data.data!;
+    if (data.data === undefined || data.data === null) {
+      throw new Error(`API response missing data for GET ${url}`);
+    }
+    return data.data;
   },
   async post<T>(url: string, body?: unknown): Promise<T> {
     const { data } = await apiClient.post<ApiEnvelope<T>>(url, body);
-    return data.data!;
+    if (data.data === undefined || data.data === null) {
+      throw new Error(`API response missing data for POST ${url}`);
+    }
+    return data.data;
   },
   async put<T>(url: string, body?: unknown): Promise<T> {
     const { data } = await apiClient.put<ApiEnvelope<T>>(url, body);
-    return data.data!;
+    if (data.data === undefined || data.data === null) {
+      throw new Error(`API response missing data for PUT ${url}`);
+    }
+    return data.data;
   },
   async patch<T>(url: string, body?: unknown): Promise<T> {
     const { data } = await apiClient.patch<ApiEnvelope<T>>(url, body);
-    return data.data!;
+    if (data.data === undefined || data.data === null) {
+      throw new Error(`API response missing data for PATCH ${url}`);
+    }
+    return data.data;
   },
   async delete(url: string): Promise<void> {
     await apiClient.delete(url);
@@ -596,7 +608,7 @@ export function useHasModule(moduleName: string): boolean {
 
 Permissions MUST use the format `{module}.{resource}.{action}`:
 
-```
+```text
 contacts.contacts.read
 contacts.contacts.write
 documents.documents.manage
@@ -700,7 +712,7 @@ toast.error(t(message, meta));
 
 API-sourced message keys MUST live in the module's locale file:
 
-```
+```text
 locales/en/contacts.json   → lockey_contacts_*
 locales/en/documents.json  → lockey_documents_*
 locales/en/error.json      → lockey_error_* (cross-module errors)

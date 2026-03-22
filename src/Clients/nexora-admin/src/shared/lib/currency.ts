@@ -2,6 +2,8 @@ export interface FormatMoneyOptions {
   amount: number;
   currency: string;
   locale?: string;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
 }
 
 /**
@@ -12,13 +14,20 @@ export function formatMoney({
   amount,
   currency,
   locale = 'en',
+  minimumFractionDigits,
+  maximumFractionDigits,
 }: FormatMoneyOptions): string {
-  return new Intl.NumberFormat(locale, {
+  const options: Intl.NumberFormatOptions = {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  };
+  if (minimumFractionDigits !== undefined) {
+    options.minimumFractionDigits = minimumFractionDigits;
+  }
+  if (maximumFractionDigits !== undefined) {
+    options.maximumFractionDigits = maximumFractionDigits;
+  }
+  return new Intl.NumberFormat(locale, options).format(amount);
 }
 
 /**
@@ -29,11 +38,20 @@ export function getCurrencySymbol(
   currency: string,
   locale = 'en',
 ): string {
-  const parts = new Intl.NumberFormat(locale, {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'narrowSymbol',
-  }).formatToParts(0);
+  let parts: Intl.NumberFormatPart[];
+  try {
+    parts = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      currencyDisplay: 'narrowSymbol',
+    }).formatToParts(0);
+  } catch {
+    parts = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      currencyDisplay: 'symbol',
+    }).formatToParts(0);
+  }
 
   return parts.find((p) => p.type === 'currency')?.value ?? currency;
 }

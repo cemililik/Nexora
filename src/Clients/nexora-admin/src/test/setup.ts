@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import React from 'react';
 import { vi } from 'vitest';
 
 // Mock react-i18next globally for all tests
@@ -18,4 +19,6 @@ vi.mock('react-i18next', () => ({
       changeLanguage: vi.fn(),
     },
   }),
+  Trans: ({ children }: { children: React.ReactNode }) => children,
+  initReactI18next: {},
 }));
