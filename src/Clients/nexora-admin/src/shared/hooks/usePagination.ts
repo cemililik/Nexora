@@ -8,15 +8,15 @@ import { useSearchParams } from 'react-router';
 export function usePagination(defaultPageSize = 20) {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const page = useMemo(
-    () => Number(searchParams.get('page')) || 1,
-    [searchParams],
-  );
+  const page = useMemo(() => {
+    const raw = Number(searchParams.get('page'));
+    return Number.isNaN(raw) || raw <= 0 ? 1 : raw;
+  }, [searchParams]);
 
-  const pageSize = useMemo(
-    () => Number(searchParams.get('pageSize')) || defaultPageSize,
-    [searchParams, defaultPageSize],
-  );
+  const pageSize = useMemo(() => {
+    const raw = Number(searchParams.get('pageSize'));
+    return Number.isNaN(raw) || raw <= 0 ? defaultPageSize : raw;
+  }, [searchParams, defaultPageSize]);
 
   const setPage = useCallback(
     (newPage: number) => {

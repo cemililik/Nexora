@@ -1,13 +1,9 @@
 import axios from 'axios';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { extractApiError } from './api';
 
 describe('extractApiError', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it('should return lockey_error_unexpected for non-Axios errors', () => {
     const result = extractApiError(new Error('some error'));
     expect(result.message).toBe('lockey_error_unexpected');

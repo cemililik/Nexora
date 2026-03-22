@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router';
 import {
+  Building2,
   ChevronDown,
   LayoutDashboard,
   type LucideIcon,
+  Server,
   Shield,
+  ShieldCheck,
   Users,
   FileText,
   Bell,
@@ -26,8 +29,11 @@ import { useModules } from '@/shared/hooks/useModules';
 import type { AdminNavigationItem } from '@/shared/types/module';
 
 const iconMap: Record<string, LucideIcon> = {
+  Building2,
   LayoutDashboard,
+  Server,
   Shield,
+  ShieldCheck,
   Users,
   FileText,
   Bell,
@@ -58,7 +64,7 @@ function NavItem({
   item: AdminNavigationItem;
   collapsed: boolean;
 }) {
-  const { t } = useTranslation('navigation');
+  const { t } = useTranslation(['navigation', 'identity']);
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const Icon = iconMap[item.icon];
@@ -121,6 +127,7 @@ function NavItem({
 
 /** Admin sidebar with module-aware navigation and collapse support. */
 export function Sidebar() {
+  const { t } = useTranslation('common');
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const { activeModules } = useModules();
 
@@ -135,9 +142,9 @@ export function Sidebar() {
     >
       <div className="flex h-16 items-center justify-center border-b px-4">
         {sidebarOpen ? (
-          <span className="text-lg font-semibold">Nexora</span>
+          <span className="text-lg font-semibold">{t('lockey_common_brand_name')}</span>
         ) : (
-          <span className="text-lg font-semibold">N</span>
+          <span className="text-lg font-semibold">{t('lockey_common_brand_short')}</span>
         )}
       </div>
 

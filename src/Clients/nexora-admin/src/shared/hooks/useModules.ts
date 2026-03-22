@@ -6,8 +6,7 @@ import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { allAdminModules } from '@/modules/_registry';
 import type { TenantModuleDto } from '@/shared/types/module';
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { UUID_REGEX } from '@/shared/lib/utils';
 
 const moduleKeys = {
   installed: (tenantId: string) =>
@@ -51,6 +50,6 @@ export function useModules() {
   return {
     activeModules,
     hasModule,
-    isLoading: query.isPending,
+    isPending: query.isPending,
   };
 }

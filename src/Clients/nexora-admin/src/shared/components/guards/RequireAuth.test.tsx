@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes } from 'react-router';
 
 let mockIsAuthenticated = false;
 vi.mock('@/shared/lib/stores/authStore', () => ({
@@ -32,15 +32,24 @@ describe('RequireAuth', () => {
   it('should redirect to login when not authenticated', () => {
     mockIsAuthenticated = false;
 
-    const { container } = render(
+    render(
       <MemoryRouter initialEntries={['/dashboard']}>
-        <RequireAuth>
-          <div>Protected Content</div>
-        </RequireAuth>
+        <Routes>
+          <Route
+            path="/dashboard"
+            element={
+              <RequireAuth>
+                <div>Protected Content</div>
+              </RequireAuth>
+            }
+          />
+          <Route path="/login" element={<div>Login Page</div>} />
+        </Routes>
       </MemoryRouter>,
     );
 
-    expect(container.textContent).not.toContain('Protected Content');
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
   });
 
   it('should show fallback when not authenticated and fallback provided', () => {

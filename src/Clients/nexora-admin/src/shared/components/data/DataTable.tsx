@@ -5,37 +5,42 @@ import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 
 export interface ColumnDef<T> {
-  id: string;
+  key: string;
   header: string;
-  accessor: (row: T) => ReactNode;
+  render: (row: T) => ReactNode;
   className?: string;
 }
 
 interface DataTableProps<T> {
   columns: ColumnDef<T>[];
   data: T[];
-  keyExtractor: (row: T) => string;
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
   isLoading?: boolean;
-  page?: number;
-  totalPages?: number;
-  onPageChange?: (page: number) => void;
+  emptyMessage?: string;
+  keyExtractor?: (row: T, index: number) => string | number;
 }
 
 /** Generic data table with pagination and loading state. */
 export function DataTable<T>({
   columns,
   data,
-  keyExtractor,
-  isLoading = false,
-  page = 1,
-  totalPages = 1,
+  totalCount,
+  page,
+  pageSize,
   onPageChange,
+  isLoading = false,
+  emptyMessage,
+  keyExtractor = (_row, index) => index,
 }: DataTableProps<T>) {
   const { t } = useTranslation();
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   if (isLoading) {
     return (
-      <div role="status" aria-label="Loading" className="space-y-2">
+      <div role="status" aria-label={t('lockey_common_loading')} className="space-y-2">
         {Array.from({ length: 5 }, (_, i) => (
           <Skeleton key={i} className="h-12 w-full" />
         ))}
@@ -46,7 +51,7 @@ export function DataTable<T>({
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center p-12 text-muted-foreground">
-        {t('lockey_common_no_results')}
+        {emptyMessage ?? t('lockey_common_no_results')}
       </div>
     );
   }
@@ -59,7 +64,7 @@ export function DataTable<T>({
             <tr>
               {columns.map((col) => (
                 <th
-                  key={col.id}
+                  key={col.key}
                   className="px-4 py-3 text-start font-medium text-muted-foreground"
                 >
                   {col.header}
@@ -68,11 +73,11 @@ export function DataTable<T>({
             </tr>
           </thead>
           <tbody>
-            {data.map((row) => (
-              <tr key={keyExtractor(row)} className="border-b last:border-0">
+            {data.map((row, index) => (
+              <tr key={keyExtractor(row, index)} className="border-b last:border-0">
                 {columns.map((col) => (
-                  <td key={col.id} className={col.className ?? 'px-4 py-3'}>
-                    {col.accessor(row)}
+                  <td key={col.key} className={col.className ?? 'px-4 py-3'}>
+                    {col.render(row)}
                   </td>
                 ))}
               </tr>
@@ -81,7 +86,7 @@ export function DataTable<T>({
         </table>
       </div>
 
-      {totalPages > 1 && onPageChange && (
+      {totalPages > 1 && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-muted-foreground">
             {t('lockey_common_page_of', {

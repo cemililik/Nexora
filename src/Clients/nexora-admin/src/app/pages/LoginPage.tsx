@@ -1,6 +1,5 @@
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { Navigate } from 'react-router';
 
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 
@@ -11,13 +10,10 @@ import { useAuthStore } from '@/shared/lib/stores/authStore';
 export default function LoginPage() {
   const { t } = useTranslation();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      void navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div

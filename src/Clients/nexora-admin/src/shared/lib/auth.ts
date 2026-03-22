@@ -8,11 +8,23 @@ let keycloakInstance: Keycloak | null = null;
 export function createKeycloak(): Keycloak {
   if (keycloakInstance) return keycloakInstance;
 
-  keycloakInstance = new Keycloak({
-    url: import.meta.env.VITE_KEYCLOAK_URL,
-    realm: import.meta.env.VITE_KEYCLOAK_REALM,
-    clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
-  });
+  const url = import.meta.env.VITE_KEYCLOAK_URL as string | undefined;
+  const realm = import.meta.env.VITE_KEYCLOAK_REALM as string | undefined;
+  const clientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID as string | undefined;
+
+  const missing = [
+    !url && 'VITE_KEYCLOAK_URL',
+    !realm && 'VITE_KEYCLOAK_REALM',
+    !clientId && 'VITE_KEYCLOAK_CLIENT_ID',
+  ].filter(Boolean);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required Keycloak environment variables: ${missing.join(', ')}`,
+    );
+  }
+
+  keycloakInstance = new Keycloak({ url: url!, realm: realm!, clientId: clientId! });
 
   return keycloakInstance;
 }
@@ -35,8 +47,14 @@ export function parseTokenClaims(token: string): JwtClaims {
 
   // Base64url → Base64 → decode
   const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+  let decodedBase64: string;
+  try {
+    decodedBase64 = atob(base64);
+  } catch {
+    throw new Error('Invalid base64 in JWT payload');
+  }
   const jsonPayload = decodeURIComponent(
-    atob(base64)
+    decodedBase64
       .split('')
       .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
       .join(''),
