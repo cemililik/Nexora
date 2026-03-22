@@ -263,10 +263,13 @@ export default function TagManagementPage() {
         onConfirm={() => {
           if (deleteConfirmId) {
             deleteTag.mutate(deleteConfirmId, {
-              onError: (err) => handleApiError(err),
+              onSuccess: () => setDeleteConfirmId(null),
+              onError: (err) => {
+                setDeleteConfirmId(null);
+                handleApiError(err);
+              },
             });
           }
-          setDeleteConfirmId(null);
         }}
         isPending={deleteTag.isPending}
       />

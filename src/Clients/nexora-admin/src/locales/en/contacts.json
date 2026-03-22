@@ -84,7 +84,7 @@
   "lockey_contacts_tags_col_active": "Active",
   "lockey_contacts_tags_col_created_at": "Created",
   "lockey_contacts_tags_assign": "Assign Tag",
-  "lockey_contacts_tags_remove": "Remove Tag",
+  "lockey_contacts_tags_remove": "Remove tag {{name}}",
 
   "lockey_contacts_tag_category_donor": "Donor",
   "lockey_contacts_tag_category_parent": "Parent",

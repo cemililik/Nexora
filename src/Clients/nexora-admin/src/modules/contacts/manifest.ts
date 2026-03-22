@@ -86,10 +86,10 @@ export const contactsManifest: AdminModuleManifest = {
     'contacts.tag.delete',
     'contacts.custom-field.read',
     'contacts.custom-field.manage',
-    'contacts.import',
-    'contacts.export',
+    'contacts.import.execute',
+    'contacts.export.execute',
     'contacts.gdpr.export',
     'contacts.gdpr.delete',
-    'contacts.merge',
+    'contacts.merge.execute',
   ],
 };

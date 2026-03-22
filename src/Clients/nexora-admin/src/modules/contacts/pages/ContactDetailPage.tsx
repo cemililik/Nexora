@@ -904,7 +904,7 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
                             return {
                               channel: ch,
                               optedIn: ch === channel ? !pref?.optedIn : (existing?.optedIn ?? false),
-                              optInSource: 'AdminPanel',
+                              optInSource: ch === channel ? 'AdminPanel' : (existing?.optInSource ?? 'AdminPanel'),
                             };
                           });
                           updatePreferences.mutate({ preferences: updated }, { onError: (err) => handleApiError(err) });

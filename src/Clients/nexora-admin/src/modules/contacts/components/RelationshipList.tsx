@@ -4,9 +4,8 @@ import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { toSnakeCase } from '@/shared/lib/utils';
 import type { ContactRelationshipDto } from '../types';
-
-const toSnakeCase = (str: string) => str.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
 
 interface RelationshipListProps {
   relationships: ContactRelationshipDto[];

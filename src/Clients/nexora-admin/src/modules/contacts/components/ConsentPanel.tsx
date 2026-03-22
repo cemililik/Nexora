@@ -2,10 +2,8 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { cn } from '@/shared/lib/utils';
+import { cn, toSnakeCase } from '@/shared/lib/utils';
 import type { ConsentRecordDto, ConsentType, RecordConsentRequest } from '../types';
-
-const toSnakeCase = (str: string) => str.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
 
 const consentTypes: ConsentType[] = ['EmailMarketing', 'SmsMarketing', 'DataProcessing'];
 

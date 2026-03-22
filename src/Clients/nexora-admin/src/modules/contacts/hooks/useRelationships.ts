@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   ContactRelationshipDto,
   AddRelationshipRequest,
@@ -27,6 +28,7 @@ export function useRelationships(contactId: string) {
 export function useAddRelationship(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: AddRelationshipRequest) =>
@@ -40,12 +42,14 @@ export function useAddRelationship(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_relationship_added'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useRemoveRelationship(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (relationshipId: string) =>
@@ -58,5 +62,6 @@ export function useRemoveRelationship(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_relationship_removed'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
