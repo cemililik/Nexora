@@ -498,14 +498,15 @@ locales/
 
 ## 9. API Integration
 
-**Full guide**: [API_INTEGRATION_GUIDE.md](../guides/API_INTEGRATION_GUIDE.md)
+**Full standard**: [API_INTEGRATION_STANDARDS.md](API_INTEGRATION_STANDARDS.md)
 
 ### Quick Reference
 
 - All responses wrapped in `ApiEnvelope<T>`: `{ data, message?, errors? }`
 - Pagination: `?page=1&pageSize=20` → `PagedResult<T>`
-- Auth: `Authorization: Bearer <JWT>` (from Keycloak)
-- Errors: `message` is always a `lockey_` key — resolve on client
+- Auth: `Authorization: Bearer <JWT>` — auth gates MUST also check `token.error`
+- Errors: `message` is always a `lockey_` key — resolve via `useApiError` before display
+- `QueryClient` MUST be created via factory function (SSR safety)
 - Module availability: check before rendering module UI
 
 ## 10. Module System (Frontend)

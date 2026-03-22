@@ -71,6 +71,13 @@ These rules, defined across Nexora standards, are **always** CRITICAL when viola
 | Cross-module direct reference | `CODING_STANDARDS.md` | Module A importing Module B's internal types |
 | Missing tenant isolation in cache/query | `INFRASTRUCTURE_STANDARDS.md` | Cache key without tenant ID |
 | PII/secret in log output | `OBSERVABILITY_STANDARDS.md` | `logger.LogInformation("Token: {Token}", jwt)` |
+| API endpoint without `[Authorize]` or explicit `[AllowAnonymous]` | `CODING_STANDARDS.md` §Authorization | New controller action with no auth attribute |
+| Tenant ID sourced from request body or query param | `CODING_STANDARDS.md` §Multi-Tenancy | `TenantId = request.TenantId` instead of JWT claim |
+| `NEXT_PUBLIC_` env var containing a secret | `FRONTEND_STANDARDS.md` §Security | `NEXT_PUBLIC_STRIPE_SECRET_KEY=sk_live_...` |
+| Auth gate not checking session error state | `FRONTEND_STANDARDS.md` §Auth | Middleware checking only `!token` without `token.error` check |
+| Double type erasure cast (`as unknown as T`) | `FRONTEND_STANDARDS.md` §General | `return value as unknown as MyType` to bypass type system |
+| Raw SQL string concatenation (SQL injection) | `CODING_STANDARDS.md` §Security | `$"SELECT * FROM users WHERE id = '{id}'"` |
+| Destructive database migration in production path | `RELEASE_STANDARDS.md` §Migrations | `DROP COLUMN`, `DROP TABLE`, `ALTER COLUMN` (rename) without blue-green strategy |
 
 ---
 
@@ -92,6 +99,12 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | SEC-8 | Tenant isolation enforced in queries, cache keys, and API calls | [*] | `INFRASTRUCTURE_STANDARDS.md` §Cache |
 | SEC-9 | Permission checks on both frontend (UX) and backend (enforcement) | [*] | `CODING_STANDARDS.md` §Authorization |
 | SEC-10 | No `--no-verify` or security bypass flags in commits | [*] | `RELEASE_STANDARDS.md` §Git |
+| SEC-11 | Every API endpoint has `[Authorize]` or explicit `[AllowAnonymous]` with justification comment | [B] | `CODING_STANDARDS.md` §Authorization |
+| SEC-12 | Tenant ID always sourced from JWT claim (`ITenantContext`), never from request body/query | [B] | `CODING_STANDARDS.md` §Multi-Tenancy |
+| SEC-13 | Keycloak JWT claims accessed via typed extension methods, not raw string keys | [B] | `CODING_STANDARDS.md` §Auth |
+| SEC-14 | `NEXT_PUBLIC_` env vars contain no secrets — they are bundled into client JavaScript | [F] | `FRONTEND_STANDARDS.md` §Security |
+| SEC-15 | Middleware and auth gates check both token presence AND `token.error` (e.g. `RefreshAccessTokenError`) | [F] | `FRONTEND_STANDARDS.md` §Auth |
+| SEC-16 | New npm/NuGet packages reviewed — no known CVEs, license compatible with commercial use | [*] | `INFRASTRUCTURE_STANDARDS.md` §Dependencies |
 
 ### 4.2 Architecture
 
@@ -107,6 +120,13 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | ARCH-8 | Correct use of `'use client'` directive — only where actually needed | [F] | `FRONTEND_STANDARDS.md` §Components |
 | ARCH-9 | Background jobs extend `NexoraJob<T>` and are idempotent | [B] | `INFRASTRUCTURE_STANDARDS.md` §Jobs |
 | ARCH-10 | Module tables prefixed: `{module}_{table}` | [B] | `CODING_STANDARDS.md` §Database |
+| ARCH-11 | Domain events raised via `AddDomainEvent()` on aggregate root, not dispatched directly in handlers | [B] | `CODING_STANDARDS.md` §Domain |
+| ARCH-12 | API endpoints follow versioning convention `/api/v{version}/{module}/{resource}` | [B] | `CODING_STANDARDS.md` §API |
+| ARCH-13 | EF Core queries use `AsNoTracking()` in read-only paths (query handlers, GET endpoints) | [B] | `CODING_STANDARDS.md` §Database |
+| ARCH-14 | New Next.js route segments have co-located `loading.tsx` and `error.tsx` files | [F] | `FRONTEND_STANDARDS.md` §Components |
+| ARCH-15 | Server Actions not used — all API calls go through the `api.ts` client layer | [F] | `FRONTEND_STANDARDS.md` §Architecture |
+| ARCH-16 | `QueryClient` instantiated inside a factory function, not at module scope (SSR safety) | [F] | `FRONTEND_STANDARDS.md` §State |
+| ARCH-17 | Integration event handlers implement idempotency (duplicate message safe) | [B] | `CODING_STANDARDS.md` §Events |
 
 ### 4.3 Localization
 
@@ -133,6 +153,9 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | TS-5 | External data validated before use (API responses, JSON parse results) | [*] | `CODING_STANDARDS.md` §Validation |
 | TS-6 | Configuration values not hardcoded — use central config or env vars | [*] | `INFRASTRUCTURE_STANDARDS.md` §Config |
 | TS-7 | Enum/constant values not duplicated across files | [*] | `CODING_STANDARDS.md` §General |
+| TS-8 | API response shapes validated at runtime boundary (Zod schema or equivalent) before use | [F] | `FRONTEND_STANDARDS.md` §API |
+| TS-9 | No `as unknown as T` double cast — indicates genuine type mismatch that must be resolved | [F] | `FRONTEND_STANDARDS.md` §General |
+| TS-10 | Value objects use strongly-typed record structs with private constructors and factory methods | [B] | `CODING_STANDARDS.md` §Domain |
 
 ### 4.5 Testing
 
@@ -148,6 +171,11 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | TEST-8 | Test files co-located with source: `Component.test.tsx` next to `Component.tsx` | [F] | `FRONTEND_STANDARDS.md` §Testing |
 | TEST-9 | Guard/hook tests cover edge cases: empty arrays, null values, error states | [F] | `FRONTEND_STANDARDS.md` §Testing |
 | TEST-10 | DOM queries use stable selectors (`data-testid`, `role`, text) not DOM structure | [F] | `FRONTEND_STANDARDS.md` §Testing |
+| TEST-11 | Auth-gated endpoints have tests for both authenticated and unauthenticated (401) scenarios | [B] | `CODING_STANDARDS.md` §Testing |
+| TEST-12 | Integration event handlers have idempotency tests (duplicate message processed twice, side effects once) | [B] | `CODING_STANDARDS.md` §Testing |
+| TEST-13 | Middleware/auth gate tests cover `token.error` path (expired/unrefreshable session) | [F] | `FRONTEND_STANDARDS.md` §Testing |
+| TEST-14 | Permission-restricted components/routes tested with both authorized and unauthorized users | [F] | `FRONTEND_STANDARDS.md` §Testing |
+| TEST-15 | Command handlers with external service calls have failure path tests (service returns error) | [B] | `CODING_STANDARDS.md` §Testing |
 
 ### 4.6 Observability
 
@@ -159,6 +187,9 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | OBS-4 | CorrelationId propagated in cross-service calls | [B] | `OBSERVABILITY_STANDARDS.md` §Correlation |
 | OBS-5 | Error boundaries wrap component trees for isolation | [F] | `FRONTEND_STANDARDS.md` §Components |
 | OBS-6 | API errors use `extractApiError()` and show translated messages | [F] | `FRONTEND_STANDARDS.md` §API |
+| OBS-7 | Custom `ActivitySource` spans created for external service calls (Keycloak, MinIO, payment) | [B] | `OBSERVABILITY_STANDARDS.md` §Tracing |
+| OBS-8 | Module-specific metrics updated on key business operations (counters, histograms) | [B] | `OBSERVABILITY_STANDARDS.md` §Metrics |
+| OBS-9 | `console.error`/`console.log` not used in production frontend code — errors handled via Error boundary or toast | [F] | `FRONTEND_STANDARDS.md` §Observability |
 
 ### 4.7 Code Quality
 
@@ -185,6 +216,9 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | PERF-4 | Lazy loading for module components and routes | [F] | `FRONTEND_STANDARDS.md` §Performance |
 | PERF-5 | No unnecessary re-renders (stable callbacks, memoized values) | [F] | `FRONTEND_STANDARDS.md` §Performance |
 | PERF-6 | N+1 query patterns avoided (use Include/projection) | [B] | `CODING_STANDARDS.md` §Database |
+| PERF-7 | `next/image` used for all images — no raw `<img>` tags | [F] | `FRONTEND_STANDARDS.md` §Performance |
+| PERF-8 | `next/font` used for font loading — no `@import` in CSS | [F] | `FRONTEND_STANDARDS.md` §Performance |
+| PERF-9 | New npm packages assessed for bundle size impact (`bundlephobia` check for packages > 10kB) | [F] | `FRONTEND_STANDARDS.md` §Performance |
 
 ### 4.9 Configuration & Infrastructure
 
@@ -195,8 +229,38 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | CFG-3 | Secrets accessed via `ISecretProvider` only | [B] | `INFRASTRUCTURE_STANDARDS.md` §Secrets |
 | CFG-4 | Docker images follow naming convention | [*] | `RELEASE_STANDARDS.md` §Docker |
 | CFG-5 | Database migrations are additive-only (no destructive changes in production) | [B] | `RELEASE_STANDARDS.md` §Migrations |
+| CFG-6 | New environment variables documented in `.env.example` with description and example value | [*] | `INFRASTRUCTURE_STANDARDS.md` §Config |
+| CFG-7 | Configuration validated at startup with `IValidateOptions<T>` — no missing required values fail silently | [B] | `INFRASTRUCTURE_STANDARDS.md` §Config |
 
-### 4.10 Documentation & Markdown
+### 4.10 API Contract Safety
+
+Changes to API shape, event schema, or module interface affect downstream consumers (other modules, frontend, external clients). These checks are **mandatory** when any endpoint, DTO, or integration event is modified.
+
+| # | Check | Scope | Standard Reference |
+|---|-------|-------|-------------------|
+| ACS-1 | No breaking changes to existing API response shapes — new fields are additive and nullable; removed/renamed fields require version bump | [B] | `CODING_STANDARDS.md` §API |
+| ACS-2 | New required fields in request DTOs are backwards compatible or introduced under a new API version | [B] | `CODING_STANDARDS.md` §API |
+| ACS-3 | Integration event schema changes are backwards compatible — consumers must tolerate unknown fields | [B] | `CODING_STANDARDS.md` §Events |
+| ACS-4 | Removed or renamed endpoints have a deprecation notice on the prior version before removal | [B] | `RELEASE_STANDARDS.md` §Breaking Changes |
+| ACS-5 | Frontend TypeScript types for API responses kept in sync with actual backend DTO shape | [*] | `FRONTEND_STANDARDS.md` §API |
+| ACS-6 | `ApiEnvelope<T>` wrapper used on all responses — no bare object returns | [B] | `CODING_STANDARDS.md` §API |
+
+### 4.11 Database & Migration Safety
+
+EF Core migrations run automatically and are irreversible in production. These checks prevent data loss, downtime, and schema corruption.
+
+| # | Check | Scope | Standard Reference |
+|---|-------|-------|-------------------|
+| DB-1 | Migration contains no `DROP COLUMN`, `DROP TABLE`, or column rename — additive-only | [B] | `RELEASE_STANDARDS.md` §Migrations |
+| DB-2 | New non-nullable columns have a `DEFAULT` value in the migration to handle existing rows | [B] | `RELEASE_STANDARDS.md` §Migrations |
+| DB-3 | Index additions on large tables use `CREATE INDEX CONCURRENTLY` via raw SQL to avoid lock | [B] | `RELEASE_STANDARDS.md` §Migrations |
+| DB-4 | Data migrations (`UPDATE` statements in migration) have an explicit rollback strategy documented | [B] | `RELEASE_STANDARDS.md` §Migrations |
+| DB-5 | Strongly-typed ID value converters registered in `DbContext.OnModelCreating()` | [B] | `CODING_STANDARDS.md` §Database |
+| DB-6 | Global query filters for tenant isolation and soft-delete applied on all tenant-scoped entities | [B] | `CODING_STANDARDS.md` §Database |
+| DB-7 | Foreign keys reference the correct tenant schema — no cross-tenant relationships | [B] | `CODING_STANDARDS.md` §Database |
+| DB-8 | Migration file name follows convention and timestamp is unique | [B] | `CODING_STANDARDS.md` §Database |
+
+### 4.12 Documentation & Markdown
 
 | # | Check | Scope | Standard Reference |
 |---|-------|-------|-------------------|
@@ -205,6 +269,8 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | DOC-3 | Diagrams use Mermaid (no external image files) | [*] | `DOCUMENTATION_STANDARDS.md` §Diagrams |
 | DOC-4 | ADRs are immutable once accepted | [*] | `DOCUMENTATION_STANDARDS.md` §ADR |
 | DOC-5 | Summary tables consistent with detailed findings | [*] | This document §Review Artifact |
+| DOC-6 | Module spec updated if new endpoints, entities, or events added | [B] | `DOCUMENTATION_STANDARDS.md` §Module Spec |
+| DOC-7 | `CHANGELOG.md` updated when feature or fix is user-visible | [*] | `RELEASE_STANDARDS.md` §Changelog |
 
 ---
 
@@ -213,19 +279,25 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 ### 5.1 Workflow
 
 ```
-PR Created → Auto-checks (CI/CD, lint, build, tests)
+Author Self-Review (Section 5.6 checklist) → PR Created
     ↓
-Reviewer Assigned (min 1 reviewer, 2 for CRITICAL modules: auth, payments)
+Auto-checks (CI/CD, lint, build, tests) — must pass before human review starts
     ↓
-Review Performed (using this checklist)
+Reviewer Assigned
+  ├─ Standard modules: min 1 reviewer
+  └─ Security-Sensitive modules (§5.7): min 2 reviewers, including module owner
     ↓
-Findings Documented (inline comments + review summary)
+Review Performed (using this checklist, all applicable §4 items)
+    ↓
+Findings Documented (inline comments + review summary in docs/code-reviews/)
     ↓
 Verdict Issued
     ↓
-Author Fixes → Re-review (reviewer verifies fixes, checks for regressions)
+Author Fixes → Re-review
+  ├─ Reviewer verifies each fix is correct AND checks for regressions
+  └─ Any fix that introduces a new CRITICAL/MAJOR restarts the cycle
     ↓
-Approved → Squash Merge to main
+Approved → Squash Merge to development (never directly to main)
 ```
 
 ### 5.2 Verdicts
@@ -256,12 +328,60 @@ Approved → Squash Merge to main
 
 ### 5.5 Author Responsibilities
 
-1. Self-review before requesting review (run the checklist yourself)
+1. Self-review before requesting review (run the §5.6 checklist yourself first)
 2. PR size: target < 400 lines changed (exclude generated files). Split large features
 3. Include test plan in PR description
 4. Respond to findings with code changes, not just comments
 5. Do not resolve reviewer comments — let the reviewer verify and resolve
 6. Request re-review after pushing fixes
+7. On API/schema changes: explicitly note in PR description whether the change is breaking and which consumers are affected
+
+### 5.6 Author Self-Review Gate
+
+Before requesting review, the author MUST verify every applicable item below. Skipping this gate is a process violation.
+
+**Backend (.NET)**
+
+- [ ] All new API endpoints have `[Authorize]` or `[AllowAnonymous]` with justification
+- [ ] Tenant ID sourced from `ITenantContext`, not from request input
+- [ ] No `catch (Exception)` in module code
+- [ ] Every command has a `FluentValidation` validator with `lockey_` messages
+- [ ] All `Result.Failure()` / `DomainException` / `.WithMessage()` use `lockey_` keys
+- [ ] `ILogger<T>` injected and used in command handlers (success + failure paths)
+- [ ] No string interpolation in log calls
+- [ ] `AsNoTracking()` on all read-only EF queries
+- [ ] Domain events raised via `AddDomainEvent()`, not dispatched directly
+- [ ] Migration file: no `DROP`, no non-nullable column without `DEFAULT`
+- [ ] New NuGet packages checked for CVEs and license compatibility
+
+**Frontend (React / Next.js)**
+
+- [ ] No `any` type, no `as unknown as T` cast
+- [ ] No hardcoded user-facing strings — all use `t('lockey_...')`
+- [ ] `lockey_` keys exist in both `en` and `tr` locale files
+- [ ] No `dangerouslySetInnerHTML`
+- [ ] No tokens in `localStorage`
+- [ ] No `NEXT_PUBLIC_` variable containing a secret
+- [ ] Auth gate checks `!token || token.error === 'RefreshAccessTokenError'`
+- [ ] `'use client'` only on components that actually use browser APIs or hooks
+- [ ] `next/image` used for all images — no raw `<img>` tags
+- [ ] `QueryClient` created inside factory function, not at module scope
+- [ ] No `console.log` / `console.error` left in committed code
+- [ ] `loading.tsx` and `error.tsx` exist for new route segments
+- [ ] TanStack Query v5 API used (`isPending` not `isLoading` for mutations)
+- [ ] New npm packages checked for bundle size and known vulnerabilities
+
+### 5.7 Security-Sensitive Modules
+
+The following modules require **2 reviewers** (including the module owner) and a full security checklist pass before merge:
+
+| Module | Reason |
+|--------|--------|
+| `Identity` | Auth, Keycloak integration, JWT, RBAC |
+| `Payments` / `Donations` | Financial transactions, PCI scope |
+| `Infrastructure` (secrets, cache, config) | Platform-wide security primitives |
+| `Middleware` (portal/admin) | Auth gate — bypass = full platform compromise |
+| Any migration touching `public` schema | Affects all tenants simultaneously |
 
 ---
 
@@ -328,11 +448,29 @@ Every formal code review MUST produce a structured document following this templ
 
 ## Verification Checklist
 
+**Build & Tests**
+- [ ] `next build` / `dotnet build` passes with zero errors
+- [ ] All tests pass (`vitest run` / `dotnet test`)
+- [ ] TypeScript strict: `tsc --noEmit` passes with zero errors
+- [ ] ESLint: zero errors (warnings acceptable)
+
+**Findings**
 - [ ] All CRITICAL findings resolved
 - [ ] All MAJOR findings resolved
-- [ ] Build passes (0 TypeScript/C# errors)
-- [ ] All tests pass
-- [ ] No regressions introduced by fixes
+- [ ] No new CRITICAL/MAJOR introduced by fixes (regression check)
+- [ ] Prior review tracking table updated (§6.3 format)
+
+**Security**
+- [ ] Auth gates check both `!token` and `token.error`
+- [ ] No secrets in source, config, or `NEXT_PUBLIC_` vars
+- [ ] All new endpoints have `[Authorize]` or `[AllowAnonymous]`
+- [ ] Tenant isolation verified in new queries and cache keys
+
+**Standards**
+- [ ] Zero hardcoded user-facing strings (all `lockey_` keys)
+- [ ] `lockey_` keys present in en + tr locale files
+- [ ] No `any` type, no `as unknown as T`
+- [ ] Migration safety: additive-only, non-nullable columns have DEFAULT
 ```
 
 ### 6.2 Artifact Rules
@@ -374,6 +512,15 @@ For follow-up reviews on fix commits:
 | Hardcoded connection string | SEC-1 | Connection strings in `appsettings.json` |
 | Missing org filter | SEC-8 | Query without `organization_id` filter in multi-tenant context |
 | `catch (Exception)` | OBS-1 | Generic catch in module code (only GlobalExceptionHandler should do this) |
+| Missing `[Authorize]` | SEC-11 | Controller action with no auth attribute and no `[AllowAnonymous]` justification |
+| Tenant ID from request | SEC-12 | `tenantId = command.TenantId` instead of `_tenantContext.TenantId` |
+| `Guid.Parse` without try | ARCH-3 | `Guid.Parse(str)` throws on bad input — use `Guid.TryParse` |
+| Missing `AsNoTracking()` | ARCH-13 | Query handler loading entities that are never modified |
+| Domain event in handler | ARCH-11 | `await _mediator.Publish(new SomethingHappened())` in handler instead of `entity.AddDomainEvent()` |
+| Non-idempotent event handler | ARCH-17 | Handler has no duplicate-message guard (no `Processed` check or upsert pattern) |
+| Missing `DEFAULT` in migration | DB-2 | `AddColumn` with `nullable: false` and no `defaultValue` |
+| Validator missing property | ARCH-2 | New DTO property not covered by any `RuleFor()` |
+| Repository bypassed | ARCH-7 | `DbContext` injected directly into API endpoint or command handler |
 
 ### 7.2 Frontend (React/Next.js) Common Issues
 
@@ -389,6 +536,16 @@ For follow-up reviews on fix commits:
 | Inline styles | CQ-10 | `style={{ width: 100 }}` instead of Tailwind classes |
 | Unvalidated external data | TS-5 | `response.json()` result used without shape validation |
 | Duplicate state | ARCH-5 | `useState` mirroring server data that should be in TanStack Query |
+| Raw `<img>` tag | PERF-7 | `<img src="...">` instead of `<Image>` from `next/image` |
+| Hook in Server Component | ARCH-4 | `useTranslations()`, `useSession()` called in a file without `'use client'` |
+| Client component accessing server env | SEC-14 | `process.env.DATABASE_URL` in a `'use client'` component |
+| `isLoading` (TanStack v5) | CQ-2 | `isLoading` flag used — TanStack Query v5 uses `isPending` for mutations |
+| Incomplete auth gate | SEC-15 | `if (!token)` redirect without also checking `token.error === 'RefreshAccessTokenError'` |
+| `console.log` in production code | OBS-9 | Debug `console.log` left in committed code |
+| Missing `Suspense` boundary | ARCH-14 | Async server component tree without wrapping `<Suspense>` |
+| `QueryClient` at module scope | ARCH-16 | `const queryClient = new QueryClient()` outside of a factory (breaks SSR) |
+| Hydration mismatch source | CQ-5 | `Date.now()`, `Math.random()`, or `window` accessed during render in shared component |
+| Invalid Tailwind class | CQ-1 | Class like `pt-22`, `mt-18` that doesn't exist in Tailwind v3/v4 scale |
 
 ### 7.3 Testing Common Issues
 

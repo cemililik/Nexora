@@ -1,0 +1,19 @@
+{
+  "lockey_nav_dashboard": "Gösterge Paneli",
+  "lockey_nav_identity": "Kimlik",
+  "lockey_nav_users": "Kullanıcılar",
+  "lockey_nav_roles": "Roller",
+  "lockey_nav_organizations": "Organizasyonlar",
+  "lockey_nav_tenants": "Kiracılar",
+  "lockey_nav_audit": "Denetim Kaydı",
+  "lockey_nav_modules": "Modüller",
+  "lockey_nav_contacts": "Kişiler",
+  "lockey_nav_tags": "Etiketler",
+  "lockey_nav_documents": "Belgeler",
+  "lockey_nav_folders": "Klasörler",
+  "lockey_nav_templates": "Şablonlar",
+  "lockey_nav_signatures": "İmzalar",
+  "lockey_nav_notifications": "Bildirimler",
+  "lockey_nav_providers": "Sağlayıcılar",
+  "lockey_nav_schedules": "Zamanlama"
+}
