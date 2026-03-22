@@ -62,13 +62,13 @@ Before writing ANY code or documentation, you MUST read and strictly follow:
    - API integration patterns and query key conventions
    - Module manifest structure for dynamic UI loading
 
-7. **API Integration Guide**: `docs/guides/API_INTEGRATION_GUIDE.md`
-   - ApiEnvelope<T> response format and TypeScript types
-   - Pagination with PagedResult<T>
-   - Error handling (status codes → user actions)
-   - TanStack Query patterns (query keys, hooks, cache invalidation)
-   - Authentication flow (Keycloak JWT)
-   - File upload (presigned URL pattern)
+7. **API Integration Standards**: `docs/standards/API_INTEGRATION_STANDARDS.md`
+   - ApiEnvelope<T> response format and TypeScript types — backend MUST always wrap responses
+   - HTTP status codes → mandatory frontend actions (§4)
+   - Auth gate: MUST check `!token || token.error === 'RefreshAccessTokenError'`
+   - TanStack Query patterns: factory QueryClient, key factory, CRUD hooks (§8)
+   - Error handling: `useApiError` hook — no manual error parsing allowed
+   - File upload: presigned URL pattern — no direct multipart uploads (§11)
 
 8. **Module System**: `docs/architecture/MODULE_SYSTEM.md`
    - Modules are true plugins — installable/removable per tenant at runtime
@@ -218,7 +218,7 @@ Nexora.Modules.{ModuleName}/
 
 ## When Writing Frontend Code
 **Full spec**: `docs/standards/FRONTEND_STANDARDS.md`
-**API guide**: `docs/guides/API_INTEGRATION_GUIDE.md`
+**API standard**: `docs/standards/API_INTEGRATION_STANDARDS.md`
 
 ### General Rules
 - TypeScript strict mode — **NEVER** use `any`
