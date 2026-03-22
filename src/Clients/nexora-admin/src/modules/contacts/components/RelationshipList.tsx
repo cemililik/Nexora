@@ -7,19 +7,27 @@ import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { toSnakeCase } from '@/shared/lib/utils';
 import type { ContactRelationshipDto } from '../types';
 
-interface RelationshipListProps {
-  relationships: ContactRelationshipDto[];
-  onRemove: (id: string) => void;
+interface RemoveCallbacks {
+  onSuccess: () => void;
+  onError: () => void;
 }
 
-export function RelationshipList({ relationships, onRemove }: RelationshipListProps) {
+interface RelationshipListProps {
+  relationships: ContactRelationshipDto[];
+  onRemove: (id: string, callbacks: RemoveCallbacks) => void;
+  isRemoving?: boolean;
+}
+
+export function RelationshipList({ relationships, onRemove, isRemoving = false }: RelationshipListProps) {
   const { t, i18n } = useTranslation('contacts');
   const [removeId, setRemoveId] = useState<string | null>(null);
 
   function handleConfirmRemove() {
     if (removeId) {
-      onRemove(removeId);
-      setRemoveId(null);
+      onRemove(removeId, {
+        onSuccess: () => setRemoveId(null),
+        onError: () => setRemoveId(null),
+      });
     }
   }
 
@@ -67,6 +75,7 @@ export function RelationshipList({ relationships, onRemove }: RelationshipListPr
         description={t('lockey_contacts_relationships_remove_description')}
         onConfirm={handleConfirmRemove}
         variant="destructive"
+        isPending={isRemoving}
       />
     </div>
   );

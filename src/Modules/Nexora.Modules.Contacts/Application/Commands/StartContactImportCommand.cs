@@ -51,6 +51,21 @@ public sealed class StartContactImportHandler(
             return Result<ImportJobDto>.Failure(
                 LocalizedMessage.Of("lockey_contacts_error_invalid_tenant_context"));
 
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+            return Result<ImportJobDto>.Failure(
+                LocalizedMessage.Of("lockey_contacts_error_invalid_organization_context"));
+
+        var expectedPrefix = $"{orgId}/contacts/imports/";
+        if (!request.StorageKey.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogWarning(
+                "Storage key {StorageKey} does not match expected prefix for organization {OrganizationId} in tenant {TenantId}",
+                request.StorageKey, orgId, tenantId);
+
+            return Result<ImportJobDto>.Failure(
+                LocalizedMessage.Of("lockey_contacts_error_import_invalid_storage_key"));
+        }
+
         var opts = storageOptions.Value;
         var bucketName = $"{opts.BucketPrefix}-{tenantId}";
 

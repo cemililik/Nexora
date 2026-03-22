@@ -105,11 +105,15 @@ export function useSetCustomFieldValue(contactId: string) {
     }: {
       definitionId: string;
       data: SetCustomFieldValueRequest;
-    }) =>
-      api.put<ContactCustomFieldDto>(
+    }) => {
+      if (!contactId) {
+        return Promise.reject(new Error('contactId is required'));
+      }
+      return api.put<ContactCustomFieldDto>(
         `/contacts/contacts/${encodeURIComponent(contactId)}/custom-fields/${encodeURIComponent(definitionId)}`,
         data,
-      ),
+      );
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: customFieldKeys.contactFields(contactId),

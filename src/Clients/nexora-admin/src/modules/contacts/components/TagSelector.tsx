@@ -7,7 +7,6 @@ import { Button } from '@/shared/components/ui/button';
 import type { ContactTagSummaryDto, TagDto } from '../types';
 
 interface TagSelectorProps {
-  contactId: string;
   assignedTags: ContactTagSummaryDto[];
   availableTags: TagDto[];
   onAssign: (tagId: string) => void;
@@ -15,7 +14,6 @@ interface TagSelectorProps {
 }
 
 export function TagSelector({
-  contactId: _contactId,
   assignedTags,
   availableTags,
   onAssign,

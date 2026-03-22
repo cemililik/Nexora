@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -79,6 +80,11 @@ export default function CustomFieldManagementPage() {
   };
 
   const handleSubmit = () => {
+    if (formType === 'dropdown' && !formOptions.trim()) {
+      toast.error(t('lockey_contacts_error_dropdown_options_required'));
+      return;
+    }
+
     if (editingField) {
       const data: UpdateCustomFieldRequest = {
         fieldName: formName,

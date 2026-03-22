@@ -227,7 +227,7 @@ export default function TagManagementPage() {
                 type="text"
                 value={formColor}
                 onChange={(e) => setFormColor(e.target.value)}
-                placeholder="#FF5733"
+                placeholder={t('lockey_contacts_tags_color_placeholder')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>

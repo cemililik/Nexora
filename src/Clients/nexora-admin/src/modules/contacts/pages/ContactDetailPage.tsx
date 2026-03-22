@@ -722,7 +722,7 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
                             className="rounded-md border border-input bg-background px-3 py-1 text-sm"
                           >
                             <option value="">{t('lockey_common_select', { ns: 'common' })}</option>
-                            {def.options.split('\n').map((opt) => (
+                            {def.options.split(/\r?\n/).map(o => o.trim()).filter(Boolean).map((opt) => (
                               <option key={opt} value={opt}>{opt}</option>
                             ))}
                           </select>
