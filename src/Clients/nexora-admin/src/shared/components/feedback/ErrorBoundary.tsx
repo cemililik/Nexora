@@ -30,6 +30,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       console.error('[ErrorBoundary]', error, errorInfo);
     } else {
       // TODO: report to observability service (OpenTelemetry/Sentry)
+      try {
+        console.error('[ErrorBoundary]', error, errorInfo?.componentStack);
+      } catch {
+        // Logging itself should never throw
+      }
     }
   }
 

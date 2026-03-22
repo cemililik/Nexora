@@ -47,9 +47,11 @@ export function parseTokenClaims(token: string): JwtClaims {
 
   // Base64url → Base64 → decode
   const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+  const padLen = (4 - base64.length % 4) % 4;
+  const padded = base64 + '='.repeat(padLen);
   let decodedBase64: string;
   try {
-    decodedBase64 = atob(base64);
+    decodedBase64 = atob(padded);
   } catch {
     throw new Error('Invalid base64 in JWT payload');
   }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -12,10 +12,12 @@ import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { useCreateTenant } from '../hooks/useTenants';
 
-const createTenantSchema = z.object({
-  name: z.string().min(1).max(200),
-  slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/),
-});
+function createTenantSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
+  return z.object({
+    name: z.string().min(1, { message: t('lockey_identity_validation_tenant_name_required') }).max(200, { message: t('lockey_identity_validation_tenant_name_max') }),
+    slug: z.string().min(1, { message: t('lockey_identity_validation_tenant_slug_required') }).max(63, { message: t('lockey_identity_validation_tenant_slug_max') }).regex(/^[a-z0-9-]+$/, { message: t('lockey_identity_validation_tenant_slug_format') }),
+  });
+}
 
 export default function TenantCreatePage() {
   const { t } = useTranslation('identity');
@@ -23,6 +25,8 @@ export default function TenantCreatePage() {
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const createTenant = useCreateTenant();
   const { handleApiError } = useApiError();
+
+  const createTenantSchema = useMemo(() => createTenantSchemaFactory(t), [t]);
 
   const form = useForm({
     resolver: zodResolver(createTenantSchema),
@@ -81,6 +85,9 @@ export default function TenantCreatePage() {
               )}
             </div>
             <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+                {t('lockey_common_cancel', { ns: 'common' })}
+              </Button>
               <Button type="submit" disabled={createTenant.isPending}>
                 {createTenant.isPending
                   ? t('lockey_common_loading', { ns: 'common' })

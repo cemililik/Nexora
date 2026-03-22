@@ -5,7 +5,7 @@ import { Button } from '@/shared/components/ui/button';
 
 /** 404 page for unmatched routes. */
 export default function NotFoundPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('common');
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">

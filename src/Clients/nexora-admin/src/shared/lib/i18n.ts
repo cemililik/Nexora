@@ -40,6 +40,9 @@ void i18n
     },
   });
 
+/** Recursive translation value type (supports nested objects). */
+export type Translations = string | { [key: string]: Translations };
+
 /**
  * Register locale resources for a feature module at runtime.
  * Call this from each module's init/manifest file to decouple
@@ -50,14 +53,14 @@ void i18n
  */
 export function registerModuleLocales(
   moduleName: string,
-  locales: Record<string, Record<string, string>>,
+  locales: Record<string, Record<string, Translations>>,
 ): void {
   for (const [lang, translations] of Object.entries(locales)) {
     i18n.addResourceBundle(lang, moduleName, translations, true, true);
   }
 }
 
-const RTL_LOCALES = ['ar', 'he', 'fa'];
+export const RTL_LOCALES = ['ar', 'he', 'fa', 'ur'];
 
 // Sync API client Accept-Language header with current and future language changes
 i18n.on('initialized', () => {

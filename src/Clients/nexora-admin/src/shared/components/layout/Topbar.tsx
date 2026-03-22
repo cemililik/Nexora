@@ -36,7 +36,7 @@ export function Topbar() {
     if (keycloak) {
       void keycloak.logout({ redirectUri: window.location.origin + '/login' });
     } else {
-      toast.error(t('lockey_error_logout_failed'));
+      toast.error(t('lockey_error_logout_failed', { ns: 'error' }));
       window.location.href = '/login';
     }
   };

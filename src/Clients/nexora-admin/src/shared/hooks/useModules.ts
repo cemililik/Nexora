@@ -19,6 +19,7 @@ const moduleKeys = {
  */
 export function useModules() {
   const tenantId = useAuthStore((s) => s.tenantId);
+  const token = useAuthStore((s) => s.token);
 
   const query = useQuery({
     queryKey: moduleKeys.installed(tenantId ?? ''),
@@ -26,7 +27,7 @@ export function useModules() {
       api.get<TenantModuleDto[]>(
         `/identity/tenants/${encodeURIComponent(tenantId!)}/modules`,
       ),
-    enabled: !!tenantId && UUID_REGEX.test(tenantId),
+    enabled: !!token && !!tenantId && UUID_REGEX.test(tenantId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -50,6 +51,6 @@ export function useModules() {
   return {
     activeModules,
     hasModule,
-    isPending: query.isPending,
+    isLoading: query.isLoading,
   };
 }
