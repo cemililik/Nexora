@@ -147,12 +147,11 @@ export default function TenantDetailPage() {
         }
         variant="destructive"
         onConfirm={() => {
-          if (confirmAction === 'suspend') {
-            updateStatus.suspend();
-          } else {
-            updateStatus.terminate();
-          }
-          setConfirmAction(null);
+          const action = confirmAction === 'suspend' ? 'suspend' : 'terminate';
+          updateStatus.mutate({ action }, {
+            onSuccess: () => setConfirmAction(null),
+            onError: () => setConfirmAction(null),
+          });
         }}
         isPending={updateStatus.isPending}
       />
@@ -165,8 +164,10 @@ export default function TenantDetailPage() {
         variant="destructive"
         onConfirm={() => {
           if (moduleToUninstall) {
-            uninstallModule.mutate(moduleToUninstall);
-            setModuleToUninstall(null);
+            uninstallModule.mutate(moduleToUninstall, {
+              onSuccess: () => setModuleToUninstall(null),
+              onError: () => setModuleToUninstall(null),
+            });
           }
         }}
         isPending={uninstallModule.isPending}

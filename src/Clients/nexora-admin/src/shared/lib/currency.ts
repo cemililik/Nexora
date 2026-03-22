@@ -38,6 +38,8 @@ export function getCurrencySymbol(
   currency: string,
   locale = 'en',
 ): string {
+  // `narrowSymbol` is not supported in all runtimes/browsers, so we
+  // fall back to the standard `symbol` display if it throws.
   let parts: Intl.NumberFormatPart[];
   try {
     parts = new Intl.NumberFormat(locale, {

@@ -107,6 +107,7 @@
   "lockey_identity_modules_title": "Module Management",
   "lockey_identity_modules_description": "Install or remove modules for this tenant.",
 
+  "lockey_identity_confirm_activate_user": "Are you sure you want to activate this user?",
   "lockey_identity_confirm_deactivate_user": "Are you sure you want to deactivate this user? They will lose access to the system.",
   "lockey_identity_confirm_delete_org": "Are you sure you want to delete this organization? This action cannot be undone.",
   "lockey_identity_confirm_suspend_tenant": "Are you sure you want to suspend this tenant? All users will lose access.",
@@ -143,5 +144,17 @@
 
   "lockey_identity_yes": "Yes",
   "lockey_identity_no": "No",
-  "lockey_identity_never": "Never"
+  "lockey_identity_never": "Never",
+
+  "lockey_identity_validation_role_name_required": "Role name is required",
+  "lockey_identity_validation_role_name_max": "Role name must be at most 100 characters",
+  "lockey_identity_validation_role_description_max": "Description must be at most 500 characters",
+  "lockey_identity_validation_tenant_name_required": "Tenant name is required",
+  "lockey_identity_validation_tenant_name_max": "Tenant name must be at most 200 characters",
+  "lockey_identity_validation_tenant_slug_required": "Slug is required",
+  "lockey_identity_validation_tenant_slug_max": "Slug must be at most 63 characters",
+  "lockey_identity_validation_tenant_slug_format": "Slug must contain only lowercase letters, numbers, and hyphens",
+  "lockey_identity_validation_org_name_required": "Organization name is required",
+  "lockey_identity_validation_org_name_max": "Organization name must be at most 200 characters",
+  "lockey_identity_validation_org_description_max": "Description must be at most 500 characters"
 }

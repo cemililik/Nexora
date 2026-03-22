@@ -104,6 +104,27 @@ public sealed class MinioFileStorageService(
     }
 
     /// <inheritdoc />
+    public async Task<byte[]> GetObjectAsync(
+        string bucketName,
+        string objectKey,
+        CancellationToken ct = default)
+    {
+        var client = await GetClientAsync(ct);
+
+        using var memoryStream = new MemoryStream();
+        await client.GetObjectAsync(
+            new GetObjectArgs()
+                .WithBucket(bucketName)
+                .WithObject(objectKey)
+                .WithCallbackStream(stream => stream.CopyTo(memoryStream)), ct);
+
+        logger.LogDebug("Downloaded object {BucketName}/{ObjectKey} ({Size} bytes)",
+            bucketName, objectKey, memoryStream.Length);
+
+        return memoryStream.ToArray();
+    }
+
+    /// <inheritdoc />
     public async Task<ObjectMetadataResult> GetObjectMetadataAsync(
         string bucketName,
         string objectKey,

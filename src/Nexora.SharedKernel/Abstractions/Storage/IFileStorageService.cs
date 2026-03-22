@@ -45,6 +45,13 @@ public interface IFileStorageService
     /// <returns>True if the object exists; otherwise false.</returns>
     Task<bool> ObjectExistsAsync(string bucketName, string objectKey, CancellationToken ct = default);
 
+    /// <summary>Downloads the raw content of an object from storage.</summary>
+    /// <param name="bucketName">Bucket containing the object.</param>
+    /// <param name="objectKey">Object key to download.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The raw byte content of the object.</returns>
+    Task<byte[]> GetObjectAsync(string bucketName, string objectKey, CancellationToken ct = default);
+
     /// <summary>Gets metadata for an existing object.</summary>
     /// <param name="bucketName">Bucket containing the object.</param>
     /// <param name="objectKey">Object key.</param>

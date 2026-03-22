@@ -68,6 +68,8 @@ describe('useUsers', () => {
     await waitFor(() => {
       expect(result.current.data).toEqual(mockUser);
     });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/users/u1');
   });
 
   it('should not fetch user when id is empty', () => {

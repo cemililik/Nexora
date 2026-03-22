@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Nexora.Modules.Contacts.Domain.Entities;
 using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Storage;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Jobs;
 
@@ -12,17 +14,20 @@ public sealed record ContactImportJobParams : JobParams
 {
     public required string FileName { get; init; }
     public required string FileFormat { get; init; }
-    public required byte[] FileContent { get; init; }
+    public required string StorageKey { get; init; }
     public Guid? OrganizationIdGuid { get; init; }
 }
 
 /// <summary>
-/// Background job that parses CSV/Excel files and imports contacts in batches.
+/// Background job that downloads the import file from MinIO via storage key,
+/// parses CSV/Excel content, and imports contacts in batches.
 /// Performs duplicate detection and reports progress.
 /// </summary>
 public sealed class ContactImportJob(
     ITenantContextAccessor tenantContextAccessor,
     ContactsDbContext dbContext,
+    IFileStorageService fileStorageService,
+    IOptions<StorageOptions> storageOptions,
     ILogger<ContactImportJob> logger) : NexoraJob<ContactImportJobParams>(tenantContextAccessor, logger)
 {
     private const int BatchSize = 100;
@@ -33,11 +38,18 @@ public sealed class ContactImportJob(
         var tenantId = Guid.Parse(parameters.TenantId);
         var orgId = parameters.OrganizationIdGuid ?? Guid.Empty;
 
-        logger.LogInformation(
-            "Starting contact import from {FileName} ({Format}, {Size} bytes)",
-            parameters.FileName, parameters.FileFormat, parameters.FileContent.Length);
+        var opts = storageOptions.Value;
+        var bucketName = $"{opts.BucketPrefix}-{tenantId}";
 
-        var rows = ParseFile(parameters.FileContent, parameters.FileFormat);
+        logger.LogInformation(
+            "Starting contact import from {FileName} ({Format}) using storage key {StorageKey}",
+            parameters.FileName, parameters.FileFormat, parameters.StorageKey);
+
+        // Download file content from MinIO using storage key
+        var fileContent = await fileStorageService.GetObjectAsync(
+            bucketName, parameters.StorageKey, ct);
+
+        var rows = ParseFile(fileContent, parameters.FileFormat);
         var totalRows = rows.Count;
         var successCount = 0;
         var errorCount = 0;

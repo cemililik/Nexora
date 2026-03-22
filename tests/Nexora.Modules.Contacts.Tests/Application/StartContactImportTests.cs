@@ -1,29 +1,39 @@
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Modules.Contacts.Application.Commands;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Storage;
+using NSubstitute;
 
 namespace Nexora.Modules.Contacts.Tests.Application;
 
 public sealed class StartContactImportTests
 {
     private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly IFileStorageService _fileStorageService;
+    private readonly IOptions<StorageOptions> _storageOptions;
 
     public StartContactImportTests()
     {
         _tenantAccessor = CreateTenantAccessor(Guid.NewGuid(), Guid.NewGuid());
+        _fileStorageService = Substitute.For<IFileStorageService>();
+        _storageOptions = Options.Create(new StorageOptions());
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldReturnQueuedJob()
+    public async Task Handle_ValidCommand_FileExists_ShouldReturnQueuedJob()
     {
         // Arrange
+        _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         var handler = new StartContactImportHandler(
-            _tenantAccessor, NullLogger<StartContactImportHandler>.Instance);
+            _fileStorageService, _tenantAccessor, _storageOptions,
+            NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
-            new StartContactImportCommand("contacts.csv", "csv", new byte[] { 1, 2, 3 }),
+            new StartContactImportCommand("contacts.csv", "csv", "org/contacts/imports/abc/contacts.csv"),
             CancellationToken.None);
 
         // Assert
@@ -33,16 +43,39 @@ public sealed class StartContactImportTests
     }
 
     [Fact]
+    public async Task Handle_FileNotInStorage_ShouldReturnFailure()
+    {
+        // Arrange
+        _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+        var handler = new StartContactImportHandler(
+            _fileStorageService, _tenantAccessor, _storageOptions,
+            NullLogger<StartContactImportHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(
+            new StartContactImportCommand("contacts.csv", "csv", "org/contacts/imports/abc/contacts.csv"),
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_import_file_not_found");
+    }
+
+    [Fact]
     public async Task Handle_ValidCommand_ShouldReturnCorrectTimestamp()
     {
         // Arrange
+        _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         var handler = new StartContactImportHandler(
-            _tenantAccessor, NullLogger<StartContactImportHandler>.Instance);
+            _fileStorageService, _tenantAccessor, _storageOptions,
+            NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var before = DateTimeOffset.UtcNow;
         var result = await handler.Handle(
-            new StartContactImportCommand("data.xlsx", "xlsx", new byte[] { 1 }),
+            new StartContactImportCommand("data.xlsx", "xlsx", "org/contacts/imports/abc/data.xlsx"),
             CancellationToken.None);
         var after = DateTimeOffset.UtcNow;
 
@@ -55,12 +88,15 @@ public sealed class StartContactImportTests
     public async Task Handle_ValidCommand_ShouldReturnZeroCounts()
     {
         // Arrange
+        _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
         var handler = new StartContactImportHandler(
-            _tenantAccessor, NullLogger<StartContactImportHandler>.Instance);
+            _fileStorageService, _tenantAccessor, _storageOptions,
+            NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
-            new StartContactImportCommand("contacts.csv", "csv", new byte[] { 1 }),
+            new StartContactImportCommand("contacts.csv", "csv", "org/contacts/imports/abc/contacts.csv"),
             CancellationToken.None);
 
         // Assert

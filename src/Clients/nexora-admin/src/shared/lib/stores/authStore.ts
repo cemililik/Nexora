@@ -2,9 +2,11 @@ import { create } from 'zustand';
 
 import type { UserInfo } from '@/shared/types/auth';
 
+export type AuthToken = string | { error: string } | null;
+
 interface AuthState {
   user: UserInfo | null;
-  token: string | null;
+  token: AuthToken;
   tenantId: string | null;
   organizationId: string | null;
   permissions: string[];

@@ -124,7 +124,7 @@ describe('useAuth', () => {
     });
   });
 
-  it('onTokenExpired_UpdateTokenFails_ClearsAuthBeforeSession', async () => {
+  it('should clear auth before session when update token fails', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
     mockApiGet.mockResolvedValue({ id: 'u1', firstName: 'Admin', lastName: 'User' });

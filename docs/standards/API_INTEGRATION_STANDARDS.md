@@ -246,9 +246,11 @@ Frontend MUST use a centralized API client. Direct `fetch`/`axios` calls in comp
 
 ```typescript
 // shared/lib/api.ts
-import axios, { type AxiosError } from 'axios';
+import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import type { ApiEnvelope } from '@/shared/types/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
+import { getKeycloak } from '@/shared/lib/auth';
+import { setAuthToken } from '@/shared/lib/api';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL,
@@ -262,13 +264,54 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor — handle 401 globally
+// Response interceptor — handle 401 with refresh-then-retry
+let refreshPromise: Promise<boolean> | null = null;
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiEnvelope<unknown>>) => {
-    if (error.response?.status === 401) {
-      useAuthStore.getState().logout();
-      window.location.href = '/login';
+  async (error: AxiosError<ApiEnvelope<unknown>>) => {
+    const originalRequest = error.config as
+      | (InternalAxiosRequestConfig & { _retry?: boolean })
+      | undefined;
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+
+      const kc = getKeycloak();
+      if (kc) {
+        try {
+          // Queue concurrent requests behind a single refresh attempt
+          if (!refreshPromise) {
+            refreshPromise = kc
+              .updateToken(5)
+              .then(() => true)
+              .catch(() => false)
+              .finally(() => { refreshPromise = null; });
+          }
+
+          const refreshed = await refreshPromise;
+
+          if (refreshed && kc.token) {
+            // Retry original request with fresh token
+            setAuthToken(kc.token);
+            originalRequest.headers['Authorization'] = `Bearer ${kc.token}`;
+            return apiClient(originalRequest);
+          }
+        } catch {
+          // fall through to logout
+        }
+      }
+
+      // Refresh failed — clear session and redirect
+      setAuthToken(null);
+      useAuthStore.getState().clearSession();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },

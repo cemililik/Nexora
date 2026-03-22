@@ -64,7 +64,7 @@ function NavItem({
   item: AdminNavigationItem;
   collapsed: boolean;
 }) {
-  const { t } = useTranslation(['navigation', 'identity']);
+  const { t } = useTranslation(['navigation', 'identity', 'contacts', 'common']);
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const Icon = iconMap[item.icon];

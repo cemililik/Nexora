@@ -46,26 +46,22 @@ function createApiClient(): AxiosInstance {
 
         const kc = getKeycloak();
         if (kc) {
-          try {
-            if (!refreshPromise) {
-              refreshPromise = kc
-                .updateToken(5)
-                .then(() => true)
-                .catch(() => false)
-                .finally(() => {
-                  refreshPromise = null;
-                });
-            }
+          if (!refreshPromise) {
+            refreshPromise = kc
+              .updateToken(5)
+              .then(() => true)
+              .catch(() => false)
+              .finally(() => {
+                refreshPromise = null;
+              });
+          }
 
-            const refreshed = await refreshPromise;
+          const refreshed = await refreshPromise;
 
-            if (refreshed && kc.token) {
-              setAuthToken(kc.token);
-              originalRequest.headers['Authorization'] = `Bearer ${kc.token}`;
-              return client(originalRequest);
-            }
-          } catch {
-            // fall through to redirect
+          if (refreshed && kc.token) {
+            setAuthToken(kc.token);
+            originalRequest.headers['Authorization'] = `Bearer ${kc.token}`;
+            return client(originalRequest);
           }
         }
 
@@ -125,8 +121,11 @@ export const api = {
   },
 
   async delete<T = void>(url: string): Promise<T> {
-    await apiClient.delete(url);
-    return undefined as T;
+    const resp = await apiClient.delete<ApiEnvelope<T>>(url);
+    if (resp.status === 204 || resp.data?.data == null) {
+      return undefined as T;
+    }
+    return resp.data.data;
   },
 
   /**
