@@ -9,11 +9,14 @@ import { extractApiError } from '@/shared/lib/api';
  * Hook for handling API errors uniformly.
  * Maps validation errors to form fields or shows toast for general errors.
  */
-export function useApiError<T extends FieldValues>() {
-  const { t } = useTranslation();
+export function useApiError() {
+  const { t } = useTranslation('error');
 
   const handleApiError = useCallback(
-    (error: unknown, setError?: UseFormSetError<T>) => {
+    <T extends FieldValues = FieldValues>(
+      error: unknown,
+      setError?: UseFormSetError<T>,
+    ) => {
       const { message, meta, errors } = extractApiError(error);
 
       if (errors?.length && setError) {

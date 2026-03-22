@@ -5,6 +5,7 @@ import axios, {
 } from 'axios';
 
 import type { ApiEnvelope } from '@/shared/types/api';
+import { useAuthStore } from '@/shared/lib/stores/authStore';
 
 let currentLanguage = 'en';
 
@@ -27,7 +28,11 @@ function createApiClient(): AxiosInstance {
     (response) => response,
     (error: AxiosError) => {
       if (error.response?.status === 401 && typeof window !== 'undefined') {
-        window.location.href = '/login';
+        setAuthToken(null);
+        useAuthStore.getState().clearSession();
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       return Promise.reject(error);
     },
@@ -121,4 +126,3 @@ export function extractApiError(error: unknown): {
   };
 }
 
-export { apiClient };

@@ -28,7 +28,8 @@ function applyThemeToDOM(theme: Theme): void {
     root.classList.remove('dark');
   } else {
     // system
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const prefersDark = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-color-scheme: dark)').matches;
     root.classList.toggle('dark', prefersDark);
   }
 }
@@ -46,3 +47,16 @@ export const useUiStore = create<UiState>((set) => ({
   },
   setBreadcrumbs: (crumbs: Breadcrumb[]) => set({ breadcrumbs: crumbs }),
 }));
+
+// Apply the initial theme to the DOM immediately so it takes effect
+// before React mounts, preventing a flash of unstyled content.
+applyThemeToDOM(useUiStore.getState().theme);
+
+// Keep the DOM in sync whenever the theme changes at runtime.
+useUiStore.subscribe(
+  (state, prev) => {
+    if (state.theme !== prev.theme) {
+      applyThemeToDOM(state.theme);
+    }
+  },
+);

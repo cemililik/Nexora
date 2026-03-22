@@ -13,7 +13,7 @@ import type { UserInfo } from '@/shared/types/auth';
  * redirected to Keycloak login page automatically.
  */
 export function useAuth() {
-  const { setSession, clearSession, updateToken, user, isAuthenticated, token } =
+  const { setSession, clearSession, updateToken, user, isAuthenticated } =
     useAuthStore();
   const { t } = useTranslation();
   const [isInitializing, setIsInitializing] = useState(true);
@@ -70,12 +70,12 @@ export function useAuth() {
           }
         })
         .catch(() => {
-          clearSession();
           setAuthToken(null);
+          clearSession();
           keycloak.login();
         });
     };
   }, [setSession, clearSession, updateToken, t]);
 
-  return { user, isAuthenticated, isLoading: isInitializing, token };
+  return { user, isAuthenticated, isLoading: isInitializing };
 }

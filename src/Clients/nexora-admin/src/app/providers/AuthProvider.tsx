@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { useAuth } from '@/shared/hooks/useAuth';
+import i18n from '@/shared/lib/i18n';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -18,7 +19,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       <div
         className="flex min-h-screen items-center justify-center"
         role="status"
-        aria-label="Loading"
+        aria-label={i18n.t('lockey_common_loading', { ns: 'common' })}
       >
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
       </div>
