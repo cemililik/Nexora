@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { cn } from '@/shared/lib/utils';
 
 import { useOrganization } from '@/shared/hooks/useOrganization';
+import { isSafeUrl } from './BrandingProvider';
 
 interface TenantLogoProps {
   className?: string;
@@ -30,7 +31,7 @@ export function TenantLogo({ className, size = 32 }: TenantLogoProps) {
     );
   }
 
-  if (organization.logoUrl) {
+  if (organization.logoUrl && isSafeUrl(organization.logoUrl)) {
     return (
       <Image
         src={organization.logoUrl}

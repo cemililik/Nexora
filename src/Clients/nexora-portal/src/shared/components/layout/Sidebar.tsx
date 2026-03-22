@@ -55,8 +55,8 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r border-border bg-background transition-all duration-300',
-        sidebarOpen ? 'w-64' : 'w-16',
+        'fixed start-0 top-0 z-40 h-screen border-e border-border bg-background transition-all duration-300',
+        sidebarOpen ? 'w-[var(--sidebar-width-open)]' : 'w-[var(--sidebar-width-closed)]',
       )}
     >
       <div className="flex h-16 items-center justify-center border-b border-border px-4">
@@ -70,7 +70,7 @@ export function Sidebar() {
       <nav className="flex flex-col gap-1 p-2">
         {allNavItems.map((item) => {
           const Icon = getIcon(item.icon);
-          const isActive = pathname === item.path;
+          const isActive = pathname === item.path || pathname.startsWith(item.path + '/');
 
           return (
             <Link

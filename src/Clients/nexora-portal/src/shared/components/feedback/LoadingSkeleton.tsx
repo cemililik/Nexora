@@ -7,7 +7,11 @@ interface LoadingSkeletonProps {
 /** Reusable skeleton loader for page transitions. */
 export function LoadingSkeleton({ className }: LoadingSkeletonProps) {
   return (
-    <div className={cn('animate-pulse space-y-4', className)}>
+    <div
+      className={cn('animate-pulse space-y-4', className)}
+      role="status"
+      aria-label="Loading"
+    >
       <div className="h-8 w-1/3 rounded-md bg-muted" />
       <div className="space-y-3">
         <div className="h-4 w-full rounded-md bg-muted" />

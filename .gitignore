@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Code review documents (local only)
+docs/code-reviews/
+
 # User-specific files
 *.rsuser
 *.suo

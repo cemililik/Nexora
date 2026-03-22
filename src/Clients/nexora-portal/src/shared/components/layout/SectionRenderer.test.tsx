@@ -22,11 +22,11 @@ vi.mock('@/shared/components/feedback/ErrorBoundary', () => ({
   ErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-function createTestComponent(text: string) {
+function createTestComponent(text: string, testId?: string) {
   return lazy(
     async () => ({
       default: function TestComponent() {
-        return <div>{text}</div>;
+        return <div data-testid={testId}>{text}</div>;
       } as FC,
     }),
   );
@@ -125,14 +125,14 @@ describe('SectionRenderer', () => {
           id: 'second',
           position: 'dashboard-main',
           order: 2,
-          component: createTestComponent('Second'),
+          component: createTestComponent('Second', 'section-second'),
           permissions: [],
         },
         {
           id: 'first',
           position: 'dashboard-main',
           order: 1,
-          component: createTestComponent('First'),
+          component: createTestComponent('First', 'section-first'),
           permissions: [],
         },
       ],
@@ -140,18 +140,11 @@ describe('SectionRenderer', () => {
 
     render(<SectionRenderer position="dashboard-main" />);
 
-    const first = await screen.findByText('First');
-    const second = await screen.findByText('Second');
+    const first = await screen.findByTestId('section-first');
+    const second = await screen.findByTestId('section-second');
 
-    // Check DOM order
-    const parent = first.closest('div')!.parentElement!;
-    const children = Array.from(parent.children);
-    const firstIdx = children.findIndex((c) =>
-      c.textContent?.includes('First'),
-    );
-    const secondIdx = children.findIndex((c) =>
-      c.textContent?.includes('Second'),
-    );
-    expect(firstIdx).toBeLessThan(secondIdx);
+    // compareDocumentPosition bit 4 (DOCUMENT_POSITION_FOLLOWING) means first precedes second
+    const position = first.compareDocumentPosition(second);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -30,5 +30,7 @@ export function useOrganization() {
   return {
     organization: query.data ?? null,
     isLoading: query.isPending,
+    isError: query.isError,
+    error: query.error,
   };
 }

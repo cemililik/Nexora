@@ -37,8 +37,11 @@ function requireEnv(name: string): string {
 const authConfig: NextAuthConfig = {
   providers: [
     KeycloakProvider({
-      // Use process.env directly for provider config — these are evaluated at
-      // module load time during build. requireEnv is used in callbacks (runtime only).
+      // IMPORTANT: Provider config is evaluated at module load time during `next build`.
+      // Using requireEnv() here would break the build since AUTH_* env vars are only
+      // available at runtime (server-side). The ?? '' fallback is intentional — NextAuth
+      // validates provider config at runtime when the first auth request is made.
+      // Runtime callbacks below use requireEnv() for proper validation.
       clientId: process.env.AUTH_KEYCLOAK_ID ?? '',
       clientSecret: process.env.AUTH_KEYCLOAK_SECRET ?? '',
       issuer: process.env.AUTH_KEYCLOAK_ISSUER ?? '',
@@ -68,6 +71,10 @@ const authConfig: NextAuthConfig = {
 
       // Token refresh: if expired, attempt refresh
       if (token.expiresAt && Date.now() / 1000 > token.expiresAt) {
+        if (!token.refreshToken) {
+          return { ...token, error: 'RefreshAccessTokenError' as const };
+        }
+
         try {
           const issuer = requireEnv('AUTH_KEYCLOAK_ISSUER');
           const response = await fetch(`${issuer}/protocol/openid-connect/token`, {
@@ -77,7 +84,7 @@ const authConfig: NextAuthConfig = {
               client_id: requireEnv('AUTH_KEYCLOAK_ID'),
               client_secret: requireEnv('AUTH_KEYCLOAK_SECRET'),
               grant_type: 'refresh_token',
-              refresh_token: token.refreshToken ?? '',
+              refresh_token: token.refreshToken,
             }),
           });
 
@@ -85,10 +92,20 @@ const authConfig: NextAuthConfig = {
             return { ...token, error: 'RefreshAccessTokenError' as const };
           }
 
-          const data = await response.json();
-          token.accessToken = data.access_token;
-          token.refreshToken = data.refresh_token ?? token.refreshToken;
-          token.expiresAt = Math.floor(Date.now() / 1000) + data.expires_in;
+          const data: unknown = await response.json();
+          const tokenData = data as Record<string, unknown>;
+          if (
+            typeof tokenData.access_token !== 'string' ||
+            typeof tokenData.expires_in !== 'number'
+          ) {
+            return { ...token, error: 'RefreshAccessTokenError' as const };
+          }
+          token.accessToken = tokenData.access_token;
+          token.refreshToken =
+            typeof tokenData.refresh_token === 'string'
+              ? tokenData.refresh_token
+              : token.refreshToken;
+          token.expiresAt = Math.floor(Date.now() / 1000) + tokenData.expires_in;
           token.error = undefined;
         } catch {
           return { ...token, error: 'RefreshAccessTokenError' as const };

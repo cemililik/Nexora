@@ -1,5 +1,7 @@
 'use client';
 
+import { useCallback } from 'react';
+
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 
 /**
@@ -7,7 +9,17 @@ import { useAuthStore } from '@/shared/lib/stores/authStore';
  * Permissions follow the format: module.resource.action
  */
 export function usePermissions() {
-  const { permissions, hasPermission, hasAnyPermission } = useAuthStore();
+  const permissions = useAuthStore((s) => s.permissions);
+
+  const hasPermission = useCallback(
+    (permission: string): boolean => permissions.includes(permission),
+    [permissions],
+  );
+
+  const hasAnyPermission = useCallback(
+    (perms: string[]): boolean => perms.some((p) => permissions.includes(p)),
+    [permissions],
+  );
 
   return {
     permissions,

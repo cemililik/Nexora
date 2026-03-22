@@ -33,17 +33,23 @@ export function BrandingProvider({ children }: BrandingProviderProps) {
   const { organization } = useOrganization();
 
   useEffect(() => {
-    if (!organization) return;
-
     const root = document.documentElement;
 
-    if (organization.logoUrl && isSafeUrl(organization.logoUrl)) {
+    if (organization?.logoUrl && isSafeUrl(organization.logoUrl)) {
       root.style.setProperty('--brand-logo-url', `url(${organization.logoUrl})`);
+    } else {
+      root.style.removeProperty('--brand-logo-url');
     }
 
     // Future: apply tenant-specific color overrides from organization settings
     // root.style.setProperty('--brand-primary', tenantColor);
+
+    return () => {
+      root.style.removeProperty('--brand-logo-url');
+    };
   }, [organization]);
 
   return <>{children}</>;
 }
+
+export { isSafeUrl };

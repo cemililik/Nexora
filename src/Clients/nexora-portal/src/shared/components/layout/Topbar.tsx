@@ -22,11 +22,12 @@ export function Topbar() {
     <header
       className={cn(
         'sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background px-4 transition-all duration-300',
-        sidebarOpen ? 'ml-64' : 'ml-16',
+        sidebarOpen ? 'ms-[var(--sidebar-width-open)]' : 'ms-[var(--sidebar-width-closed)]',
       )}
     >
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={toggleSidebar}
           className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
           aria-label={t('lockey_common_toggle_sidebar')}
@@ -52,6 +53,7 @@ export function Topbar() {
             </Link>
 
             <button
+              type="button"
               onClick={() => signOut({ callbackUrl: `/${currentLocale}/auth/login` })}
               className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label={t('lockey_common_logout')}

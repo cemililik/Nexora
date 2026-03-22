@@ -54,6 +54,5 @@ export function useModules() {
     activeModules,
     hasModule,
     isLoading: query.isPending,
-    installedModuleNames,
   };
 }

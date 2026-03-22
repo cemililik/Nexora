@@ -4,8 +4,11 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { type ReactNode } from 'react';
 
+import { routing } from '@/i18n/routing';
 import { Providers } from './providers';
 import '../globals.css';
+
+const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur']);
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -17,14 +20,24 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export const metadata: Metadata = {
-  title: 'Nexora Portal',
-  description: 'Nexora multi-tenant portal',
-};
+export function generateMetadata({
+  params,
+}: {
+  params: { locale: string };
+}): Metadata {
+  return {
+    title: 'Nexora Portal',
+    description: 'Nexora multi-tenant portal',
+  };
+}
 
 interface LocaleLayoutProps {
   children: ReactNode;
   params: Promise<{ locale: string }>;
+}
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
 }
 
 export default async function LocaleLayout({
@@ -34,7 +47,7 @@ export default async function LocaleLayout({
   const { locale } = await params;
   const messages = await getMessages();
 
-  const dir = ['ar', 'he', 'fa', 'ur'].includes(locale) ? 'rtl' : 'ltr';
+  const dir = RTL_LOCALES.has(locale) ? 'rtl' : 'ltr';
 
   return (
     <html
