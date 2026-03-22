@@ -1,0 +1,7 @@
+{
+  "lockey_validation_required": "{field} is required.",
+  "lockey_validation_email_invalid": "Please enter a valid email address.",
+  "lockey_validation_min_length": "{field} must be at least {min} characters.",
+  "lockey_validation_max_length": "{field} must be at most {max} characters.",
+  "lockey_validation_failed": "Please correct the errors below."
+}
