@@ -1,0 +1,19 @@
+{
+  "lockey_nav_dashboard": "Dashboard",
+  "lockey_nav_identity": "Identity",
+  "lockey_nav_users": "Users",
+  "lockey_nav_roles": "Roles",
+  "lockey_nav_organizations": "Organizations",
+  "lockey_nav_tenants": "Tenants",
+  "lockey_nav_audit": "Audit Log",
+  "lockey_nav_modules": "Modules",
+  "lockey_nav_contacts": "Contacts",
+  "lockey_nav_tags": "Tags",
+  "lockey_nav_documents": "Documents",
+  "lockey_nav_folders": "Folders",
+  "lockey_nav_templates": "Templates",
+  "lockey_nav_signatures": "Signatures",
+  "lockey_nav_notifications": "Notifications",
+  "lockey_nav_providers": "Providers",
+  "lockey_nav_schedules": "Schedules"
+}
