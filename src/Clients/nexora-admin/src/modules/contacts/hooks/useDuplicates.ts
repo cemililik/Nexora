@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   DuplicateContactDto,
   MergeResultDto,
@@ -32,6 +33,7 @@ export function useDuplicates(contactId: string, threshold?: number) {
 export function useMergeContacts() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: MergeContactsRequest) =>
@@ -40,5 +42,6 @@ export function useMergeContacts() {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
       toast.success(t('lockey_contacts_contacts_merged'));
     },
+    onError: (err) => handleApiError(err),
   });
 }

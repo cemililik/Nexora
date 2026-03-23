@@ -20,7 +20,7 @@ import { getKeycloak } from '@/shared/lib/auth';
 
 /** Admin top bar with user menu, language switcher, and theme toggle. */
 export function Topbar() {
-  const { t, i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const user = useAuthStore((s) => s.user);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);

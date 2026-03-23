@@ -88,6 +88,22 @@ describe('useModules', () => {
     });
   });
 
+  it('should not fetch when token is null', () => {
+    storeTenantId = '550e8400-e29b-41d4-a716-446655440000';
+    storeToken = null;
+    const { result } = renderHook(() => useModules(), { wrapper: createWrapper() });
+    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(result.current.activeModules).toEqual([]);
+  });
+
+  it('should not fetch when token is an error object', () => {
+    storeTenantId = '550e8400-e29b-41d4-a716-446655440000';
+    storeToken = { error: 'RefreshAccessTokenError' } as unknown as string;
+    const { result } = renderHook(() => useModules(), { wrapper: createWrapper() });
+    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(result.current.activeModules).toEqual([]);
+  });
+
   it('should provide hasModule helper', async () => {
     storeTenantId = '550e8400-e29b-41d4-a716-446655440000';
     mockApiGet.mockResolvedValue([

@@ -4,23 +4,30 @@ import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { toSnakeCase } from '@/shared/lib/utils';
 import type { ContactRelationshipDto } from '../types';
 
-const toSnakeCase = (str: string) => str.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+interface RemoveCallbacks {
+  onSuccess: () => void;
+  onError: () => void;
+}
 
 interface RelationshipListProps {
   relationships: ContactRelationshipDto[];
-  onRemove: (id: string) => void;
+  onRemove: (id: string, callbacks: RemoveCallbacks) => void;
+  isRemoving?: boolean;
 }
 
-export function RelationshipList({ relationships, onRemove }: RelationshipListProps) {
+export function RelationshipList({ relationships, onRemove, isRemoving = false }: RelationshipListProps) {
   const { t, i18n } = useTranslation('contacts');
   const [removeId, setRemoveId] = useState<string | null>(null);
 
   function handleConfirmRemove() {
     if (removeId) {
-      onRemove(removeId);
-      setRemoveId(null);
+      onRemove(removeId, {
+        onSuccess: () => setRemoveId(null),
+        onError: () => setRemoveId(null),
+      });
     }
   }
 
@@ -68,6 +75,7 @@ export function RelationshipList({ relationships, onRemove }: RelationshipListPr
         description={t('lockey_contacts_relationships_remove_description')}
         onConfirm={handleConfirmRemove}
         variant="destructive"
+        isPending={isRemoving}
       />
     </div>
   );

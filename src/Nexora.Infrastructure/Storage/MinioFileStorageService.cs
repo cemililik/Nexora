@@ -116,7 +116,8 @@ public sealed class MinioFileStorageService(
             new GetObjectArgs()
                 .WithBucket(bucketName)
                 .WithObject(objectKey)
-                .WithCallbackStream(stream => stream.CopyTo(memoryStream)), ct);
+                .WithCallbackStream(async (stream, cancellationToken) =>
+                    await stream.CopyToAsync(memoryStream, cancellationToken)), ct);
 
         logger.LogDebug("Downloaded object {BucketName}/{ObjectKey} ({Size} bytes)",
             bucketName, objectKey, memoryStream.Length);

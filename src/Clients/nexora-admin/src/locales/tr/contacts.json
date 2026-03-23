@@ -84,7 +84,7 @@
   "lockey_contacts_tags_col_active": "Aktif",
   "lockey_contacts_tags_col_created_at": "Oluşturulma",
   "lockey_contacts_tags_assign": "Etiket Ata",
-  "lockey_contacts_tags_remove": "Etiketi Kaldır",
+  "lockey_contacts_tags_remove": "{{name}} etiketini kaldır",
 
   "lockey_contacts_tag_category_donor": "Bağışçı",
   "lockey_contacts_tag_category_parent": "Veli",
@@ -237,6 +237,7 @@
   "lockey_contacts_toast_gdpr_exported": "Kişisel veriler dışa aktarıldı.",
   "lockey_contacts_toast_gdpr_deleted": "Kişisel veriler silindi.",
   "lockey_contacts_toast_error_generic": "Bir hata oluştu. Lütfen tekrar deneyin.",
+  "lockey_contacts_error_dropdown_options_required": "Açılır liste alanları en az bir seçenek gerektirir.",
 
   "lockey_contacts_empty_contacts": "Kişi bulunamadı.",
   "lockey_contacts_empty_tags": "Etiket bulunamadı.",
@@ -378,5 +379,7 @@
   "lockey_contacts_field_options": "Seçenekler",
   "lockey_contacts_field_options_placeholder": "Seçenekleri her satıra bir tane olacak şekilde girin",
   "lockey_contacts_delete_custom_field_title": "Özel Alanı Sil",
-  "lockey_contacts_delete_custom_field_description": "Bu özel alanı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+  "lockey_contacts_delete_custom_field_description": "Bu özel alanı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+
+  "lockey_contacts_tags_color_placeholder": "#FF5733"
 }

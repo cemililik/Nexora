@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { useGenerateImportUploadUrl, useConfirmImport, useImportStatus } from '../hooks/useImportExport';
@@ -102,14 +103,15 @@ export default function ImportPage() {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium">{t('lockey_contacts_import_form_file_format')}</label>
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="csv">{t('lockey_contacts_format_csv')}</option>
-              <option value="xlsx">{t('lockey_contacts_format_xlsx')}</option>
-            </select>
+            <Select value={format} onValueChange={(val: string) => setFormat(val as ExportFormat)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={t('lockey_contacts_import_form_file_format')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">{t('lockey_contacts_format_csv')}</SelectItem>
+                <SelectItem value="xlsx">{t('lockey_contacts_format_xlsx')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

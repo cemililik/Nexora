@@ -83,6 +83,7 @@ export function useDeleteNote(contactId: string) {
 
 export function usePinNote(contactId: string) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('contacts');
 
   return useMutation({
     mutationFn: ({ noteId, data }: { noteId: string; data: PinNoteRequest }) =>
@@ -94,6 +95,7 @@ export function usePinNote(contactId: string) {
       void queryClient.invalidateQueries({
         queryKey: noteKeys.all(contactId),
       });
+      toast.success(t('lockey_contacts_toast_note_pinned'));
     },
   });
 }

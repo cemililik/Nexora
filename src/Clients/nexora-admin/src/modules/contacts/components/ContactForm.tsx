@@ -5,14 +5,13 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { toSnakeCase } from '@/shared/lib/utils';
 import type {
   CreateContactRequest,
   UpdateContactRequest,
   ContactType,
   ContactSource,
 } from '../types';
-
-const toSnakeCase = (str: string) => str.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
 
 function createContactSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
   return z
