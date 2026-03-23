@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,7 @@ import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
   useOrganization,
   useUpdateOrganization,
@@ -23,12 +24,14 @@ import {
 } from '../hooks/useOrganizations';
 import type { OrganizationMemberDto, UpdateOrganizationRequest } from '../types';
 
-const updateOrgSchema = z.object({
-  name: z.string().min(1).max(200),
-  timezone: z.string().min(1).max(50),
-  defaultCurrency: z.string().length(3),
-  defaultLanguage: z.string().min(1).max(10),
-});
+function updateOrgSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
+  return z.object({
+    name: z.string().min(1, { message: t('lockey_identity_validation_org_name_required') }).max(200, { message: t('lockey_identity_validation_org_name_max') }),
+    timezone: z.string().min(1).max(50),
+    defaultCurrency: z.string().length(3),
+    defaultLanguage: z.string().min(1).max(10),
+  });
+}
 
 export default function OrganizationDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -36,6 +39,7 @@ export default function OrganizationDetailPage() {
   const navigate = useNavigate();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
   const { page, pageSize, setPage } = usePagination();
 
   const { data: org, isPending } = useOrganization(id);
@@ -47,6 +51,8 @@ export default function OrganizationDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+
+  const updateOrgSchema = useMemo(() => updateOrgSchemaFactory(t), [t]);
 
   const form = useForm<UpdateOrganizationRequest>({
     resolver: zodResolver(updateOrgSchema),
@@ -72,7 +78,18 @@ export default function OrganizationDetailPage() {
   }, [org, isEditing, form]);
 
   if (isPending) return <LoadingSkeleton lines={8} />;
-  if (!org) return null;
+  if (!org) {
+    return (
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground">
+          {t('lockey_error_not_found', { ns: 'error' })}
+        </p>
+        <Button type="button" variant="outline" onClick={() => navigate('/identity/organizations')}>
+          {t('lockey_common_back', { ns: 'common' })}
+        </Button>
+      </div>
+    );
+  }
 
   const memberColumns: ColumnDef<OrganizationMemberDto>[] = [
     {
@@ -84,16 +101,17 @@ export default function OrganizationDetailPage() {
     {
       key: 'actions',
       header: t('lockey_identity_col_actions'),
-      render: (row) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setMemberToRemove(row.userId)}
-        >
-          {t('lockey_identity_action_remove_member')}
-        </Button>
-      ),
+      render: (row) =>
+        hasPermission('identity.organization.remove-member') ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setMemberToRemove(row.userId)}
+          >
+            {t('lockey_identity_action_remove_member')}
+          </Button>
+        ) : null,
     },
   ];
 
@@ -105,20 +123,24 @@ export default function OrganizationDetailPage() {
           <p className="text-sm text-muted-foreground">{org.slug}</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            {t('lockey_identity_action_delete')}
-          </Button>
-          <Button
-            type="button"
-            variant={isEditing ? 'outline' : 'default'}
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? t('lockey_common_cancel', { ns: 'common' }) : t('lockey_identity_action_edit')}
-          </Button>
+          {hasPermission('identity.organization.delete') && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              {t('lockey_identity_action_delete')}
+            </Button>
+          )}
+          {hasPermission('identity.organization.update') && (
+            <Button
+              type="button"
+              variant={isEditing ? 'outline' : 'default'}
+              onClick={() => setIsEditing(!isEditing)}
+            >
+              {isEditing ? t('lockey_common_cancel', { ns: 'common' }) : t('lockey_identity_action_edit')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -234,8 +256,10 @@ export default function OrganizationDetailPage() {
         variant="destructive"
         onConfirm={() => {
           if (memberToRemove) {
-            removeMember.mutate(memberToRemove);
-            setMemberToRemove(null);
+            removeMember.mutate(memberToRemove, {
+              onSuccess: () => setMemberToRemove(null),
+              onError: () => setMemberToRemove(null),
+            });
           }
         }}
         isPending={removeMember.isPending}

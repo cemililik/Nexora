@@ -134,7 +134,7 @@ export default function UserDetailPage() {
                   <li key={org.organizationId} className="flex items-center gap-2">
                     <span>{org.organizationName}</span>
                     {org.isDefault && (
-                      <Badge variant="secondary">{t('lockey_common_dashboard', { ns: 'common' })}</Badge>
+                      <Badge variant="secondary">{t('lockey_common_default', { ns: 'common' })}</Badge>
                     )}
                   </li>
                 ))}
@@ -155,7 +155,7 @@ export default function UserDetailPage() {
         description={
           confirmAction === 'deactivate'
             ? t('lockey_identity_confirm_deactivate_user')
-            : t('lockey_identity_action_activate')
+            : t('lockey_identity_confirm_activate_user')
         }
         variant={confirmAction === 'deactivate' ? 'destructive' : 'default'}
         onConfirm={() => {

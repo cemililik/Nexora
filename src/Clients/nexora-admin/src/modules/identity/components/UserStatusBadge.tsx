@@ -16,7 +16,11 @@ const userStatusKeys: Record<UserStatus, string> = {
   Locked: 'lockey_identity_status_locked',
 };
 
-export function UserStatusBadge({ status }: { status: UserStatus }) {
+interface UserStatusBadgeProps {
+  status: UserStatus;
+}
+
+export function UserStatusBadge({ status }: UserStatusBadgeProps) {
   const { t } = useTranslation('identity');
   return (
     <Badge variant="outline" className={cn(userStatusStyles[status])}>
@@ -39,7 +43,11 @@ const tenantStatusKeys: Record<TenantStatus, string> = {
   Terminated: 'lockey_identity_status_terminated',
 };
 
-export function TenantStatusBadge({ status }: { status: TenantStatus }) {
+interface TenantStatusBadgeProps {
+  status: TenantStatus;
+}
+
+export function TenantStatusBadge({ status }: TenantStatusBadgeProps) {
   const { t } = useTranslation('identity');
   return (
     <Badge variant="outline" className={cn(tenantStatusStyles[status])}>

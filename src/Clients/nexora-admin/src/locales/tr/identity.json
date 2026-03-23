@@ -107,6 +107,7 @@
   "lockey_identity_modules_title": "Modül Yönetimi",
   "lockey_identity_modules_description": "Bu kiracı için modül yükleyin veya kaldırın.",
 
+  "lockey_identity_confirm_activate_user": "Bu kullanıcıyı etkinleştirmek istediğinizden emin misiniz?",
   "lockey_identity_confirm_deactivate_user": "Bu kullanıcıyı devre dışı bırakmak istediğinizden emin misiniz? Sisteme erişimini kaybedecek.",
   "lockey_identity_confirm_delete_org": "Bu organizasyonu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
   "lockey_identity_confirm_suspend_tenant": "Bu kiracıyı askıya almak istediğinizden emin misiniz? Tüm kullanıcılar erişimini kaybedecek.",
@@ -143,5 +144,17 @@
 
   "lockey_identity_yes": "Evet",
   "lockey_identity_no": "Hayır",
-  "lockey_identity_never": "Hiçbir zaman"
+  "lockey_identity_never": "Hiçbir zaman",
+
+  "lockey_identity_validation_role_name_required": "Rol adı zorunludur",
+  "lockey_identity_validation_role_name_max": "Rol adı en fazla 100 karakter olmalıdır",
+  "lockey_identity_validation_role_description_max": "Açıklama en fazla 500 karakter olmalıdır",
+  "lockey_identity_validation_tenant_name_required": "Kuruluş adı zorunludur",
+  "lockey_identity_validation_tenant_name_max": "Kuruluş adı en fazla 200 karakter olmalıdır",
+  "lockey_identity_validation_tenant_slug_required": "Slug zorunludur",
+  "lockey_identity_validation_tenant_slug_max": "Slug en fazla 63 karakter olmalıdır",
+  "lockey_identity_validation_tenant_slug_format": "Slug sadece küçük harf, rakam ve tire içerebilir",
+  "lockey_identity_validation_org_name_required": "Organizasyon adı zorunludur",
+  "lockey_identity_validation_org_name_max": "Organizasyon adı en fazla 200 karakter olmalıdır",
+  "lockey_identity_validation_org_description_max": "Açıklama en fazla 500 karakter olmalıdır"
 }

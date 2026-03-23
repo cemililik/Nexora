@@ -18,10 +18,20 @@ public static class ImportExportEndpoints
         var group = endpoints.MapGroup("/contacts")
             .RequireAuthorization();
 
-        group.MapPost("/import", async (StartImportRequest request, ISender sender, CancellationToken ct) =>
+        group.MapPost("/import/upload-url", async (GenerateImportUploadUrlRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new GenerateImportUploadUrlCommand(
+                request.FileName, request.ContentType, request.FileSize);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<ImportUploadUrlDto>.Success(result.Value!, result.Message))
+                : Results.BadRequest(ApiEnvelope<ImportUploadUrlDto>.Fail(result.Error!));
+        });
+
+        group.MapPost("/import", async (ConfirmImportRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new StartContactImportCommand(
-                request.FileName, request.FileFormat, request.FileContent);
+                request.FileName, request.FileFormat, request.StorageKey);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Accepted(
@@ -57,11 +67,17 @@ public static class ImportExportEndpoints
     }
 }
 
-/// <summary>Request body for starting a contact import.</summary>
-public sealed record StartImportRequest(
+/// <summary>Request body for generating an import file upload URL.</summary>
+public sealed record GenerateImportUploadUrlRequest(
+    string FileName,
+    string ContentType,
+    long FileSize);
+
+/// <summary>Request body for confirming an import after file upload.</summary>
+public sealed record ConfirmImportRequest(
     string FileName,
     string FileFormat,
-    byte[] FileContent);
+    string StorageKey);
 
 /// <summary>Request body for starting a contact export.</summary>
 public sealed record StartExportRequest(

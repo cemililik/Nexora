@@ -37,9 +37,10 @@ describe('UserForm', () => {
 
     it('should show validation errors when submitting empty form', async () => {
       const user = userEvent.setup();
+      const onSubmit = vi.fn();
 
       render(
-        <UserForm mode="create" onSubmit={vi.fn()} isPending={false} />,
+        <UserForm mode="create" onSubmit={onSubmit} isPending={false} />,
       );
 
       await user.click(screen.getByRole('button', { name: 'lockey_identity_users_create' }));
@@ -49,6 +50,7 @@ describe('UserForm', () => {
       });
 
       expect(screen.getAllByText('lockey_validation_required').length).toBeGreaterThanOrEqual(1);
+      expect(onSubmit).not.toHaveBeenCalled();
     });
   });
 

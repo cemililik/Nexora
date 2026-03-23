@@ -39,5 +39,11 @@
   "lockey_common_close": "Kapat",
   "lockey_common_brand_name": "Nexora",
   "lockey_common_brand_short": "N",
-  "lockey_error_logout_failed": "Çıkış başarısız oldu. Giriş sayfasına yönlendiriliyorsunuz."
+  "lockey_common_default": "Varsayılan",
+  "lockey_common_breadcrumb": "İçerik haritası",
+  "lockey_common_remove": "Kaldır",
+  "lockey_common_yes": "Evet",
+  "lockey_common_no": "Hayır",
+  "lockey_common_select": "Seçin...",
+  "lockey_common_module_not_installed": "Bu modül kuruluşunuz için yüklü değil."
 }

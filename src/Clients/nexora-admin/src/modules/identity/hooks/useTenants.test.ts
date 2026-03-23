@@ -66,6 +66,8 @@ describe('useTenants', () => {
     await waitFor(() => {
       expect(result.current.data).toEqual(mockTenant);
     });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/tenants/t1');
   });
 
   it('should not fetch tenant when id is empty', () => {

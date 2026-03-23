@@ -14,7 +14,7 @@ export default function TenantListPage() {
   const { t, i18n } = useTranslation('identity');
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data, isPending } = useTenants({ page, pageSize });
+  const { data, isPending, isError, error } = useTenants({ page, pageSize });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -48,6 +48,20 @@ export default function TenantListPage() {
       render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
     },
   ];
+
+  if (isError) {
+    return (
+      <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground">
+          {t('lockey_error_something_went_wrong', { ns: 'error' })}
+        </p>
+        <p className="text-sm text-muted-foreground">{error?.message}</p>
+        <Button type="button" onClick={() => window.location.reload()}>
+          {t('lockey_common_try_again', { ns: 'common' })}
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
