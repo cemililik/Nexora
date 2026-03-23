@@ -32,6 +32,17 @@ export default function TemplateListPage() {
   const rawChannel = searchParams.get('channel');
   const channel = CHANNELS.includes(rawChannel as NotificationChannel) ? (rawChannel as NotificationChannel) : undefined;
 
+  // Remove invalid channel param from URL
+  useEffect(() => {
+    if (rawChannel && !CHANNELS.includes(rawChannel as NotificationChannel)) {
+      setSearchParams((prev: URLSearchParams) => {
+        const next = new URLSearchParams(prev);
+        next.delete('channel');
+        return next;
+      }, { replace: true });
+    }
+  }, [rawChannel, setSearchParams]);
+
   useEffect(() => {
     setBreadcrumbs([
       { label: 'lockey_notifications_module_name' },
@@ -82,21 +93,20 @@ export default function TemplateListPage() {
       header: t('lockey_notifications_templates_col_created_at'),
       render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
     },
-    {
-      key: 'actions',
+    ...(canManage ? [{
+      key: 'actions' as const,
       header: t('lockey_notifications_templates_col_actions'),
-      render: (row) =>
-        canManage ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/notifications/templates/${row.id}`)}
-          >
-            {t('lockey_notifications_templates_edit')}
-          </Button>
-        ) : null,
-    },
+      render: (row: NotificationTemplateDto) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/notifications/templates/${row.id}`)}
+        >
+          {t('lockey_notifications_templates_edit')}
+        </Button>
+      ),
+    }] : []),
   ];
 
   return (

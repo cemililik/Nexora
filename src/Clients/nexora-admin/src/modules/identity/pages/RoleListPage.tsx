@@ -16,6 +16,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
@@ -125,6 +126,7 @@ export default function RoleListPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_identity_roles_create')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_identity_roles_create')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">

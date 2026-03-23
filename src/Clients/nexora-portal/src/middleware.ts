@@ -51,7 +51,12 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
 
   // Check auth via JWT token from session cookie.
   // getToken() uses AUTH_SECRET env var to decode the encrypted JWT.
-  const token = await getToken({ req: request, secret: process.env.AUTH_SECRET });
+  const authSecret = process.env.AUTH_SECRET;
+  if (!authSecret) {
+    console.error('[middleware] AUTH_SECRET is not set');
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+  }
+  const token = await getToken({ req: request, secret: authSecret });
 
   if (!token || token.error === 'RefreshAccessTokenError') {
     const locale = extractLocale(pathname);

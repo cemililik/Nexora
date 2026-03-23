@@ -17,6 +17,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -267,6 +268,11 @@ export default function CustomFieldManagementPage() {
                 ? t('lockey_contacts_edit_custom_field')
                 : t('lockey_contacts_create_custom_field')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingField
+                ? t('lockey_contacts_edit_custom_field')
+                : t('lockey_contacts_create_custom_field')}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
@@ -335,8 +341,8 @@ export default function CustomFieldManagementPage() {
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="isRequired"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+                    checked={!!field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
                   <label htmlFor="isRequired" className="text-sm font-medium">
                     {t('lockey_contacts_col_is_required')}

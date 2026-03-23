@@ -62,7 +62,7 @@ export default function ContactDetailPage() {
       { label: 'lockey_contacts_module_name', path: '/contacts/contacts' },
       { label: contact?.displayName ?? t('lockey_common_loading', { ns: 'common' }) },
     ]);
-  }, [setBreadcrumbs, contact]);
+  }, [setBreadcrumbs, contact, t]);
 
   if (isPending) return <LoadingSkeleton lines={8} />;
   if (!contact) return null;

@@ -91,10 +91,10 @@ describe('useAuth', () => {
     });
   });
 
-  it('should fall back to token claims when /me API fails', async () => {
+  it('should fall back to token claims when /me returns 404', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue(new Error('Network error'));
+    mockApiGet.mockRejectedValue({ response: { status: 404 } });
 
     renderHook(() => useAuth());
 
@@ -113,6 +113,49 @@ describe('useAuth', () => {
         organizationId: 'org-1',
         permissions: ['identity.users.read'],
       });
+    });
+  });
+
+  it('should clear session and redirect when /me returns 401', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockRejectedValue({ response: { status: 401 } });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockClearSession).toHaveBeenCalled();
+      expect(mockLogin).toHaveBeenCalled();
+    });
+  });
+
+  it('should fall back to token claims when /me fails with network error', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockRejectedValue(new Error('Network Error'));
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetSession).toHaveBeenCalledWith(
+        expect.objectContaining({ user: expect.objectContaining({ id: 'user-1' }) }),
+      );
+      expect(mockLogin).not.toHaveBeenCalled();
+    });
+  });
+
+  it('should fall back to token claims when /me returns 500', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockRejectedValue({ response: { status: 500 } });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetSession).toHaveBeenCalledWith(
+        expect.objectContaining({ user: expect.objectContaining({ id: 'user-1' }) }),
+      );
+      expect(mockLogin).not.toHaveBeenCalled();
     });
   });
 

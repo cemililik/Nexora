@@ -53,11 +53,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[ErrorBoundary] Render error caught', { error, errorInfo });
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[ErrorBoundary] Render error caught', { error, errorInfo });
+    }
     try {
       reportError(error, errorInfo?.componentStack ?? undefined);
-    } catch {
-      // Telemetry reporting should never throw
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[ErrorBoundary] reportError failed', e);
+      }
     }
   }
 

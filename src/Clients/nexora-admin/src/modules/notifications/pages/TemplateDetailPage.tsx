@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -332,6 +333,7 @@ export default function TemplateDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_notifications_translations_add')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_notifications_translations_add')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={translationForm.handleSubmit(onAddTranslation)} className="space-y-4">
             <div>

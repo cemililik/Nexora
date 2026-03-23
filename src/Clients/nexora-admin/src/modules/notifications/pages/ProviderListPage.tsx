@@ -10,6 +10,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -285,6 +286,11 @@ export default function ProviderListPage() {
                 ? t('lockey_notifications_providers_edit')
                 : t('lockey_notifications_providers_create')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingProvider
+                ? t('lockey_notifications_providers_edit')
+                : t('lockey_notifications_providers_create')}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {!editingProvider && (
@@ -365,8 +371,8 @@ export default function ProviderListPage() {
                 render={({ field }) => (
                   <Checkbox
                     id="isDefault"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+                    checked={!!field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
                 )}
               />
@@ -396,6 +402,7 @@ export default function ProviderListPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_notifications_providers_test_title')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_notifications_providers_test_title')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={testForm.handleSubmit(onTest)} className="space-y-4">
             <div>

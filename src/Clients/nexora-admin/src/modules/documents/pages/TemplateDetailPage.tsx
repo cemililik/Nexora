@@ -9,6 +9,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -54,7 +55,13 @@ const createRenderSchema = (t: (key: string, options?: Record<string, unknown>) 
     folderId: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
     outputName: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
     variables: z.string().refine(
-      (v) => { try { JSON.parse(v); return true; } catch { return false; } },
+      (v) => {
+        try {
+          const parsed: unknown = JSON.parse(v);
+          if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') return false;
+          return Object.values(parsed as Record<string, unknown>).every((val) => typeof val === 'string');
+        } catch { return false; }
+      },
       { message: t('lockey_documents_render_invalid_json', { ns: 'documents' }) },
     ),
   });
@@ -220,7 +227,7 @@ export default function TemplateDetailPage() {
               name="category"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="mt-1" aria-label={t('lockey_documents_templates_form_category')}>
+                  <SelectTrigger id="template-category" className="mt-1" aria-label={t('lockey_documents_templates_form_category')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -241,7 +248,7 @@ export default function TemplateDetailPage() {
               name="format"
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className="mt-1" aria-label={t('lockey_documents_templates_form_format')}>
+                  <SelectTrigger id="template-format" className="mt-1" aria-label={t('lockey_documents_templates_form_format')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -308,6 +315,7 @@ export default function TemplateDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_templates_render')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_documents_templates_render')}</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={renderForm.handleSubmit((values) => {

@@ -192,7 +192,7 @@ function renderEditInput(
       return (
         <Checkbox
           checked={value === 'true'}
-          onCheckedChange={(checked: boolean) => onChange(String(checked))}
+          onCheckedChange={(checked: boolean | 'indeterminate') => onChange(String(checked === true))}
         />
       );
 

@@ -11,6 +11,7 @@ import { useApiError } from '@/shared/hooks/useApiError';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -217,6 +218,11 @@ export default function FolderManagementPage() {
                 ? t('lockey_documents_folders_rename')
                 : t('lockey_documents_folders_create')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingFolder
+                ? t('lockey_documents_folders_rename')
+                : t('lockey_documents_folders_create')}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
