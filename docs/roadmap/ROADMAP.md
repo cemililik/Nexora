@@ -57,7 +57,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 ### Deliverables
 - [x] Repository structure (solution, projects, folder conventions)
 - [x] Development environment setup (Docker Compose for all infra)
-- [ ] CI/CD pipeline (GitHub Actions: build, test, lint, security scan)
+- [x] CI/CD pipeline (GitHub Actions: build, test, lint — `ci.yml` with backend, admin-frontend, portal-frontend, docker-build jobs)
 - [x] PostgreSQL multi-tenant infrastructure (schema management, migrations)
 - [x] Keycloak setup — Admin API integration (realm-per-tenant, user provisioning via KeycloakAdminService)
 - [x] APISIX gateway configuration — standalone mode (no etcd dependency), route definitions in `apisix.yaml` with hot-reload, `openid-connect` plugin for gateway-level JWT validation via Keycloak OIDC discovery, CORS (`localhost:3000` + `localhost:3001`), rate limiting (`limit-req`), correlation ID injection (`request-id` → `X-Correlation-Id`), Prometheus metrics export
@@ -74,7 +74,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Observability stack deployment (OTel Collector → Grafana Tempo + Loki + Prometheus, Grafana dashboards with auto-provisioned datasources, Serilog → OTel sink, .NET OTel traces + metrics + EF Core instrumentation)
 - [x] Grafana dashboard auto-provisioning — "Nexora — Overview" dashboard (Application Logs, HTTP Request Rate, Latency p95, Error Rate 5xx, Recent Traces, Logs by Level)
 - [x] Dev tools stack — pgAdmin (`:5051`), RedisInsight (`:5541`), Kafka UI Provectus (`:8085`), MinIO Console (`:9001`), Keycloak Admin (`:8080`), Vault UI (`:8200`)
-- [ ] Frontend ErrorBoundary → OTel integration for admin & portal *(CODE TODOs: `admin/ErrorBoundary.tsx:32`, `portal/ErrorBoundary.tsx:55`)*
+- [x] Frontend ErrorBoundary → OTel integration for admin & portal (OpenTelemetry `WebTracerProvider` + `OTLPTraceExporter`, `reportError()` called from `componentDidCatch`)
 - [x] Shared kernel library (common types, base entities, multi-tenant middleware)
 - [x] Module loader & plugin architecture
 - [x] API documentation infrastructure (OpenAPI/Swagger)
@@ -236,7 +236,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] CODE_REVIEW_STANDARDS.md — 65+ checklist items, 10 categories, severity classification
 - [ ] Refactor portal profile & dashboard pages to pass user data from server layout instead of client-side `useAuthStore` — reduce hydration mismatch risk *(CODE TODO: `profile/page.tsx:3`, `dashboard/page.tsx:3`)*
 - [ ] Switch portal i18n to namespace-keyed messages (`{ common: ..., error: ..., [module]: ... }`) — prerequisite for Phase 2 module translations *(CODE TODO: `i18n/request.ts:23`)*
-- [ ] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack *(CODE TODO: `portal/ErrorBoundary.tsx:55`)*
+- [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
 
 ### 1.6 Admin Dashboard (nexora-admin)
 
@@ -264,11 +264,13 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] 47 test suites, 344 frontend tests + 1251 backend tests passing, 0 TS errors, Vite build OK
 
 **Remaining TODO (Admin Dashboard):**
-- [ ] Integrate ErrorBoundary with OpenTelemetry/Sentry for frontend error reporting to observability stack *(CODE TODO: `admin/ErrorBoundary.tsx:32`)*
-- [ ] Connect `GetImportJobStatusQuery` to Hangfire — store `hangfireJobId ↔ jobId` mapping *(CODE TODO: `StartContactImportCommand.cs:95`)*
-- [ ] Replace native `<select>`, `<input type="checkbox">`, `<textarea>` in CustomFieldRenderer with shadcn/ui components *(requires creating shadcn Checkbox + Textarea components first)*
-- [ ] Migrate DocumentDetailPage dialog forms (Add Version, Grant Access) and SignatureCreatePage recipient form and TemplateDetailPage render dialog from raw `useState` to React Hook Form + Zod
-- [ ] Accessibility pass: add `aria-label` to DataTable `<table>`, tab panels, and other interactive elements across admin dashboard (Contacts module)
+- [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
+- [x] Connect `GetImportJobStatusQuery` to Hangfire — ImportJob entity with HangfireJobId mapping, state transition guards, idempotency in ContactImportJob
+- [x] Replace native `<select>`, `<input type="checkbox">`, `<textarea>` in CustomFieldRenderer with shadcn/ui components
+- [x] Migrate DocumentDetailPage dialog forms (Add Version, Grant Access) and SignatureCreatePage recipient form and TemplateDetailPage render dialog from raw `useState` to React Hook Form + Zod
+- [x] Accessibility: add `DialogDescription` (sr-only) to all 10 dialogs missing it (Radix a11y compliance)
+- [x] APISIX CORS preflight fix — dedicated OPTIONS route without auth, fix env var syntax incompatibility with standalone mode
+- [x] useAuth resilience — fallback to token claims on network/5xx errors, only redirect on 401/403
 - [ ] Performance: migrate `form.watch()` calls to `useWatch` / `Controller` pattern in ContactDetailPage forms
 - [ ] Performance: extract Zod schema factories from render functions to module-level constants or `useMemo` (CustomFieldManagementPage, ContactForm)
 - [ ] Performance: optimize FolderTree `onSelect` callback to prevent unnecessary re-renders
