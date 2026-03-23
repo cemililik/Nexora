@@ -17,6 +17,7 @@ export type RelationshipType =
   | 'WardOf';
 export type TagCategory = 'Donor' | 'Parent' | 'Volunteer' | 'Vendor' | 'Student' | 'Staff';
 export type ImportJobStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
+export type ExportJobStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
 export type ExportFormat = 'csv' | 'xlsx';
 
 // DTOs
@@ -192,7 +193,7 @@ export interface ImportJobDto {
 
 export interface ExportJobDto {
   jobId: string;
-  status: string;
+  status: ExportJobStatus;
   format: ExportFormat;
   createdAt: string;
   completedAt?: string;

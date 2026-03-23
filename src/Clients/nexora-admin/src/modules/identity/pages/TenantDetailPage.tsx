@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { useTenant, useUpdateTenantStatus } from '../hooks/useTenants';
 import { useTenantModules, useUninstallModule } from '../hooks/useModuleManagement';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
@@ -16,6 +17,7 @@ export default function TenantDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation('identity');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
+  const { handleApiError } = useApiError();
 
   const { data: tenant, isPending } = useTenant(id);
   const updateStatus = useUpdateTenantStatus(id);
@@ -150,7 +152,10 @@ export default function TenantDetailPage() {
           const action = confirmAction === 'suspend' ? 'suspend' : 'terminate';
           updateStatus.mutate({ action }, {
             onSuccess: () => setConfirmAction(null),
-            onError: () => setConfirmAction(null),
+            onError: (err) => {
+              setConfirmAction(null);
+              handleApiError(err);
+            },
           });
         }}
         isPending={updateStatus.isPending}
@@ -166,7 +171,10 @@ export default function TenantDetailPage() {
           if (moduleToUninstall) {
             uninstallModule.mutate(moduleToUninstall, {
               onSuccess: () => setModuleToUninstall(null),
-              onError: () => setModuleToUninstall(null),
+              onError: (err) => {
+                setModuleToUninstall(null);
+                handleApiError(err);
+              },
             });
           }
         }}

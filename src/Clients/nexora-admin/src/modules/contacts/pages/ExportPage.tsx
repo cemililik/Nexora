@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { useStartExport } from '../hooks/useImportExport';
@@ -62,44 +63,53 @@ export default function ExportPage() {
         <CardContent className="space-y-4">
           <div>
             <label className="text-sm font-medium">{t('lockey_contacts_export_form_format')}</label>
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as ExportFormat)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="csv">{t('lockey_contacts_format_csv')}</option>
-              <option value="xlsx">{t('lockey_contacts_format_xlsx')}</option>
-            </select>
+            <Select value={format} onValueChange={(val: string) => setFormat(val as ExportFormat)}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={t('lockey_contacts_export_form_format')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="csv">{t('lockey_contacts_format_csv')}</SelectItem>
+                <SelectItem value="xlsx">{t('lockey_contacts_format_xlsx')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <label className="text-sm font-medium">{t('lockey_contacts_export_form_status_filter')}</label>
-            <select
-              value={statusFilter ?? ''}
-              onChange={(e) =>
-                setStatusFilter(e.target.value ? (e.target.value as ContactStatus) : undefined)
+            <Select
+              value={statusFilter ?? '__all__'}
+              onValueChange={(val: string) =>
+                setStatusFilter(val === '__all__' ? undefined : (val as ContactStatus))
               }
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">{t('lockey_contacts_filter_all_statuses')}</option>
-              <option value="Active">{t('lockey_contacts_status_active')}</option>
-              <option value="Archived">{t('lockey_contacts_status_archived')}</option>
-            </select>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={t('lockey_contacts_filter_all_statuses')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('lockey_contacts_filter_all_statuses')}</SelectItem>
+                <SelectItem value="Active">{t('lockey_contacts_status_active')}</SelectItem>
+                <SelectItem value="Archived">{t('lockey_contacts_status_archived')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
             <label className="text-sm font-medium">{t('lockey_contacts_export_form_type_filter')}</label>
-            <select
-              value={typeFilter ?? ''}
-              onChange={(e) =>
-                setTypeFilter(e.target.value ? (e.target.value as ContactType) : undefined)
+            <Select
+              value={typeFilter ?? '__all__'}
+              onValueChange={(val: string) =>
+                setTypeFilter(val === '__all__' ? undefined : (val as ContactType))
               }
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
-              <option value="">{t('lockey_contacts_filter_all_types')}</option>
-              <option value="Individual">{t('lockey_contacts_type_individual')}</option>
-              <option value="Organization">{t('lockey_contacts_type_organization')}</option>
-            </select>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder={t('lockey_contacts_filter_all_types')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('lockey_contacts_filter_all_types')}</SelectItem>
+                <SelectItem value="Individual">{t('lockey_contacts_type_individual')}</SelectItem>
+                <SelectItem value="Organization">{t('lockey_contacts_type_organization')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Button

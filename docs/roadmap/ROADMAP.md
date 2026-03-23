@@ -67,7 +67,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [ ] HashiCorp Vault integration (secret management)
 - [x] MinIO setup (object storage, bucket-per-tenant)
 - [x] Observability standards & foundation (OBSERVABILITY_STANDARDS.md, GlobalExceptionHandler, structured logging)
-- [ ] Observability stack deployment (OpenTelemetry collectors, Grafana dashboards, Loki, Tempo)
+- [ ] Observability stack deployment (OpenTelemetry collectors, Grafana dashboards, Loki, Tempo) — *includes frontend ErrorBoundary → OTel integration for admin & portal (CODE TODOs: `admin/ErrorBoundary.tsx:32`, `portal/ErrorBoundary.tsx:55`)*
 - [x] Shared kernel library (common types, base entities, multi-tenant middleware)
 - [x] Module loader & plugin architecture
 - [x] API documentation infrastructure (OpenAPI/Swagger)
@@ -165,9 +165,10 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Address management (multiple addresses per contact)
 - [x] Communication preferences (email, SMS, WhatsApp opt-in/out)
 - [x] Contact merge & deduplication
-- [x] Import/Export (CSV, Excel)
+- [x] Import/Export (CSV, Excel) — presigned URL upload pattern (3-step: upload-url → MinIO → confirm-import)
 - [x] Custom fields (tenant-configurable)
 - [x] KVKK/GDPR compliance (consent tracking, data export, right to delete)
+- [ ] Permission seed in `OnStartupAsync()` — register Contacts module permissions (contacts.contact.read/write/delete, contacts.tag.manage, contacts.import.execute, contacts.gdpr.manage) ⚠️ *CODE TODO: `ContactsModule.cs:102` — frontend RequirePermission guards depend on these*
 
 ### 1.3 Notification Engine
 **Spec**: [modules/notifications/SPEC.md](../modules/notifications/SPEC.md)
@@ -202,6 +203,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Cross-module document service (IDocumentService in SharedKernel — GenerateFromTemplateAsync, GetDocumentsByEntityAsync)
 - [x] Architecture tests (Phase 2 entity/handler/service sealed checks, layer dependencies)
 - [x] Bruno API collection (14 new requests — Storage: 3, Signatures: 7, Templates: 4)
+- [ ] Permission seed in `OnStartupAsync()` — register Documents module permissions (documents.documents.upload/read/delete, documents.folders.manage, documents.signatures.manage, documents.templates.manage) ⚠️ *CODE TODO: `DocumentsModule.cs:96` — frontend RequirePermission guards depend on these*
 
 ### 1.5 Portal Framework
 - [x] Portal authentication (separate from admin auth)
@@ -214,8 +216,33 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Middleware refactor — getToken() pattern eliminating type cast issues (NextAuth v5 + next-intl)
 - [x] 47 frontend tests (8 test files: api, authStore, useAuth, useModules, currency, SectionRenderer, RequireAuth, RequirePermission)
 - [x] CODE_REVIEW_STANDARDS.md — 65+ checklist items, 10 categories, severity classification
+- [ ] Refactor portal profile & dashboard pages to pass user data from server layout instead of client-side `useAuthStore` — reduce hydration mismatch risk *(CODE TODO: `profile/page.tsx:3`, `dashboard/page.tsx:3`)*
+- [ ] Switch portal i18n to namespace-keyed messages (`{ common: ..., error: ..., [module]: ... }`) — prerequisite for Phase 2 module translations *(CODE TODO: `i18n/request.ts:23`)*
+- [ ] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack *(CODE TODO: `portal/ErrorBoundary.tsx:55`)*
 
-### 1.6 Reporting Engine
+### 1.6 Admin Dashboard (nexora-admin)
+- [x] Scaffold: Vite 6 + React 19 + React Router v7 + TypeScript strict
+- [x] Auth: Keycloak JS adapter (PKCE S256, token in memory via Zustand)
+- [x] i18n: react-i18next + registerModuleLocales() pattern (en/tr)
+- [x] UI: shadcn/ui (11 components), AppLayout, Sidebar, Topbar, Breadcrumbs
+- [x] Shared: DataTable, SearchInput, ErrorBoundary, ConfirmDialog, LoadingSkeleton
+- [x] Guards: RequireAuth, RequirePermission, RequireModule
+- [x] Identity Module UI: 12 pages, 6 hooks, 2 components, manifest (11 routes, 16 permissions)
+- [x] Contacts Module UI: 7 pages, 11 hooks, 10 components, manifest (7 routes, 15 permissions)
+- [x] Presigned URL import: 3-step flow (upload-url → MinIO direct upload → confirm-import)
+- [x] Backend: GenerateImportUploadUrlCommand, IFileStorageService.GetObjectAsync, StartContactImport with StorageKey
+- [x] Code review fixes: 12+ rounds, ~120 findings resolved (3 batch commits)
+- [x] Permission guards on all mutation actions (ContactDetailPage, CustomFieldManagementPage)
+- [x] React Hook Form + Zod migration (ContactDetailPage forms, CustomFieldManagementPage)
+- [x] ContactListPage filters persisted in URL search params
+- [x] shadcn/ui Select component (ExportPage, ImportPage — replaced native select)
+- [x] Backend import pipeline: Hangfire enqueue (IBackgroundJobClient) + CSV/XLSX parsers (CsvHelper, ClosedXML)
+- [x] 37 test suites, 256 frontend tests + 395 backend contacts tests passing
+- [ ] Integrate ErrorBoundary with OpenTelemetry/Sentry for frontend error reporting to observability stack *(CODE TODO: `admin/ErrorBoundary.tsx:32`)*
+- [ ] Documents Module UI (folder tree, document browser, version history, signature workflow)
+- [ ] Notifications Module UI (template editor, provider config, send/bulk send)
+
+### 1.7 Reporting Engine
 - [ ] Report definition (SQL-based + LINQ-based)
 - [ ] Dashboard builder (widgets, charts, KPIs)
 - [ ] Cross-module data aggregation
@@ -456,6 +483,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [ ] Accessibility (WCAG 2.1 AA)
 - [ ] Documentation (user guides, API docs, developer docs)
 - [ ] Automated testing (unit, integration, e2e)
+- [ ] Remove Infrastructure dependency from Contacts unit tests — replace `TestTenantAccessor` with lightweight fake *(CODE TODO: `TestTenantAccessor.cs:4` — issue not yet created)*
 - [ ] Mobile app (React Native — Phase 3+)
 - [ ] Marketplace (3rd party module publishing — Phase 4+)
 

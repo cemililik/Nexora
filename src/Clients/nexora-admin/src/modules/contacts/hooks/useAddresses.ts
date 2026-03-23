@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   ContactAddressDto,
   AddAddressRequest,
@@ -29,6 +30,7 @@ export function useAddresses(contactId: string) {
 export function useAddAddress(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: AddAddressRequest) =>
@@ -42,12 +44,14 @@ export function useAddAddress(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_address_added'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateAddress(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: ({ addressId, data }: { addressId: string; data: UpdateAddressRequest }) =>
@@ -61,12 +65,14 @@ export function useUpdateAddress(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_address_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useDeleteAddress(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (addressId: string) =>
@@ -79,5 +85,6 @@ export function useDeleteAddress(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_address_deleted'));
     },
+    onError: (err) => handleApiError(err),
   });
 }

@@ -49,7 +49,8 @@ export function CustomFieldRenderer({
     if (!options) return [];
     try {
       const parsed: unknown = JSON.parse(options);
-      return Array.isArray(parsed) ? (parsed as string[]) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item): item is string => typeof item === 'string');
     } catch {
       return options.split(',').map((o) => o.trim());
     }

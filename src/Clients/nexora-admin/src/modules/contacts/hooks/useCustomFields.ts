@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   CustomFieldDefinitionDto,
   ContactCustomFieldDto,
@@ -28,6 +29,7 @@ export function useCustomFieldDefinitions() {
 export function useCreateCustomField() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: CreateCustomFieldRequest) =>
@@ -38,12 +40,14 @@ export function useCreateCustomField() {
       });
       toast.success(t('lockey_contacts_toast_custom_field_created'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateCustomField(id: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: UpdateCustomFieldRequest) =>
@@ -57,12 +61,14 @@ export function useUpdateCustomField(id: string) {
       });
       toast.success(t('lockey_contacts_toast_custom_field_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useDeleteCustomField() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (id: string) =>
@@ -73,6 +79,7 @@ export function useDeleteCustomField() {
       });
       toast.success(t('lockey_contacts_toast_custom_field_deleted'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
@@ -89,6 +96,7 @@ export function useContactCustomFields(contactId: string) {
 
 export function useSetCustomFieldValue(contactId: string) {
   const queryClient = useQueryClient();
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: ({
@@ -97,15 +105,20 @@ export function useSetCustomFieldValue(contactId: string) {
     }: {
       definitionId: string;
       data: SetCustomFieldValueRequest;
-    }) =>
-      api.put<ContactCustomFieldDto>(
+    }) => {
+      if (!contactId) {
+        return Promise.reject(new Error('contactId is required'));
+      }
+      return api.put<ContactCustomFieldDto>(
         `/contacts/contacts/${encodeURIComponent(contactId)}/custom-fields/${encodeURIComponent(definitionId)}`,
         data,
-      ),
+      );
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: customFieldKeys.contactFields(contactId),
       });
     },
+    onError: (err) => handleApiError(err),
   });
 }
