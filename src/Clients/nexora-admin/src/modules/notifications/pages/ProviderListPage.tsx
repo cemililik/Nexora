@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { Controller, useForm } from 'react-hook-form';
@@ -76,8 +76,8 @@ export default function ProviderListPage() {
   const updateProvider = useUpdateProvider(editingProvider?.id ?? '');
   const testProvider = useTestProvider();
 
-  const providerSchema = createProviderSchema(t);
-  const testSchema = createTestSchema(t);
+  const providerSchema = useMemo(() => createProviderSchema(t), [t]);
+  const testSchema = useMemo(() => createTestSchema(t), [t]);
 
   const form = useForm<ProviderFormValues>({
     resolver: zodResolver(providerSchema),

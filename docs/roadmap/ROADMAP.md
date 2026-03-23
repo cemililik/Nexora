@@ -271,11 +271,11 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Accessibility: add `DialogDescription` (sr-only) to all 10 dialogs missing it (Radix a11y compliance)
 - [x] APISIX CORS preflight fix — dedicated OPTIONS route without auth, fix env var syntax incompatibility with standalone mode
 - [x] useAuth resilience — fallback to token claims on network/5xx errors, only redirect on 401/403
-- [ ] Performance: migrate `form.watch()` calls to `useWatch` / `Controller` pattern in ContactDetailPage forms
-- [ ] Performance: extract Zod schema factories from render functions to module-level constants or `useMemo` (CustomFieldManagementPage, ContactForm)
-- [ ] Performance: optimize FolderTree `onSelect` callback to prevent unnecessary re-renders
-- [ ] Cleanup: handle permission locale key removal when a module is uninstalled (IdentityModuleMigration ↔ UninstallModule interaction)
-- [ ] Fix: `usePagination.test.ts` optional chaining for `result.current.items?.[0]` safety
+- [x] Performance: migrate `form.watch()` calls to `useWatch` / `Controller` pattern in ContactDetailPage forms ✅
+- [x] Performance: extract Zod schema factories from render functions to module-level constants or `useMemo` (CustomFieldManagementPage, ContactForm, UserForm, FolderManagementPage, ProviderListPage) ✅
+- [x] Performance: optimize FolderTree `onSelect` callback to prevent unnecessary re-renders ✅
+- [x] Cleanup: handle permission locale key removal when a module is uninstalled (UninstallModuleHandler cleans up RolePermission associations) ✅
+- [x] Fix: `usePagination.test.ts` — verified: no `items` access exists, test is already safe ✅
 
 ### 1.7 Reporting Engine
 
