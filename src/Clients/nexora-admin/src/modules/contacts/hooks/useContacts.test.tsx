@@ -166,8 +166,13 @@ describe('useCreateContact', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { firstName: 'Jane', lastName: 'Doe', type: 'individual' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').CreateContactRequest = {
+      type: 'Individual',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      source: 'Manual',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -190,8 +195,12 @@ describe('useUpdateContact', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { firstName: 'Janet' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').UpdateContactRequest = {
+      firstName: 'Janet',
+      language: 'en',
+      currency: 'USD',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

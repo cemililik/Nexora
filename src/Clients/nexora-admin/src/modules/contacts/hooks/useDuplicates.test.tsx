@@ -130,8 +130,13 @@ describe('useMergeContacts', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { primaryContactId: 'c-1', secondaryContactIds: ['c-2'] };
-    result.current.mutate(payload as never);
+    const payload: import('../types').MergeContactsRequest = {
+      primaryContactId: 'c-1',
+      secondaryContactId: 'c-2',
+      useSecondaryEmail: false,
+      useSecondaryPhone: false,
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

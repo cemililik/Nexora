@@ -94,8 +94,11 @@ describe('useAddRelationship', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { relatedContactId: 'c2', type: 'spouse' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').AddRelationshipRequest = {
+      relatedContactId: 'c2',
+      type: 'SpouseOf',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

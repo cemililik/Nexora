@@ -27,7 +27,11 @@ export function useModules() {
       api.get<TenantModuleDto[]>(
         `/identity/tenants/${encodeURIComponent(tenantId!)}/modules`,
       ),
-    enabled: typeof token === 'string' && !!tenantId && UUID_REGEX.test(tenantId),
+    enabled:
+      typeof token === 'string' &&
+      token.length > 0 &&
+      !!tenantId &&
+      UUID_REGEX.test(tenantId),
     staleTime: 5 * 60 * 1000,
   });
 

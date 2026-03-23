@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -9,7 +10,9 @@ namespace Nexora.Modules.Identity.Infrastructure;
 /// <summary>
 /// Applies Identity module migrations and seeds initial data for a tenant schema.
 /// </summary>
-public sealed class IdentityModuleMigration(IServiceProvider serviceProvider) : IModuleMigration
+public sealed class IdentityModuleMigration(
+    IServiceProvider serviceProvider,
+    ILogger<IdentityModuleMigration> logger) : IModuleMigration
 {
     public string ModuleName => "identity";
 
@@ -23,6 +26,8 @@ public sealed class IdentityModuleMigration(IServiceProvider serviceProvider) : 
         var options = CreateDbContextOptions(scope.ServiceProvider, schemaName);
         await using var dbContext = new IdentityDbContext(options, accessor);
         await dbContext.Database.MigrateAsync(ct);
+
+        logger.LogInformation("Identity module migration applied for schema {SchemaName}", schemaName);
     }
 
     /// <inheritdoc />
@@ -57,6 +62,52 @@ public sealed class IdentityModuleMigration(IServiceProvider serviceProvider) : 
                 Permission.Create("identity", "roles", "delete", "lockey_identity_permission_roles_delete"),
                 Permission.Create("identity", "modules", "read", "lockey_identity_permission_modules_read"),
                 Permission.Create("identity", "modules", "manage", "lockey_identity_permission_modules_manage"),
+
+                // Contacts module permissions
+                Permission.Create("contacts", "contact", "read", "lockey_contacts_permission_contact_read"),
+                Permission.Create("contacts", "contact", "create", "lockey_contacts_permission_contact_create"),
+                Permission.Create("contacts", "contact", "update", "lockey_contacts_permission_contact_update"),
+                Permission.Create("contacts", "contact", "delete", "lockey_contacts_permission_contact_delete"),
+                Permission.Create("contacts", "tag", "read", "lockey_contacts_permission_tag_read"),
+                Permission.Create("contacts", "tag", "create", "lockey_contacts_permission_tag_create"),
+                Permission.Create("contacts", "tag", "update", "lockey_contacts_permission_tag_update"),
+                Permission.Create("contacts", "tag", "delete", "lockey_contacts_permission_tag_delete"),
+                Permission.Create("contacts", "custom-field", "read", "lockey_contacts_permission_custom_field_read"),
+                Permission.Create("contacts", "custom-field", "manage", "lockey_contacts_permission_custom_field_manage"),
+                Permission.Create("contacts", "note", "create", "lockey_contacts_permission_note_create"),
+                Permission.Create("contacts", "note", "update", "lockey_contacts_permission_note_update"),
+                Permission.Create("contacts", "note", "read", "lockey_contacts_permission_note_read"),
+                Permission.Create("contacts", "note", "delete", "lockey_contacts_permission_note_delete"),
+                Permission.Create("contacts", "relationship", "create", "lockey_contacts_permission_relationship_create"),
+                Permission.Create("contacts", "relationship", "delete", "lockey_contacts_permission_relationship_delete"),
+                Permission.Create("contacts", "import", "execute", "lockey_contacts_permission_import_execute"),
+                Permission.Create("contacts", "export", "execute", "lockey_contacts_permission_export_execute"),
+                Permission.Create("contacts", "gdpr", "export", "lockey_contacts_permission_gdpr_export"),
+                Permission.Create("contacts", "gdpr", "delete", "lockey_contacts_permission_gdpr_delete"),
+                Permission.Create("contacts", "merge", "execute", "lockey_contacts_permission_merge_execute"),
+
+                // Documents module permissions
+                Permission.Create("documents", "document", "read", "lockey_documents_permission_document_read"),
+                Permission.Create("documents", "document", "upload", "lockey_documents_permission_document_upload"),
+                Permission.Create("documents", "document", "update", "lockey_documents_permission_document_update"),
+                Permission.Create("documents", "document", "delete", "lockey_documents_permission_document_delete"),
+                Permission.Create("documents", "folder", "read", "lockey_documents_permission_folder_read"),
+                Permission.Create("documents", "folder", "manage", "lockey_documents_permission_folder_manage"),
+                Permission.Create("documents", "signature", "read", "lockey_documents_permission_signature_read"),
+                Permission.Create("documents", "signature", "create", "lockey_documents_permission_signature_create"),
+                Permission.Create("documents", "signature", "manage", "lockey_documents_permission_signature_manage"),
+                Permission.Create("documents", "template", "read", "lockey_documents_permission_template_read"),
+                Permission.Create("documents", "template", "manage", "lockey_documents_permission_template_manage"),
+
+                // Notifications module permissions
+                Permission.Create("notifications", "notification", "read", "lockey_notifications_permission_notification_read"),
+                Permission.Create("notifications", "notification", "send", "lockey_notifications_permission_notification_send"),
+                Permission.Create("notifications", "template", "read", "lockey_notifications_permission_template_read"),
+                Permission.Create("notifications", "template", "manage", "lockey_notifications_permission_template_manage"),
+                Permission.Create("notifications", "provider", "read", "lockey_notifications_permission_provider_read"),
+                Permission.Create("notifications", "provider", "manage", "lockey_notifications_permission_provider_manage"),
+                Permission.Create("notifications", "schedule", "read", "lockey_notifications_permission_schedule_read"),
+                Permission.Create("notifications", "schedule", "manage", "lockey_notifications_permission_schedule_manage"),
             };
 
             await dbContext.Permissions.AddRangeAsync(defaultPermissions, ct);
@@ -76,6 +127,9 @@ public sealed class IdentityModuleMigration(IServiceProvider serviceProvider) : 
         }
 
         await dbContext.SaveChangesAsync(ct);
+
+        logger.LogInformation(
+            "Identity module seed completed for schema {SchemaName}", schemaName);
     }
 
     private DbContextOptions<IdentityDbContext> CreateDbContextOptions(

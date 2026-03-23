@@ -10,6 +10,7 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Jobs;
 
@@ -80,15 +81,34 @@ public sealed class ContactImportJob(
                         continue;
                     }
 
+                    var contactType = Enum.TryParse<ContactType>(row.Type, ignoreCase: true, out var parsedType)
+                        ? parsedType
+                        : ContactType.Individual;
+
                     var contact = Contact.Create(
-                        tenantId, orgId, ContactType.Individual,
+                        tenantId, orgId, contactType,
                         row.FirstName, row.LastName, row.CompanyName,
                         row.Email, row.Phone, ContactSource.Import);
 
                     await dbContext.Contacts.AddAsync(contact, ct);
                     successCount++;
                 }
-                catch (Exception ex)
+                catch (DomainException ex)
+                {
+                    logger.LogWarning(ex, "Domain validation failed for row {RowIndex}", i + batch.IndexOf(row));
+                    errorCount++;
+                }
+                catch (FormatException ex)
+                {
+                    logger.LogWarning(ex, "Failed to parse row {RowIndex}", i + batch.IndexOf(row));
+                    errorCount++;
+                }
+                catch (ArgumentException ex)
+                {
+                    logger.LogWarning(ex, "Invalid data in row {RowIndex}", i + batch.IndexOf(row));
+                    errorCount++;
+                }
+                catch (InvalidOperationException ex)
                 {
                     logger.LogWarning(ex, "Failed to import row {RowIndex}", i + batch.IndexOf(row));
                     errorCount++;
@@ -139,7 +159,11 @@ public sealed class ContactImportJob(
         var headerRow = worksheet.Row(1);
         var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        for (var col = 1; col <= headerRow.LastCellUsed()?.Address.ColumnNumber; col++)
+        var lastHeaderCell = headerRow.LastCellUsed();
+        if (lastHeaderCell is null)
+            return rows;
+
+        for (var col = 1; col <= lastHeaderCell.Address.ColumnNumber; col++)
         {
             var headerValue = headerRow.Cell(col).GetString().Trim();
             if (!string.IsNullOrEmpty(headerValue))

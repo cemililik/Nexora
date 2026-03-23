@@ -11,6 +11,9 @@ import { useContacts } from '../hooks/useContacts';
 import { ContactStatusBadge, ContactTypeBadge } from '../components/ContactStatusBadge';
 import type { ContactDto, ContactStatus, ContactType } from '../types';
 
+const VALID_STATUSES: ContactStatus[] = ['Active', 'Archived', 'Merged'];
+const VALID_TYPES: ContactType[] = ['Individual', 'Organization'];
+
 export default function ContactListPage() {
   const { t, i18n } = useTranslation('contacts');
   const { page, pageSize, setPage } = usePagination();
@@ -18,8 +21,16 @@ export default function ContactListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const search = searchParams.get('search') ?? '';
-  const statusFilter = (searchParams.get('status') as ContactStatus | null) ?? undefined;
-  const typeFilter = (searchParams.get('type') as ContactType | null) ?? undefined;
+
+  const rawStatus = searchParams.get('status');
+  const statusFilter = VALID_STATUSES.includes(rawStatus as ContactStatus)
+    ? (rawStatus as ContactStatus)
+    : undefined;
+
+  const rawType = searchParams.get('type');
+  const typeFilter = VALID_TYPES.includes(rawType as ContactType)
+    ? (rawType as ContactType)
+    : undefined;
 
   const updateFilter = useCallback(
     (key: string, value: string) => {
@@ -136,6 +147,7 @@ export default function ContactListPage() {
         <select
           value={statusFilter ?? ''}
           onChange={handleStatusChange}
+          aria-label={t('lockey_contacts_filter_all_statuses')}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           <option value="">{t('lockey_contacts_filter_all_statuses')}</option>
@@ -145,6 +157,7 @@ export default function ContactListPage() {
         <select
           value={typeFilter ?? ''}
           onChange={handleTypeChange}
+          aria-label={t('lockey_contacts_filter_all_types')}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           <option value="">{t('lockey_contacts_filter_all_types')}</option>

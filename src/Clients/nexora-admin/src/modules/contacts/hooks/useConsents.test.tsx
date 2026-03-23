@@ -103,8 +103,12 @@ describe('useRecordConsent', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { consentType: 'Marketing', granted: true, source: 'Form' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').RecordConsentRequest = {
+      consentType: 'EmailMarketing',
+      granted: true,
+      source: 'Form',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

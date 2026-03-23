@@ -156,5 +156,22 @@
   "lockey_identity_validation_tenant_slug_format": "Slug must contain only lowercase letters, numbers, and hyphens",
   "lockey_identity_validation_org_name_required": "Organization name is required",
   "lockey_identity_validation_org_name_max": "Organization name must be at most 200 characters",
-  "lockey_identity_validation_org_description_max": "Description must be at most 500 characters"
+  "lockey_identity_validation_org_description_max": "Description must be at most 500 characters",
+
+  "lockey_identity_permission_tenants_read": "View tenants",
+  "lockey_identity_permission_tenants_manage": "Manage tenants",
+  "lockey_identity_permission_organizations_read": "View organizations",
+  "lockey_identity_permission_organizations_create": "Create organizations",
+  "lockey_identity_permission_organizations_update": "Update organizations",
+  "lockey_identity_permission_organizations_delete": "Delete organizations",
+  "lockey_identity_permission_users_read": "View users",
+  "lockey_identity_permission_users_create": "Create users",
+  "lockey_identity_permission_users_update": "Update users",
+  "lockey_identity_permission_users_delete": "Delete users",
+  "lockey_identity_permission_roles_read": "View roles",
+  "lockey_identity_permission_roles_create": "Create roles",
+  "lockey_identity_permission_roles_update": "Update roles",
+  "lockey_identity_permission_roles_delete": "Delete roles",
+  "lockey_identity_permission_modules_read": "View modules",
+  "lockey_identity_permission_modules_manage": "Manage modules"
 }

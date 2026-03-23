@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import type {
   ContactDto,
@@ -59,6 +60,7 @@ export function useContact360(id: string) {
 export function useCreateContact() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: CreateContactRequest) =>
@@ -67,12 +69,14 @@ export function useCreateContact() {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
       toast.success(t('lockey_contacts_toast_created'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateContact(id: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: UpdateContactRequest) =>
@@ -84,12 +88,14 @@ export function useUpdateContact(id: string) {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
       toast.success(t('lockey_contacts_toast_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useArchiveContact() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (id: string) =>
@@ -98,12 +104,14 @@ export function useArchiveContact() {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
       toast.success(t('lockey_contacts_toast_archived'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useRestoreContact() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (id: string) =>
@@ -114,5 +122,6 @@ export function useRestoreContact() {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
       toast.success(t('lockey_contacts_toast_restored'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
