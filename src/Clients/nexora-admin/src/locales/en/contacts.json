@@ -381,5 +381,27 @@
   "lockey_contacts_delete_custom_field_title": "Delete Custom Field",
   "lockey_contacts_delete_custom_field_description": "Are you sure you want to delete this custom field? This action cannot be undone.",
 
-  "lockey_contacts_tags_color_placeholder": "#FF5733"
+  "lockey_contacts_tags_color_placeholder": "#FF5733",
+
+  "lockey_contacts_permission_contact_read": "View contacts",
+  "lockey_contacts_permission_contact_create": "Create contacts",
+  "lockey_contacts_permission_contact_update": "Update contacts",
+  "lockey_contacts_permission_contact_delete": "Delete contacts",
+  "lockey_contacts_permission_tag_read": "View tags",
+  "lockey_contacts_permission_tag_create": "Create tags",
+  "lockey_contacts_permission_tag_update": "Update tags",
+  "lockey_contacts_permission_tag_delete": "Delete tags",
+  "lockey_contacts_permission_custom_field_read": "View custom fields",
+  "lockey_contacts_permission_custom_field_manage": "Manage custom fields",
+  "lockey_contacts_permission_note_read": "View notes",
+  "lockey_contacts_permission_note_create": "Create notes",
+  "lockey_contacts_permission_note_update": "Update notes",
+  "lockey_contacts_permission_note_delete": "Delete notes",
+  "lockey_contacts_permission_relationship_create": "Create relationships",
+  "lockey_contacts_permission_relationship_delete": "Delete relationships",
+  "lockey_contacts_permission_import_execute": "Execute contact imports",
+  "lockey_contacts_permission_export_execute": "Execute contact exports",
+  "lockey_contacts_permission_gdpr_export": "Export personal data (GDPR)",
+  "lockey_contacts_permission_gdpr_delete": "Delete personal data (GDPR)",
+  "lockey_contacts_permission_merge_execute": "Merge duplicate contacts"
 }

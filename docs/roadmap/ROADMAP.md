@@ -92,7 +92,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Docker Compose**: PostgreSQL 17, Redis 7, Kafka (KRaft), Keycloak 26, MinIO, Dapr
 - **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
 - **Standards compliance**: 7 rounds of audit — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging)
-- **Tests**: 1186 tests passing (Contacts: 394, Notifications: 239, Documents: 281, Identity: 162, SharedKernel: 64, Architecture: 62, Infrastructure: 48)
+- **Tests**: 1251 backend tests passing (Contacts: 395, Notifications: 239, Documents: 281, Identity: 162, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 344 frontend tests (47 suites) across admin dashboard
 - **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
 - **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
 - **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
@@ -168,7 +168,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Import/Export (CSV, Excel) — presigned URL upload pattern (3-step: upload-url → MinIO → confirm-import)
 - [x] Custom fields (tenant-configurable)
 - [x] KVKK/GDPR compliance (consent tracking, data export, right to delete)
-- [ ] Permission seed in `OnStartupAsync()` — register Contacts module permissions (contacts.contact.read/write/delete, contacts.tag.manage, contacts.import.execute, contacts.gdpr.manage) ⚠️ *CODE TODO: `ContactsModule.cs:102` — frontend RequirePermission guards depend on these*
+- [ ] Permission seed in `OnStartupAsync()` — register Contacts module permissions (contacts.contact.read/write/delete, contacts.tag.manage, contacts.import.execute, contacts.gdpr.manage) ⚠️ *Per ADR-004, permissions are centralized in IdentityModuleMigration — evaluate whether module-level seeding is still needed or should be added to centralized seed*
 
 ### 1.3 Notification Engine
 **Spec**: [modules/notifications/SPEC.md](../modules/notifications/SPEC.md)
@@ -203,7 +203,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Cross-module document service (IDocumentService in SharedKernel — GenerateFromTemplateAsync, GetDocumentsByEntityAsync)
 - [x] Architecture tests (Phase 2 entity/handler/service sealed checks, layer dependencies)
 - [x] Bruno API collection (14 new requests — Storage: 3, Signatures: 7, Templates: 4)
-- [ ] Permission seed in `OnStartupAsync()` — register Documents module permissions (documents.documents.upload/read/delete, documents.folders.manage, documents.signatures.manage, documents.templates.manage) ⚠️ *CODE TODO: `DocumentsModule.cs:96` — frontend RequirePermission guards depend on these*
+- [ ] Permission seed in `OnStartupAsync()` — register Documents module permissions (documents.documents.upload/read/delete, documents.folders.manage, documents.signatures.manage, documents.templates.manage) ⚠️ *Per ADR-004, permissions are centralized in IdentityModuleMigration — evaluate whether module-level seeding is still needed or should be added to centralized seed*
 
 ### 1.5 Portal Framework
 - [x] Portal authentication (separate from admin auth)
@@ -221,6 +221,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [ ] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack *(CODE TODO: `portal/ErrorBoundary.tsx:55`)*
 
 ### 1.6 Admin Dashboard (nexora-admin)
+
 - [x] Scaffold: Vite 6 + React 19 + React Router v7 + TypeScript strict
 - [x] Auth: Keycloak JS adapter (PKCE S256, token in memory via Zustand)
 - [x] i18n: react-i18next + registerModuleLocales() pattern (en/tr)
@@ -237,12 +238,22 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] ContactListPage filters persisted in URL search params
 - [x] shadcn/ui Select component (ExportPage, ImportPage — replaced native select)
 - [x] Backend import pipeline: Hangfire enqueue (IBackgroundJobClient) + CSV/XLSX parsers (CsvHelper, ClosedXML)
-- [x] 37 test suites, 256 frontend tests + 395 backend contacts tests passing
+- [x] Code review fix (round 13): URL param whitelist validation (ContactListPage), `useModules` empty-string token guard, `useNotes` missing `onError` handlers, `htmlFor`/`id` pairs (CustomFieldManagementPage), ContactImportJob null-safety (`LastCellUsed`, `Enum.TryParse`), StartContactImport Hangfire job ID capture, test type-safety (`as never` → proper types across 10 test files)
+- [x] 47 test suites, 344 frontend tests + 395 backend contacts tests passing
 - [ ] Integrate ErrorBoundary with OpenTelemetry/Sentry for frontend error reporting to observability stack *(CODE TODO: `admin/ErrorBoundary.tsx:32`)*
 - [ ] Documents Module UI (folder tree, document browser, version history, signature workflow)
 - [ ] Notifications Module UI (template editor, provider config, send/bulk send)
+- [ ] Connect `GetImportJobStatusQuery` to Hangfire — store `hangfireJobId ↔ jobId` mapping *(CODE TODO: `StartContactImportCommand.cs:95`)*
+- [ ] Replace native `<select>`, `<input type="checkbox">`, `<textarea>` in CustomFieldRenderer with shadcn/ui components *(requires creating shadcn Checkbox + Textarea components first)*
+- [ ] Accessibility pass: add `aria-label` to DataTable `<table>`, tab panels, and other interactive elements across admin dashboard
+- [ ] Performance: migrate `form.watch()` calls to `useWatch` / `Controller` pattern in ContactDetailPage forms
+- [ ] Performance: extract Zod schema factories from render functions to module-level constants or `useMemo` (CustomFieldManagementPage, ContactForm)
+- [ ] Performance: optimize FolderTree `onSelect` callback to prevent unnecessary re-renders (Documents Module UI)
+- [ ] Cleanup: handle permission locale key removal when a module is uninstalled (IdentityModuleMigration ↔ UninstallModule interaction)
+- [ ] Fix: `usePagination.test.ts` optional chaining for `result.current.items?.[0]` safety
 
 ### 1.7 Reporting Engine
+
 - [ ] Report definition (SQL-based + LINQ-based)
 - [ ] Dashboard builder (widgets, charts, KPIs)
 - [ ] Cross-module data aggregation

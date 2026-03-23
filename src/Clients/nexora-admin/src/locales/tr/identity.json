@@ -156,5 +156,22 @@
   "lockey_identity_validation_tenant_slug_format": "Slug sadece küçük harf, rakam ve tire içerebilir",
   "lockey_identity_validation_org_name_required": "Organizasyon adı zorunludur",
   "lockey_identity_validation_org_name_max": "Organizasyon adı en fazla 200 karakter olmalıdır",
-  "lockey_identity_validation_org_description_max": "Açıklama en fazla 500 karakter olmalıdır"
+  "lockey_identity_validation_org_description_max": "Açıklama en fazla 500 karakter olmalıdır",
+
+  "lockey_identity_permission_tenants_read": "Kiracıları görüntüle",
+  "lockey_identity_permission_tenants_manage": "Kiracıları yönet",
+  "lockey_identity_permission_organizations_read": "Organizasyonları görüntüle",
+  "lockey_identity_permission_organizations_create": "Organizasyon oluştur",
+  "lockey_identity_permission_organizations_update": "Organizasyonları güncelle",
+  "lockey_identity_permission_organizations_delete": "Organizasyonları sil",
+  "lockey_identity_permission_users_read": "Kullanıcıları görüntüle",
+  "lockey_identity_permission_users_create": "Kullanıcı oluştur",
+  "lockey_identity_permission_users_update": "Kullanıcıları güncelle",
+  "lockey_identity_permission_users_delete": "Kullanıcıları sil",
+  "lockey_identity_permission_roles_read": "Rolleri görüntüle",
+  "lockey_identity_permission_roles_create": "Rol oluştur",
+  "lockey_identity_permission_roles_update": "Rolleri güncelle",
+  "lockey_identity_permission_roles_delete": "Rolleri sil",
+  "lockey_identity_permission_modules_read": "Modülleri görüntüle",
+  "lockey_identity_permission_modules_manage": "Modülleri yönet"
 }

@@ -102,8 +102,14 @@ describe('useAddAddress', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { street: '456 Oak Ave', city: 'Springfield', country: 'US' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').AddAddressRequest = {
+      type: 'Home',
+      street1: '456 Oak Ave',
+      city: 'Springfield',
+      countryCode: 'US',
+      isPrimary: false,
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -129,8 +135,13 @@ describe('useUpdateAddress', () => {
       wrapper: createWrapper(),
     });
 
-    const data = { street: '789 Elm Blvd' };
-    result.current.mutate({ addressId: 'a1', data } as never);
+    const data: import('../types').UpdateAddressRequest = {
+      type: 'Home',
+      street1: '789 Elm Blvd',
+      city: 'Springfield',
+      countryCode: 'US',
+    };
+    result.current.mutate({ addressId: 'a1', data });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

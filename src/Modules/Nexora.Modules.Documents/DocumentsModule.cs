@@ -15,11 +15,16 @@ using DocumentService = Nexora.Modules.Documents.Infrastructure.Services.Documen
 
 namespace Nexora.Modules.Documents;
 
+/// <summary>Documents module providing folder management, versioned file storage, access control, templates, and digital signatures.</summary>
 public sealed class DocumentsModule : IModule
 {
+    /// <inheritdoc />
     public string Name => "documents";
+    /// <inheritdoc />
     public string DisplayName => "lockey_documents_module_display_name";
+    /// <inheritdoc />
     public string Version => "1.0.0";
+    /// <inheritdoc />
     public IReadOnlyList<string> Dependencies => ["identity"];
 
     /// <inheritdoc />
@@ -93,10 +98,8 @@ public sealed class DocumentsModule : IModule
     /// <inheritdoc />
     public Task OnStartupAsync(CancellationToken ct)
     {
-        // TODO: Register Documents module permissions (e.g., documents.documents.upload,
-        // documents.documents.read, documents.documents.delete, documents.folders.manage,
-        // documents.signatures.create, documents.templates.manage)
-        // once IPermissionRegistrar is available in SharedKernel.
+        // Documents module permissions are seeded centrally in IdentityModuleMigration.SeedAsync()
+        // (8 permissions: document read/upload/delete, folder read/manage, signature create, template read/manage).
         return Task.CompletedTask;
     }
 

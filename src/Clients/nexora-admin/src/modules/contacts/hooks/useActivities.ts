@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type { ContactActivityDto, LogActivityRequest } from '../types';
 
 export const activityKeys = {
@@ -24,6 +25,7 @@ export function useActivities(contactId: string) {
 export function useLogActivity(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: LogActivityRequest) =>
@@ -37,5 +39,6 @@ export function useLogActivity(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_activity_logged'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
