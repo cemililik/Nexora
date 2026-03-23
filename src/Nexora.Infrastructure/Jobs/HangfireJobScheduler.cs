@@ -15,8 +15,8 @@ public sealed class HangfireJobScheduler : IJobScheduler
         string cronExpression,
         string queue = "default") where TJob : class
     {
-        // Hangfire requires the lambda to call an instance method on TJob.
-        // ToString() is always available and serves as a no-op placeholder.
+        // TODO: Refactor IJobScheduler to accept TParams and call job.RunAsync(params, CancellationToken.None)
+        // Currently uses ToString() as a no-op — recurring jobs must be registered with proper method invocation.
         RecurringJob.AddOrUpdate<TJob>(
             jobId,
             queue,

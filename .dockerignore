@@ -9,6 +9,10 @@
 **/coverage/
 **/.vscode/
 **/.idea/
+**/.vs/
+**/*.suo
+**/*.user
+**/*.userosscache
 src/Clients/
 docs/
 deploy/

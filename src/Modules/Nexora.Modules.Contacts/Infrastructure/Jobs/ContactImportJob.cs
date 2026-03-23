@@ -52,6 +52,13 @@ public sealed class ContactImportJob(
             return;
         }
 
+        // Idempotency guard — skip if already processed or in progress
+        if (importJob.Status is ImportJobStatus.Processing or ImportJobStatus.Completed)
+        {
+            logger.LogWarning("ImportJob {ImportJobId} already in {Status}, skipping", importJobId, importJob.Status);
+            return;
+        }
+
         var opts = storageOptions.Value;
         var bucketName = $"{opts.BucketPrefix}-{tenantId}";
 

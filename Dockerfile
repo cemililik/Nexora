@@ -38,8 +38,11 @@ USER nexora
 COPY --from=build /app .
 
 ENV ASPNETCORE_URLS=http://+:5000
-ENV ASPNETCORE_ENVIRONMENT=Development
+ENV ASPNETCORE_ENVIRONMENT=Production
 
 EXPOSE 5000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health/ready || exit 1
 
 ENTRYPOINT ["dotnet", "Nexora.Host.dll"]

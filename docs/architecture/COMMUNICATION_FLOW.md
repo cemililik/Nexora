@@ -188,7 +188,7 @@ sequenceDiagram
 
 APISIX **standalone mode** ile calisir — etcd'ye bagimliligi yoktur. Route tanimlari `apisix.yaml` dosyasindan yuklenir ve dosya degisikliklerinde hot-reload yapilir.
 
-```
+```text
 infrastructure/apisix/
 ├── config.yaml      # APISIX core config (standalone mode, plugin list)
 └── apisix.yaml      # Route tanimlari (hot-reloaded)
@@ -461,17 +461,19 @@ graph LR
 ### Frontend Environment Variables
 
 **nexora-admin** (`.env.local`):
-```
-VITE_API_BASE_URL=http://localhost:9080/api/v1    ← APISIX uzerinden
-VITE_KEYCLOAK_URL=http://localhost:8080            ← Dogrudan Keycloak
+
+```bash
+VITE_API_BASE_URL=http://localhost:9080/api/v1    # APISIX uzerinden
+VITE_KEYCLOAK_URL=http://localhost:8080            # Dogrudan Keycloak
 VITE_KEYCLOAK_REALM=nexora-dev
 VITE_KEYCLOAK_CLIENT_ID=nexora-admin
 ```
 
 **nexora-portal** (`.env.local`):
-```
-NEXT_PUBLIC_API_URL=http://localhost:9080/api/v1   ← APISIX uzerinden
-AUTH_KEYCLOAK_ISSUER=http://localhost:8080/realms/nexora-dev  ← Dogrudan Keycloak
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:9080/api/v1   # APISIX uzerinden
+AUTH_KEYCLOAK_ISSUER=http://localhost:8080/realms/nexora-dev  # Dogrudan Keycloak
 AUTH_KEYCLOAK_ID=nexora-portal
 AUTH_KEYCLOAK_SECRET=nexora-portal-dev-secret
 ```
@@ -480,7 +482,7 @@ AUTH_KEYCLOAK_SECRET=nexora-portal-dev-secret
 
 **Calisma modu:** Standalone (etcd bagimliligi yok)
 
-```
+```text
 infrastructure/apisix/
 ├── config.yaml     # deployment.role: data_plane, config_provider: yaml
 └── apisix.yaml     # Route tanimlari, hot-reload destekli
@@ -499,7 +501,7 @@ infrastructure/apisix/
 
 Keycloak, Docker icinden ve disarindan farkli hostname'lerle erisilir. Issuer mismatch'i onlemek icin:
 
-```
+```bash
 KC_HOSTNAME=http://localhost:8080            # Frontend issuer (JWT iss claim)
 KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true         # Backchannel URL'ler request hostname'den
 ```

@@ -17,8 +17,24 @@ storage:
       path: /var/tempo/traces
     wal:
       path: /var/tempo/wal
+    block:
+      max_block_duration: 5m
+    retention:
+      max_retention: 72h
+
+compactor:
+  compaction:
+    block_retention: 72h
 
 metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+  processor:
+    span_metrics:
+      enable_target_info: true
+    service_graphs:
+      enable_client_server_prefix: true
   storage:
     path: /var/tempo/generator/wal
   traces_storage:

@@ -1,3 +1,4 @@
+# TODO: Production should enable auth (auth_enabled: true) or restrict port access via Docker networking
 auth_enabled: false
 
 server:

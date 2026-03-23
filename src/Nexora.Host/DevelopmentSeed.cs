@@ -33,7 +33,8 @@ public static class DevelopmentSeed
 
         Log.Information("[DevSeed] Starting development tenant provisioning...");
 
-        var connectionString = app.Configuration.GetConnectionString("Default")!;
+        var connectionString = app.Configuration.GetConnectionString("Default")
+            ?? throw new InvalidOperationException("Missing 'Default' connection string in configuration");
 
         try
         {
@@ -349,7 +350,8 @@ public static class DevelopmentSeed
             .UseNpgsql(connectionString)
             .Options;
 
-        await using var dbContext = (TContext)Activator.CreateInstance(typeof(TContext), options, accessor, null)!;
+        await using var dbContext = (TContext?)Activator.CreateInstance(typeof(TContext), options, accessor, null)
+            ?? throw new InvalidOperationException($"Failed to create {typeof(TContext).Name} instance");
         var creator = dbContext.GetService<IRelationalDatabaseCreator>();
         await creator.CreateTablesAsync();
 
@@ -400,7 +402,9 @@ public static class DevelopmentSeed
     [
         // Identity
         Permission.Create("identity", "tenants", "read", "lockey_identity_permission_tenants_read"),
-        Permission.Create("identity", "tenants", "manage", "lockey_identity_permission_tenants_manage"),
+        Permission.Create("identity", "tenants", "create", "lockey_identity_permission_tenants_create"),
+        Permission.Create("identity", "tenants", "update", "lockey_identity_permission_tenants_update"),
+        Permission.Create("identity", "tenants", "delete", "lockey_identity_permission_tenants_delete"),
         Permission.Create("identity", "organizations", "read", "lockey_identity_permission_organizations_read"),
         Permission.Create("identity", "organizations", "create", "lockey_identity_permission_organizations_create"),
         Permission.Create("identity", "organizations", "update", "lockey_identity_permission_organizations_update"),

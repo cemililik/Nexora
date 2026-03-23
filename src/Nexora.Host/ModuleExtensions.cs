@@ -27,9 +27,9 @@ public static class ModuleExtensions
             {
                 Assembly.LoadFrom(dll);
             }
-            catch
+            catch (Exception ex)
             {
-                // Skip assemblies that can't be loaded
+                Console.Error.WriteLine($"[ModuleExtensions] Failed to load assembly: {dll} — {ex.Message}");
             }
         }
 
