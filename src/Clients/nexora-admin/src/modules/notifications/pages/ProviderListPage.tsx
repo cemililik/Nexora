@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -21,6 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Input } from '@/shared/components/ui/input';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -288,49 +291,55 @@ export default function ProviderListPage() {
               <>
                 <div>
                   <label htmlFor="provider-channel" className="text-sm font-medium">{t('lockey_notifications_providers_form_channel')}</label>
-                  <Select
-                    value={form.watch('channel')}
-                    onValueChange={(v) => form.setValue('channel', v as typeof CHANNELS[number])}
-                  >
-                    <SelectTrigger id="provider-channel" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CHANNELS.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {t(CHANNEL_KEY_MAP[c])}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    control={form.control}
+                    name="channel"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="provider-channel" className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHANNELS.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {t(CHANNEL_KEY_MAP[c])}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
                 <div>
                   <label htmlFor="provider-name" className="text-sm font-medium">{t('lockey_notifications_providers_form_provider_name')}</label>
-                  <Select
-                    value={form.watch('providerName')}
-                    onValueChange={(v) => form.setValue('providerName', v as typeof PROVIDER_NAMES[number])}
-                  >
-                    <SelectTrigger id="provider-name" className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PROVIDER_NAMES.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {t(PROVIDER_NAME_KEY_MAP[p])}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    control={form.control}
+                    name="providerName"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger id="provider-name" className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PROVIDER_NAMES.map((p) => (
+                            <SelectItem key={p} value={p}>
+                              {t(PROVIDER_NAME_KEY_MAP[p])}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
               </>
             )}
             <div>
               <label htmlFor="provider-config" className="text-sm font-medium">{t('lockey_notifications_providers_form_config')}</label>
-              <textarea
+              <Textarea
                 id="provider-config"
                 {...form.register('config')}
                 rows={4}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                className="mt-1 font-mono"
                 placeholder={t('lockey_notifications_providers_form_config_placeholder')}
               />
               {form.formState.errors.config?.message && (
@@ -339,22 +348,27 @@ export default function ProviderListPage() {
             </div>
             <div>
               <label htmlFor="provider-daily-limit" className="text-sm font-medium">{t('lockey_notifications_providers_form_daily_limit')}</label>
-              <input
+              <Input
                 id="provider-daily-limit"
                 type="number"
                 {...form.register('dailyLimit', { valueAsNumber: true })}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1"
               />
               {form.formState.errors.dailyLimit?.message && (
                 <p className="mt-1 text-sm text-destructive">{form.formState.errors.dailyLimit.message}</p>
               )}
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isDefault"
-                {...form.register('isDefault')}
-                className="rounded border-input"
+              <Controller
+                control={form.control}
+                name="isDefault"
+                render={({ field }) => (
+                  <Checkbox
+                    id="isDefault"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
               />
               <label htmlFor="isDefault" className="text-sm font-medium">
                 {t('lockey_notifications_providers_form_is_default')}

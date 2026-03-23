@@ -66,20 +66,18 @@ public sealed class ContactsModule : IModule
     /// <inheritdoc />
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
-        var module = endpoints.MapGroup("/api/v1/contacts");
-
-        module.MapContactEndpoints();
-        module.MapTagEndpoints();
-        module.MapContactAddressEndpoints();
-        module.MapContactRelationshipEndpoints();
-        module.MapCommunicationPreferenceEndpoints();
-        module.MapContactNoteEndpoints();
-        module.MapConsentEndpoints();
-        module.MapContactActivityEndpoints();
-        module.MapCustomFieldEndpoints();
-        module.MapDuplicateEndpoints();
-        module.MapImportExportEndpoints();
-        module.MapGdprEndpoints();
+        endpoints.MapContactEndpoints();
+        endpoints.MapTagEndpoints();
+        endpoints.MapContactAddressEndpoints();
+        endpoints.MapContactRelationshipEndpoints();
+        endpoints.MapCommunicationPreferenceEndpoints();
+        endpoints.MapContactNoteEndpoints();
+        endpoints.MapConsentEndpoints();
+        endpoints.MapContactActivityEndpoints();
+        endpoints.MapCustomFieldEndpoints();
+        endpoints.MapDuplicateEndpoints();
+        endpoints.MapImportExportEndpoints();
+        endpoints.MapGdprEndpoints();
     }
 
     /// <inheritdoc />

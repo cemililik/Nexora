@@ -143,7 +143,7 @@ export default function FolderManagementPage() {
 
       {/* Folder list */}
       {isPending ? (
-        <div className="text-sm text-muted-foreground">...</div>
+        <div className="text-sm text-muted-foreground">{t('lockey_common_loading', { ns: 'common' })}</div>
       ) : folders && folders.length > 0 ? (
         <div className="rounded-lg border">
           <table className="w-full text-sm" aria-label={t('lockey_documents_folders_title')}>
@@ -220,8 +220,9 @@ export default function FolderManagementPage() {
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_folders_form_name')}</label>
+              <label htmlFor="folder-name" className="text-sm font-medium">{t('lockey_documents_folders_form_name')}</label>
               <input
+                id="folder-name"
                 type="text"
                 {...form.register('name')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

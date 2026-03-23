@@ -81,6 +81,7 @@ export function useDeleteTag() {
 
 export function useAssignTag() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('contacts');
   const { handleApiError } = useApiError();
 
   return useMutation({
@@ -90,6 +91,7 @@ export function useAssignTag() {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
+      toast.success(t('lockey_contacts_toast_tag_assigned'));
     },
     onError: (err) => handleApiError(err),
   });

@@ -679,7 +679,7 @@ modules/contacts/
 
 ```env
 # .env.development
-VITE_API_BASE_URL=http://localhost:5000/api/v1
+VITE_API_BASE_URL=http://localhost:9080/api/v1
 VITE_KEYCLOAK_URL=http://localhost:8080
 VITE_KEYCLOAK_REALM=nexora-dev
 VITE_KEYCLOAK_CLIENT_ID=nexora-admin
@@ -689,7 +689,7 @@ VITE_KEYCLOAK_CLIENT_ID=nexora-admin
 
 ```env
 # .env.local
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=http://localhost:9080/api/v1
 NEXT_PUBLIC_KEYCLOAK_URL=http://localhost:8080
 NEXT_PUBLIC_DEFAULT_LOCALE=en
 ```

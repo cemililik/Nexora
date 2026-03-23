@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -41,6 +41,29 @@ import type { AccessPermission } from '../types';
 
 const ACCESS_PERMISSIONS: AccessPermission[] = ['View', 'Edit', 'Manage'];
 
+function createVersionSchema(t: (key: string, options?: Record<string, string>) => string) {
+  return z.object({
+    storageKey: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    fileSize: z.number().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    changeNote: z.string().optional(),
+  });
+}
+
+type VersionFormValues = z.infer<ReturnType<typeof createVersionSchema>>;
+
+function createAccessSchema(t: (key: string, options?: Record<string, string>) => string) {
+  return z.object({
+    userId: z.string().optional(),
+    roleId: z.string().optional(),
+    permission: z.enum(['View', 'Edit', 'Manage']),
+  }).refine(
+    (data) => (data.userId && data.userId.length > 0) || (data.roleId && data.roleId.length > 0),
+    { message: t('lockey_validation_required', { ns: 'validation' }), path: ['userId'] },
+  );
+}
+
+type AccessFormValues = z.infer<ReturnType<typeof createAccessSchema>>;
+
 function createMetadataSchema(t: (key: string) => string) {
   return z.object({
     name: z.string().min(1, t('lockey_validation_required')),
@@ -79,19 +102,23 @@ export default function DocumentDetailPage() {
   const [grantAccessOpen, setGrantAccessOpen] = useState(false);
   const [revokeAccessId, setRevokeAccessId] = useState<string | null>(null);
 
-  const schema = createMetadataSchema(t);
+  const metadataSchema = useMemo(() => createMetadataSchema(t), [t]);
   const metadataForm = useForm<MetadataFormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(metadataSchema),
     defaultValues: { name: '', description: '', tags: '' },
   });
 
-  const [versionStorageKey, setVersionStorageKey] = useState('');
-  const [versionFileSize, setVersionFileSize] = useState(0);
-  const [versionChangeNote, setVersionChangeNote] = useState('');
+  const versionSchema = useMemo(() => createVersionSchema(t), [t]);
+  const versionForm = useForm<VersionFormValues>({
+    resolver: zodResolver(versionSchema),
+    defaultValues: { storageKey: '', fileSize: 0, changeNote: '' },
+  });
 
-  const [accessUserId, setAccessUserId] = useState('');
-  const [accessRoleId, setAccessRoleId] = useState('');
-  const [accessPermission, setAccessPermission] = useState<AccessPermission>('View');
+  const accessSchema = useMemo(() => createAccessSchema(t), [t]);
+  const accessForm = useForm<AccessFormValues>({
+    resolver: zodResolver(accessSchema),
+    defaultValues: { userId: '', roleId: '', permission: 'View' },
+  });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -102,7 +129,14 @@ export default function DocumentDetailPage() {
   }, [setBreadcrumbs, doc?.name]);
 
   if (isPending) return <LoadingSkeleton />;
-  if (!doc) return null;
+  if (!doc) return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">{t('lockey_documents_empty_documents')}</p>
+      <Button type="button" variant="outline" onClick={() => navigate(-1)}>
+        {t('lockey_common_back', { ns: 'common' })}
+      </Button>
+    </div>
+  );
 
   const openEdit = () => {
     metadataForm.reset({
@@ -150,7 +184,7 @@ export default function DocumentDetailPage() {
               {t('lockey_documents_action_archive')}
             </Button>
           )}
-          {doc.status === 'Archived' && (
+          {doc.status === 'Archived' && canDelete && (
             <Button type="button" variant="outline" onClick={() => setRestoreConfirm(true)}>
               {t('lockey_documents_action_restore')}
             </Button>
@@ -324,8 +358,9 @@ export default function DocumentDetailPage() {
           </DialogHeader>
           <form onSubmit={metadataForm.handleSubmit(onEditSubmit)} className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_form_name')}</label>
+              <label htmlFor="metadata-name" className="text-sm font-medium">{t('lockey_documents_form_name')}</label>
               <input
+                id="metadata-name"
                 type="text"
                 {...metadataForm.register('name')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -337,16 +372,18 @@ export default function DocumentDetailPage() {
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_form_description')}</label>
+              <label htmlFor="metadata-description" className="text-sm font-medium">{t('lockey_documents_form_description')}</label>
               <textarea
+                id="metadata-description"
                 {...metadataForm.register('description')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 rows={3}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_form_tags')}</label>
+              <label htmlFor="metadata-tags" className="text-sm font-medium">{t('lockey_documents_form_tags')}</label>
               <input
+                id="metadata-tags"
                 type="text"
                 {...metadataForm.register('tags')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -370,65 +407,72 @@ export default function DocumentDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_versions_add')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <form
+            onSubmit={versionForm.handleSubmit((values) => {
+              addVersion.mutate(
+                {
+                  storageKey: values.storageKey,
+                  fileSize: values.fileSize,
+                  changeNote: values.changeNote || undefined,
+                },
+                {
+                  onSuccess: () => {
+                    setAddVersionOpen(false);
+                    versionForm.reset();
+                  },
+                  onError: (err) => handleApiError(err),
+                },
+              );
+            })}
+            className="space-y-4"
+          >
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_templates_form_storage_key')}</label>
+              <label htmlFor="version-storage-key" className="text-sm font-medium">{t('lockey_documents_versions_form_storage_key')}</label>
               <input
+                id="version-storage-key"
                 type="text"
-                value={versionStorageKey}
-                onChange={(e) => setVersionStorageKey(e.target.value)}
+                {...versionForm.register('storageKey')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
+              {versionForm.formState.errors.storageKey?.message && (
+                <p className="mt-1 text-sm text-destructive">
+                  {versionForm.formState.errors.storageKey.message}
+                </p>
+              )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_form_file_size')}</label>
+              <label htmlFor="version-file-size" className="text-sm font-medium">{t('lockey_documents_form_file_size')}</label>
               <input
+                id="version-file-size"
                 type="number"
-                value={versionFileSize}
-                onChange={(e) => setVersionFileSize(Number(e.target.value))}
+                {...versionForm.register('fileSize', { valueAsNumber: true })}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 min={0}
               />
+              {versionForm.formState.errors.fileSize?.message && (
+                <p className="mt-1 text-sm text-destructive">
+                  {versionForm.formState.errors.fileSize.message}
+                </p>
+              )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_versions_form_change_note')}</label>
+              <label htmlFor="version-change-note" className="text-sm font-medium">{t('lockey_documents_versions_form_change_note')}</label>
               <input
+                id="version-change-note"
                 type="text"
-                value={versionChangeNote}
-                onChange={(e) => setVersionChangeNote(e.target.value)}
+                {...versionForm.register('changeNote')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setAddVersionOpen(false)}>
-              {t('lockey_common_cancel', { ns: 'common' })}
-            </Button>
-            <Button
-              type="button"
-              disabled={addVersion.isPending || !versionStorageKey}
-              onClick={() => {
-                addVersion.mutate(
-                  {
-                    storageKey: versionStorageKey,
-                    fileSize: versionFileSize,
-                    changeNote: versionChangeNote || undefined,
-                  },
-                  {
-                    onSuccess: () => {
-                      setAddVersionOpen(false);
-                      setVersionStorageKey('');
-                      setVersionFileSize(0);
-                      setVersionChangeNote('');
-                    },
-                    onError: (err) => handleApiError(err),
-                  },
-                );
-              }}
-            >
-              {t('lockey_documents_versions_add')}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAddVersionOpen(false)}>
+                {t('lockey_common_cancel', { ns: 'common' })}
+              </Button>
+              <Button type="submit" disabled={addVersion.isPending}>
+                {t('lockey_documents_versions_add')}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -438,73 +482,78 @@ export default function DocumentDetailPage() {
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_access_grant')}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <form
+            onSubmit={accessForm.handleSubmit((values) => {
+              grantAccess.mutate(
+                {
+                  userId: values.userId || undefined,
+                  roleId: values.roleId || undefined,
+                  permission: values.permission,
+                },
+                {
+                  onSuccess: () => {
+                    setGrantAccessOpen(false);
+                    accessForm.reset();
+                  },
+                  onError: (err) => handleApiError(err),
+                },
+              );
+            })}
+            className="space-y-4"
+          >
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_access_form_user_id')}</label>
+              <label htmlFor="access-user-id" className="text-sm font-medium">{t('lockey_documents_access_form_user_id')}</label>
               <input
+                id="access-user-id"
                 type="text"
-                value={accessUserId}
-                onChange={(e) => setAccessUserId(e.target.value)}
+                {...accessForm.register('userId')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
+              {accessForm.formState.errors.userId?.message && (
+                <p className="mt-1 text-sm text-destructive">
+                  {accessForm.formState.errors.userId.message}
+                </p>
+              )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_documents_access_form_role_id')}</label>
+              <label htmlFor="access-role-id" className="text-sm font-medium">{t('lockey_documents_access_form_role_id')}</label>
               <input
+                id="access-role-id"
                 type="text"
-                value={accessRoleId}
-                onChange={(e) => setAccessRoleId(e.target.value)}
+                {...accessForm.register('roleId')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
             </div>
             <div>
               <label className="text-sm font-medium">{t('lockey_documents_access_form_permission')}</label>
-              <Select
-                value={accessPermission}
-                onValueChange={(v) => setAccessPermission(v as AccessPermission)}
-              >
-                <SelectTrigger className="mt-1" aria-label={t('lockey_documents_access_form_permission')}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCESS_PERMISSIONS.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {t(`lockey_documents_access_permission_${p.toLowerCase()}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={accessForm.control}
+                name="permission"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="mt-1" aria-label={t('lockey_documents_access_form_permission')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACCESS_PERMISSIONS.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {t(`lockey_documents_access_permission_${p.toLowerCase()}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setGrantAccessOpen(false)}>
-              {t('lockey_common_cancel', { ns: 'common' })}
-            </Button>
-            <Button
-              type="button"
-              disabled={grantAccess.isPending || (!accessUserId && !accessRoleId)}
-              onClick={() => {
-                grantAccess.mutate(
-                  {
-                    userId: accessUserId || undefined,
-                    roleId: accessRoleId || undefined,
-                    permission: accessPermission,
-                  },
-                  {
-                    onSuccess: () => {
-                      setGrantAccessOpen(false);
-                      setAccessUserId('');
-                      setAccessRoleId('');
-                      setAccessPermission('View');
-                    },
-                    onError: (err) => handleApiError(err),
-                  },
-                );
-              }}
-            >
-              {t('lockey_documents_access_grant')}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setGrantAccessOpen(false)}>
+                {t('lockey_common_cancel', { ns: 'common' })}
+              </Button>
+              <Button type="submit" disabled={grantAccess.isPending}>
+                {t('lockey_documents_access_grant')}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

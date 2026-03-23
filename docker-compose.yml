@@ -1,4 +1,5 @@
 services:
+  # ── Core Infrastructure ──
   postgres:
     image: postgres:17-alpine
     container_name: nexora-postgres
@@ -7,9 +8,10 @@ services:
       POSTGRES_PASSWORD: nexora_dev
       POSTGRES_DB: nexora
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U nexora"]
       interval: 5s
@@ -20,7 +22,7 @@ services:
     image: redis:7-alpine
     container_name: nexora-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -54,6 +56,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
@@ -65,6 +68,8 @@ services:
       KC_DB_USERNAME: nexora
       KC_DB_PASSWORD: nexora_dev
       KC_DB_SCHEMA: keycloak
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
@@ -72,6 +77,25 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo done"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  keycloak-init:
+    image: python:3.12-alpine
+    container_name: nexora-keycloak-init
+    volumes:
+      - ./infrastructure/keycloak/init-keycloak.sh:/init-keycloak.sh:ro
+    entrypoint: /bin/sh
+    command: ["/init-keycloak.sh"]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
 
   minio:
     image: minio/minio:latest
@@ -91,7 +115,19 @@ services:
       timeout: 3s
       retries: 5
 
-  # Dapr placement service for actors (required by Dapr sidecar)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: nexora-kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: nexora-dev
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    ports:
+      - "8085:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ── Dapr ──
   dapr-placement:
     image: daprio/dapr:1.14.4
     container_name: nexora-dapr-placement
@@ -99,8 +135,244 @@ services:
     ports:
       - "50006:50006"
 
+  # ── APISIX API Gateway ──
+  apisix:
+    image: apache/apisix:3.11.0-debian
+    container_name: nexora-apisix
+    volumes:
+      - ./infrastructure/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+      - ./infrastructure/apisix/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+    ports:
+      - "9080:9080"   # Gateway proxy
+      - "9091:9091"   # Prometheus metrics
+    depends_on:
+      nexora-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "perl -e 'use IO::Socket::INET; my $$s = IO::Socket::INET->new(PeerAddr=>\"127.0.0.1:9080\",Timeout=>2) or die; close $$s'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ── HashiCorp Vault ──
+  vault:
+    image: hashicorp/vault:1.17
+    container_name: nexora-vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: nexora-dev-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault_data:/vault/data
+    command: server -dev
+    healthcheck:
+      test: ["CMD-SHELL", "vault status -address=http://127.0.0.1:8200 2>&1 | grep -q 'Sealed.*false'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  vault-init:
+    image: hashicorp/vault:1.17
+    container_name: nexora-vault-init
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: nexora-dev-token
+    depends_on:
+      vault:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Seeding Vault with development secrets..."
+
+        vault kv put secret/nexora/postgres \
+          connection-string="Host=postgres;Port=5432;Database=nexora;Username=nexora;Password=nexora_dev"
+
+        vault kv put secret/nexora/redis \
+          connection-string="redis:6379"
+
+        vault kv put secret/nexora/keycloak \
+          base-url="http://keycloak:8080" \
+          admin-username="admin" \
+          admin-password="admin"
+
+        vault kv put secret/nexora/minio \
+          endpoint="minio:9000" \
+          access-key="nexora" \
+          secret-key="nexora_dev"
+
+        vault kv put secret/nexora/kafka \
+          bootstrap-servers="kafka:29092"
+
+        echo "Vault secrets seeded successfully."
+    restart: "no"
+
+  # ── Observability Stack ──
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: nexora-tempo
+    command: ["-config.file=/etc/tempo-config.yaml"]
+    volumes:
+      - ./infrastructure/otel/tempo-config.yaml:/etc/tempo-config.yaml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3200/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: nexora-loki
+    command: ["-config.file=/etc/loki-config.yaml"]
+    volumes:
+      - ./infrastructure/otel/loki-config.yaml:/etc/loki-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: nexora-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./infrastructure/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4327:4317"   # OTLP gRPC (host offset to avoid saydin clash)
+      - "4328:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus exporter
+    depends_on:
+      tempo:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: nexora-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: nexora_dev
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SERVER_HTTP_PORT: "3300"
+    ports:
+      - "3300:3300"
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - otel-collector
+
+  # ── Dev Tools ──
+  pgadmin:
+    image: dpage/pgadmin4:8.14
+    container_name: nexora-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@nexora.dev
+      PGADMIN_DEFAULT_PASSWORD: nexora_dev
+      PGADMIN_LISTEN_PORT: 5051
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    ports:
+      - "5051:5051"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./infrastructure/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  redisinsight:
+    image: redis/redisinsight:2.66
+    container_name: nexora-redisinsight
+    ports:
+      - "5541:5540"
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Nexora Application ──
+  nexora-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexora-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=nexora;Username=nexora;Password=nexora_dev"
+      ConnectionStrings__Hangfire: "Host=postgres;Port=5432;Database=nexora;Username=nexora;Password=nexora_dev"
+      Keycloak__BaseUrl: http://keycloak:8080
+      Keycloak__PublicUrl: http://localhost:8080
+      Keycloak__Realm: nexora-dev
+      Observability__Tracing__Endpoint: http://otel-collector:4317
+      Observability__Metrics__Endpoint: http://otel-collector:4317
+      Observability__Logging__OtlpEndpoint: http://otel-collector:4317
+      Vault__Address: http://vault:8200
+      Vault__Token: nexora-dev-token
+    ports:
+      - "5100:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  nexora-api-dapr:
+    image: daprio/daprd:1.14.4
+    container_name: nexora-api-dapr
+    command:
+      - ./daprd
+      - --app-id=nexora-api
+      - --app-port=5000
+      - --dapr-http-port=3500
+      - --dapr-grpc-port=50001
+      - --resources-path=/components
+      - --placement-host-address=dapr-placement:50006
+      - --log-level=info
+    volumes:
+      - ./dapr/components:/components:ro
+    network_mode: "service:nexora-api"
+    depends_on:
+      - nexora-api
+      - dapr-placement
+
 volumes:
   postgres_data:
   redis_data:
   kafka_data:
   minio_data:
+  vault_data:
+  tempo_data:
+  loki_data:
+  grafana_data:
+  pgadmin_data:
+  redisinsight_data:

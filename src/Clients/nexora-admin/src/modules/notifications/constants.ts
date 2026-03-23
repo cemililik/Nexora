@@ -9,7 +9,7 @@ export const CHANNEL_KEY_MAP: Record<NotificationChannel, string> = {
   Push: 'lockey_notifications_channel_push',
 };
 
-export const NOTIFICATION_STATUSES: NotificationStatus[] = ['Queued', 'Sending', 'Sent', 'PartialFailure', 'Failed'];
+export const NOTIFICATION_STATUSES = ['Queued', 'Sending', 'Sent', 'PartialFailure', 'Failed'] as const;
 
 export const STATUS_KEY_MAP: Record<NotificationStatus, string> = {
   Queued: 'lockey_notifications_status_queued',

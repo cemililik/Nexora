@@ -8,5 +8,10 @@
   "lockey_error_tenant_context_missing": "Kuruluş bağlamı eksik. Lütfen tekrar giriş yapın.",
   "lockey_error_server": "Bir sunucu hatası oluştu. Lütfen daha sonra tekrar deneyin.",
   "lockey_error_something_went_wrong": "Bir hata oluştu.",
-  "lockey_error_logout_failed": "Çıkış başarısız oldu. Giriş sayfasına yönlendiriliyorsunuz."
+  "lockey_error_logout_failed": "Çıkış başarısız oldu. Giriş sayfasına yönlendiriliyorsunuz.",
+  "lockey_error_validation_failed": "Lütfen aşağıdaki hataları düzeltin.",
+  "lockey_error_request_cancelled": "İstek iptal edildi.",
+  "lockey_error_resource_not_found": "İstenen kaynak bulunamadı.",
+  "lockey_error_external_service_unavailable": "Harici bir servis geçici olarak kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+  "lockey_localization_key_not_found": "\"{{key}}\" çeviri anahtarı bulunamadı."
 }

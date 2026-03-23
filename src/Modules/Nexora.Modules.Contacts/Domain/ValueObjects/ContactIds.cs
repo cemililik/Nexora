@@ -88,3 +88,12 @@ public readonly record struct ContactActivityId(Guid Value)
     public static ContactActivityId From(Guid value) => new(value);
     public override string ToString() => Value.ToString();
 }
+
+/// <summary>Strongly-typed ID representing an import job.</summary>
+public readonly record struct ImportJobId(Guid Value)
+{
+    public static ImportJobId New() => new(Guid.NewGuid());
+    public static ImportJobId From(Guid value) => new(value);
+    public static ImportJobId Parse(string value) => new(Guid.Parse(value));
+    public override string ToString() => Value.ToString();
+}

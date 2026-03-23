@@ -21,6 +21,7 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+import type { AddAddressRequest, UpdateAddressRequest } from '../types';
 import {
   addressKeys,
   useAddresses,
@@ -102,7 +103,7 @@ describe('useAddAddress', () => {
       wrapper: createWrapper(),
     });
 
-    const payload: import('../types').AddAddressRequest = {
+    const payload: AddAddressRequest = {
       type: 'Home',
       street1: '456 Oak Ave',
       city: 'Springfield',
@@ -135,7 +136,7 @@ describe('useUpdateAddress', () => {
       wrapper: createWrapper(),
     });
 
-    const data: import('../types').UpdateAddressRequest = {
+    const data: UpdateAddressRequest = {
       type: 'Home',
       street1: '789 Elm Blvd',
       city: 'Springfield',

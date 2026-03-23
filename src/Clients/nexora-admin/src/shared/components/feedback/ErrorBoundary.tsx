@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 import i18n from '@/shared/lib/i18n';
+import { reportError } from '@/shared/lib/telemetry';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -26,15 +27,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    if (import.meta.env.DEV) {
-      console.error('[ErrorBoundary]', error, errorInfo);
-    } else {
-      // TODO: report to observability service (OpenTelemetry/Sentry)
-      try {
-        console.error('[ErrorBoundary]', error, errorInfo?.componentStack);
-      } catch {
-        // Logging itself should never throw
-      }
+    console.error('[ErrorBoundary]', error, errorInfo);
+    try {
+      reportError(error, errorInfo?.componentStack ?? undefined);
+    } catch {
+      // Telemetry reporting should never throw
     }
   }
 

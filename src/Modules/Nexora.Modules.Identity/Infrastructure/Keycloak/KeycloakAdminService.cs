@@ -150,14 +150,16 @@ public sealed class KeycloakAdminService(
                 return;
             }
 
+            var adminUsername = await secretProvider.GetSecretAsync("nexora/keycloak/admin-username", ct);
             var adminPassword = await secretProvider.GetSecretAsync("nexora/keycloak/admin-password", ct);
 
             var tokenUrl = $"/realms/{_options.AdminRealm}/protocol/openid-connect/token";
             var content = new FormUrlEncodedContent(new Dictionary<string, string>
             {
-                ["grant_type"] = "client_credentials",
+                ["grant_type"] = "password",
                 ["client_id"] = _options.AdminClientId,
-                ["client_secret"] = adminPassword
+                ["username"] = adminUsername,
+                ["password"] = adminPassword
             });
 
             var response = await httpClient.PostAsync(tokenUrl, content, ct);

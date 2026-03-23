@@ -5,13 +5,11 @@ import { type ReactNode } from 'react';
 
 const mockApiGet = vi.fn();
 const mockApiPost = vi.fn();
-const mockApiPut = vi.fn();
 const mockApiDelete = vi.fn();
 vi.mock('@/shared/lib/api', () => ({
   api: {
     get: (...args: unknown[]) => mockApiGet(...args),
     post: (...args: unknown[]) => mockApiPost(...args),
-    put: (...args: unknown[]) => mockApiPut(...args),
     delete: (...args: unknown[]) => mockApiDelete(...args),
   },
 }));

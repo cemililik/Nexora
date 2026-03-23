@@ -102,10 +102,10 @@ describe('useTemplate', () => {
   });
 
   it('should call api.get with encoded id', async () => {
-    const mockTemplate = { id: 't1', name: 'Invoice Template' };
+    const mockTemplate = { id: 'template/1', name: 'Invoice Template' };
     mockApiGet.mockResolvedValue(mockTemplate);
 
-    const { result } = renderHook(() => useTemplate('t1'), {
+    const { result } = renderHook(() => useTemplate('template/1'), {
       wrapper: createWrapper(),
     });
 
@@ -114,7 +114,7 @@ describe('useTemplate', () => {
     });
 
     expect(mockApiGet).toHaveBeenCalledWith(
-      `/documents/templates/${encodeURIComponent('t1')}`,
+      `/documents/templates/${encodeURIComponent('template/1')}`,
     );
   });
 
@@ -167,10 +167,10 @@ describe('useUpdateTemplate', () => {
   });
 
   it('should call api.put with encoded id and payload', async () => {
-    const updated = { id: 't1', name: 'Updated' };
+    const updated = { id: 'tmpl 1', name: 'Updated' };
     mockApiPut.mockResolvedValue(updated);
 
-    const { result } = renderHook(() => useUpdateTemplate('t1'), {
+    const { result } = renderHook(() => useUpdateTemplate('tmpl 1'), {
       wrapper: createWrapper(),
     });
 
@@ -182,7 +182,7 @@ describe('useUpdateTemplate', () => {
     });
 
     expect(mockApiPut).toHaveBeenCalledWith(
-      `/documents/templates/${encodeURIComponent('t1')}`,
+      `/documents/templates/${encodeURIComponent('tmpl 1')}`,
       payload,
     );
   });
@@ -200,14 +200,14 @@ describe('useActivateTemplate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate('t1');
+    result.current.mutate('template/1');
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(mockApiPost).toHaveBeenCalledWith(
-      `/documents/templates/${encodeURIComponent('t1')}/activate`,
+      `/documents/templates/${encodeURIComponent('template/1')}/activate`,
     );
   });
 });
@@ -224,14 +224,14 @@ describe('useDeactivateTemplate', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate('t1');
+    result.current.mutate('tmpl 1');
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
 
     expect(mockApiPost).toHaveBeenCalledWith(
-      `/documents/templates/${encodeURIComponent('t1')}/deactivate`,
+      `/documents/templates/${encodeURIComponent('tmpl 1')}/deactivate`,
     );
   });
 });
@@ -245,7 +245,7 @@ describe('useRenderTemplate', () => {
     const rendered = { documentId: 'd1', content: '<p>Rendered</p>' };
     mockApiPost.mockResolvedValue(rendered);
 
-    const { result } = renderHook(() => useRenderTemplate('t1'), {
+    const { result } = renderHook(() => useRenderTemplate('template/1'), {
       wrapper: createWrapper(),
     });
 
@@ -257,7 +257,7 @@ describe('useRenderTemplate', () => {
     });
 
     expect(mockApiPost).toHaveBeenCalledWith(
-      `/documents/templates/${encodeURIComponent('t1')}/render`,
+      `/documents/templates/${encodeURIComponent('template/1')}/render`,
       payload,
     );
   });

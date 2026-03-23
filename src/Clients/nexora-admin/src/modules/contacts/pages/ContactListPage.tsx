@@ -153,6 +153,7 @@ export default function ContactListPage() {
           <option value="">{t('lockey_contacts_filter_all_statuses')}</option>
           <option value="Active">{t('lockey_contacts_status_active')}</option>
           <option value="Archived">{t('lockey_contacts_status_archived')}</option>
+          <option value="Merged">{t('lockey_contacts_status_merged')}</option>
         </select>
         <select
           value={typeFilter ?? ''}

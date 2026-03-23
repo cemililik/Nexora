@@ -29,8 +29,10 @@ export default function NotificationListPage() {
   const canSend = hasPermission('notifications.notification.send');
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const channel = (searchParams.get('channel') as NotificationChannel) || undefined;
-  const status = (searchParams.get('status') as NotificationStatus) || undefined;
+  const rawChannel = searchParams.get('channel');
+  const channel = CHANNELS.includes(rawChannel as NotificationChannel) ? (rawChannel as NotificationChannel) : undefined;
+  const rawStatus = searchParams.get('status');
+  const status = NOTIFICATION_STATUSES.includes(rawStatus as NotificationStatus) ? (rawStatus as NotificationStatus) : undefined;
 
   useEffect(() => {
     setBreadcrumbs([
