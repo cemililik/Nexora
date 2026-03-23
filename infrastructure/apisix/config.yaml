@@ -1,0 +1,28 @@
+# APISIX Configuration — Standalone mode (no etcd dependency)
+# Routes are loaded from /usr/local/apisix/conf/apisix.yaml
+
+apisix:
+  node_listen: 9080
+
+deployment:
+  role: data_plane
+  role_data_plane:
+    config_provider: yaml
+
+plugin_attr:
+  prometheus:
+    export_addr:
+      ip: 0.0.0.0
+      port: 9091
+
+plugins:
+  - real-ip
+  - cors
+  - openid-connect
+  - limit-req
+  - limit-count
+  - proxy-rewrite
+  - response-rewrite
+  - request-id
+  - prometheus
+  - gzip

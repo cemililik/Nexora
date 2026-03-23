@@ -3,6 +3,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 
+import { reportError } from '@/shared/lib/telemetry';
+
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
@@ -52,7 +54,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     console.error('[ErrorBoundary] Render error caught', { error, errorInfo });
-    // TODO Phase 2: Report to observability service (OpenTelemetry)
+    try {
+      reportError(error, errorInfo?.componentStack ?? undefined);
+    } catch {
+      // Telemetry reporting should never throw
+    }
   }
 
   render(): ReactNode {

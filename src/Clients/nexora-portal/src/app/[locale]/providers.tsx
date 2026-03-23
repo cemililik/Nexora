@@ -7,6 +7,9 @@ import { Toaster } from 'sonner';
 
 import { BrandingProvider } from '@/shared/components/branding/BrandingProvider';
 import { createQueryClient } from '@/shared/lib/query';
+import { initTelemetry } from '@/shared/lib/telemetry';
+
+initTelemetry();
 
 interface ProvidersProps {
   children: ReactNode;

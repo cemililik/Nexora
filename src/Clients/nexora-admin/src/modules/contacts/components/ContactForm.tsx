@@ -1,10 +1,18 @@
-import { useForm } from 'react-hook-form';
+import { useMemo } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { toSnakeCase } from '@/shared/lib/utils';
 import type {
   CreateContactRequest,
@@ -122,8 +130,9 @@ function CreateForm({
   isPending: boolean;
 }) {
   const { t } = useTranslation('contacts');
+  const schema = useMemo(() => createContactSchemaFactory(t), [t]);
   const form = useForm<CreateContactRequest>({
-    resolver: zodResolver(createContactSchemaFactory(t)),
+    resolver: zodResolver(schema),
     defaultValues: {
       type: 'Individual',
       title: '',
@@ -136,7 +145,7 @@ function CreateForm({
     },
   });
 
-  const selectedType = form.watch('type');
+  const selectedType = useWatch({ control: form.control, name: 'type' });
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -145,17 +154,24 @@ function CreateForm({
           <label htmlFor="type" className="text-sm font-medium">
             {t('lockey_contacts_form_type')}
           </label>
-          <select
-            id="type"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            {...form.register('type')}
-          >
-            {contactTypes.map((ct) => (
-              <option key={ct} value={ct}>
-                {t(`lockey_contacts_type_${ct.toLowerCase()}`)}
-              </option>
-            ))}
-          </select>
+          <Controller
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {contactTypes.map((ct) => (
+                    <SelectItem key={ct} value={ct}>
+                      {t(`lockey_contacts_type_${ct.toLowerCase()}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
           {form.formState.errors.type && (
             <p className="text-sm text-destructive">{form.formState.errors.type.message}</p>
           )}
@@ -165,17 +181,24 @@ function CreateForm({
           <label htmlFor="source" className="text-sm font-medium">
             {t('lockey_contacts_form_source')}
           </label>
-          <select
-            id="source"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            {...form.register('source')}
-          >
-            {contactSources.map((cs) => (
-              <option key={cs} value={cs}>
-                {t(`lockey_contacts_source_${toSnakeCase(cs)}`)}
-              </option>
-            ))}
-          </select>
+          <Controller
+            control={form.control}
+            name="source"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="source">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {contactSources.map((cs) => (
+                    <SelectItem key={cs} value={cs}>
+                      {t(`lockey_contacts_source_${toSnakeCase(cs)}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
           {form.formState.errors.source && (
             <p className="text-sm text-destructive">{form.formState.errors.source.message}</p>
           )}
@@ -271,8 +294,9 @@ function EditForm({
   isPending: boolean;
 }) {
   const { t } = useTranslation('contacts');
+  const schema = useMemo(() => updateContactSchemaFactory(t), [t]);
   const form = useForm<UpdateContactRequest>({
-    resolver: zodResolver(updateContactSchemaFactory(t)),
+    resolver: zodResolver(schema),
     defaultValues,
   });
 
@@ -352,15 +376,22 @@ function EditForm({
           <label htmlFor="editLanguage" className="text-sm font-medium">
             {t('lockey_contacts_form_language')}
           </label>
-          <select
-            id="editLanguage"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            {...form.register('language')}
-          >
-            <option value="en">{t('lockey_contacts_language_en')}</option>
-            <option value="tr">{t('lockey_contacts_language_tr')}</option>
-            <option value="ar">{t('lockey_contacts_language_ar')}</option>
-          </select>
+          <Controller
+            control={form.control}
+            name="language"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="editLanguage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">{t('lockey_contacts_language_en')}</SelectItem>
+                  <SelectItem value="tr">{t('lockey_contacts_language_tr')}</SelectItem>
+                  <SelectItem value="ar">{t('lockey_contacts_language_ar')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
           {form.formState.errors.language && (
             <p className="text-sm text-destructive">{form.formState.errors.language.message}</p>
           )}
@@ -369,15 +400,22 @@ function EditForm({
           <label htmlFor="editCurrency" className="text-sm font-medium">
             {t('lockey_contacts_form_currency')}
           </label>
-          <select
-            id="editCurrency"
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            {...form.register('currency')}
-          >
-            <option value="USD">{t('lockey_contacts_currency_usd')}</option>
-            <option value="EUR">{t('lockey_contacts_currency_eur')}</option>
-            <option value="TRY">{t('lockey_contacts_currency_try')}</option>
-          </select>
+          <Controller
+            control={form.control}
+            name="currency"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="editCurrency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">{t('lockey_contacts_currency_usd')}</SelectItem>
+                  <SelectItem value="EUR">{t('lockey_contacts_currency_eur')}</SelectItem>
+                  <SelectItem value="TRY">{t('lockey_contacts_currency_try')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
           {form.formState.errors.currency && (
             <p className="text-sm text-destructive">{form.formState.errors.currency.message}</p>
           )}

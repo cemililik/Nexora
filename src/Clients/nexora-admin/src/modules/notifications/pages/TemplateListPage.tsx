@@ -29,7 +29,8 @@ export default function TemplateListPage() {
   const canManage = hasPermission('notifications.template.manage');
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const channel = (searchParams.get('channel') as NotificationChannel) || undefined;
+  const rawChannel = searchParams.get('channel');
+  const channel = CHANNELS.includes(rawChannel as NotificationChannel) ? (rawChannel as NotificationChannel) : undefined;
 
   useEffect(() => {
     setBreadcrumbs([
@@ -84,16 +85,17 @@ export default function TemplateListPage() {
     {
       key: 'actions',
       header: t('lockey_notifications_templates_col_actions'),
-      render: (row) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(`/notifications/templates/${row.id}`)}
-        >
-          {t('lockey_notifications_templates_edit')}
-        </Button>
-      ),
+      render: (row) =>
+        canManage ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/notifications/templates/${row.id}`)}
+          >
+            {t('lockey_notifications_templates_edit')}
+          </Button>
+        ) : null,
     },
   ];
 

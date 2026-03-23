@@ -34,7 +34,11 @@ describe('ContactForm', () => {
         <ContactForm mode="create" onSubmit={vi.fn()} isPending={false} />,
       );
 
-      await user.selectOptions(screen.getByLabelText('lockey_contacts_form_type'), 'Organization');
+      // shadcn Select uses Radix combobox — click trigger then option
+      const trigger = screen.getByLabelText('lockey_contacts_form_type');
+      await user.click(trigger);
+      const option = await screen.findByRole('option', { name: 'lockey_contacts_type_organization' });
+      await user.click(option);
 
       await waitFor(() => {
         expect(screen.getByLabelText('lockey_contacts_form_company_name')).toBeInTheDocument();
@@ -132,8 +136,9 @@ describe('ContactForm', () => {
       expect(screen.getByLabelText('lockey_contacts_form_first_name')).toHaveValue('John');
       expect(screen.getByLabelText('lockey_contacts_form_last_name')).toHaveValue('Smith');
       expect(screen.getByLabelText('lockey_contacts_form_email')).toHaveValue('john@example.com');
-      expect(screen.getByLabelText('lockey_contacts_form_language')).toHaveValue('en');
-      expect(screen.getByLabelText('lockey_contacts_form_currency')).toHaveValue('USD');
+      // shadcn Select renders as combobox — check displayed text instead of value
+      expect(screen.getByLabelText('lockey_contacts_form_language')).toHaveTextContent('lockey_contacts_language_en');
+      expect(screen.getByLabelText('lockey_contacts_form_currency')).toHaveTextContent('lockey_contacts_currency_usd');
     });
 
     it('should show save label on submit button', () => {

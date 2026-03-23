@@ -49,6 +49,11 @@ public static class InfrastructureServiceRegistration
             return new TenantSchemaManager(connStr, migrations, logger);
         });
 
+        // MediatR — register core services so IPublisher is available for DomainEventDispatcher.
+        // Each module adds its own handlers via AddMediatR(cfg => cfg.RegisterServicesFromAssembly(...)).
+        services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssembly(typeof(InfrastructureServiceRegistration).Assembly));
+
         // Domain event dispatching
         services.AddScoped<DomainEventDispatcher>();
 
@@ -67,9 +72,14 @@ public static class InfrastructureServiceRegistration
             configuration.GetSection(MinioStorageOptions.SectionName));
         services.Configure<StorageOptions>(
             configuration.GetSection(StorageOptions.SectionName));
-        services.AddSingleton<IFileStorageService, MinioFileStorageService>();
+        services.AddScoped<IFileStorageService, MinioFileStorageService>();
 
         // Tenant configuration
+        services.AddDbContext<TenantConfigDbContext>((sp, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
         services.AddScoped<ITenantConfiguration, DatabaseTenantConfiguration>();
 
         // Localization

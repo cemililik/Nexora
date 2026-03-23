@@ -61,13 +61,12 @@ public sealed class NotificationsModule : IModule
     /// <inheritdoc />
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
-        var module = endpoints.MapGroup("/api/v1/notifications");
-        module.MapTemplateEndpoints();
-        module.MapProviderEndpoints();
-        module.MapNotificationEndpoints();
-        module.MapWebhookEndpoints();
-        module.MapBulkEndpoints();
-        module.MapScheduleEndpoints();
+        endpoints.MapTemplateEndpoints();
+        endpoints.MapProviderEndpoints();
+        endpoints.MapNotificationEndpoints();
+        endpoints.MapWebhookEndpoints();
+        endpoints.MapBulkEndpoints();
+        endpoints.MapScheduleEndpoints();
     }
 
     /// <inheritdoc />

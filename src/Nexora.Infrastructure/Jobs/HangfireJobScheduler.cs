@@ -15,18 +15,13 @@ public sealed class HangfireJobScheduler : IJobScheduler
         string cronExpression,
         string queue = "default") where TJob : class
     {
+        // Hangfire requires the lambda to call an instance method on TJob.
+        // ToString() is always available and serves as a no-op placeholder.
         RecurringJob.AddOrUpdate<TJob>(
             jobId,
             queue,
-            job => ExecuteJob(job),
+            job => job.ToString(),
             cronExpression,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-    }
-
-    private static Task ExecuteJob<TJob>(TJob job) where TJob : class
-    {
-        // The actual job execution is handled by Hangfire's activation.
-        // Jobs must implement NexoraJob<TParams>.
-        return Task.CompletedTask;
     }
 }

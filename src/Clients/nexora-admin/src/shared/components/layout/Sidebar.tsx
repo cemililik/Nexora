@@ -60,11 +60,13 @@ const coreNavigation: AdminNavigationItem[] = [
 function NavItem({
   item,
   collapsed,
+  namespaces,
 }: {
   item: AdminNavigationItem;
   collapsed: boolean;
+  namespaces: string[];
 }) {
-  const { t } = useTranslation(['navigation', 'identity', 'contacts', 'common']);
+  const { t } = useTranslation(namespaces);
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const Icon = iconMap[item.icon];
@@ -99,7 +101,7 @@ function NavItem({
         {!collapsed && open && (
           <div className="ms-4 mt-1 space-y-1 border-s ps-3">
             {item.children.map((child) => (
-              <NavItem key={child.path} item={child} collapsed={false} />
+              <NavItem key={child.path} item={child} collapsed={false} namespaces={namespaces} />
             ))}
           </div>
         )}
@@ -131,6 +133,9 @@ export function Sidebar() {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const { activeModules } = useModules();
 
+  // Build namespace list dynamically from active modules
+  const namespaces = ['navigation', ...activeModules.map((m) => m.name), 'common'];
+
   return (
     <aside
       className={cn(
@@ -150,12 +155,12 @@ export function Sidebar() {
 
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {coreNavigation.map((item) => (
-          <NavItem key={item.path} item={item} collapsed={!sidebarOpen} />
+          <NavItem key={item.path} item={item} collapsed={!sidebarOpen} namespaces={namespaces} />
         ))}
 
         {activeModules.map((module) =>
           module.navigation.map((item) => (
-            <NavItem key={item.path} item={item} collapsed={!sidebarOpen} />
+            <NavItem key={item.path} item={item} collapsed={!sidebarOpen} namespaces={namespaces} />
           )),
         )}
       </nav>

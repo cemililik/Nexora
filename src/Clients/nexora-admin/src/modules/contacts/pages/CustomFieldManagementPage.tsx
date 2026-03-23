@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -71,7 +79,7 @@ export default function CustomFieldManagementPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const schema = createCustomFieldSchema(t);
+  const schema = useMemo(() => createCustomFieldSchema(t), [t]);
   const form = useForm<CustomFieldFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -83,7 +91,7 @@ export default function CustomFieldManagementPage() {
     },
   });
 
-  const watchedFieldType = form.watch('fieldType');
+  const watchedFieldType = useWatch({ control: form.control, name: 'fieldType' });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -104,7 +112,7 @@ export default function CustomFieldManagementPage() {
     setDialogOpen(true);
   };
 
-  const openEditDialog = (field: CustomFieldDefinitionDto) => {
+  const openEditDialog = useCallback((field: CustomFieldDefinitionDto) => {
     setEditingField(field);
     form.reset({
       fieldName: field.fieldName,
@@ -114,7 +122,7 @@ export default function CustomFieldManagementPage() {
       displayOrder: field.displayOrder,
     });
     setDialogOpen(true);
-  };
+  }, [form]);
 
   const onSubmit = (values: CustomFieldFormValues) => {
     if (editingField) {
@@ -154,7 +162,7 @@ export default function CustomFieldManagementPage() {
   const totalCount = allDefs.length;
   const paginatedDefs = allDefs.slice((page - 1) * pageSize, page * pageSize);
 
-  const columns: ColumnDef<CustomFieldDefinitionDto>[] = [
+  const columns: ColumnDef<CustomFieldDefinitionDto>[] = useMemo(() => [
     {
       key: 'fieldName',
       header: t('lockey_contacts_col_field_name'),
@@ -220,7 +228,7 @@ export default function CustomFieldManagementPage() {
         </div>
       ),
     },
-  ];
+  ], [t, canManage, openEditDialog]);
 
   return (
     <div className="space-y-6">
@@ -278,17 +286,24 @@ export default function CustomFieldManagementPage() {
             {!editingField && (
               <div>
                 <label htmlFor="cf-fieldType" className="text-sm font-medium">{t('lockey_contacts_col_field_type')}</label>
-                <select
-                  id="cf-fieldType"
-                  {...form.register('fieldType')}
-                  className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {FIELD_TYPES.map((ft) => (
-                    <option key={ft} value={ft}>
-                      {t(`lockey_contacts_field_type_${ft}`)}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  control={form.control}
+                  name="fieldType"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger id="cf-fieldType" className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FIELD_TYPES.map((ft) => (
+                          <SelectItem key={ft} value={ft}>
+                            {t(`lockey_contacts_field_type_${ft}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
                 {form.formState.errors.fieldType?.message && (
                   <p className="mt-1 text-sm text-destructive">
                     {form.formState.errors.fieldType.message}
@@ -313,17 +328,22 @@ export default function CustomFieldManagementPage() {
                 )}
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="isRequired"
-                {...form.register('isRequired')}
-                className="h-4 w-4 rounded border-input"
-              />
-              <label htmlFor="isRequired" className="text-sm font-medium">
-                {t('lockey_contacts_col_is_required')}
-              </label>
-            </div>
+            <Controller
+              control={form.control}
+              name="isRequired"
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="isRequired"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <label htmlFor="isRequired" className="text-sm font-medium">
+                    {t('lockey_contacts_col_is_required')}
+                  </label>
+                </div>
+              )}
+            />
             <div>
               <label htmlFor="cf-displayOrder" className="text-sm font-medium">{t('lockey_contacts_col_display_order')}</label>
               <input

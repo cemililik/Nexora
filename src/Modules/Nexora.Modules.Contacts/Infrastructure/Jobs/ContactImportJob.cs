@@ -21,6 +21,7 @@ public sealed record ContactImportJobParams : JobParams
     public required string FileFormat { get; init; }
     public required string StorageKey { get; init; }
     public Guid? OrganizationIdGuid { get; init; }
+    public Guid ImportJobId { get; init; }
 }
 
 /// <summary>
@@ -42,6 +43,14 @@ public sealed class ContactImportJob(
     {
         var tenantId = Guid.Parse(parameters.TenantId);
         var orgId = parameters.OrganizationIdGuid ?? Guid.Empty;
+        var importJobId = ImportJobId.From(parameters.ImportJobId);
+
+        var importJob = await dbContext.ImportJobs.FindAsync([importJobId], ct);
+        if (importJob is null)
+        {
+            logger.LogWarning("ImportJob {ImportJobId} not found, aborting", importJobId);
+            return;
+        }
 
         var opts = storageOptions.Value;
         var bucketName = $"{opts.BucketPrefix}-{tenantId}";
@@ -50,81 +59,101 @@ public sealed class ContactImportJob(
             "Starting contact import from {FileName} ({Format}) using storage key {StorageKey}",
             parameters.FileName, parameters.FileFormat, parameters.StorageKey);
 
-        // Download file content from MinIO using storage key
-        var fileContent = await fileStorageService.GetObjectAsync(
-            bucketName, parameters.StorageKey, ct);
-
-        var rows = ParseFile(fileContent, parameters.FileFormat);
-        var totalRows = rows.Count;
-        var successCount = 0;
-        var errorCount = 0;
-
-        for (var i = 0; i < totalRows; i += BatchSize)
+        try
         {
-            ct.ThrowIfCancellationRequested();
+            // Download file content from MinIO using storage key
+            var fileContent = await fileStorageService.GetObjectAsync(
+                bucketName, parameters.StorageKey, ct);
 
-            var batch = rows.Skip(i).Take(BatchSize).ToList();
+            var rows = ParseFile(fileContent, parameters.FileFormat);
+            var totalRows = rows.Count;
+            var successCount = 0;
+            var errorCount = 0;
 
-            foreach (var row in batch)
+            importJob.MarkProcessing(totalRows);
+            await dbContext.SaveChangesAsync(ct);
+
+            for (var i = 0; i < totalRows; i += BatchSize)
             {
-                try
-                {
-                    var existingContact = !string.IsNullOrWhiteSpace(row.Email)
-                        ? await dbContext.Contacts.FirstOrDefaultAsync(
-                            c => c.TenantId == tenantId && c.Email == row.Email, ct)
-                        : null;
+                ct.ThrowIfCancellationRequested();
 
-                    if (existingContact is not null)
+                var batch = rows.Skip(i).Take(BatchSize).ToList();
+
+                foreach (var row in batch)
+                {
+                    try
                     {
-                        logger.LogDebug("Skipping duplicate contact with email {Email}", row.Email);
-                        errorCount++;
-                        continue;
+                        var existingContact = !string.IsNullOrWhiteSpace(row.Email)
+                            ? await dbContext.Contacts.FirstOrDefaultAsync(
+                                c => c.TenantId == tenantId && c.Email == row.Email, ct)
+                            : null;
+
+                        if (existingContact is not null)
+                        {
+                            logger.LogDebug("Skipping duplicate contact with email {Email}", row.Email);
+                            errorCount++;
+                            continue;
+                        }
+
+                        var contactType = Enum.TryParse<ContactType>(row.Type, ignoreCase: true, out var parsedType)
+                            ? parsedType
+                            : ContactType.Individual;
+
+                        var contact = Contact.Create(
+                            tenantId, orgId, contactType,
+                            row.FirstName, row.LastName, row.CompanyName,
+                            row.Email, row.Phone, ContactSource.Import);
+
+                        await dbContext.Contacts.AddAsync(contact, ct);
+                        successCount++;
                     }
+                    catch (DomainException ex)
+                    {
+                        logger.LogWarning(ex, "Domain validation failed for row {RowIndex}", i + batch.IndexOf(row));
+                        errorCount++;
+                    }
+                    catch (FormatException ex)
+                    {
+                        logger.LogWarning(ex, "Failed to parse row {RowIndex}", i + batch.IndexOf(row));
+                        errorCount++;
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        logger.LogWarning(ex, "Invalid data in row {RowIndex}", i + batch.IndexOf(row));
+                        errorCount++;
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        logger.LogWarning(ex, "Failed to import row {RowIndex}", i + batch.IndexOf(row));
+                        errorCount++;
+                    }
+                }
 
-                    var contactType = Enum.TryParse<ContactType>(row.Type, ignoreCase: true, out var parsedType)
-                        ? parsedType
-                        : ContactType.Individual;
+                await dbContext.SaveChangesAsync(ct);
 
-                    var contact = Contact.Create(
-                        tenantId, orgId, contactType,
-                        row.FirstName, row.LastName, row.CompanyName,
-                        row.Email, row.Phone, ContactSource.Import);
+                var processed = Math.Min(i + BatchSize, totalRows);
+                importJob.UpdateProgress(processed, successCount, errorCount);
+                await dbContext.SaveChangesAsync(ct);
 
-                    await dbContext.Contacts.AddAsync(contact, ct);
-                    successCount++;
-                }
-                catch (DomainException ex)
-                {
-                    logger.LogWarning(ex, "Domain validation failed for row {RowIndex}", i + batch.IndexOf(row));
-                    errorCount++;
-                }
-                catch (FormatException ex)
-                {
-                    logger.LogWarning(ex, "Failed to parse row {RowIndex}", i + batch.IndexOf(row));
-                    errorCount++;
-                }
-                catch (ArgumentException ex)
-                {
-                    logger.LogWarning(ex, "Invalid data in row {RowIndex}", i + batch.IndexOf(row));
-                    errorCount++;
-                }
-                catch (InvalidOperationException ex)
-                {
-                    logger.LogWarning(ex, "Failed to import row {RowIndex}", i + batch.IndexOf(row));
-                    errorCount++;
-                }
+                logger.LogInformation(
+                    "Import progress: {Processed}/{Total} (success: {Success}, errors: {Errors})",
+                    processed, totalRows, successCount, errorCount);
             }
 
+            importJob.MarkCompleted();
             await dbContext.SaveChangesAsync(ct);
 
             logger.LogInformation(
-                "Import progress: {Processed}/{Total} (success: {Success}, errors: {Errors})",
-                Math.Min(i + BatchSize, totalRows), totalRows, successCount, errorCount);
+                "Contact import completed. Total: {Total}, Success: {Success}, Errors: {Errors}",
+                totalRows, successCount, errorCount);
         }
-
-        logger.LogInformation(
-            "Contact import completed. Total: {Total}, Success: {Success}, Errors: {Errors}",
-            totalRows, successCount, errorCount);
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Contact import job {ImportJobId} failed", importJobId);
+            importJob.MarkFailed(ex.Message);
+            await dbContext.SaveChangesAsync(CancellationToken.None);
+            throw;
+        }
     }
 
     private static List<ContactImportRow> ParseFile(byte[] content, string format)

@@ -1,8 +1,10 @@
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Modules.Contacts.Application.Commands;
+using Nexora.Modules.Contacts.Infrastructure;
+using Nexora.Modules.Contacts.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
 using NSubstitute;
@@ -10,20 +12,29 @@ using NSubstitute;
 namespace Nexora.Modules.Contacts.Tests.Application;
 
 /// <summary>Unit tests for <see cref="StartContactImportHandler"/>.</summary>
-public sealed class StartContactImportTests
+public sealed class StartContactImportTests : IDisposable
 {
     private readonly Guid _orgId = Guid.NewGuid();
+    private readonly Guid _tenantId = Guid.NewGuid();
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly IFileStorageService _fileStorageService;
     private readonly IOptions<StorageOptions> _storageOptions;
     private readonly IBackgroundJobClient _backgroundJobClient;
+    private readonly ContactsDbContext _dbContext;
 
     public StartContactImportTests()
     {
-        _tenantAccessor = CreateTenantAccessor(Guid.NewGuid(), _orgId);
+        _tenantAccessor = TestTenantAccessor.Create(_tenantId, _orgId);
         _fileStorageService = Substitute.For<IFileStorageService>();
         _storageOptions = Options.Create(new StorageOptions());
         _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
+        _backgroundJobClient.Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.IState>())
+            .Returns("hangfire-default");
+
+        var options = new DbContextOptionsBuilder<ContactsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new ContactsDbContext(options, _tenantAccessor);
     }
 
     [Fact]
@@ -36,7 +47,7 @@ public sealed class StartContactImportTests
             .Returns("hangfire-123");
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, _dbContext, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
@@ -51,6 +62,32 @@ public sealed class StartContactImportTests
     }
 
     [Fact]
+    public async Task Handle_ValidCommand_PersistsImportJobToDatabase()
+    {
+        // Arrange
+        _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _backgroundJobClient.Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.IState>())
+            .Returns("hangfire-456");
+        var handler = new StartContactImportHandler(
+            _fileStorageService, _tenantAccessor, _storageOptions,
+            _backgroundJobClient, _dbContext, NullLogger<StartContactImportHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(
+            new StartContactImportCommand("contacts.csv", "csv", $"{_orgId}/contacts/imports/abc/contacts.csv"),
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        var importJob = await _dbContext.ImportJobs.FirstOrDefaultAsync();
+        importJob.Should().NotBeNull();
+        importJob!.HangfireJobId.Should().Be("hangfire-456");
+        importJob.FileName.Should().Be("contacts.csv");
+        importJob.FileFormat.Should().Be("csv");
+    }
+
+    [Fact]
     public async Task Handle_FileNotInStorage_ReturnsFailure()
     {
         // Arrange
@@ -58,7 +95,7 @@ public sealed class StartContactImportTests
             .Returns(false);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, _dbContext, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
@@ -78,7 +115,7 @@ public sealed class StartContactImportTests
             .Returns(true);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, _dbContext, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var before = DateTimeOffset.UtcNow;
@@ -100,7 +137,7 @@ public sealed class StartContactImportTests
             .Returns(true);
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, _dbContext, NullLogger<StartContactImportHandler>.Instance);
 
         // Act
         var result = await handler.Handle(
@@ -121,7 +158,7 @@ public sealed class StartContactImportTests
         // Arrange
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
-            _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
+            _backgroundJobClient, _dbContext, NullLogger<StartContactImportHandler>.Instance);
         var wrongOrgId = Guid.NewGuid();
 
         // Act
@@ -138,10 +175,5 @@ public sealed class StartContactImportTests
             .Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.IState>());
     }
 
-    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
-    {
-        var accessor = new TenantContextAccessor();
-        accessor.SetTenant(tenantId.ToString(), orgId.ToString());
-        return accessor;
-    }
+    public void Dispose() => _dbContext.Dispose();
 }

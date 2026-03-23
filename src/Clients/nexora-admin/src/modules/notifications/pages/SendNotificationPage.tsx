@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { useSendNotification } from '../hooks/useNotifications';
 import { CHANNELS, CHANNEL_KEY_MAP } from '../constants';
 
@@ -37,8 +38,9 @@ export default function SendNotificationPage() {
   const navigate = useNavigate();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const sendNotification = useSendNotification();
+  const { handleApiError } = useApiError();
 
-  const schema = createSendSchema(t);
+  const schema = useMemo(() => createSendSchema(t), [t]);
   const form = useForm<SendFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -88,6 +90,7 @@ export default function SendNotificationPage() {
         onSuccess: () => {
           navigate('/notifications/notifications');
         },
+        onError: (err) => handleApiError(err),
       },
     );
   };
@@ -104,21 +107,24 @@ export default function SendNotificationPage() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
         <div>
           <label htmlFor="send-channel" className="text-sm font-medium">{t('lockey_notifications_send_form_channel')}</label>
-          <Select
-            value={form.watch('channel')}
-            onValueChange={(v) => form.setValue('channel', v as typeof CHANNELS[number])}
-          >
-            <SelectTrigger id="send-channel" className="mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CHANNELS.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {t(CHANNEL_KEY_MAP[c])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            control={form.control}
+            name="channel"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="send-channel" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNELS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {t(CHANNEL_KEY_MAP[c])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div>

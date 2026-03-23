@@ -17,12 +17,12 @@ export const notificationsManifest: AdminModuleManifest = {
       component: lazy(() => import('./pages/NotificationListPage')),
     },
     {
-      path: 'notifications/:id',
-      component: lazy(() => import('./pages/NotificationDetailPage')),
-    },
-    {
       path: 'notifications/send',
       component: lazy(() => import('./pages/SendNotificationPage')),
+    },
+    {
+      path: 'notifications/:id',
+      component: lazy(() => import('./pages/NotificationDetailPage')),
     },
     {
       path: 'templates',

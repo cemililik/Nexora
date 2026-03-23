@@ -7,7 +7,7 @@ import { useUiStore } from '@/shared/lib/stores/uiStore';
 
 /** Admin dashboard page with welcome message and placeholder cards. */
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['navigation', 'common']);
   const user = useAuthStore((s) => s.user);
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
 

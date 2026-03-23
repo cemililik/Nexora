@@ -91,7 +91,7 @@ describe('useAuth', () => {
     });
   });
 
-  it('should clear session on API fetch failure', async () => {
+  it('should fall back to token claims when /me API fails', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
     mockApiGet.mockRejectedValue(new Error('Network error'));
@@ -99,8 +99,20 @@ describe('useAuth', () => {
     renderHook(() => useAuth());
 
     await waitFor(() => {
-      expect(mockClearSession).toHaveBeenCalled();
-      expect(mockToastError).toHaveBeenCalledWith('lockey_error_session_expired');
+      expect(mockSetSession).toHaveBeenCalledWith({
+        user: {
+          id: 'user-1',
+          email: 'admin@nexora.io',
+          firstName: 'admin',
+          lastName: '',
+          status: 'Active',
+          organizations: [],
+        },
+        token: 'test-jwt-token',
+        tenantId: 'tenant-1',
+        organizationId: 'org-1',
+        permissions: ['identity.users.read'],
+      });
     });
   });
 

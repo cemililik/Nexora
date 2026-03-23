@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
@@ -11,18 +11,24 @@ interface FolderTreeProps {
   onSelect: (folderId: string | undefined) => void;
 }
 
-function FolderNode({
-  folder,
-  selectedFolderId,
-  onSelect,
-}: {
+interface FolderNodeProps {
   folder: FolderDto;
   selectedFolderId?: string;
   onSelect: (folderId: string | undefined) => void;
-}) {
+}
+
+const FolderNode = memo(function FolderNode({
+  folder,
+  selectedFolderId,
+  onSelect,
+}: FolderNodeProps) {
+  const { t } = useTranslation('documents');
   const [expanded, setExpanded] = useState(false);
   const { data: children } = useFolders(expanded ? folder.id : undefined);
   const isSelected = selectedFolderId === folder.id;
+
+  const handleToggle = useCallback(() => setExpanded((prev) => !prev), []);
+  const handleSelect = useCallback(() => onSelect(folder.id), [onSelect, folder.id]);
 
   return (
     <div className="ps-4">
@@ -32,14 +38,16 @@ function FolderNode({
           variant="ghost"
           size="sm"
           className="h-6 w-6 p-0"
-          onClick={() => setExpanded(!expanded)}
+          onClick={handleToggle}
+          aria-expanded={expanded}
+          aria-label={expanded ? t('lockey_documents_folders_collapse') : t('lockey_documents_folders_expand')}
         >
           {expanded ? '▼' : '▶'}
         </Button>
         <button
           type="button"
           className={cn('text-sm hover:underline', isSelected && 'font-semibold text-primary')}
-          onClick={() => onSelect(folder.id)}
+          onClick={handleSelect}
         >
           {folder.name}
         </button>
@@ -58,14 +66,16 @@ function FolderNode({
       )}
     </div>
   );
-}
+});
 
 export function FolderTree({ selectedFolderId, onSelect }: FolderTreeProps) {
   const { t } = useTranslation('documents');
   const { data: rootFolders, isPending } = useFolders();
 
+  const handleSelectRoot = useCallback(() => onSelect(undefined), [onSelect]);
+
   if (isPending) {
-    return <div className="text-sm text-muted-foreground">...</div>;
+    return <div className="text-sm text-muted-foreground">{t('lockey_common_loading', { ns: 'common' })}</div>;
   }
 
   return (
@@ -73,7 +83,7 @@ export function FolderTree({ selectedFolderId, onSelect }: FolderTreeProps) {
       <button
         type="button"
         className={cn('text-sm hover:underline', !selectedFolderId && 'font-semibold text-primary')}
-        onClick={() => onSelect(undefined)}
+        onClick={handleSelectRoot}
       >
         {t('lockey_documents_folders_root')}
       </button>
