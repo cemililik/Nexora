@@ -9,6 +9,7 @@ dist
 # build/cache
 .vite
 .cache
+*.tsbuildinfo
 
 # OS
 .DS_Store

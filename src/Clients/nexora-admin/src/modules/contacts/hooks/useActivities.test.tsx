@@ -113,8 +113,12 @@ describe('useLogActivity', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { type: 'Meeting', description: 'Client meeting', occurredAt: '2026-03-22T14:00:00Z' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').LogActivityRequest = {
+      moduleSource: 'contacts',
+      activityType: 'Meeting',
+      summary: 'Client meeting',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

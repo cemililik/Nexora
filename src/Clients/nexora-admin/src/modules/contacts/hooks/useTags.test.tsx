@@ -54,7 +54,7 @@ describe('tagKeys', () => {
   });
 
   it('list_WithCategory_IncludesParams', () => {
-    const params = { category: 'vip' as never };
+    const params: { category: import('../types').TagCategory } = { category: 'Donor' };
     expect(tagKeys.list(params)).toEqual([
       'contacts',
       'tags',
@@ -89,7 +89,7 @@ describe('useTags', () => {
   it('should pass category filter when provided', async () => {
     mockApiGet.mockResolvedValue([]);
 
-    const { result } = renderHook(() => useTags({ category: 'priority' as never }), {
+    const { result } = renderHook(() => useTags({ category: 'Volunteer' }), {
       wrapper: createWrapper(),
     });
 
@@ -98,7 +98,7 @@ describe('useTags', () => {
     });
 
     expect(mockApiGet).toHaveBeenCalledWith('/contacts/tags', {
-      category: 'priority',
+      category: 'Volunteer',
     });
   });
 });
@@ -116,8 +116,11 @@ describe('useCreateTag', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { name: 'VIP', category: 'priority' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').CreateTagRequest = {
+      name: 'VIP',
+      category: 'Donor',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -140,8 +143,11 @@ describe('useUpdateTag', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { name: 'Premium' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').UpdateTagRequest = {
+      name: 'Premium',
+      category: 'Donor',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

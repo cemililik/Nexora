@@ -9,6 +9,7 @@ using NSubstitute;
 
 namespace Nexora.Modules.Contacts.Tests.Application;
 
+/// <summary>Unit tests for <see cref="StartContactImportHandler"/>.</summary>
 public sealed class StartContactImportTests
 {
     private readonly Guid _orgId = Guid.NewGuid();
@@ -26,11 +27,13 @@ public sealed class StartContactImportTests
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_FileExists_ShouldReturnQueuedJob()
+    public async Task Handle_ValidCommand_FileExists_ReturnsQueuedJob()
     {
         // Arrange
         _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(true);
+        _backgroundJobClient.Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.IState>())
+            .Returns("hangfire-123");
         var handler = new StartContactImportHandler(
             _fileStorageService, _tenantAccessor, _storageOptions,
             _backgroundJobClient, NullLogger<StartContactImportHandler>.Instance);
@@ -44,10 +47,11 @@ public sealed class StartContactImportTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Status.Should().Be("Queued");
         result.Value.JobId.Should().NotBeEmpty();
+        _backgroundJobClient.Received(1).Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.IState>());
     }
 
     [Fact]
-    public async Task Handle_FileNotInStorage_ShouldReturnFailure()
+    public async Task Handle_FileNotInStorage_ReturnsFailure()
     {
         // Arrange
         _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -67,7 +71,7 @@ public sealed class StartContactImportTests
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldReturnCorrectTimestamp()
+    public async Task Handle_ValidCommand_ReturnsCorrectTimestamp()
     {
         // Arrange
         _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -89,7 +93,7 @@ public sealed class StartContactImportTests
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldReturnZeroCounts()
+    public async Task Handle_ValidCommand_ReturnsZeroCounts()
     {
         // Arrange
         _fileStorageService.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -112,7 +116,7 @@ public sealed class StartContactImportTests
     }
 
     [Fact]
-    public async Task Handle_StorageKeyWrongOrg_ShouldReturnFailure()
+    public async Task Handle_StorageKeyWrongOrg_ReturnsFailure()
     {
         // Arrange
         var handler = new StartContactImportHandler(
@@ -128,6 +132,10 @@ public sealed class StartContactImportTests
         // Assert
         result.IsSuccess.Should().BeFalse();
         result.Error!.Message.Key.Should().Be("lockey_contacts_error_import_invalid_storage_key");
+        await _fileStorageService.DidNotReceive()
+            .ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+        _backgroundJobClient.DidNotReceive()
+            .Create(Arg.Any<Hangfire.Common.Job>(), Arg.Any<Hangfire.States.IState>());
     }
 
     private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)

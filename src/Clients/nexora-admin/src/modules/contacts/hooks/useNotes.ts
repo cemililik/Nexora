@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   ContactNoteDto,
   AddNoteRequest,
@@ -28,6 +29,7 @@ export function useNotes(contactId: string) {
 export function useAddNote(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: AddNoteRequest) =>
@@ -41,12 +43,14 @@ export function useAddNote(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_note_added'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateNote(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: ({ noteId, data }: { noteId: string; data: UpdateNoteRequest }) =>
@@ -60,12 +64,14 @@ export function useUpdateNote(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_note_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useDeleteNote(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (noteId: string) =>
@@ -78,12 +84,14 @@ export function useDeleteNote(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_note_deleted'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function usePinNote(contactId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: ({ noteId, data }: { noteId: string; data: PinNoteRequest }) =>
@@ -97,5 +105,6 @@ export function usePinNote(contactId: string) {
       });
       toast.success(t('lockey_contacts_toast_note_pinned'));
     },
+    onError: (err) => handleApiError(err),
   });
 }

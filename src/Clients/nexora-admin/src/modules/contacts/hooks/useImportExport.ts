@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   ImportJobDto,
   ExportJobDto,
@@ -18,14 +19,18 @@ export const importKeys = {
 };
 
 export function useGenerateImportUploadUrl() {
+  const { handleApiError } = useApiError();
+
   return useMutation({
     mutationFn: (data: GenerateImportUploadUrlRequest) =>
       api.post<ImportUploadUrlDto>('/contacts/contacts/import/upload-url', data),
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useConfirmImport() {
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: ConfirmImportRequest) =>
@@ -33,6 +38,7 @@ export function useConfirmImport() {
     onSuccess: () => {
       toast.success(t('lockey_contacts_toast_import_started'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
@@ -56,6 +62,7 @@ export function useImportStatus(jobId: string) {
 
 export function useStartExport() {
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: StartExportRequest) =>
@@ -63,20 +70,25 @@ export function useStartExport() {
     onSuccess: () => {
       toast.success(t('lockey_contacts_toast_export_started'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useGdprExport(contactId: string) {
+  const { handleApiError } = useApiError();
+
   return useMutation({
     mutationFn: () =>
       api.post<void>(
         `/contacts/contacts/${encodeURIComponent(contactId)}/gdpr/export`,
       ),
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useGdprDelete(contactId: string) {
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: GdprDeleteRequest) =>
@@ -87,5 +99,6 @@ export function useGdprDelete(contactId: string) {
     onSuccess: () => {
       toast.warning(t('lockey_contacts_toast_gdpr_delete_requested'));
     },
+    onError: (err) => handleApiError(err),
   });
 }

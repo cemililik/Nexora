@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type {
   TagDto,
   TagCategory,
@@ -30,6 +31,7 @@ export function useTags(params?: { category?: TagCategory }) {
 export function useCreateTag() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: CreateTagRequest) =>
@@ -38,12 +40,14 @@ export function useCreateTag() {
       void queryClient.invalidateQueries({ queryKey: tagKeys.all });
       toast.success(t('lockey_contacts_toast_tag_created'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateTag(id: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: UpdateTagRequest) =>
@@ -55,12 +59,14 @@ export function useUpdateTag(id: string) {
       void queryClient.invalidateQueries({ queryKey: tagKeys.all });
       toast.success(t('lockey_contacts_toast_tag_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useDeleteTag() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('contacts');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (id: string) =>
@@ -69,11 +75,13 @@ export function useDeleteTag() {
       void queryClient.invalidateQueries({ queryKey: tagKeys.all });
       toast.success(t('lockey_contacts_toast_tag_deleted'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useAssignTag() {
   const queryClient = useQueryClient();
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: ({ contactId, tagId }: { contactId: string; tagId: string }) =>
@@ -83,11 +91,13 @@ export function useAssignTag() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useRemoveTag() {
   const queryClient = useQueryClient();
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: ({ contactId, tagId }: { contactId: string; tagId: string }) =>
@@ -97,5 +107,6 @@ export function useRemoveTag() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
     },
+    onError: (err) => handleApiError(err),
   });
 }

@@ -381,5 +381,27 @@
   "lockey_contacts_delete_custom_field_title": "Özel Alanı Sil",
   "lockey_contacts_delete_custom_field_description": "Bu özel alanı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
 
-  "lockey_contacts_tags_color_placeholder": "#FF5733"
+  "lockey_contacts_tags_color_placeholder": "#FF5733",
+
+  "lockey_contacts_permission_contact_read": "Kişileri görüntüle",
+  "lockey_contacts_permission_contact_create": "Kişi oluştur",
+  "lockey_contacts_permission_contact_update": "Kişileri güncelle",
+  "lockey_contacts_permission_contact_delete": "Kişileri sil",
+  "lockey_contacts_permission_tag_read": "Etiketleri görüntüle",
+  "lockey_contacts_permission_tag_create": "Etiket oluştur",
+  "lockey_contacts_permission_tag_update": "Etiketleri güncelle",
+  "lockey_contacts_permission_tag_delete": "Etiketleri sil",
+  "lockey_contacts_permission_custom_field_read": "Özel alanları görüntüle",
+  "lockey_contacts_permission_custom_field_manage": "Özel alanları yönet",
+  "lockey_contacts_permission_note_read": "Notları görüntüle",
+  "lockey_contacts_permission_note_create": "Not oluştur",
+  "lockey_contacts_permission_note_update": "Notları güncelle",
+  "lockey_contacts_permission_note_delete": "Notları sil",
+  "lockey_contacts_permission_relationship_create": "İlişki oluştur",
+  "lockey_contacts_permission_relationship_delete": "İlişkileri sil",
+  "lockey_contacts_permission_import_execute": "Kişi içe aktarımı yap",
+  "lockey_contacts_permission_export_execute": "Kişi dışa aktarımı yap",
+  "lockey_contacts_permission_gdpr_export": "Kişisel verileri dışa aktar (KVKK)",
+  "lockey_contacts_permission_gdpr_delete": "Kişisel verileri sil (KVKK)",
+  "lockey_contacts_permission_merge_execute": "Yinelenen kişileri birleştir"
 }

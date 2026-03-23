@@ -39,7 +39,7 @@ function createCustomFieldSchema(t: (key: string, options?: Record<string, unkno
     fieldType: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
     options: z.string().optional(),
     isRequired: z.boolean(),
-    displayOrder: z.number().min(0),
+    displayOrder: z.number().min(0, t('lockey_validation_required', { ns: 'validation' })),
   }).superRefine((data, ctx) => {
     if (data.fieldType === 'dropdown' && (!data.options || !data.options.trim())) {
       ctx.addIssue({
@@ -262,8 +262,9 @@ export default function CustomFieldManagementPage() {
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_col_field_name')}</label>
+              <label htmlFor="cf-fieldName" className="text-sm font-medium">{t('lockey_contacts_col_field_name')}</label>
               <input
+                id="cf-fieldName"
                 type="text"
                 {...form.register('fieldName')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -276,8 +277,9 @@ export default function CustomFieldManagementPage() {
             </div>
             {!editingField && (
               <div>
-                <label className="text-sm font-medium">{t('lockey_contacts_col_field_type')}</label>
+                <label htmlFor="cf-fieldType" className="text-sm font-medium">{t('lockey_contacts_col_field_type')}</label>
                 <select
+                  id="cf-fieldType"
                   {...form.register('fieldType')}
                   className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
@@ -296,8 +298,9 @@ export default function CustomFieldManagementPage() {
             )}
             {watchedFieldType === 'dropdown' && (
               <div>
-                <label className="text-sm font-medium">{t('lockey_contacts_field_options')}</label>
+                <label htmlFor="cf-options" className="text-sm font-medium">{t('lockey_contacts_field_options')}</label>
                 <textarea
+                  id="cf-options"
                   {...form.register('options')}
                   placeholder={t('lockey_contacts_field_options_placeholder')}
                   className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -322,8 +325,9 @@ export default function CustomFieldManagementPage() {
               </label>
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_col_display_order')}</label>
+              <label htmlFor="cf-displayOrder" className="text-sm font-medium">{t('lockey_contacts_col_display_order')}</label>
               <input
+                id="cf-displayOrder"
                 type="number"
                 {...form.register('displayOrder', { valueAsNumber: true })}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

@@ -10,10 +10,12 @@ vi.mock('@/shared/lib/api', () => ({
 }));
 
 // Mock auth store
+import type { AuthToken } from '@/shared/lib/stores/authStore';
+
 let storeTenantId: string | null = null;
-let storeToken: string | null = 'mock-token';
+let storeToken: AuthToken = 'mock-token';
 vi.mock('@/shared/lib/stores/authStore', () => ({
-  useAuthStore: (selector: (s: { tenantId: string | null; token: string | null }) => unknown) =>
+  useAuthStore: (selector: (s: { tenantId: string | null; token: AuthToken }) => unknown) =>
     selector({ tenantId: storeTenantId, token: storeToken }),
 }));
 
@@ -98,7 +100,15 @@ describe('useModules', () => {
 
   it('should not fetch when token is an error object', () => {
     storeTenantId = '550e8400-e29b-41d4-a716-446655440000';
-    storeToken = { error: 'RefreshAccessTokenError' } as unknown as string;
+    storeToken = { error: 'RefreshAccessTokenError' };
+    const { result } = renderHook(() => useModules(), { wrapper: createWrapper() });
+    expect(mockApiGet).not.toHaveBeenCalled();
+    expect(result.current.activeModules).toEqual([]);
+  });
+
+  it('should not fetch when token is an empty string', () => {
+    storeTenantId = '550e8400-e29b-41d4-a716-446655440000';
+    storeToken = '';
     const { result } = renderHook(() => useModules(), { wrapper: createWrapper() });
     expect(mockApiGet).not.toHaveBeenCalled();
     expect(result.current.activeModules).toEqual([]);

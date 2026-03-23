@@ -80,9 +80,7 @@ public sealed class StartContactImportHandler(
             return Result<ImportJobDto>.Failure(
                 LocalizedMessage.Of("lockey_contacts_error_import_file_not_found"));
 
-        var jobId = Guid.NewGuid();
-
-        backgroundJobClient.Enqueue<ContactImportJob>(j => j.RunAsync(
+        var hangfireJobId = backgroundJobClient.Enqueue<ContactImportJob>(j => j.RunAsync(
             new ContactImportJobParams
             {
                 TenantId = tenantId.ToString(),
@@ -94,15 +92,18 @@ public sealed class StartContactImportHandler(
             },
             CancellationToken.None));
 
+        // TODO: When GetImportJobStatusQuery is connected to Hangfire, store hangfireJobId mapping
+        var jobId = Guid.NewGuid();
+
         logger.LogInformation(
-            "Contact import job {JobId} started for tenant {TenantId} with file {FileName} (key: {StorageKey})",
-            jobId, tenantId, request.FileName, request.StorageKey);
+            "Contact import job {JobId} (Hangfire: {HangfireJobId}) started for tenant {TenantId} with file {FileName} (key: {StorageKey})",
+            jobId, hangfireJobId, tenantId, request.FileName, request.StorageKey);
 
         var dto = new ImportJobDto(
             jobId, "Queued", 0, 0, 0, 0,
             DateTimeOffset.UtcNow, null);
 
-        return Task.FromResult(Result<ImportJobDto>.Success(dto,
-            LocalizedMessage.Of("lockey_contacts_import_job_started"))).Result;
+        return Result<ImportJobDto>.Success(dto,
+            LocalizedMessage.Of("lockey_contacts_import_job_started"));
     }
 }

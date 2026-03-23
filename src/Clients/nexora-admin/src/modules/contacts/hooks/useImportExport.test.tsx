@@ -63,8 +63,12 @@ describe('useGenerateImportUploadUrl', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { fileName: 'contacts.csv', contentType: 'text/csv' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').GenerateImportUploadUrlRequest = {
+      fileName: 'contacts.csv',
+      contentType: 'text/csv',
+      fileSize: 1024,
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -90,8 +94,12 @@ describe('useConfirmImport', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { jobId: 'j-1', mappings: { name: 'FullName' } };
-    result.current.mutate(payload as never);
+    const payload: import('../types').ConfirmImportRequest = {
+      fileName: 'contacts.csv',
+      fileFormat: 'csv',
+      storageKey: 'org-1/contacts/imports/abc/contacts.csv',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -149,8 +157,10 @@ describe('useStartExport', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { format: 'csv', filters: { tags: ['vip'] } };
-    result.current.mutate(payload as never);
+    const payload: import('../types').StartExportRequest = {
+      format: 'csv',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -199,8 +209,10 @@ describe('useGdprDelete', () => {
       wrapper: createWrapper(),
     });
 
-    const payload = { reason: 'User requested data deletion' };
-    result.current.mutate(payload as never);
+    const payload: import('../types').GdprDeleteRequest = {
+      reason: 'User requested data deletion',
+    };
+    result.current.mutate(payload);
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

@@ -99,10 +99,8 @@ public sealed class ContactsModule : IModule
     /// <inheritdoc />
     public Task OnStartupAsync(CancellationToken ct)
     {
-        // TODO: Register Contacts module permissions (e.g., contacts.contact.read, contacts.contact.write,
-        // contacts.contact.delete, contacts.tag.manage, contacts.import.execute, contacts.gdpr.manage)
-        // once IPermissionRegistrar is available in SharedKernel. Currently no modules implement
-        // permission registration — this is a platform-wide gap to address.
+        // Contacts module permissions are seeded centrally in IdentityModuleMigration.SeedAsync()
+        // (20 permissions: contact CRUD, tag CRUD, custom-field, note, relationship, import, export, gdpr, merge).
         return Task.CompletedTask;
     }
 

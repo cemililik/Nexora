@@ -57,7 +57,7 @@ describe('usePagination', () => {
 
     expect(mockSetSearchParams).toHaveBeenCalledTimes(1);
     // Verify the updater function produces correct params
-    const updaterFn = mockSetSearchParams.mock.calls[0][0];
+    const updaterFn = mockSetSearchParams.mock.calls[0]?.[0] as (prev: URLSearchParams) => URLSearchParams;
     const newParams = updaterFn(new URLSearchParams());
     expect(newParams.get('page')).toBe('5');
   });
@@ -70,7 +70,7 @@ describe('usePagination', () => {
     });
 
     expect(mockSetSearchParams).toHaveBeenCalledTimes(1);
-    const updaterFn = mockSetSearchParams.mock.calls[0][0];
+    const updaterFn = mockSetSearchParams.mock.calls[0]?.[0] as (prev: URLSearchParams) => URLSearchParams;
     const newParams = updaterFn(new URLSearchParams('page=5'));
     expect(newParams.get('pageSize')).toBe('50');
     expect(newParams.get('page')).toBe('1');
