@@ -10,7 +10,7 @@ import { useAuthStore } from '@/shared/lib/stores/authStore';
  * dashboard sections from all active modules.
  */
 export default function DashboardPage() {
-  const t = useTranslations();
+  const t = useTranslations('common');
   const user = useAuthStore((s) => s.user);
 
   return (

@@ -19,7 +19,7 @@ export function useAuth() {
   const { setSession, clearSession, user, isAuthenticated } = useAuthStore();
   const [fetchFailed, setFetchFailed] = useState(false);
   const locale = useLocale();
-  const t = useTranslations();
+  const te = useTranslations('error');
 
   useEffect(() => {
     // Handle refresh token errors — force re-login
@@ -46,7 +46,7 @@ export function useAuth() {
           .catch(() => {
             setFetchFailed(true);
             clearSession();
-            toast.error(t('lockey_error_session_expired'));
+            toast.error(te('lockey_error_session_expired'));
           });
       }
     } else if (status === 'unauthenticated') {
@@ -54,7 +54,7 @@ export function useAuth() {
       clearSession();
       setFetchFailed(false);
     }
-  }, [session, status, user, fetchFailed, setSession, clearSession, locale, t]);
+  }, [session, status, user, fetchFailed, setSession, clearSession, locale, te]);
 
   return {
     user,
