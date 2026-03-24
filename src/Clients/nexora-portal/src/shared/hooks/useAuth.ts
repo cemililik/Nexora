@@ -57,7 +57,11 @@ export function useAuth() {
 
   useEffect(() => {
     if (status === 'unauthenticated' && fetchFailed) {
-      setFetchFailed(false);
+      // Defer the state update to avoid cascading renders
+      const timer = setTimeout(() => {
+        setFetchFailed(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [status, fetchFailed]);
 

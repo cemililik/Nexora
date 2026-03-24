@@ -4,6 +4,16 @@ namespace Nexora.Architecture.Tests;
 
 public sealed class ModuleSystemTests
 {
+    // Static initializer to ensure all module assemblies are loaded before reflection
+    static ModuleSystemTests()
+    {
+        // Trigger lazy-loaded assemblies by referencing each module type
+        _ = typeof(Modules.Identity.IdentityModule).Assembly;
+        _ = typeof(Modules.Contacts.ContactsModule).Assembly;
+        _ = typeof(Modules.Documents.DocumentsModule).Assembly;
+        _ = typeof(Modules.Notifications.NotificationsModule).Assembly;
+        _ = typeof(Modules.Reporting.ReportingModule).Assembly;
+    }
     [Fact]
     public void IdentityModule_ShouldImplementIModule()
     {
