@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { Controller, useForm } from 'react-hook-form';
@@ -10,6 +10,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -75,8 +76,8 @@ export default function ProviderListPage() {
   const updateProvider = useUpdateProvider(editingProvider?.id ?? '');
   const testProvider = useTestProvider();
 
-  const providerSchema = createProviderSchema(t);
-  const testSchema = createTestSchema(t);
+  const providerSchema = useMemo(() => createProviderSchema(t), [t]);
+  const testSchema = useMemo(() => createTestSchema(t), [t]);
 
   const form = useForm<ProviderFormValues>({
     resolver: zodResolver(providerSchema),
@@ -285,6 +286,11 @@ export default function ProviderListPage() {
                 ? t('lockey_notifications_providers_edit')
                 : t('lockey_notifications_providers_create')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingProvider
+                ? t('lockey_notifications_providers_edit')
+                : t('lockey_notifications_providers_create')}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {!editingProvider && (
@@ -365,8 +371,8 @@ export default function ProviderListPage() {
                 render={({ field }) => (
                   <Checkbox
                     id="isDefault"
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+                    checked={!!field.value}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
                 )}
               />
@@ -396,6 +402,7 @@ export default function ProviderListPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_notifications_providers_test_title')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_notifications_providers_test_title')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={testForm.handleSubmit(onTest)} className="space-y-4">
             <div>

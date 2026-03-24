@@ -99,6 +99,7 @@ export function useAssignTag() {
 
 export function useRemoveTag() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation('contacts');
   const { handleApiError } = useApiError();
 
   return useMutation({
@@ -108,6 +109,7 @@ export function useRemoveTag() {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
+      toast.success(t('lockey_contacts_toast_tag_removed'));
     },
     onError: (err) => handleApiError(err),
   });

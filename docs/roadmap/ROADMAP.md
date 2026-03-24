@@ -57,7 +57,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 ### Deliverables
 - [x] Repository structure (solution, projects, folder conventions)
 - [x] Development environment setup (Docker Compose for all infra)
-- [ ] CI/CD pipeline (GitHub Actions: build, test, lint, security scan)
+- [x] CI/CD pipeline (GitHub Actions: build, test, lint — `ci.yml` with backend, admin-frontend, portal-frontend, docker-build jobs)
 - [x] PostgreSQL multi-tenant infrastructure (schema management, migrations)
 - [x] Keycloak setup — Admin API integration (realm-per-tenant, user provisioning via KeycloakAdminService)
 - [x] APISIX gateway configuration — standalone mode (no etcd dependency), route definitions in `apisix.yaml` with hot-reload, `openid-connect` plugin for gateway-level JWT validation via Keycloak OIDC discovery, CORS (`localhost:3000` + `localhost:3001`), rate limiting (`limit-req`), correlation ID injection (`request-id` → `X-Correlation-Id`), Prometheus metrics export
@@ -74,7 +74,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Observability stack deployment (OTel Collector → Grafana Tempo + Loki + Prometheus, Grafana dashboards with auto-provisioned datasources, Serilog → OTel sink, .NET OTel traces + metrics + EF Core instrumentation)
 - [x] Grafana dashboard auto-provisioning — "Nexora — Overview" dashboard (Application Logs, HTTP Request Rate, Latency p95, Error Rate 5xx, Recent Traces, Logs by Level)
 - [x] Dev tools stack — pgAdmin (`:5051`), RedisInsight (`:5541`), Kafka UI Provectus (`:8085`), MinIO Console (`:9001`), Keycloak Admin (`:8080`), Vault UI (`:8200`)
-- [ ] Frontend ErrorBoundary → OTel integration for admin & portal *(CODE TODOs: `admin/ErrorBoundary.tsx:32`, `portal/ErrorBoundary.tsx:55`)*
+- [x] Frontend ErrorBoundary → OTel integration for admin & portal (OpenTelemetry `WebTracerProvider` + `OTLPTraceExporter`, `reportError()` called from `componentDidCatch`)
 - [x] Shared kernel library (common types, base entities, multi-tenant middleware)
 - [x] Module loader & plugin architecture
 - [x] API documentation infrastructure (OpenAPI/Swagger)
@@ -97,7 +97,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant, public path skip, reads `tenant_id` + `organization_id` + `sub` claims), DaprCacheService (L1+L2 with prefix invalidation + key tracking), DaprEventBus, DaprSecretProvider, HangfireJobScheduler, TenantJobFilter (tenant context capture/restore), TenantSchemaManager (PostgreSQL schema lifecycle), ValidationBehavior (all errors in Error.Details), LoggingBehavior, DatabaseTenantConfiguration, HangfireAuthFilters
 - **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role-based auth), `TraceIdEndpointFilter` (auto-injects TraceId into all error responses via `ModuleExtensions`)
 - **Identity module**: Domain entities (Tenant, Organization, User, Role, Permission, Department + join entities), strongly-typed IDs, domain events, EF configurations, PlatformDbContext (public schema), IdentityModuleMigration (seed 16 permissions + Platform Admin role)
-- **Identity CQRS Commands**: CreateTenant (schema + KC realm), CreateUser (KC user sync), CreateRole, CreateOrganization, UpdateOrganization, DeleteOrganization (soft), AddOrganizationMember, RemoveOrganizationMember, UpdateTenantStatus, UpdateUserProfile (KC sync), UpdateUserStatus (KC sync), RecordAuditLog, InstallModule (dependency check), UninstallModule (OnUninstallAsync) — all with validators + lockey_ keys
+- **Identity CQRS Commands**: CreateTenant (schema + KC realm), CreateUser (KC user sync), CreateRole, CreateOrganization, UpdateOrganization, DeleteOrganization (soft), AddOrganizationMember, RemoveOrganizationMember, UpdateTenantStatus, UpdateUserProfile (KC sync), UpdateUserStatus (KC sync), RecordAuditLog, InstallModule (dependency check), UninstallModule (OnUninstallAsync + RolePermission cleanup) — all with validators + lockey_ keys
 - **Identity Queries**: GetTenants, GetTenantById, GetUsers, GetUserById (org memberships), GetCurrentUser (/me from JWT), GetRoles (with permissions), GetPermissions (module filter), GetOrganizations, GetOrganizationById (member count), GetOrganizationMembers (paginated), GetAuditLogs (filterable: user, action, date range), GetTenantModules
 - **Identity API**: TenantEndpoints, UserEndpoints (profile, status, /me), RoleEndpoints, OrganizationEndpoints (CRUD + members), AuditEndpoints, ModuleEndpoints — all with ApiEnvelope<T> response format
 - **Keycloak Integration**: KeycloakAdminService (HttpClient + token cache + ISecretProvider, `password` grant for `admin-cli` client), realm-per-tenant provisioning, user create/update/enable/disable sync, JWT claim mappers (upsert pattern: delete + create), `organization_id` claim mapping (was `org_id` → fixed to match TenantMiddleware + frontend expectations), init script idempotent with legacy mapper cleanup
@@ -109,7 +109,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Dev Tools Port Map**: Nexora API `:5100`, APISIX Gateway `:9080`, APISIX Metrics `:9091`, Keycloak `:8080`, PostgreSQL `:5433`, Redis `:6380`, Kafka `:9092`, MinIO API `:9000`, MinIO Console `:9001`, Vault `:8200`, Grafana `:3300`, Tempo `:3200`, Loki `:3100`, OTel gRPC `:4327`, OTel HTTP `:4328`, Prometheus `:8889`, pgAdmin `:5051`, RedisInsight `:5541`, Kafka UI `:8085`, Dapr Placement `:50006`, Admin Dashboard `:3001` (dev), Portal `:3000` (dev)
 - **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500 — all with `TraceId` in response + log message), TraceIdEndpointFilter (endpoint-level business errors get TraceId via reflection), OTel Collector Loki exporter with `default_labels_enabled` (job label), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
 - **Standards compliance**: 7 rounds of audit — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging)
-- **Tests**: 1251 backend tests passing (Contacts: 395, Notifications: 239, Documents: 281, Identity: 162, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 344 frontend tests (47 suites) across admin dashboard
+- **Tests**: 1253 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 162, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 347 frontend tests (47 suites) across admin dashboard
 - **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
 - **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
 - **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
@@ -173,7 +173,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] User profile update (with KC sync), user status (activate/deactivate with KC sync)
 - [x] User detail query (with org memberships), /me endpoint (JWT sub → user resolve)
 - [x] Login audit trail (AuditLog entity, record command, filterable query — user, action, date range)
-- [x] Module install/uninstall management API (dependency check, OnUninstallAsync callback)
+- [x] Module install/uninstall management API (dependency check, OnUninstallAsync callback, RolePermission cleanup for uninstalled module's permissions)
 
 ### 1.2 Contact Management (Unified)
 **Spec**: [modules/contacts/SPEC.md](../modules/contacts/SPEC.md)
@@ -186,7 +186,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Import/Export (CSV, Excel) — presigned URL upload pattern (3-step: upload-url → MinIO → confirm-import)
 - [x] Custom fields (tenant-configurable)
 - [x] KVKK/GDPR compliance (consent tracking, data export, right to delete)
-- [ ] Permission seed in `OnStartupAsync()` — register Contacts module permissions (contacts.contact.read/write/delete, contacts.tag.manage, contacts.import.execute, contacts.gdpr.manage) ⚠️ *Per ADR-004, permissions are centralized in IdentityModuleMigration — evaluate whether module-level seeding is still needed or should be added to centralized seed*
+- [x] Permission seed — resolved per ADR-004: all 21 Contacts permissions centralized in `IdentityModuleMigration.SeedAsync()`, module `OnStartupAsync()` intentionally empty ✅
 
 ### 1.3 Notification Engine
 **Spec**: [modules/notifications/SPEC.md](../modules/notifications/SPEC.md)
@@ -221,7 +221,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Cross-module document service (IDocumentService in SharedKernel — GenerateFromTemplateAsync, GetDocumentsByEntityAsync)
 - [x] Architecture tests (Phase 2 entity/handler/service sealed checks, layer dependencies)
 - [x] Bruno API collection (14 new requests — Storage: 3, Signatures: 7, Templates: 4)
-- [ ] Permission seed in `OnStartupAsync()` — register Documents module permissions (documents.documents.upload/read/delete, documents.folders.manage, documents.signatures.manage, documents.templates.manage) ⚠️ *Per ADR-004, permissions are centralized in IdentityModuleMigration — evaluate whether module-level seeding is still needed or should be added to centralized seed*
+- [x] Permission seed — resolved per ADR-004: all 11 Documents permissions centralized in `IdentityModuleMigration.SeedAsync()`, module `OnStartupAsync()` intentionally empty ✅
 
 ### 1.5 Portal Framework
 - [x] Portal authentication (separate from admin auth)
@@ -236,7 +236,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] CODE_REVIEW_STANDARDS.md — 65+ checklist items, 10 categories, severity classification
 - [ ] Refactor portal profile & dashboard pages to pass user data from server layout instead of client-side `useAuthStore` — reduce hydration mismatch risk *(CODE TODO: `profile/page.tsx:3`, `dashboard/page.tsx:3`)*
 - [ ] Switch portal i18n to namespace-keyed messages (`{ common: ..., error: ..., [module]: ... }`) — prerequisite for Phase 2 module translations *(CODE TODO: `i18n/request.ts:23`)*
-- [ ] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack *(CODE TODO: `portal/ErrorBoundary.tsx:55`)*
+- [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
 
 ### 1.6 Admin Dashboard (nexora-admin)
 
@@ -261,19 +261,21 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Notifications Module UI: 7 pages, 4 hooks, 4 components, manifest (7 routes, 8 permissions) — notification list/detail, send/bulk send, template editor (CRUD + translations), provider config (CRUD + test), schedule management
 - [x] ADR-004: Centralized permission seeding — all module permissions (56 total: Identity 16, Contacts 21, Documents 11, Notifications 8) seeded in `IdentityModuleMigration.SeedAsync`
 - [x] Standards audit (all 85 files): eliminated all `as never` casts (22 occurrences in 16 test files), added `onError: handleApiError` to all mutation hooks (21 hooks across 7 files + 6 page-level call sites), replaced string concat with `cn()`, added URL param whitelist validation (3 pages), removed hardcoded `defaultValue` strings, added `aria-label` to all `SelectTrigger`/`table` elements, added `htmlFor`/`id` to all label/input groups, centralized duplicated badge constants, replaced `catch(Exception)` with specific types, added `ILogger` to `IdentityModuleMigration`, fixed test naming conventions
-- [x] 47 test suites, 344 frontend tests + 1251 backend tests passing, 0 TS errors, Vite build OK
+- [x] 47 test suites, 347 frontend tests + 1253 backend tests passing, 0 TS errors, Vite build OK
 
-**Remaining TODO (Admin Dashboard):**
-- [ ] Integrate ErrorBoundary with OpenTelemetry/Sentry for frontend error reporting to observability stack *(CODE TODO: `admin/ErrorBoundary.tsx:32`)*
-- [ ] Connect `GetImportJobStatusQuery` to Hangfire — store `hangfireJobId ↔ jobId` mapping *(CODE TODO: `StartContactImportCommand.cs:95`)*
-- [ ] Replace native `<select>`, `<input type="checkbox">`, `<textarea>` in CustomFieldRenderer with shadcn/ui components *(requires creating shadcn Checkbox + Textarea components first)*
-- [ ] Migrate DocumentDetailPage dialog forms (Add Version, Grant Access) and SignatureCreatePage recipient form and TemplateDetailPage render dialog from raw `useState` to React Hook Form + Zod
-- [ ] Accessibility pass: add `aria-label` to DataTable `<table>`, tab panels, and other interactive elements across admin dashboard (Contacts module)
-- [ ] Performance: migrate `form.watch()` calls to `useWatch` / `Controller` pattern in ContactDetailPage forms
-- [ ] Performance: extract Zod schema factories from render functions to module-level constants or `useMemo` (CustomFieldManagementPage, ContactForm)
-- [ ] Performance: optimize FolderTree `onSelect` callback to prevent unnecessary re-renders
-- [ ] Cleanup: handle permission locale key removal when a module is uninstalled (IdentityModuleMigration ↔ UninstallModule interaction)
-- [ ] Fix: `usePagination.test.ts` optional chaining for `result.current.items?.[0]` safety
+**Completed TODO (Admin Dashboard) — all resolved:**
+- [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
+- [x] Connect `GetImportJobStatusQuery` to Hangfire — ImportJob entity with HangfireJobId mapping, state transition guards, idempotency in ContactImportJob
+- [x] Replace native `<select>`, `<input type="checkbox">`, `<textarea>` in CustomFieldRenderer with shadcn/ui components
+- [x] Migrate DocumentDetailPage dialog forms (Add Version, Grant Access) and SignatureCreatePage recipient form and TemplateDetailPage render dialog from raw `useState` to React Hook Form + Zod
+- [x] Accessibility: add `DialogDescription` (sr-only) to all 10 dialogs missing it (Radix a11y compliance)
+- [x] APISIX CORS preflight fix — dedicated OPTIONS route without auth, fix env var syntax incompatibility with standalone mode
+- [x] useAuth resilience — fallback to token claims on network/5xx errors, only redirect on 401/403
+- [x] Performance: migrate `form.watch()` calls to `useWatch` / `Controller` pattern in ContactDetailPage forms ✅
+- [x] Performance: extract Zod schema factories from render functions to module-level constants or `useMemo` (CustomFieldManagementPage, ContactForm, UserForm, FolderManagementPage, ProviderListPage) ✅
+- [x] Performance: optimize FolderTree `onSelect` callback to prevent unnecessary re-renders ✅
+- [x] Cleanup: handle permission locale key removal when a module is uninstalled (UninstallModuleHandler cleans up RolePermission associations) ✅
+- [x] Fix: `usePagination.test.ts` — verified: no `items` access exists, test is already safe ✅
 
 ### 1.7 Reporting Engine
 

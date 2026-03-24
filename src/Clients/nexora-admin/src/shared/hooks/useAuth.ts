@@ -60,9 +60,19 @@ export function useAuth() {
         let userInfo: UserInfo | null = null;
         try {
           userInfo = await api.get<UserInfo>('/identity/users/me');
-        } catch {
-          // /me may fail if tenant schema is not provisioned yet — fall back to token claims
-          console.warn('[useAuth] /me failed, falling back to token claims');
+        } catch (err: unknown) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          if (status === 401 || status === 403) {
+            // Token rejected by backend — force re-login
+            console.error('[useAuth] /me returned', status, '— redirecting to login');
+            setAuthToken(null);
+            clearSession();
+            setIsInitializing(false);
+            keycloak.login();
+            return;
+          }
+          // 404 (tenant not provisioned), network errors, 5xx — fall back to token claims
+          console.warn('[useAuth] /me failed, falling back to token claims', err);
         }
 
         setSession({

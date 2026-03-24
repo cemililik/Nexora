@@ -12,7 +12,7 @@ import { TenantLogo } from '@/shared/components/branding/TenantLogo';
 import { routing } from '@/i18n/routing';
 
 export function Topbar() {
-  const t = useTranslations();
+  const tc = useTranslations('common');
   const currentLocale = useLocale();
   const user = useAuthStore((s) => s.user);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
@@ -30,7 +30,7 @@ export function Topbar() {
           type="button"
           onClick={toggleSidebar}
           className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label={t('lockey_common_toggle_sidebar')}
+          aria-label={tc('lockey_common_toggle_sidebar')}
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -56,7 +56,7 @@ export function Topbar() {
               type="button"
               onClick={() => signOut({ callbackUrl: `/${currentLocale}/auth/login` })}
               className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label={t('lockey_common_logout')}
+              aria-label={tc('lockey_common_logout')}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -68,7 +68,7 @@ export function Topbar() {
 }
 
 function LanguageSwitcher() {
-  const t = useTranslations();
+  const tc = useTranslations('common');
   const currentLocale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
@@ -81,11 +81,11 @@ function LanguageSwitcher() {
           router.replace(pathname, { locale: e.target.value });
         }}
         className="appearance-none rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground cursor-pointer"
-        aria-label={t('lockey_common_language')}
+        aria-label={tc('lockey_common_language')}
       >
         {routing.locales.map((locale) => (
           <option key={locale} value={locale}>
-            {t(`lockey_common_locale_${locale}`)}
+            {tc(`lockey_common_locale_${locale}`)}
           </option>
         ))}
       </select>

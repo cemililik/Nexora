@@ -63,7 +63,7 @@ export function registerModuleLocales(
   // Add module namespace to fallback so t() resolves module-scoped keys
   const fallbacks = i18n.options.fallbackNS as string[] | undefined;
   if (Array.isArray(fallbacks) && !fallbacks.includes(moduleName)) {
-    fallbacks.push(moduleName);
+    i18n.options.fallbackNS = [...fallbacks, moduleName];
   }
 }
 

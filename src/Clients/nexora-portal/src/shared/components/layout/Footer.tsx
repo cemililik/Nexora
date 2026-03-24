@@ -6,7 +6,7 @@ import { cn } from '@/shared/lib/utils';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 
 export function Footer() {
-  const t = useTranslations();
+  const t = useTranslations('common');
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
 
   return (

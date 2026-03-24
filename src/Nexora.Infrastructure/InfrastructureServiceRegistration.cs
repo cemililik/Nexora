@@ -119,8 +119,9 @@ public static class InfrastructureServiceRegistration
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
-        // FluentValidation — auto-register from all loaded assemblies
-        services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
+        // FluentValidation — deferred registration.
+        // Validators are registered after module assemblies are loaded by AddNexoraModules().
+        // Each module can also register validators in its own ConfigureServices().
 
         return services;
     }

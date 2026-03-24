@@ -19,20 +19,21 @@ interface ErrorBoundaryState {
  * Functional component so it can use hooks (useTranslations).
  */
 function ErrorBoundaryFallback({ onReset }: { onReset: () => void }) {
-  const t = useTranslations();
+  const te = useTranslations('error');
+  const tc = useTranslations('common');
 
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 p-8">
       <div className="text-4xl">⚠</div>
       <p className="text-lg font-medium text-foreground">
-        {t('lockey_error_something_went_wrong')}
+        {te('lockey_error_something_went_wrong')}
       </p>
       <button
         type="button"
         onClick={onReset}
         className="rounded-md bg-accent px-4 py-2 text-sm text-accent-foreground hover:bg-accent/90"
       >
-        {t('lockey_common_try_again')}
+        {tc('lockey_common_try_again')}
       </button>
     </div>
   );
@@ -53,11 +54,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error('[ErrorBoundary] Render error caught', { error, errorInfo });
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[ErrorBoundary] Render error caught', { error, errorInfo });
+    }
     try {
       reportError(error, errorInfo?.componentStack ?? undefined);
-    } catch {
-      // Telemetry reporting should never throw
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[ErrorBoundary] reportError failed', e);
+      }
     }
   }
 

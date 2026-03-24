@@ -29,6 +29,7 @@ routes:
         "nexora-api:5000": 1
     plugins:
       cors:
+        # TODO: In production, replace with actual domain origins
         allow_origins: "http://localhost:3000,http://localhost:3001"
         allow_methods: "GET,OPTIONS"
         allow_headers: "Content-Type,Accept,Accept-Language"
@@ -52,7 +53,9 @@ routes:
       nodes:
         "nexora-api:5000": 1
 
-  # ── Hangfire dashboard (admin only, dev: open) ──
+  # ── Hangfire dashboard (admin only) ──
+  # TODO: Production MUST enable authentication (e.g., key-auth or jwt plugin)
+  # to prevent unauthorized access to the Hangfire dashboard.
   - id: 4
     uri: /admin/hangfire*
     upstream:
@@ -60,9 +63,27 @@ routes:
       nodes:
         "nexora-api:5000": 1
 
+  # ── CORS preflight for API routes (no auth required) ──
+  # OPTIONS requests carry no Authorization header; the openid-connect plugin
+  # rejects them before the cors plugin can respond. This higher-priority route
+  # handles preflight and returns proper CORS headers without auth.
+  - id: 99
+    uri: /api/v1/*
+    methods: [OPTIONS]
+    plugins:
+      cors:
+        # TODO: In production, replace with actual domain origins
+        allow_origins: "http://localhost:3000,http://localhost:3001"
+        allow_methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        allow_headers: "Authorization,Content-Type,Accept,Accept-Language,X-Correlation-Id"
+        expose_headers: "X-Correlation-Id,Content-Disposition"
+        max_age: 3600
+        allow_credential: true
+
   # ── All API routes (JWT protected, catch-all) ──
   - id: 100
     uri: /api/v1/*
+    methods: [GET, POST, PUT, PATCH, DELETE]
     priority: -1
     upstream:
       type: roundrobin
@@ -71,7 +92,9 @@ routes:
     plugins:
       openid-connect:
         client_id: nexora-gateway
-        client_secret: nexora-gateway-dev-secret
+        # TODO: In production, inject via env var or secret manager
+        # TODO: In production, inject via secret manager — not hardcoded
+        client_secret: "nexora-gateway-dev-secret"
         discovery: http://keycloak:8080/realms/nexora-dev/.well-known/openid-configuration
         bearer_only: true
         realm: nexora-dev
@@ -81,6 +104,7 @@ routes:
         set_access_token_header: true
         access_token_in_authorization_header: true
       cors:
+        # TODO: In production, replace with actual domain origins
         allow_origins: "http://localhost:3000,http://localhost:3001"
         allow_methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
         allow_headers: "Authorization,Content-Type,Accept,Accept-Language,X-Correlation-Id"

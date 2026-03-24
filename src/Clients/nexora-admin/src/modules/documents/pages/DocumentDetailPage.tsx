@@ -12,6 +12,7 @@ import { useApiError } from '@/shared/hooks/useApiError';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -44,7 +45,7 @@ const ACCESS_PERMISSIONS: AccessPermission[] = ['View', 'Edit', 'Manage'];
 function createVersionSchema(t: (key: string, options?: Record<string, string>) => string) {
   return z.object({
     storageKey: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
-    fileSize: z.number().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    fileSize: z.number().min(0, t('lockey_validation_required', { ns: 'validation' })),
     changeNote: z.string().optional(),
   });
 }
@@ -355,6 +356,7 @@ export default function DocumentDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_action_edit')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_documents_action_edit')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={metadataForm.handleSubmit(onEditSubmit)} className="space-y-4">
             <div>
@@ -406,6 +408,7 @@ export default function DocumentDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_versions_add')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_documents_versions_add')}</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={versionForm.handleSubmit((values) => {
@@ -481,6 +484,7 @@ export default function DocumentDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_access_grant')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_documents_access_grant')}</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={accessForm.handleSubmit((values) => {

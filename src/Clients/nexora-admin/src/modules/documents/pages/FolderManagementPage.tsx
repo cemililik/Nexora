@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +11,7 @@ import { useApiError } from '@/shared/hooks/useApiError';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -48,7 +49,7 @@ export default function FolderManagementPage() {
   const renameFolder = useRenameFolder(editingFolder?.id ?? '');
   const deleteFolder = useDeleteFolder();
 
-  const schema = createFolderSchema(t);
+  const schema = useMemo(() => createFolderSchema(t), [t]);
   const form = useForm<FolderFormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: '' },
@@ -217,6 +218,11 @@ export default function FolderManagementPage() {
                 ? t('lockey_documents_folders_rename')
                 : t('lockey_documents_folders_create')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingFolder
+                ? t('lockey_documents_folders_rename')
+                : t('lockey_documents_folders_create')}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>

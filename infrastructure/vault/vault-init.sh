@@ -17,7 +17,10 @@ if vault status 2>/dev/null | grep -q "Initialized.*true"; then
   echo "Vault already initialized, attempting unseal..."
   if [ -f /vault/data/init-keys.json ]; then
     UNSEAL_KEY=$(cat /vault/data/init-keys.json | grep -o '"unseal_keys_b64":\["[^"]*"' | cut -d'"' -f4)
-    vault operator unseal "$UNSEAL_KEY" || true
+    if ! vault operator unseal "$UNSEAL_KEY"; then
+      echo "ERROR: Vault unseal failed"
+      exit 1
+    fi
     export VAULT_TOKEN=$(cat /vault/data/init-keys.json | grep -o '"root_token":"[^"]*"' | cut -d'"' -f4)
   fi
 else

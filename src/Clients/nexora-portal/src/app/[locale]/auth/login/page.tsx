@@ -11,7 +11,7 @@ import { useState } from 'react';
  * for multi-tenant realm resolution.
  */
 export default function LoginPage() {
-  const t = useTranslations();
+  const t = useTranslations('common');
   const locale = useLocale();
   const [isSigningIn, setIsSigningIn] = useState(false);
 

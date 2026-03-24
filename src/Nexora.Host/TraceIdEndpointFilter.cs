@@ -33,9 +33,12 @@ public sealed class TraceIdEndpointFilter : IEndpointFilter
                     if (traceIdProp is not null && traceIdProp.GetValue(envelope) is null)
                     {
                         // Records use 'with' — reconstruct via reflection on the <T> type
-                        var withTraceId = envelopeType
-                            .GetMethod("<Clone>$")!
-                            .Invoke(envelope, null)!;
+                        var cloneMethod = envelopeType.GetMethod("<Clone>$")
+                            ?? throw new InvalidOperationException(
+                                $"ApiEnvelope<> type {envelopeType.Name} is missing <Clone>$ method");
+                        var withTraceId = cloneMethod.Invoke(envelope, null)
+                            ?? throw new InvalidOperationException(
+                                $"Clone of {envelopeType.Name} returned null");
                         traceIdProp.SetValue(withTraceId, traceId);
 
                         var statusCode = statusCodeResult.StatusCode!.Value;

@@ -14,20 +14,24 @@ let initialized = false;
  */
 export function initTelemetry(): void {
   if (initialized) return;
-  initialized = true;
 
-  const endpoint = import.meta.env.VITE_OTEL_ENDPOINT ?? 'http://localhost:4328';
+  try {
+    const endpoint = import.meta.env.VITE_OTEL_ENDPOINT ?? 'http://localhost:4328';
 
-  const exporter = new OTLPTraceExporter({
-    url: `${endpoint}/v1/traces`,
-  });
+    const exporter = new OTLPTraceExporter({
+      url: `${endpoint}/v1/traces`,
+    });
 
-  const provider = new WebTracerProvider({
-    resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: SERVICE_NAME }),
-    spanProcessors: [new SimpleSpanProcessor(exporter)],
-  });
+    const provider = new WebTracerProvider({
+      resource: resourceFromAttributes({ [ATTR_SERVICE_NAME]: SERVICE_NAME }),
+      spanProcessors: [new SimpleSpanProcessor(exporter)],
+    });
 
-  provider.register();
+    provider.register();
+    initialized = true;
+  } catch (err) {
+    console.error('[Telemetry] initTelemetry failed:', err);
+  }
 }
 
 /**

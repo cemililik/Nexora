@@ -153,10 +153,16 @@ for m in mappers:
     fi
   fi
 
-  curl -s -o /dev/null "$KC_URL/admin/realms/$REALM/clients/$CLIENT_INTERNAL_ID/protocol-mappers/models" \
+  MAPPER_HTTP=$(curl -s -o /tmp/mapper_resp.json -w "%{http_code}" \
+    -X POST "$KC_URL/admin/realms/$REALM/clients/$CLIENT_INTERNAL_ID/protocol-mappers/models" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    -d "$MAPPER_JSON" 2>/dev/null || true
+    -d "$MAPPER_JSON")
+  if [ "${MAPPER_HTTP#2}" = "$MAPPER_HTTP" ]; then
+    echo "ERROR: Failed to create mapper $MAPPER_NAME (HTTP $MAPPER_HTTP)"
+    cat /tmp/mapper_resp.json 2>/dev/null
+    exit 1
+  fi
 }
 
 add_all_mappers() {
@@ -252,7 +258,7 @@ cat > /tmp/user-attrs.json << 'USEREOF'
     "org_id":["00000000-0000-0000-0000-000000000001"],
     "organizations":["00000000-0000-0000-0000-000000000001"],
     "permissions":[
-      "identity.tenants.read","identity.tenants.manage",
+      "identity.tenants.read","identity.tenants.create","identity.tenants.update","identity.tenants.delete",
       "identity.organizations.read","identity.organizations.create","identity.organizations.update","identity.organizations.delete",
       "identity.users.read","identity.users.create","identity.users.update","identity.users.delete",
       "identity.roles.read","identity.roles.create","identity.roles.update","identity.roles.delete",

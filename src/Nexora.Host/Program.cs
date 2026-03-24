@@ -1,3 +1,4 @@
+using FluentValidation;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -71,14 +72,17 @@ try
         {
             // Authority = internal URL (for JWKS fetching from Docker network)
             options.Authority = $"{keycloakBaseUrl}/realms/{keycloakRealm}";
-            options.RequireHttpsMetadata = false; // Dev only — Keycloak runs on HTTP locally
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
 
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 // ValidIssuer = public URL (matches token's iss claim from browser)
                 ValidateIssuer = true,
                 ValidIssuer = $"{keycloakPublicUrl}/realms/{keycloakRealm}",
-                ValidateAudience = false, // Keycloak tokens use azp, not aud for SPA clients
+                // Keycloak SPA (public) clients use the azp claim for client ID;
+                // the aud claim is typically "account", not our app identifiers.
+                // Audience validation is handled at the APISIX gateway layer instead.
+                ValidateAudience = false,
                 ValidateLifetime = true,
                 NameClaimType = "preferred_username",
                 RoleClaimType = "roles"
@@ -141,6 +145,9 @@ try
 
     // Module discovery & registration
     builder.Services.AddNexoraModules(builder.Configuration);
+
+    // FluentValidation — register after modules are loaded so module validators are discovered
+    builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
 
     var app = builder.Build();
 

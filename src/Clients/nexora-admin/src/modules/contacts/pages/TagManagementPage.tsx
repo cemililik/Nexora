@@ -6,6 +6,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -196,6 +197,11 @@ export default function TagManagementPage() {
                 ? t('lockey_contacts_tags_edit')
                 : t('lockey_contacts_tags_create')}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingTag
+                ? t('lockey_contacts_tags_edit')
+                : t('lockey_contacts_tags_create')}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

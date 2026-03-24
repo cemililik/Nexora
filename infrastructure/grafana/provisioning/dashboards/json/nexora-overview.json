@@ -6,7 +6,7 @@
   "timezone": "browser",
   "schemaVersion": 39,
   "version": 1,
-  "refresh": "10s",
+  "refresh": "30s",
   "time": { "from": "now-1h", "to": "now" },
   "panels": [
     {
@@ -59,7 +59,7 @@
       "datasource": { "uid": "prometheus", "type": "prometheus" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, rate(nexora_http_server_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, sum by (le, http_request_method, http_route) (rate(nexora_http_server_request_duration_seconds_bucket[5m])))",
           "legendFormat": "{{http_request_method}} {{http_route}}",
           "refId": "A"
         }

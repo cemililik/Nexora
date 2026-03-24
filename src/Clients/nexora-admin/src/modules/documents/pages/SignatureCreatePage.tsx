@@ -47,7 +47,7 @@ export default function SignatureCreatePage() {
     defaultValues: { documentId: '', title: '', expiresAt: '', recipients: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, replace } = useFieldArray({
     control: form.control,
     name: 'recipients',
   });
@@ -74,12 +74,11 @@ export default function SignatureCreatePage() {
   };
 
   const removeRecipient = (index: number) => {
-    remove(index);
-    // Recalculate signing order for remaining recipients
     const currentRecipients = form.getValues('recipients');
-    currentRecipients.forEach((_, i) => {
-      form.setValue(`recipients.${i}.signingOrder`, i + 1);
-    });
+    const updated = currentRecipients
+      .filter((_, i) => i !== index)
+      .map((r, i) => ({ ...r, signingOrder: i + 1 }));
+    replace(updated);
   };
 
   const onSubmit = (values: SignatureFormValues) => {

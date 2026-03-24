@@ -63,6 +63,10 @@ public sealed class ImportJob : Entity<ImportJobId>
     /// <summary>Transitions the job to Processing status with the total row count.</summary>
     public void MarkProcessing(int totalRows)
     {
+        if (Status != ImportJobStatus.Queued)
+            throw new InvalidOperationException(
+                $"Cannot transition to Processing from {Status}. Expected: Queued.");
+
         Status = ImportJobStatus.Processing;
         TotalRows = totalRows;
     }
@@ -70,6 +74,18 @@ public sealed class ImportJob : Entity<ImportJobId>
     /// <summary>Updates the progress counters during processing.</summary>
     public void UpdateProgress(int processedRows, int successCount, int errorCount)
     {
+        if (Status != ImportJobStatus.Processing)
+            throw new InvalidOperationException(
+                $"Cannot update progress when status is {Status}. Expected: Processing.");
+
+        if (processedRows < 0 || successCount < 0 || errorCount < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(processedRows), "Progress counters must be non-negative.");
+
+        if (TotalRows > 0 && processedRows > TotalRows)
+            throw new ArgumentOutOfRangeException(
+                nameof(processedRows), "ProcessedRows cannot exceed TotalRows.");
+
         ProcessedRows = processedRows;
         SuccessCount = successCount;
         ErrorCount = errorCount;
@@ -78,6 +94,10 @@ public sealed class ImportJob : Entity<ImportJobId>
     /// <summary>Marks the job as successfully completed.</summary>
     public void MarkCompleted()
     {
+        if (Status != ImportJobStatus.Processing)
+            throw new InvalidOperationException(
+                $"Cannot transition to Completed from {Status}. Expected: Processing.");
+
         Status = ImportJobStatus.Completed;
         CompletedAt = DateTimeOffset.UtcNow;
     }
@@ -85,6 +105,10 @@ public sealed class ImportJob : Entity<ImportJobId>
     /// <summary>Marks the job as failed with error details.</summary>
     public void MarkFailed(string errorDetails)
     {
+        if (Status != ImportJobStatus.Processing)
+            throw new InvalidOperationException(
+                $"Cannot transition to Failed from {Status}. Expected: Processing.");
+
         Status = ImportJobStatus.Failed;
         ErrorDetails = errorDetails;
         CompletedAt = DateTimeOffset.UtcNow;

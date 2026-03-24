@@ -24,7 +24,7 @@ export function RequirePermission({
   fallback,
 }: RequirePermissionProps) {
   const { hasPermission, hasAnyPermission } = usePermissions();
-  const t = useTranslations();
+  const t = useTranslations('common');
 
   const hasAccess =
     required.length === 0 ||
