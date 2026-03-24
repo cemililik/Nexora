@@ -20,11 +20,7 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
-export function generateMetadata({
-  params,
-}: {
-  params: { locale: string };
-}): Metadata {
+export function generateMetadata(): Metadata {
   return {
     title: 'Nexora Portal',
     description: 'Nexora multi-tenant portal',
