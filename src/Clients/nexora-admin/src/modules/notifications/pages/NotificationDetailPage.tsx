@@ -18,8 +18,8 @@ export default function NotificationDetailPage() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: 'lockey_notifications_module_name' },
-      { label: 'lockey_notifications_list_title' },
+      { label: 'lockey_notifications_module_name', path: '/notifications/notifications' },
+      { label: 'lockey_notifications_list_title', path: '/notifications/notifications' },
       { label: 'lockey_notifications_detail_title' },
     ]);
   }, [setBreadcrumbs]);

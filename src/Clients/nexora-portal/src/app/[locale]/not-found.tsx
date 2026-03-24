@@ -3,8 +3,8 @@ import { getTranslations } from 'next-intl/server';
 export default async function NotFoundPage() {
   let notFoundText = 'Page not found';
   try {
-    const t = await getTranslations();
-    notFoundText = t('lockey_error_not_found');
+    const te = await getTranslations('error');
+    notFoundText = te('lockey_error_not_found');
   } catch {
     // Locale context not available for root-level 404s — use fallback
   }

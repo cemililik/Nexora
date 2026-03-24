@@ -42,10 +42,10 @@ All API endpoints MUST follow this pattern:
 
 ```typescript
 // Admin (Vite)
-const API_BASE = import.meta.env.VITE_API_BASE_URL;   // e.g. "http://localhost:5000/api/v1"
+const API_BASE = import.meta.env.VITE_API_BASE_URL;   // e.g. "http://localhost:9080/api/v1" (via APISIX gateway)
 
 // Portal (Next.js)
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;      // e.g. "http://localhost:5000/api/v1"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;      // e.g. "http://localhost:9080/api/v1" (via APISIX gateway)
 ```
 
 ---

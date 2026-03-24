@@ -31,6 +31,7 @@ void i18n
       },
     },
     defaultNS: 'common',
+    fallbackNS: ['navigation'],
     fallbackLng: 'en',
     supportedLngs: ['en', 'tr'],
     interpolation: { escapeValue: false },
@@ -57,6 +58,12 @@ export function registerModuleLocales(
 ): void {
   for (const [lang, translations] of Object.entries(locales)) {
     i18n.addResourceBundle(lang, moduleName, translations, true, true);
+  }
+
+  // Add module namespace to fallback so t() resolves module-scoped keys
+  const fallbacks = i18n.options.fallbackNS as string[] | undefined;
+  if (Array.isArray(fallbacks) && !fallbacks.includes(moduleName)) {
+    i18n.options.fallbackNS = [...fallbacks, moduleName];
   }
 }
 

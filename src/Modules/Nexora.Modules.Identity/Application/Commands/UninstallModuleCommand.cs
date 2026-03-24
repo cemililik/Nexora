@@ -28,9 +28,10 @@ public sealed class UninstallModuleValidator : AbstractValidator<UninstallModule
     }
 }
 
-/// <summary>Soft-uninstalls a module by deactivating its tenant module record.</summary>
+/// <summary>Soft-uninstalls a module by deactivating its tenant module record and cleaning up role-permission associations.</summary>
 public sealed class UninstallModuleHandler(
     PlatformDbContext platformDb,
+    IdentityDbContext identityDb,
     IEnumerable<IModule> registeredModules,
     ILogger<UninstallModuleHandler> logger) : ICommandHandler<UninstallModuleCommand>
 {
@@ -58,6 +59,28 @@ public sealed class UninstallModuleHandler(
             await module.OnUninstallAsync(
                 new TenantInstallContext(tenantId.Value.ToString(), schemaName, null),
                 cancellationToken);
+        }
+
+        // Remove role-permission associations for the uninstalled module's permissions
+        var modulePermissionIds = await identityDb.Permissions
+            .Where(p => p.Module == request.ModuleName)
+            .Select(p => p.Id)
+            .ToListAsync(cancellationToken);
+
+        if (modulePermissionIds.Count > 0)
+        {
+            var orphanedRolePermissions = await identityDb.RolePermissions
+                .Where(rp => modulePermissionIds.Contains(rp.PermissionId))
+                .ToListAsync(cancellationToken);
+
+            if (orphanedRolePermissions.Count > 0)
+            {
+                identityDb.RolePermissions.RemoveRange(orphanedRolePermissions);
+                logger.LogInformation("Removed {Count} role-permission associations for module {ModuleName}",
+                    orphanedRolePermissions.Count, request.ModuleName);
+            }
+
+            await identityDb.SaveChangesAsync(cancellationToken);
         }
 
         tenantModule.Deactivate();

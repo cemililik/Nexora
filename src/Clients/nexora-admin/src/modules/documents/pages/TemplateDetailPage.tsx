@@ -1,16 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { toast } from 'sonner';
-
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -51,6 +50,24 @@ function createTemplateSchema(t: (key: string, options?: Record<string, unknown>
 
 type TemplateFormValues = z.infer<ReturnType<typeof createTemplateSchema>>;
 
+const createRenderSchema = (t: (key: string, options?: Record<string, unknown>) => string) =>
+  z.object({
+    folderId: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    outputName: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    variables: z.string().refine(
+      (v) => {
+        try {
+          const parsed: unknown = JSON.parse(v);
+          if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') return false;
+          return Object.values(parsed as Record<string, unknown>).every((val) => typeof val === 'string');
+        } catch { return false; }
+      },
+      { message: t('lockey_documents_render_invalid_json', { ns: 'documents' }) },
+    ),
+  });
+
+type RenderFormValues = z.infer<ReturnType<typeof createRenderSchema>>;
+
 export default function TemplateDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -70,11 +87,18 @@ export default function TemplateDetailPage() {
   const { data: folders } = useFolders();
 
   const [renderOpen, setRenderOpen] = useState(false);
-  const [renderFolderId, setRenderFolderId] = useState('');
-  const [renderOutputName, setRenderOutputName] = useState('');
-  const [renderVariables, setRenderVariables] = useState('{}');
 
-  const schema = createTemplateSchema(t);
+  const renderSchema = useMemo(() => createRenderSchema(t), [t]);
+  const renderForm = useForm<RenderFormValues>({
+    resolver: zodResolver(renderSchema),
+    defaultValues: {
+      folderId: '',
+      outputName: '',
+      variables: '{}',
+    },
+  });
+
+  const schema = useMemo(() => createTemplateSchema(t), [t]);
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -105,6 +129,12 @@ export default function TemplateDetailPage() {
       { label: isCreate ? t('lockey_documents_templates_create') : (template?.name ?? '...') },
     ]);
   }, [setBreadcrumbs, isCreate, template?.name, t]);
+
+  useEffect(() => {
+    if (renderOpen) {
+      renderForm.reset({ folderId: '', outputName: '', variables: '{}' });
+    }
+  }, [renderOpen, renderForm]);
 
   if (!isCreate && isPending) return <LoadingSkeleton />;
 
@@ -145,10 +175,11 @@ export default function TemplateDetailPage() {
               type="button"
               variant="outline"
               onClick={() => {
+                if (!id) return;
                 if (template.isActive) {
-                  deactivateTemplate.mutate(id!, { onError: (err) => handleApiError(err) });
+                  deactivateTemplate.mutate(id, { onError: (err) => handleApiError(err) });
                 } else {
-                  activateTemplate.mutate(id!, { onError: (err) => handleApiError(err) });
+                  activateTemplate.mutate(id, { onError: (err) => handleApiError(err) });
                 }
               }}
             >
@@ -176,8 +207,9 @@ export default function TemplateDetailPage() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
         <div>
-          <label className="text-sm font-medium">{t('lockey_documents_templates_form_name')}</label>
+          <label htmlFor="template-name" className="text-sm font-medium">{t('lockey_documents_templates_form_name')}</label>
           <input
+            id="template-name"
             type="text"
             {...form.register('name')}
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -189,47 +221,54 @@ export default function TemplateDetailPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium">{t('lockey_documents_templates_form_category')}</label>
-            <Select
-              value={form.watch('category')}
-              onValueChange={(v) => form.setValue('category', v as typeof CATEGORIES[number])}
-            >
-              <SelectTrigger className="mt-1" aria-label={t('lockey_documents_templates_form_category')}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {t(`lockey_documents_templates_category_${c.toLowerCase()}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label htmlFor="template-category" className="text-sm font-medium">{t('lockey_documents_templates_form_category')}</label>
+            <Controller
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="template-category" className="mt-1" aria-label={t('lockey_documents_templates_form_category')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {t(`lockey_documents_templates_category_${c.toLowerCase()}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
           <div>
-            <label className="text-sm font-medium">{t('lockey_documents_templates_form_format')}</label>
-            <Select
-              value={form.watch('format')}
-              onValueChange={(v) => form.setValue('format', v as typeof FORMATS[number])}
-            >
-              <SelectTrigger className="mt-1" aria-label={t('lockey_documents_templates_form_format')}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FORMATS.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {t(`lockey_documents_templates_format_${f.toLowerCase()}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label htmlFor="template-format" className="text-sm font-medium">{t('lockey_documents_templates_form_format')}</label>
+            <Controller
+              control={form.control}
+              name="format"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="template-format" className="mt-1" aria-label={t('lockey_documents_templates_form_format')}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {t(`lockey_documents_templates_format_${f.toLowerCase()}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
           </div>
         </div>
 
         {isCreate && (
           <div>
-            <label className="text-sm font-medium">{t('lockey_documents_templates_form_storage_key')}</label>
+            <label htmlFor="template-storage-key" className="text-sm font-medium">{t('lockey_documents_templates_form_storage_key')}</label>
             <input
+              id="template-storage-key"
               type="text"
               {...form.register('templateStorageKey')}
               className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -243,8 +282,9 @@ export default function TemplateDetailPage() {
         )}
 
         <div>
-          <label className="text-sm font-medium">{t('lockey_documents_templates_form_variables')}</label>
+          <label htmlFor="template-variables" className="text-sm font-medium">{t('lockey_documents_templates_form_variables')}</label>
           <textarea
+            id="template-variables"
             {...form.register('variableDefinitions')}
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
             rows={4}
@@ -275,66 +315,76 @@ export default function TemplateDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_documents_templates_render')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_documents_templates_render')}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <form
+            onSubmit={renderForm.handleSubmit((values) => {
+              const variables: Record<string, string> = JSON.parse(values.variables);
+              renderTemplate.mutate(
+                { folderId: values.folderId, outputName: values.outputName, variables },
+                { onSuccess: () => setRenderOpen(false), onError: (err) => handleApiError(err) },
+              );
+            })}
+            className="space-y-4"
+          >
             <div>
               <label className="text-sm font-medium">{t('lockey_documents_templates_render_form_folder')}</label>
-              <Select value={renderFolderId} onValueChange={setRenderFolderId}>
-                <SelectTrigger className="mt-1" aria-label={t('lockey_documents_templates_render_form_folder')}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {folders?.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {f.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Controller
+                control={renderForm.control}
+                name="folderId"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger className="mt-1" aria-label={t('lockey_documents_templates_render_form_folder')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {folders?.map((f) => (
+                        <SelectItem key={f.id} value={f.id}>
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {renderForm.formState.errors.folderId?.message && (
+                <p className="mt-1 text-sm text-destructive">{renderForm.formState.errors.folderId.message}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium">{t('lockey_documents_templates_render_form_name')}</label>
               <input
                 type="text"
-                value={renderOutputName}
-                onChange={(e) => setRenderOutputName(e.target.value)}
+                {...renderForm.register('outputName')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
+              {renderForm.formState.errors.outputName?.message && (
+                <p className="mt-1 text-sm text-destructive">{renderForm.formState.errors.outputName.message}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium">{t('lockey_documents_templates_render_form_variables')}</label>
               <textarea
-                value={renderVariables}
-                onChange={(e) => setRenderVariables(e.target.value)}
+                {...renderForm.register('variables')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
                 rows={4}
               />
+              {renderForm.formState.errors.variables?.message && (
+                <p className="mt-1 text-sm text-destructive">{renderForm.formState.errors.variables.message}</p>
+              )}
             </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setRenderOpen(false)}>
-              {t('lockey_common_cancel', { ns: 'common' })}
-            </Button>
-            <Button
-              type="button"
-              disabled={renderTemplate.isPending || !renderFolderId || !renderOutputName}
-              onClick={() => {
-                let variables: Record<string, string> = {};
-                try {
-                  variables = JSON.parse(renderVariables);
-                } catch {
-                  toast.error(t('lockey_validation_invalid_json', { ns: 'validation' }));
-                  return;
-                }
-                renderTemplate.mutate(
-                  { folderId: renderFolderId, outputName: renderOutputName, variables },
-                  { onSuccess: () => setRenderOpen(false), onError: (err) => handleApiError(err) },
-                );
-              }}
-            >
-              {t('lockey_documents_templates_render')}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setRenderOpen(false)}>
+                {t('lockey_common_cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                type="submit"
+                disabled={renderTemplate.isPending}
+              >
+                {t('lockey_documents_templates_render')}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

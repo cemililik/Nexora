@@ -1,0 +1,123 @@
+# APISIX Standalone Routes
+# Loaded automatically — APISIX watches this file for hot-reload.
+#
+# JWT validation at gateway level via openid-connect plugin (Keycloak).
+# Backend also validates JWT (defense in depth) for tenant/org context extraction.
+
+routes:
+  # ── Health check (public, no CORS needed) ──
+  - id: 1
+    uri: /health
+    upstream:
+      type: roundrobin
+      nodes:
+        "nexora-api:5000": 1
+    plugins:
+      limit-req:
+        rate: 10
+        burst: 5
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+
+  # ── Localization endpoint (public) ──
+  - id: 2
+    uri: /api/v1/localization/*
+    upstream:
+      type: roundrobin
+      nodes:
+        "nexora-api:5000": 1
+    plugins:
+      cors:
+        # TODO: In production, replace with actual domain origins
+        allow_origins: "http://localhost:3000,http://localhost:3001"
+        allow_methods: "GET,OPTIONS"
+        allow_headers: "Content-Type,Accept,Accept-Language"
+        max_age: 3600
+        allow_credential: true
+      limit-req:
+        rate: 50
+        burst: 20
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+      request-id:
+        header_name: X-Correlation-Id
+        include_in_response: true
+
+  # ── OpenAPI docs (dev only, public) ──
+  - id: 3
+    uri: /openapi/*
+    upstream:
+      type: roundrobin
+      nodes:
+        "nexora-api:5000": 1
+
+  # ── Hangfire dashboard (admin only) ──
+  # TODO: Production MUST enable authentication (e.g., key-auth or jwt plugin)
+  # to prevent unauthorized access to the Hangfire dashboard.
+  - id: 4
+    uri: /admin/hangfire*
+    upstream:
+      type: roundrobin
+      nodes:
+        "nexora-api:5000": 1
+
+  # ── CORS preflight for API routes (no auth required) ──
+  # OPTIONS requests carry no Authorization header; the openid-connect plugin
+  # rejects them before the cors plugin can respond. This higher-priority route
+  # handles preflight and returns proper CORS headers without auth.
+  - id: 99
+    uri: /api/v1/*
+    methods: [OPTIONS]
+    plugins:
+      cors:
+        # TODO: In production, replace with actual domain origins
+        allow_origins: "http://localhost:3000,http://localhost:3001"
+        allow_methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        allow_headers: "Authorization,Content-Type,Accept,Accept-Language,X-Correlation-Id"
+        expose_headers: "X-Correlation-Id,Content-Disposition"
+        max_age: 3600
+        allow_credential: true
+
+  # ── All API routes (JWT protected, catch-all) ──
+  - id: 100
+    uri: /api/v1/*
+    methods: [GET, POST, PUT, PATCH, DELETE]
+    priority: -1
+    upstream:
+      type: roundrobin
+      nodes:
+        "nexora-api:5000": 1
+    plugins:
+      openid-connect:
+        client_id: nexora-gateway
+        # TODO: In production, inject via env var or secret manager
+        # TODO: In production, inject via secret manager — not hardcoded
+        client_secret: "nexora-gateway-dev-secret"
+        discovery: http://keycloak:8080/realms/nexora-dev/.well-known/openid-configuration
+        bearer_only: true
+        realm: nexora-dev
+        scope: openid
+        set_userinfo_header: false
+        set_id_token_header: false
+        set_access_token_header: true
+        access_token_in_authorization_header: true
+      cors:
+        # TODO: In production, replace with actual domain origins
+        allow_origins: "http://localhost:3000,http://localhost:3001"
+        allow_methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        allow_headers: "Authorization,Content-Type,Accept,Accept-Language,X-Correlation-Id"
+        expose_headers: "X-Correlation-Id,Content-Disposition"
+        max_age: 3600
+        allow_credential: true
+      limit-req:
+        rate: 100
+        burst: 50
+        key_type: var
+        key: remote_addr
+        rejected_code: 429
+      request-id:
+        header_name: X-Correlation-Id
+        include_in_response: true
+#END

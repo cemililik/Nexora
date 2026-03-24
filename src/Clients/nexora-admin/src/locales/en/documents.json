@@ -85,6 +85,7 @@
   "lockey_documents_versions_col_note": "Change Note",
   "lockey_documents_versions_col_uploaded_by": "Uploaded By",
   "lockey_documents_versions_col_date": "Date",
+  "lockey_documents_versions_form_storage_key": "Storage Key",
   "lockey_documents_versions_form_change_note": "Change Note",
 
   "lockey_documents_access_title": "Access Control",
@@ -131,6 +132,8 @@
   "lockey_documents_folders_toast_created": "Folder created.",
   "lockey_documents_folders_toast_renamed": "Folder renamed.",
   "lockey_documents_folders_toast_deleted": "Folder deleted.",
+  "lockey_documents_folders_expand": "Expand folder",
+  "lockey_documents_folders_collapse": "Collapse folder",
   "lockey_documents_folders_empty": "No folders found.",
 
   "lockey_documents_templates_title": "Document Templates",
@@ -160,6 +163,7 @@
   "lockey_documents_templates_toast_deactivated": "Template deactivated.",
   "lockey_documents_templates_toast_rendered": "Document rendered from template.",
   "lockey_documents_templates_empty": "No templates found.",
+  "lockey_documents_render_invalid_json": "Invalid JSON format.",
   "lockey_documents_templates_category_contract": "Contract",
   "lockey_documents_templates_category_receipt": "Receipt",
   "lockey_documents_templates_category_letter": "Letter",
@@ -211,7 +215,9 @@
   "lockey_documents_signatures_recipient_status_signed": "Signed",
   "lockey_documents_signatures_recipient_status_declined": "Declined",
   "lockey_documents_signatures_recipient_status_expired": "Expired",
+  "lockey_documents_signatures_filter_status": "Filter by status",
   "lockey_documents_signatures_filter_all_statuses": "All Statuses",
+  "lockey_documents_signatures_not_signed": "Not signed",
 
   "lockey_documents_file_size_bytes": "{{size}} B",
   "lockey_documents_file_size_kb": "{{size}} KB",

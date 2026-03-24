@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -17,6 +17,12 @@ function createSignatureSchema(t: (key: string, options?: Record<string, unknown
     documentId: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
     title: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
     expiresAt: z.string().optional(),
+    recipients: z.array(z.object({
+      contactId: z.string().optional(),
+      email: z.string().email(t('lockey_validation_email', { ns: 'validation' })),
+      name: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
+      signingOrder: z.number(),
+    })).min(1, t('lockey_documents_signatures_recipients_required', { ns: 'documents' })),
   });
 }
 
@@ -31,15 +37,19 @@ export default function SignatureCreatePage() {
   const { handleApiError } = useApiError();
   const createSignature = useCreateSignatureRequest();
 
-  const [recipients, setRecipients] = useState<SignatureRecipientInput[]>([]);
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientContactId, setRecipientContactId] = useState('');
 
-  const schema = createSignatureSchema(t);
+  const schema = useMemo(() => createSignatureSchema(t), [t]);
   const form = useForm<SignatureFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { documentId: '', title: '', expiresAt: '' },
+    defaultValues: { documentId: '', title: '', expiresAt: '', recipients: [] },
+  });
+
+  const { fields, append, replace } = useFieldArray({
+    control: form.control,
+    name: 'recipients',
   });
 
   useEffect(() => {
@@ -52,33 +62,33 @@ export default function SignatureCreatePage() {
 
   const addRecipient = () => {
     if (!recipientName || !recipientEmail || !recipientContactId) return;
-    setRecipients((prev) => [
-      ...prev,
-      {
-        contactId: recipientContactId,
-        email: recipientEmail,
-        name: recipientName,
-        signingOrder: prev.length + 1,
-      },
-    ]);
+    append({
+      contactId: recipientContactId,
+      email: recipientEmail,
+      name: recipientName,
+      signingOrder: fields.length + 1,
+    });
     setRecipientName('');
     setRecipientEmail('');
     setRecipientContactId('');
   };
 
   const removeRecipient = (index: number) => {
-    setRecipients((prev) =>
-      prev.filter((_, i) => i !== index).map((r, i) => ({ ...r, signingOrder: i + 1 })),
-    );
+    const currentRecipients = form.getValues('recipients');
+    const updated = currentRecipients
+      .filter((_, i) => i !== index)
+      .map((r, i) => ({ ...r, signingOrder: i + 1 }));
+    replace(updated);
   };
 
   const onSubmit = (values: SignatureFormValues) => {
+    if (!canCreate) return;
     createSignature.mutate(
       {
         documentId: values.documentId,
         title: values.title,
         expiresAt: values.expiresAt || undefined,
-        recipients,
+        recipients: values.recipients as SignatureRecipientInput[],
       },
       { onSuccess: () => navigate('/documents/signatures'), onError: (err) => handleApiError(err) },
     );
@@ -126,7 +136,7 @@ export default function SignatureCreatePage() {
         <div className="space-y-3">
           <h3 className="text-sm font-semibold">{t('lockey_documents_signatures_col_recipients')}</h3>
 
-          {recipients.length > 0 && (
+          {fields.length > 0 && (
             <div className="rounded-lg border">
               <table className="w-full text-sm" aria-label={t('lockey_documents_signatures_col_recipients')}>
                 <thead>
@@ -138,8 +148,8 @@ export default function SignatureCreatePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recipients.map((r, idx) => (
-                    <tr key={idx} className="border-b last:border-0">
+                  {fields.map((r, idx) => (
+                    <tr key={r.id} className="border-b last:border-0">
                       <td className="px-3 py-2">{r.signingOrder}</td>
                       <td className="px-3 py-2">{r.name}</td>
                       <td className="px-3 py-2">{r.email}</td>
@@ -195,7 +205,7 @@ export default function SignatureCreatePage() {
           {canCreate && (
             <Button
               type="submit"
-              disabled={createSignature.isPending || recipients.length === 0}
+              disabled={createSignature.isPending || fields.length === 0}
             >
               {t('lockey_documents_signatures_create')}
             </Button>

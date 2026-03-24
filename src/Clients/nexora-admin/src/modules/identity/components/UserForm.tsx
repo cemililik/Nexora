@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -70,8 +71,9 @@ function CreateForm({
   isPending: boolean;
 }) {
   const { t } = useTranslation('identity');
+  const userSchema = useMemo(() => createUserSchemaFactory(t), [t]);
   const form = useForm<CreateUserRequest>({
-    resolver: zodResolver(createUserSchemaFactory(t)),
+    resolver: zodResolver(userSchema),
     defaultValues: { email: '', firstName: '', lastName: '', temporaryPassword: '' },
   });
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Nexora.SharedKernel.Domain.Exceptions;
@@ -20,12 +21,14 @@ public sealed class GlobalExceptionHandler(
         CancellationToken cancellationToken)
     {
         var (statusCode, errorKey, logLevel, errorParams) = MapException(exception);
+        var traceId = Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier;
 
         logger.Log(logLevel, exception,
-            "Unhandled {ExceptionType} at {Method} {Path}",
+            "Unhandled {ExceptionType} at {Method} {Path}, TraceId: {TraceId}",
             exception.GetType().Name,
             httpContext.Request.Method,
-            httpContext.Request.Path);
+            httpContext.Request.Path,
+            traceId);
 
         httpContext.Response.StatusCode = statusCode;
 
@@ -37,13 +40,13 @@ public sealed class GlobalExceptionHandler(
                     new Dictionary<string, string> { ["field"] = e.PropertyName }))
                 .ToList();
 
-            var validationEnvelope = ApiEnvelope<object>.ValidationFail(validationErrors);
+            var validationEnvelope = ApiEnvelope<object>.ValidationFail(validationErrors, traceId);
             await httpContext.Response.WriteAsJsonAsync(validationEnvelope, cancellationToken);
             return true;
         }
 
         var envelope = ApiEnvelope<object>.Fail(
-            new Error(new LocalizedMessage(errorKey, errorParams)));
+            new Error(new LocalizedMessage(errorKey, errorParams)), traceId);
 
         await httpContext.Response.WriteAsJsonAsync(envelope, cancellationToken);
         return true;

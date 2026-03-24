@@ -3,6 +3,13 @@ import { createRoot } from 'react-dom/client';
 
 import '@/shared/lib/i18n';
 import '@/app/globals.css';
+import { initTelemetry } from '@/shared/lib/telemetry';
+
+try {
+  initTelemetry();
+} catch (err) {
+  console.error('[Telemetry] Failed to initialize:', err);
+}
 
 import { App } from '@/app/App';
 

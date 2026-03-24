@@ -35,7 +35,8 @@ function getIcon(iconName: string): LucideIcon {
 }
 
 export function Sidebar() {
-  const t = useTranslations();
+  const tc = useTranslations('common');
+  const tn = useTranslations('navigation');
   const pathname = usePathname();
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const { activeModules } = useModules();
@@ -62,7 +63,7 @@ export function Sidebar() {
       <div className="flex h-16 items-center justify-center border-b border-border px-4">
         {sidebarOpen && (
           <span className="text-lg font-semibold text-foreground">
-            {t('lockey_common_app_name')}
+            {tc('lockey_common_app_name')}
           </span>
         )}
       </div>
@@ -84,7 +85,7 @@ export function Sidebar() {
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
-              {sidebarOpen && <span>{t(item.label)}</span>}
+              {sidebarOpen && <span>{tn(item.label)}</span>}
             </Link>
           );
         })}

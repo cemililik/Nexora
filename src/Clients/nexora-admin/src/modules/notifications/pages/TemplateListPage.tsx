@@ -29,7 +29,19 @@ export default function TemplateListPage() {
   const canManage = hasPermission('notifications.template.manage');
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const channel = (searchParams.get('channel') as NotificationChannel) || undefined;
+  const rawChannel = searchParams.get('channel');
+  const channel = CHANNELS.includes(rawChannel as NotificationChannel) ? (rawChannel as NotificationChannel) : undefined;
+
+  // Remove invalid channel param from URL
+  useEffect(() => {
+    if (rawChannel && !CHANNELS.includes(rawChannel as NotificationChannel)) {
+      setSearchParams((prev: URLSearchParams) => {
+        const next = new URLSearchParams(prev);
+        next.delete('channel');
+        return next;
+      }, { replace: true });
+    }
+  }, [rawChannel, setSearchParams]);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -81,10 +93,10 @@ export default function TemplateListPage() {
       header: t('lockey_notifications_templates_col_created_at'),
       render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
     },
-    {
-      key: 'actions',
+    ...(canManage ? [{
+      key: 'actions' as const,
       header: t('lockey_notifications_templates_col_actions'),
-      render: (row) => (
+      render: (row: NotificationTemplateDto) => (
         <Button
           type="button"
           variant="ghost"
@@ -94,7 +106,7 @@ export default function TemplateListPage() {
           {t('lockey_notifications_templates_edit')}
         </Button>
       ),
-    },
+    }] : []),
   ];
 
   return (

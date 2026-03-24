@@ -1,6 +1,4 @@
 'use client';
-// Required: useAuthStore (Zustand) and SectionRenderer need client context.
-// TODO: Refactor to pass user data from server layout when auth sync is removed.
 
 import { useTranslations } from 'next-intl';
 
@@ -12,7 +10,7 @@ import { useAuthStore } from '@/shared/lib/stores/authStore';
  * dashboard sections from all active modules.
  */
 export default function DashboardPage() {
-  const t = useTranslations();
+  const t = useTranslations('common');
   const user = useAuthStore((s) => s.user);
 
   return (

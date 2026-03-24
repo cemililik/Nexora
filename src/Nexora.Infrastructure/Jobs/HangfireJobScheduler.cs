@@ -15,18 +15,13 @@ public sealed class HangfireJobScheduler : IJobScheduler
         string cronExpression,
         string queue = "default") where TJob : class
     {
+        // TODO: Refactor IJobScheduler to accept TParams and call job.RunAsync(params, CancellationToken.None)
+        // Currently uses ToString() as a no-op — recurring jobs must be registered with proper method invocation.
         RecurringJob.AddOrUpdate<TJob>(
             jobId,
             queue,
-            job => ExecuteJob(job),
+            job => job.ToString(),
             cronExpression,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-    }
-
-    private static Task ExecuteJob<TJob>(TJob job) where TJob : class
-    {
-        // The actual job execution is handled by Hangfire's activation.
-        // Jobs must implement NexoraJob<TParams>.
-        return Task.CompletedTask;
     }
 }

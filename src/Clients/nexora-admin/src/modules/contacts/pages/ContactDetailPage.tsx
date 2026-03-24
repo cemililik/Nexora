@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -62,7 +62,7 @@ export default function ContactDetailPage() {
       { label: 'lockey_contacts_module_name', path: '/contacts/contacts' },
       { label: contact?.displayName ?? t('lockey_common_loading', { ns: 'common' }) },
     ]);
-  }, [setBreadcrumbs, contact]);
+  }, [setBreadcrumbs, contact, t]);
 
   if (isPending) return <LoadingSkeleton lines={8} />;
   if (!contact) return null;
@@ -344,7 +344,10 @@ function TagsTab({ contactId, t }: TagsTabProps) {
   const { hasPermission } = usePermissions();
   const canManageTags = hasPermission('contacts.tag.update');
 
-  const assignedTagIds = new Set(contact?.tags.map((ct) => ct.tagId) ?? []);
+  const assignedTagIds = useMemo(
+    () => new Set(contact?.tags.map((ct) => ct.tagId) ?? []),
+    [contact?.tags],
+  );
 
   return (
     <Card>
@@ -443,13 +446,14 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const canDelete = hasPermission('contacts.relationship.delete');
   const [showForm, setShowForm] = useState(false);
 
+  const relationshipSchema = useMemo(() => createRelationshipSchema(t), [t]);
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<RelationshipFormValues>({
-    resolver: zodResolver(createRelationshipSchema(t)),
+    resolver: zodResolver(relationshipSchema),
     defaultValues: { relatedContactId: '', type: 'ContactOf' },
   });
 
@@ -582,13 +586,14 @@ function NotesTab({ contactId, t, i18n }: NotesTabProps) {
   const canUpdate = hasPermission('contacts.note.update');
   const canDelete = hasPermission('contacts.note.delete');
 
+  const noteSchema = useMemo(() => createNoteSchema(t), [t]);
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isValid },
   } = useForm<NoteFormValues>({
-    resolver: zodResolver(createNoteSchema(t)),
+    resolver: zodResolver(noteSchema),
     defaultValues: { content: '' },
     mode: 'onChange',
   });
@@ -757,17 +762,19 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
   const canManage = hasPermission('contacts.custom-field.manage');
   const [editingField, setEditingField] = useState<string | null>(null);
 
+  const customFieldSchema = useMemo(() => createCustomFieldSchema(t), [t]);
   const {
     register,
     handleSubmit,
     reset,
   } = useForm<CustomFieldFormValues>({
-    resolver: zodResolver(createCustomFieldSchema(t)),
+    resolver: zodResolver(customFieldSchema),
     defaultValues: { value: '' },
   });
 
-  const valueMap = new Map(
-    fieldValues?.map((fv) => [fv.fieldDefinitionId, fv.value]) ?? [],
+  const valueMap = useMemo(
+    () => new Map(fieldValues?.map((fv) => [fv.fieldDefinitionId, fv.value]) ?? []),
+    [fieldValues],
   );
 
   const startEditing = (defId: string) => {
@@ -904,24 +911,26 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
   const canExport = hasPermission('contacts.gdpr.export');
   const canDelete = hasPermission('contacts.gdpr.delete');
 
+  const gdprDeleteSchema = useMemo(() => createGdprDeleteSchema(t), [t]);
   const {
     register,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = useForm<GdprDeleteFormValues>({
-    resolver: zodResolver(createGdprDeleteSchema(t)),
+    resolver: zodResolver(gdprDeleteSchema),
     defaultValues: { reason: '' },
   });
 
-  const reasonValue = watch('reason');
+  const reasonValue = useWatch({ control, name: 'reason' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const consentTypes: ConsentType[] = ['EmailMarketing', 'SmsMarketing', 'DataProcessing'];
   const channels: CommunicationChannel[] = ['Email', 'Sms', 'WhatsApp', 'Phone', 'Mail'];
 
-  const consentMap = new Map(
-    consents?.map((c) => [c.consentType, c]) ?? [],
+  const consentMap = useMemo(
+    () => new Map(consents?.map((c) => [c.consentType, c]) ?? []),
+    [consents],
   );
 
   return (

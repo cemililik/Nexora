@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Nexora Dev",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "nexora",
+      "Username": "nexora",
+      "SSLMode": "prefer"
+    }
+  }
+}

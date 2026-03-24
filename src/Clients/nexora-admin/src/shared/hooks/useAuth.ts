@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import type { TFunction } from 'i18next';
 
 import { api, setAuthToken } from '@/shared/lib/api';
@@ -56,22 +55,40 @@ export function useAuth() {
 
         setAuthToken(keycloak.token);
 
-        try {
-          const claims = parseTokenClaims(keycloak.token);
-          const userInfo = await api.get<UserInfo>('/identity/users/me');
+        const claims = parseTokenClaims(keycloak.token);
 
-          setSession({
-            user: userInfo,
-            token: keycloak.token,
-            tenantId: claims.tenant_id,
-            organizationId: claims.organization_id,
-            permissions: claims.permissions,
-          });
-        } catch (error) {
-          console.error('[useAuth]', error);
-          clearSession();
-          toast.error(tRef.current('lockey_error_session_expired'));
+        let userInfo: UserInfo | null = null;
+        try {
+          userInfo = await api.get<UserInfo>('/identity/users/me');
+        } catch (err: unknown) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          if (status === 401 || status === 403) {
+            // Token rejected by backend — force re-login
+            console.error('[useAuth] /me returned', status, '— redirecting to login');
+            setAuthToken(null);
+            clearSession();
+            setIsInitializing(false);
+            keycloak.login();
+            return;
+          }
+          // 404 (tenant not provisioned), network errors, 5xx — fall back to token claims
+          console.warn('[useAuth] /me failed, falling back to token claims', err);
         }
+
+        setSession({
+          user: userInfo ?? {
+            id: claims.sub,
+            email: claims.email,
+            firstName: claims.preferred_username,
+            lastName: '',
+            status: 'Active',
+            organizations: [],
+          },
+          token: keycloak.token,
+          tenantId: claims.tenant_id,
+          organizationId: claims.organization_id,
+          permissions: claims.permissions,
+        });
 
         setIsInitializing(false);
       })

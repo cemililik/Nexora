@@ -65,14 +65,12 @@ public sealed class DocumentsModule : IModule
     /// <inheritdoc />
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
-        var module = endpoints.MapGroup("/api/v1/documents");
-
-        module.MapFolderEndpoints();
-        module.MapDocumentEndpoints();
-        module.MapDocumentVersionEndpoints();
-        module.MapDocumentAccessEndpoints();
-        module.MapSignatureEndpoints();
-        module.MapTemplateEndpoints();
+        endpoints.MapFolderEndpoints();
+        endpoints.MapDocumentEndpoints();
+        endpoints.MapDocumentVersionEndpoints();
+        endpoints.MapDocumentAccessEndpoints();
+        endpoints.MapSignatureEndpoints();
+        endpoints.MapTemplateEndpoints();
     }
 
     /// <inheritdoc />
@@ -99,7 +97,9 @@ public sealed class DocumentsModule : IModule
     public Task OnStartupAsync(CancellationToken ct)
     {
         // Documents module permissions are seeded centrally in IdentityModuleMigration.SeedAsync()
-        // (8 permissions: document read/upload/delete, folder read/manage, signature create, template read/manage).
+        // (8 permissions: documents.document.read, documents.document.upload, documents.document.update,
+        //  documents.document.delete, documents.folder.manage, documents.template.manage,
+        //  documents.signature.read, documents.signature.create).
         return Task.CompletedTask;
     }
 

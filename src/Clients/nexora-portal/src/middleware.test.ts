@@ -38,6 +38,7 @@ const { middleware } = await import('./middleware');
 describe('middleware', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.AUTH_SECRET = 'test-secret';
   });
 
   it('should_AllowPublicPaths_WithoutAuthCheck', async () => {

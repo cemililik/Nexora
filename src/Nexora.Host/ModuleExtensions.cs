@@ -1,3 +1,4 @@
+using System.Reflection;
 using Nexora.Infrastructure.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
 
@@ -17,6 +18,21 @@ public static class ModuleExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Ensure module assemblies are loaded — .NET loads assemblies lazily,
+        // so AppDomain.GetAssemblies() may not include module DLLs in Docker/publish.
+        var appDir = AppContext.BaseDirectory;
+        foreach (var dll in Directory.GetFiles(appDir, "Nexora.Modules.*.dll"))
+        {
+            try
+            {
+                Assembly.LoadFrom(dll);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[ModuleExtensions] Failed to load assembly: {dll} — {ex.Message}");
+            }
+        }
+
         // Discover all IModule implementations from loaded assemblies
         var moduleTypes = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(a => a.GetTypes())
@@ -67,7 +83,8 @@ public static class ModuleExtensions
     {
         foreach (var module in _modules)
         {
-            var group = app.MapGroup($"/api/v1/{module.Name}");
+            var group = app.MapGroup($"/api/v1/{module.Name}")
+                .AddEndpointFilter<TraceIdEndpointFilter>();
             module.MapEndpoints(group);
         }
 

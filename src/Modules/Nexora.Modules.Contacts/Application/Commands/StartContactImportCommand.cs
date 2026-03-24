@@ -3,6 +3,8 @@ using Hangfire;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexora.Modules.Contacts.Application.DTOs;
+using Nexora.Modules.Contacts.Domain.Entities;
+using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.Modules.Contacts.Infrastructure.Jobs;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -44,6 +46,7 @@ public sealed class StartContactImportHandler(
     ITenantContextAccessor tenantContextAccessor,
     IOptions<StorageOptions> storageOptions,
     IBackgroundJobClient backgroundJobClient,
+    ContactsDbContext dbContext,
     ILogger<StartContactImportHandler> logger) : ICommandHandler<StartContactImportCommand, ImportJobDto>
 {
     public async Task<Result<ImportJobDto>> Handle(
@@ -80,6 +83,13 @@ public sealed class StartContactImportHandler(
             return Result<ImportJobDto>.Failure(
                 LocalizedMessage.Of("lockey_contacts_error_import_file_not_found"));
 
+        var userId = tenantContextAccessor.Current.UserId;
+        var importJob = ImportJob.Create(
+            tenantId, orgId, request.FileName, request.FileFormat, request.StorageKey, userId);
+
+        await dbContext.ImportJobs.AddAsync(importJob, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         var hangfireJobId = backgroundJobClient.Enqueue<ContactImportJob>(j => j.RunAsync(
             new ContactImportJobParams
             {
@@ -89,19 +99,20 @@ public sealed class StartContactImportHandler(
                 FileName = request.FileName,
                 FileFormat = request.FileFormat,
                 StorageKey = request.StorageKey,
+                ImportJobId = importJob.Id.Value,
             },
             CancellationToken.None));
 
-        // TODO: When GetImportJobStatusQuery is connected to Hangfire, store hangfireJobId mapping
-        var jobId = Guid.NewGuid();
+        importJob.SetHangfireJobId(hangfireJobId);
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Contact import job {JobId} (Hangfire: {HangfireJobId}) started for tenant {TenantId} with file {FileName} (key: {StorageKey})",
-            jobId, hangfireJobId, tenantId, request.FileName, request.StorageKey);
+            importJob.Id, hangfireJobId, tenantId, request.FileName, request.StorageKey);
 
         var dto = new ImportJobDto(
-            jobId, "Queued", 0, 0, 0, 0,
-            DateTimeOffset.UtcNow, null);
+            importJob.Id.Value, importJob.Status.ToString(), 0, 0, 0, 0,
+            importJob.CreatedAt, null);
 
         return Result<ImportJobDto>.Success(dto,
             LocalizedMessage.Of("lockey_contacts_import_job_started"));

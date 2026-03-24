@@ -115,7 +115,7 @@ export default function SignatureDetailPage() {
                     <td className="px-4 py-2">
                       {r.signedAt
                         ? new Date(r.signedAt).toLocaleDateString(i18n.language)
-                        : '-'}
+                        : t('lockey_documents_signatures_not_signed')}
                     </td>
                   </tr>
                 ))}
@@ -134,7 +134,8 @@ export default function SignatureDetailPage() {
         title={t('lockey_documents_signatures_confirm_send_title')}
         description={t('lockey_documents_signatures_confirm_send')}
         onConfirm={() => {
-          sendRequest.mutate(id!, {
+          if (!id) return;
+          sendRequest.mutate(id, {
             onSuccess: () => setSendConfirm(false),
             onError: (err) => handleApiError(err),
           });
@@ -150,7 +151,8 @@ export default function SignatureDetailPage() {
         description={t('lockey_documents_signatures_confirm_cancel')}
         variant="destructive"
         onConfirm={() => {
-          cancelRequest.mutate(id!, {
+          if (!id) return;
+          cancelRequest.mutate(id, {
             onSuccess: () => setCancelConfirm(false),
             onError: (err) => handleApiError(err),
           });

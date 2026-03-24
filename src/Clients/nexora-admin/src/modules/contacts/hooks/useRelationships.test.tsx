@@ -19,6 +19,7 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+import type { AddRelationshipRequest } from '../types';
 import {
   relationshipKeys,
   useRelationships,
@@ -55,7 +56,7 @@ describe('useRelationships', () => {
   });
 
   it('should call api.get with encoded contactId', async () => {
-    const mockData = [{ id: 'r1', relatedContactId: 'c2', type: 'spouse' }];
+    const mockData = [{ id: 'r1', relatedContactId: 'c2', type: 'SpouseOf' }];
     mockApiGet.mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useRelationships('c1'), {
@@ -87,14 +88,14 @@ describe('useAddRelationship', () => {
   });
 
   it('should call api.post with encoded contactId and payload', async () => {
-    const created = { id: 'r1', relatedContactId: 'c2', type: 'spouse' };
+    const created = { id: 'r1', relatedContactId: 'c2', type: 'SpouseOf' };
     mockApiPost.mockResolvedValue(created);
 
     const { result } = renderHook(() => useAddRelationship('c1'), {
       wrapper: createWrapper(),
     });
 
-    const payload: import('../types').AddRelationshipRequest = {
+    const payload: AddRelationshipRequest = {
       relatedContactId: 'c2',
       type: 'SpouseOf',
     };

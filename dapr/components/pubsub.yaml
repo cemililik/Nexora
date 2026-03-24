@@ -8,7 +8,7 @@ spec:
   version: v1
   metadata:
     - name: brokers
-      value: localhost:9092
+      value: kafka:29092
     - name: authType
       value: none
     - name: consumeRetryInterval

@@ -1,5 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Application.DTOs;
+using Nexora.Modules.Contacts.Domain.ValueObjects;
+using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
@@ -11,18 +14,34 @@ public sealed record GetImportJobStatusQuery(Guid JobId) : IQuery<ImportJobDto>;
 
 /// <summary>Retrieves import job status by job ID.</summary>
 public sealed class GetImportJobStatusHandler(
+    ContactsDbContext dbContext,
     ILogger<GetImportJobStatusHandler> logger) : IQueryHandler<GetImportJobStatusQuery, ImportJobDto>
 {
-    public Task<Result<ImportJobDto>> Handle(
+    public async Task<Result<ImportJobDto>> Handle(
         GetImportJobStatusQuery request,
         CancellationToken cancellationToken)
     {
-        // In production, this would query Hangfire job storage or a dedicated jobs table.
-        // For now, return a placeholder indicating the job is not found or queued.
         logger.LogDebug("Import job status requested for {JobId}", request.JobId);
 
-        // Placeholder: In production, look up from Hangfire or a job tracking table
-        return Task.FromResult(
-            Result<ImportJobDto>.Failure(LocalizedMessage.Of("lockey_contacts_error_import_job_not_found")));
+        var importJobId = ImportJobId.From(request.JobId);
+        var importJob = await dbContext.ImportJobs
+            .AsNoTracking()
+            .FirstOrDefaultAsync(j => j.Id == importJobId, cancellationToken);
+
+        if (importJob is null)
+            return Result<ImportJobDto>.Failure(
+                LocalizedMessage.Of("lockey_contacts_error_import_job_not_found"));
+
+        var dto = new ImportJobDto(
+            importJob.Id.Value,
+            importJob.Status.ToString(),
+            importJob.TotalRows,
+            importJob.ProcessedRows,
+            importJob.SuccessCount,
+            importJob.ErrorCount,
+            importJob.CreatedAt,
+            importJob.CompletedAt);
+
+        return Result<ImportJobDto>.Success(dto);
     }
 }

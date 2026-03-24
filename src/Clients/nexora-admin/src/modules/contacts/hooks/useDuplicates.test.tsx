@@ -17,6 +17,7 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
+import type { MergeContactsRequest } from '../types';
 import { duplicateKeys, useDuplicates, useMergeContacts } from './useDuplicates';
 
 function createWrapper() {
@@ -130,7 +131,7 @@ describe('useMergeContacts', () => {
       wrapper: createWrapper(),
     });
 
-    const payload: import('../types').MergeContactsRequest = {
+    const payload: MergeContactsRequest = {
       primaryContactId: 'c-1',
       secondaryContactId: 'c-2',
       useSecondaryEmail: false,

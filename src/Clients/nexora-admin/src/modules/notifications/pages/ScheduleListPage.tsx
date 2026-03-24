@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { useScheduledNotifications, useCancelScheduledNotification } from '../hooks/useSchedule';
 import { ScheduleStatusBadge } from '../components/ScheduleStatusBadge';
 import type { NotificationScheduleDto } from '../types';
@@ -18,6 +19,7 @@ export default function ScheduleListPage() {
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('notifications.schedule.manage');
 
+  const { handleApiError } = useApiError();
   const [cancelId, setCancelId] = useState<string | null>(null);
 
   const { data, isPending } = useScheduledNotifications({ page, pageSize });
@@ -99,7 +101,7 @@ export default function ScheduleListPage() {
           if (cancelId) {
             cancelSchedule.mutate(cancelId, {
               onSuccess: () => setCancelId(null),
-              onError: () => setCancelId(null),
+              onError: (err) => { handleApiError(err); setCancelId(null); },
             });
           }
         }}

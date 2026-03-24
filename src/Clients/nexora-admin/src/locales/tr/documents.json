@@ -85,6 +85,7 @@
   "lockey_documents_versions_col_note": "Değişiklik Notu",
   "lockey_documents_versions_col_uploaded_by": "Yükleyen",
   "lockey_documents_versions_col_date": "Tarih",
+  "lockey_documents_versions_form_storage_key": "Depolama Anahtarı",
   "lockey_documents_versions_form_change_note": "Değişiklik Notu",
 
   "lockey_documents_access_title": "Erişim Kontrolü",
@@ -131,6 +132,8 @@
   "lockey_documents_folders_toast_created": "Klasör oluşturuldu.",
   "lockey_documents_folders_toast_renamed": "Klasör yeniden adlandırıldı.",
   "lockey_documents_folders_toast_deleted": "Klasör silindi.",
+  "lockey_documents_folders_expand": "Klasörü genişlet",
+  "lockey_documents_folders_collapse": "Klasörü daralt",
   "lockey_documents_folders_empty": "Klasör bulunamadı.",
 
   "lockey_documents_templates_title": "Belge Şablonları",
@@ -160,6 +163,7 @@
   "lockey_documents_templates_toast_deactivated": "Şablon devre dışı bırakıldı.",
   "lockey_documents_templates_toast_rendered": "Şablondan belge oluşturuldu.",
   "lockey_documents_templates_empty": "Şablon bulunamadı.",
+  "lockey_documents_render_invalid_json": "Geçersiz JSON formatı.",
   "lockey_documents_templates_category_contract": "Sözleşme",
   "lockey_documents_templates_category_receipt": "Makbuz",
   "lockey_documents_templates_category_letter": "Mektup",
@@ -211,7 +215,9 @@
   "lockey_documents_signatures_recipient_status_signed": "İmzalandı",
   "lockey_documents_signatures_recipient_status_declined": "Reddedildi",
   "lockey_documents_signatures_recipient_status_expired": "Süresi Dolmuş",
+  "lockey_documents_signatures_filter_status": "Duruma göre filtrele",
   "lockey_documents_signatures_filter_all_statuses": "Tüm Durumlar",
+  "lockey_documents_signatures_not_signed": "İmzalanmadı",
 
   "lockey_documents_file_size_bytes": "{{size}} B",
   "lockey_documents_file_size_kb": "{{size}} KB",

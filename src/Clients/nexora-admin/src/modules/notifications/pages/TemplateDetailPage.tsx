@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
@@ -9,6 +9,7 @@ import { Button } from '@/shared/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -74,8 +75,8 @@ export default function TemplateDetailPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [translationDialogOpen, setTranslationDialogOpen] = useState(false);
 
-  const templateSchema = createTemplateSchema(t);
-  const translationSchema = createTranslationSchema(t);
+  const templateSchema = useMemo(() => createTemplateSchema(t), [t]);
+  const translationSchema = useMemo(() => createTranslationSchema(t), [t]);
 
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
@@ -199,22 +200,24 @@ export default function TemplateDetailPage() {
 
         <div>
           <label htmlFor="template-channel" className="text-sm font-medium">{t('lockey_notifications_templates_form_channel')}</label>
-          <Select
-            value={form.watch('channel')}
-            onValueChange={(v) => form.setValue('channel', v as typeof CHANNELS[number])}
-            disabled={!isCreate}
-          >
-            <SelectTrigger id="template-channel" className="mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CHANNELS.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {t(CHANNEL_KEY_MAP[c])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            control={form.control}
+            name="channel"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange} disabled={!isCreate}>
+                <SelectTrigger id="template-channel" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNELS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {t(CHANNEL_KEY_MAP[c])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div>
@@ -245,21 +248,24 @@ export default function TemplateDetailPage() {
 
         <div>
           <label htmlFor="template-format" className="text-sm font-medium">{t('lockey_notifications_templates_form_format')}</label>
-          <Select
-            value={form.watch('format')}
-            onValueChange={(v) => form.setValue('format', v as typeof FORMATS[number])}
-          >
-            <SelectTrigger id="template-format" className="mt-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {FORMATS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {t(FORMAT_KEY_MAP[f])}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            control={form.control}
+            name="format"
+            render={({ field }) => (
+              <Select value={field.value} onValueChange={field.onChange}>
+                <SelectTrigger id="template-format" className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FORMATS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {t(FORMAT_KEY_MAP[f])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
 
         <div className="flex gap-2 pt-2">
@@ -327,6 +333,7 @@ export default function TemplateDetailPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('lockey_notifications_translations_add')}</DialogTitle>
+            <DialogDescription className="sr-only">{t('lockey_notifications_translations_add')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={translationForm.handleSubmit(onAddTranslation)} className="space-y-4">
             <div>
@@ -381,7 +388,7 @@ export default function TemplateDetailPage() {
       {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteConfirmOpen}
-        onOpenChange={() => setDeleteConfirmOpen(false)}
+        onOpenChange={(open) => setDeleteConfirmOpen(open)}
         title={t('lockey_notifications_templates_confirm_delete_title')}
         description={t('lockey_notifications_templates_confirm_delete')}
         variant="destructive"

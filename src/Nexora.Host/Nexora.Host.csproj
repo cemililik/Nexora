@@ -10,10 +10,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.17" />
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.OpenTelemetry" Version="4.1.1" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.0.1" />
   </ItemGroup>
 
 </Project>

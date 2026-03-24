@@ -18,18 +18,16 @@ export default getRequestConfig(async ({ requestLocale }) => {
     import(`@/locales/${locale}/navigation.json`),
   ]);
 
-  // Flat merge — all lockey_ keys use unique prefixes (lockey_common_*, lockey_error_*, etc.)
-  // so key collisions are prevented by naming convention.
-  // TODO Phase 2: Switch to namespace-keyed messages when module translations are added:
-  //   messages: { common: common.default, error: error.default, ... }
-  //   Usage: const t = useTranslations('common'); t('lockey_common_save')
+  // Namespace-keyed messages — each JSON file is a separate namespace.
+  // Usage: const t = useTranslations('common'); t('lockey_common_save')
+  // For cross-namespace access: const te = useTranslations('error'); te('lockey_error_...')
   return {
     locale,
     messages: {
-      ...common.default,
-      ...error.default,
-      ...validation.default,
-      ...navigation.default,
+      common: common.default,
+      error: error.default,
+      validation: validation.default,
+      navigation: navigation.default,
     },
   };
 });

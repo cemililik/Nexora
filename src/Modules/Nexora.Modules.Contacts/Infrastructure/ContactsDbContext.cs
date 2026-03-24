@@ -23,6 +23,7 @@ public sealed class ContactsDbContext(
     public DbSet<ContactCustomField> ContactCustomFields => Set<ContactCustomField>();
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<ContactActivity> ContactActivities => Set<ContactActivity>();
+    public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

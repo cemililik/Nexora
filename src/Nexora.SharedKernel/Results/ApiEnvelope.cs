@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Nexora.SharedKernel.Localization;
 
 namespace Nexora.SharedKernel.Results;
@@ -12,6 +13,10 @@ public sealed record ApiEnvelope<T>
     public Dictionary<string, string>? Meta { get; init; }
     public List<ApiValidationError>? Errors { get; init; }
 
+    /// <summary>Trace ID for correlating error responses with backend logs/traces. Only included on errors.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TraceId { get; init; }
+
     /// <summary>Creates a success envelope with data and optional localized message.</summary>
     public static ApiEnvelope<T> Success(T data, LocalizedMessage? message = null) => new()
     {
@@ -20,18 +25,20 @@ public sealed record ApiEnvelope<T>
     };
 
     /// <summary>Creates a failure envelope from an error with optional validation details.</summary>
-    public static ApiEnvelope<T> Fail(Error error) => new()
+    public static ApiEnvelope<T> Fail(Error error, string? traceId = null) => new()
     {
         Message = error.Message.Key,
         Meta = error.Message.Params.Count > 0 ? error.Message.Params : null,
-        Errors = error.Details?.Select(d => new ApiValidationError(d.Message.Key, d.Message.Params)).ToList()
+        Errors = error.Details?.Select(d => new ApiValidationError(d.Message.Key, d.Message.Params)).ToList(),
+        TraceId = traceId
     };
 
     /// <summary>Creates a validation failure envelope with a list of field-level errors.</summary>
-    public static ApiEnvelope<T> ValidationFail(List<ApiValidationError> errors) => new()
+    public static ApiEnvelope<T> ValidationFail(List<ApiValidationError> errors, string? traceId = null) => new()
     {
         Message = "lockey_validation_failed",
-        Errors = errors
+        Errors = errors,
+        TraceId = traceId
     };
 }
 
