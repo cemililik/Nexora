@@ -32,6 +32,19 @@ public interface IFileStorageService
         TimeSpan expiry,
         CancellationToken ct = default);
 
+    /// <summary>Uploads raw bytes directly to storage (for server-side use).</summary>
+    /// <param name="bucketName">Target bucket name.</param>
+    /// <param name="objectKey">Object key (path) within the bucket.</param>
+    /// <param name="data">Raw byte content to upload.</param>
+    /// <param name="contentType">MIME type of the content.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task UploadObjectAsync(
+        string bucketName,
+        string objectKey,
+        byte[] data,
+        string contentType,
+        CancellationToken ct = default);
+
     /// <summary>Deletes an object from storage.</summary>
     /// <param name="bucketName">Bucket containing the object.</param>
     /// <param name="objectKey">Object key to delete.</param>

@@ -108,6 +108,15 @@ public sealed class IdentityModuleMigration(
                 Permission.Create("notifications", "provider", "manage", "lockey_notifications_permission_provider_manage"),
                 Permission.Create("notifications", "schedule", "read", "lockey_notifications_permission_schedule_read"),
                 Permission.Create("notifications", "schedule", "manage", "lockey_notifications_permission_schedule_manage"),
+
+                // Reporting module permissions
+                Permission.Create("reporting", "definition", "read", "lockey_reporting_permission_definition_read"),
+                Permission.Create("reporting", "definition", "manage", "lockey_reporting_permission_definition_manage"),
+                Permission.Create("reporting", "execution", "run", "lockey_reporting_permission_execution_run"),
+                Permission.Create("reporting", "execution", "read", "lockey_reporting_permission_execution_read"),
+                Permission.Create("reporting", "schedule", "manage", "lockey_reporting_permission_schedule_manage"),
+                Permission.Create("reporting", "dashboard", "read", "lockey_reporting_permission_dashboard_read"),
+                Permission.Create("reporting", "dashboard", "manage", "lockey_reporting_permission_dashboard_manage"),
             };
 
             await dbContext.Permissions.AddRangeAsync(defaultPermissions, ct);

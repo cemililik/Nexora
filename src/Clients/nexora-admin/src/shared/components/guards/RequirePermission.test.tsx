@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 let mockPermissions: string[] = [];
+const mockSetBreadcrumbs = vi.fn();
+
 vi.mock('@/shared/hooks/usePermissions', () => ({
   usePermissions: () => ({
     permissions: mockPermissions,
@@ -10,11 +12,17 @@ vi.mock('@/shared/hooks/usePermissions', () => ({
   }),
 }));
 
+vi.mock('@/shared/lib/stores/uiStore', () => ({
+  useUiStore: (selector: (s: { setBreadcrumbs: typeof mockSetBreadcrumbs }) => unknown) =>
+    selector({ setBreadcrumbs: mockSetBreadcrumbs }),
+}));
+
 import { RequirePermission } from './RequirePermission';
 
 describe('RequirePermission', () => {
   beforeEach(() => {
     mockPermissions = [];
+    mockSetBreadcrumbs.mockClear();
   });
 
   it('should render children when user has required permissions', () => {
@@ -83,6 +91,30 @@ describe('RequirePermission', () => {
 
     expect(screen.queryByText('Any Mode Content')).not.toBeInTheDocument();
     expect(screen.getByText('lockey_common_no_permission')).toBeInTheDocument();
+  });
+
+  it('should clear breadcrumbs when access is denied', () => {
+    mockPermissions = [];
+
+    render(
+      <RequirePermission required={['admin.super']}>
+        <div>Protected Content</div>
+      </RequirePermission>,
+    );
+
+    expect(mockSetBreadcrumbs).toHaveBeenCalledWith([]);
+  });
+
+  it('should not clear breadcrumbs when access is granted', () => {
+    mockPermissions = ['identity.users.read'];
+
+    render(
+      <RequirePermission required={['identity.users.read']}>
+        <div>Protected Content</div>
+      </RequirePermission>,
+    );
+
+    expect(mockSetBreadcrumbs).not.toHaveBeenCalled();
   });
 
   it('should show custom fallback when provided', () => {
