@@ -220,6 +220,19 @@ Nexora.Modules.{ModuleName}/
 **Full spec**: `docs/standards/FRONTEND_STANDARDS.md`
 **API standard**: `docs/standards/API_INTEGRATION_STANDARDS.md`
 
+### Pre-Commit Checklist: ALWAYS Run Linter Before Committing
+**CRITICAL**: Any changes in `src/Clients/` (nexora-admin or nexora-portal) MUST pass linting before commit.
+
+```bash
+# For nexora-admin:
+cd src/Clients/nexora-admin && npm run lint
+
+# For nexora-portal:
+cd src/Clients/nexora-portal && npm run lint
+```
+
+**DO NOT commit if linter fails.** The CI/CD pipeline will reject the PR.
+
 ### General Rules
 - TypeScript strict mode — **NEVER** use `any`
 - Functional components only — no class components

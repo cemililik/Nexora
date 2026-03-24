@@ -45,7 +45,7 @@ function createSchema(t: (key: string) => string) {
 type FormValues = z.infer<ReturnType<typeof createSchema>>;
 
 export default function ReportListPage() {
-  const { t, i18n } = useTranslation('reporting');
+  const { t } = useTranslation('reporting');
   const [searchParams, setSearchParams] = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -55,7 +55,7 @@ export default function ReportListPage() {
   const { data, isLoading } = useReportDefinitions({ page, pageSize: 20, search: search || undefined });
   const createDefinition = useCreateReportDefinition();
 
-  const schema = useMemo(() => createSchema(t), [t, i18n.language]);
+  const schema = useMemo(() => createSchema(t), [t]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
