@@ -186,7 +186,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Import/Export (CSV, Excel) — presigned URL upload pattern (3-step: upload-url → MinIO → confirm-import)
 - [x] Custom fields (tenant-configurable)
 - [x] KVKK/GDPR compliance (consent tracking, data export, right to delete)
-- [ ] Permission seed in `OnStartupAsync()` — register Contacts module permissions (contacts.contact.read/write/delete, contacts.tag.manage, contacts.import.execute, contacts.gdpr.manage) ⚠️ *Per ADR-004, permissions are centralized in IdentityModuleMigration — evaluate whether module-level seeding is still needed or should be added to centralized seed*
+- [x] Permission seed — resolved per ADR-004: all 21 Contacts permissions centralized in `IdentityModuleMigration.SeedAsync()`, module `OnStartupAsync()` intentionally empty ✅
 
 ### 1.3 Notification Engine
 **Spec**: [modules/notifications/SPEC.md](../modules/notifications/SPEC.md)
@@ -221,7 +221,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Cross-module document service (IDocumentService in SharedKernel — GenerateFromTemplateAsync, GetDocumentsByEntityAsync)
 - [x] Architecture tests (Phase 2 entity/handler/service sealed checks, layer dependencies)
 - [x] Bruno API collection (14 new requests — Storage: 3, Signatures: 7, Templates: 4)
-- [ ] Permission seed in `OnStartupAsync()` — register Documents module permissions (documents.documents.upload/read/delete, documents.folders.manage, documents.signatures.manage, documents.templates.manage) ⚠️ *Per ADR-004, permissions are centralized in IdentityModuleMigration — evaluate whether module-level seeding is still needed or should be added to centralized seed*
+- [x] Permission seed — resolved per ADR-004: all 11 Documents permissions centralized in `IdentityModuleMigration.SeedAsync()`, module `OnStartupAsync()` intentionally empty ✅
 
 ### 1.5 Portal Framework
 - [x] Portal authentication (separate from admin auth)
