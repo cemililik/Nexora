@@ -7,6 +7,7 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure;
+using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Npgsql;
 using Serilog;
@@ -52,6 +53,7 @@ public static class DevelopmentSeed
             await EnsureModuleTablesAsync<ContactsDbContext>(app.Services, connectionString, "contacts_contacts");
             await EnsureModuleTablesAsync<DocumentsDbContext>(app.Services, connectionString, "documents_documents");
             await EnsureModuleTablesAsync<NotificationsDbContext>(app.Services, connectionString, "notifications_templates");
+            await EnsureModuleTablesAsync<ReportingDbContext>(app.Services, connectionString, "reporting_report_definitions");
 
             // Step 5: Seed permissions, roles, organization, tenant record
             await SeedIdentityDataAsync(app.Services, connectionString);
@@ -211,20 +213,38 @@ public static class DevelopmentSeed
             Log.Information("[DevSeed] Seeded default organization: {OrgId}", DevOrgGuid);
         }
 
-        // Seed permissions
-        if (!await dbContext.Permissions.AnyAsync())
+        // Seed permissions (incremental — adds any missing permissions)
+        var existingKeys = (await dbContext.Permissions.ToListAsync())
+            .Select(p => $"{p.Module}.{p.Resource}.{p.Action}")
+            .ToHashSet();
+
+        var allDefaultPermissions = CreateDefaultPermissions();
+        var newPermissions = allDefaultPermissions
+            .Where(p => !existingKeys.Contains($"{p.Module}.{p.Resource}.{p.Action}"))
+            .ToArray();
+
+        if (newPermissions.Length > 0)
         {
-            var permissions = CreateDefaultPermissions();
-            await dbContext.Permissions.AddRangeAsync(permissions);
+            await dbContext.Permissions.AddRangeAsync(newPermissions);
             await dbContext.SaveChangesAsync();
-            Log.Information("[DevSeed] Seeded {Count} permissions", permissions.Length);
+            Log.Information("[DevSeed] Seeded {NewCount} new permissions (total: {TotalCount})",
+                newPermissions.Length, existingKeys.Count + newPermissions.Length);
+        }
+        else if (existingKeys.Count == 0)
+        {
+            await dbContext.Permissions.AddRangeAsync(allDefaultPermissions);
+            await dbContext.SaveChangesAsync();
+            Log.Information("[DevSeed] Seeded {Count} permissions", allDefaultPermissions.Length);
         }
 
-        // Seed Platform Admin role with all permissions
-        if (!await dbContext.Roles.AnyAsync(r => r.IsSystemRole))
+        // Seed Platform Admin role with all permissions (or update if new permissions added)
+        var adminRole = await dbContext.Roles.Include(r => r.Permissions)
+            .FirstOrDefaultAsync(r => r.IsSystemRole);
+
+        if (adminRole is null)
         {
             var tenantId = TenantId.From(DevTenantGuid);
-            var adminRole = Role.Create(tenantId, "Platform Admin",
+            adminRole = Role.Create(tenantId, "Platform Admin",
                 "lockey_identity_role_platform_admin_description", isSystem: true);
 
             var allPermissions = await dbContext.Permissions.ToListAsync();
@@ -234,6 +254,22 @@ public static class DevelopmentSeed
             await dbContext.Roles.AddAsync(adminRole);
             await dbContext.SaveChangesAsync();
             Log.Information("[DevSeed] Seeded Platform Admin role with {Count} permissions", allPermissions.Count);
+        }
+        else if (newPermissions.Length > 0)
+        {
+            // Assign newly added permissions to existing Platform Admin role
+            var assignedPermissionIds = adminRole.Permissions
+                .Select(rp => rp.PermissionId)
+                .ToHashSet();
+
+            var allPermissions = await dbContext.Permissions.ToListAsync();
+            var unassigned = allPermissions.Where(p => !assignedPermissionIds.Contains(p.Id)).ToList();
+
+            foreach (var permission in unassigned)
+                adminRole.AssignPermission(permission);
+
+            await dbContext.SaveChangesAsync();
+            Log.Information("[DevSeed] Assigned {Count} new permissions to Platform Admin", unassigned.Count);
         }
 
         // Seed admin user (matches Keycloak test user)
@@ -363,7 +399,7 @@ public static class DevelopmentSeed
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
 
-        var moduleNames = new[] { "identity", "contacts", "documents", "notifications" };
+        var moduleNames = new[] { "identity", "contacts", "documents", "notifications", "reporting" };
 
         foreach (var moduleName in moduleNames)
         {
@@ -462,5 +498,13 @@ public static class DevelopmentSeed
         Permission.Create("notifications", "provider", "manage", "lockey_notifications_permission_provider_manage"),
         Permission.Create("notifications", "schedule", "read", "lockey_notifications_permission_schedule_read"),
         Permission.Create("notifications", "schedule", "manage", "lockey_notifications_permission_schedule_manage"),
+        // Reporting
+        Permission.Create("reporting", "definition", "read", "lockey_reporting_permission_definition_read"),
+        Permission.Create("reporting", "definition", "manage", "lockey_reporting_permission_definition_manage"),
+        Permission.Create("reporting", "execution", "run", "lockey_reporting_permission_execution_run"),
+        Permission.Create("reporting", "execution", "read", "lockey_reporting_permission_execution_read"),
+        Permission.Create("reporting", "schedule", "manage", "lockey_reporting_permission_schedule_manage"),
+        Permission.Create("reporting", "dashboard", "read", "lockey_reporting_permission_dashboard_read"),
+        Permission.Create("reporting", "dashboard", "manage", "lockey_reporting_permission_dashboard_manage"),
     ];
 }

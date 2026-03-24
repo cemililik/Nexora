@@ -10,11 +10,18 @@ import { ReportStatusBadge } from '../components/ReportStatusBadge';
 import { ReportParameterForm } from '../components/ReportParameterForm';
 import type { ReportFormat } from '../types';
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function ReportDetailPage() {
   const { t } = useTranslation('reporting');
   const { id } = useParams<{ id: string }>();
-  const { data: definition, isLoading } = useReportDefinition(id!);
-  const { data: executions } = useReportExecutions({ definitionId: id, page: 1, pageSize: 10 });
+  const isValidId = !!id && UUID_RE.test(id);
+  const { data: definition, isLoading } = useReportDefinition(isValidId ? id : '');
+  const { data: executions } = useReportExecutions({
+    definitionId: isValidId ? id : undefined,
+    page: 1,
+    pageSize: 10,
+  });
   const executeReport = useExecuteReport();
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
 

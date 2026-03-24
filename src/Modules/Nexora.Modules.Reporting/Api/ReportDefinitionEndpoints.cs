@@ -13,7 +13,7 @@ public static class ReportDefinitionEndpoints
 {
     public static void MapReportDefinitionEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/reporting/definitions")
+        var group = endpoints.MapGroup("/definitions")
             .RequireAuthorization();
 
         group.MapGet("/", async (

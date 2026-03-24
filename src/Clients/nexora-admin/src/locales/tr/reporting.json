@@ -9,6 +9,13 @@
   "lockey_reporting_inactive": "Pasif",
   "lockey_reporting_active": "Aktif",
   "lockey_reporting_default": "Varsayılan",
+  "lockey_reporting_col_name": "Ad",
+  "lockey_reporting_col_description": "Açıklama",
+  "lockey_reporting_cancel": "İptal",
+  "lockey_reporting_validation_name_required": "Ad alanı zorunludur",
+  "lockey_reporting_validation_module_required": "Modül alanı zorunludur",
+  "lockey_reporting_validation_query_required": "SQL sorgusu zorunludur",
+  "lockey_reporting_validation_format_required": "Format seçimi zorunludur",
   "lockey_reporting_query": "SQL Sorgusu",
   "lockey_reporting_execution_history": "Çalıştırma Geçmişi",
   "lockey_reporting_no_executions": "Henüz çalıştırma yok",
@@ -50,5 +57,6 @@
   "lockey_reporting_permission_execution_read": "Rapor çalıştırmalarını görüntüle",
   "lockey_reporting_permission_schedule_manage": "Rapor zamanlamalarını yönet",
   "lockey_reporting_permission_dashboard_read": "Panoları görüntüle",
-  "lockey_reporting_permission_dashboard_manage": "Panoları yönet"
+  "lockey_reporting_permission_dashboard_manage": "Panoları yönet",
+  "lockey_reporting_error_execution_already_finished": "Rapor çalıştırması zaten tamamlanmış"
 }

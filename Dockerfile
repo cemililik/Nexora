@@ -12,6 +12,7 @@ COPY src/Modules/Nexora.Modules.Identity/Nexora.Modules.Identity.csproj src/Modu
 COPY src/Modules/Nexora.Modules.Contacts/Nexora.Modules.Contacts.csproj src/Modules/Nexora.Modules.Contacts/
 COPY src/Modules/Nexora.Modules.Documents/Nexora.Modules.Documents.csproj src/Modules/Nexora.Modules.Documents/
 COPY src/Modules/Nexora.Modules.Notifications/Nexora.Modules.Notifications.csproj src/Modules/Nexora.Modules.Notifications/
+COPY src/Modules/Nexora.Modules.Reporting/Nexora.Modules.Reporting.csproj src/Modules/Nexora.Modules.Reporting/
 
 # Copy test projects too (needed for sln restore)
 COPY tests/Nexora.SharedKernel.Tests/Nexora.SharedKernel.Tests.csproj tests/Nexora.SharedKernel.Tests/
@@ -20,6 +21,7 @@ COPY tests/Nexora.Modules.Identity.Tests/Nexora.Modules.Identity.Tests.csproj te
 COPY tests/Nexora.Modules.Contacts.Tests/Nexora.Modules.Contacts.Tests.csproj tests/Nexora.Modules.Contacts.Tests/
 COPY tests/Nexora.Modules.Documents.Tests/Nexora.Modules.Documents.Tests.csproj tests/Nexora.Modules.Documents.Tests/
 COPY tests/Nexora.Modules.Notifications.Tests/Nexora.Modules.Notifications.Tests.csproj tests/Nexora.Modules.Notifications.Tests/
+COPY tests/Nexora.Modules.Reporting.Tests/Nexora.Modules.Reporting.Tests.csproj tests/Nexora.Modules.Reporting.Tests/
 COPY tests/Nexora.Architecture.Tests/Nexora.Architecture.Tests.csproj tests/Nexora.Architecture.Tests/
 
 RUN dotnet restore

@@ -64,8 +64,8 @@ public sealed class ReportExecution : AuditableEntity<ReportExecutionId>, IAggre
 
     public void MarkFailed(string errorDetails, long durationMs)
     {
-        if (Status != ReportStatus.Running)
-            throw new DomainException("lockey_reporting_error_execution_not_running");
+        if (Status is not (ReportStatus.Queued or ReportStatus.Running))
+            throw new DomainException("lockey_reporting_error_execution_already_finished");
         Status = ReportStatus.Failed;
         ErrorDetails = errorDetails;
         DurationMs = durationMs;

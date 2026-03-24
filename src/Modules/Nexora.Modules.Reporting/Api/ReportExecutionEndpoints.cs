@@ -13,7 +13,7 @@ public static class ReportExecutionEndpoints
 {
     public static void MapReportExecutionEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/reporting/executions")
+        var group = endpoints.MapGroup("/executions")
             .RequireAuthorization();
 
         group.MapGet("/", async (

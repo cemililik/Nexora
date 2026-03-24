@@ -13,7 +13,7 @@ public static class DashboardEndpoints
 {
     public static void MapDashboardEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/reporting/dashboards")
+        var group = endpoints.MapGroup("/dashboards")
             .RequireAuthorization();
 
         group.MapGet("/", async (int? page, int? pageSize, ISender sender, CancellationToken ct) =>

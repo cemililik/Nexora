@@ -78,18 +78,9 @@ public sealed class ReportExecutionJob(
             var extension = ReportExportService.GetFileExtension(formatStr);
             var storageKey = $"reports/{parameters.TenantId}/{execution.Id.Value}{extension}";
 
-            // Upload bytes directly via presigned URL pattern
-            var uploadUrl = await fileStorageService.GenerateUploadPresignedUrlAsync(
-                "nexora-reports", storageKey,
-                ReportExportService.GetContentType(formatStr),
-                TimeSpan.FromMinutes(5), ct);
-
-            // Direct upload via HTTP
-            using var httpClient = new HttpClient();
-            using var content = new ByteArrayContent(bytes);
-            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(
-                ReportExportService.GetContentType(formatStr));
-            await httpClient.PutAsync(uploadUrl.Url, content, ct);
+            await fileStorageService.UploadObjectAsync(
+                "nexora-reports", storageKey, bytes,
+                ReportExportService.GetContentType(formatStr), ct);
 
             execution.MarkCompleted(storageKey, rows.Count, sw.ElapsedMilliseconds);
 

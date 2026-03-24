@@ -107,14 +107,43 @@ public sealed class ReportExecutionTests
     }
 
     [Fact]
-    public void MarkFailed_WhenNotRunning_ShouldThrow()
+    public void MarkFailed_FromQueued_ShouldSetErrorDetails()
     {
         var execution = ReportExecution.Create(
             _tenantId, _definitionId, ReportFormat.Csv, null, null);
 
+        execution.MarkFailed("Definition not found", 0);
+
+        execution.Status.Should().Be(ReportStatus.Failed);
+        execution.ErrorDetails.Should().Be("Definition not found");
+        execution.DurationMs.Should().Be(0);
+    }
+
+    [Fact]
+    public void MarkFailed_WhenAlreadyCompleted_ShouldThrow()
+    {
+        var execution = ReportExecution.Create(
+            _tenantId, _definitionId, ReportFormat.Csv, null, null);
+        execution.MarkRunning();
+        execution.MarkCompleted("key", 10, 500);
+
         var act = () => execution.MarkFailed("Error", 100);
 
         act.Should().Throw<DomainException>()
-            .WithMessage("lockey_reporting_error_execution_not_running");
+            .WithMessage("lockey_reporting_error_execution_already_finished");
+    }
+
+    [Fact]
+    public void MarkFailed_WhenAlreadyFailed_ShouldThrow()
+    {
+        var execution = ReportExecution.Create(
+            _tenantId, _definitionId, ReportFormat.Csv, null, null);
+        execution.MarkRunning();
+        execution.MarkFailed("First error", 100);
+
+        var act = () => execution.MarkFailed("Second error", 200);
+
+        act.Should().Throw<DomainException>()
+            .WithMessage("lockey_reporting_error_execution_already_finished");
     }
 }

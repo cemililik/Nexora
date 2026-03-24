@@ -1,5 +1,7 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Nexora.Modules.Reporting.Application.Commands;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
@@ -13,6 +15,7 @@ public sealed class ExecuteReportTests : IDisposable
 {
     private readonly ReportingDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
@@ -20,6 +23,7 @@ public sealed class ExecuteReportTests : IDisposable
     {
         _tenantAccessor = new TenantContextAccessor();
         _tenantAccessor.SetTenant(_tenantId.ToString(), _orgId.ToString());
+        _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
 
         var options = new DbContextOptionsBuilder<ReportingDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -37,7 +41,7 @@ public sealed class ExecuteReportTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new ExecuteReportHandler(
-            _dbContext, _tenantAccessor,
+            _dbContext, _tenantAccessor, _backgroundJobClient,
             NullLogger<ExecuteReportHandler>.Instance);
 
         var command = new ExecuteReportCommand(definition.Id.Value, null, null);
@@ -64,7 +68,7 @@ public sealed class ExecuteReportTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new ExecuteReportHandler(
-            _dbContext, _tenantAccessor,
+            _dbContext, _tenantAccessor, _backgroundJobClient,
             NullLogger<ExecuteReportHandler>.Instance);
 
         var command = new ExecuteReportCommand(definition.Id.Value, "Excel", null);
@@ -79,7 +83,7 @@ public sealed class ExecuteReportTests : IDisposable
     public async Task Handle_DefinitionNotFound_ShouldReturnFailure()
     {
         var handler = new ExecuteReportHandler(
-            _dbContext, _tenantAccessor,
+            _dbContext, _tenantAccessor, _backgroundJobClient,
             NullLogger<ExecuteReportHandler>.Instance);
 
         var command = new ExecuteReportCommand(Guid.NewGuid(), null, null);
@@ -101,7 +105,7 @@ public sealed class ExecuteReportTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new ExecuteReportHandler(
-            _dbContext, _tenantAccessor,
+            _dbContext, _tenantAccessor, _backgroundJobClient,
             NullLogger<ExecuteReportHandler>.Instance);
 
         var command = new ExecuteReportCommand(definition.Id.Value, null, null);

@@ -1,10 +1,12 @@
 using FluentValidation;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Application.DTOs;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Infrastructure;
+using Nexora.Modules.Reporting.Infrastructure.Jobs;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -28,6 +30,7 @@ public sealed class ExecuteReportValidator : AbstractValidator<ExecuteReportComm
 public sealed class ExecuteReportHandler(
     ReportingDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
+    IBackgroundJobClient backgroundJobClient,
     ILogger<ExecuteReportHandler> logger) : ICommandHandler<ExecuteReportCommand, ReportExecutionDto>
 {
     public async Task<Result<ReportExecutionDto>> Handle(ExecuteReportCommand request, CancellationToken ct)
@@ -53,9 +56,18 @@ public sealed class ExecuteReportHandler(
         await dbContext.ReportExecutions.AddAsync(execution, ct);
         await dbContext.SaveChangesAsync(ct);
 
+        var hangfireJobId = backgroundJobClient.Enqueue<ReportExecutionJob>(j => j.RunAsync(
+            new ReportExecutionJobParams
+            {
+                TenantId = tenantId.ToString(),
+                OrganizationId = tenantContextAccessor.Current.OrganizationId,
+                ExecutionId = execution.Id.Value,
+            },
+            CancellationToken.None));
+
         logger.LogInformation(
-            "Report execution {ExecutionId} queued for definition {DefinitionId} in tenant {TenantId}",
-            execution.Id, definitionId, tenantId);
+            "Report execution {ExecutionId} queued for definition {DefinitionId} in tenant {TenantId}, Hangfire job {JobId}",
+            execution.Id, definitionId, tenantId, hangfireJobId);
 
         return Result<ReportExecutionDto>.Success(
             new ReportExecutionDto(execution.Id.Value, execution.DefinitionId.Value,

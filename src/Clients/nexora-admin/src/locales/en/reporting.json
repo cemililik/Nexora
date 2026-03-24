@@ -9,6 +9,13 @@
   "lockey_reporting_inactive": "Inactive",
   "lockey_reporting_active": "Active",
   "lockey_reporting_default": "Default",
+  "lockey_reporting_col_name": "Name",
+  "lockey_reporting_col_description": "Description",
+  "lockey_reporting_cancel": "Cancel",
+  "lockey_reporting_validation_name_required": "Name is required",
+  "lockey_reporting_validation_module_required": "Module is required",
+  "lockey_reporting_validation_query_required": "SQL query is required",
+  "lockey_reporting_validation_format_required": "Format is required",
   "lockey_reporting_query": "SQL Query",
   "lockey_reporting_execution_history": "Execution History",
   "lockey_reporting_no_executions": "No executions yet",
@@ -50,5 +57,6 @@
   "lockey_reporting_permission_execution_read": "View report executions",
   "lockey_reporting_permission_schedule_manage": "Manage report schedules",
   "lockey_reporting_permission_dashboard_read": "View dashboards",
-  "lockey_reporting_permission_dashboard_manage": "Manage dashboards"
+  "lockey_reporting_permission_dashboard_manage": "Manage dashboards",
+  "lockey_reporting_error_execution_already_finished": "Report execution has already finished"
 }

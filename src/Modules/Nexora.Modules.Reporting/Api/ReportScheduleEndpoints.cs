@@ -13,7 +13,7 @@ public static class ReportScheduleEndpoints
 {
     public static void MapReportScheduleEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/reporting/schedules")
+        var group = endpoints.MapGroup("/schedules")
             .RequireAuthorization();
 
         group.MapGet("/", async (
