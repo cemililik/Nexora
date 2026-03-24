@@ -7,6 +7,7 @@
     <ProjectReference Include="..\Modules\Nexora.Modules.Contacts\Nexora.Modules.Contacts.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Documents\Nexora.Modules.Documents.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Notifications\Nexora.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\Modules\Nexora.Modules.Reporting\Nexora.Modules.Reporting.csproj" />
   </ItemGroup>
 
   <ItemGroup>
