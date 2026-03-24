@@ -52,9 +52,14 @@ export function useAuth() {
     } else if (status === 'unauthenticated') {
       setAuthToken(null);
       clearSession();
-      setFetchFailed(false);
     }
   }, [session, status, user, fetchFailed, setSession, clearSession, locale, te]);
+
+  useEffect(() => {
+    if (status === 'unauthenticated' && fetchFailed) {
+      setFetchFailed(false);
+    }
+  }, [status, fetchFailed]);
 
   return {
     user,

@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export function generateMetadata({
-  params,
+  params: { locale },
 }: {
   params: { locale: string };
 }): Metadata {
