@@ -1,19 +1,18 @@
-import {
-  defineConfig,
-  globalIgnores,
-} from 'eslint/config';
 import js from '@eslint/js';
 import ts from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 
-export default defineConfig([
-  globalIgnores(['dist/**', 'node_modules/**']),
+export default [
+  {
+    ignores: ['dist/**', 'node_modules/**'],
+  },
   js.configs.recommended,
   ...ts.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
+      ...ts.configs.recommended[0].languageOptions,
       ecmaVersion: 2020,
       sourceType: 'module',
       parserOptions: {
@@ -38,4 +37,4 @@ export default defineConfig([
       },
     },
   },
-]);
+];
