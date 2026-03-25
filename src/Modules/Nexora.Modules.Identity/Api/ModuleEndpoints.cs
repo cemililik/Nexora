@@ -37,6 +37,22 @@ public static class ModuleEndpoints
                 : Results.BadRequest(ApiEnvelope<TenantModuleDto>.Fail(result.Error!));
         });
 
+        group.MapPatch("/{moduleName}/activate", async (Guid tenantId, string moduleName, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new ActivateModuleCommand(tenantId, moduleName), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+        });
+
+        group.MapPatch("/{moduleName}/deactivate", async (Guid tenantId, string moduleName, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new DeactivateModuleCommand(tenantId, moduleName), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+        });
+
         group.MapDelete("/{moduleName}", async (Guid tenantId, string moduleName, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new UninstallModuleCommand(tenantId, moduleName), ct);

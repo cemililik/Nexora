@@ -131,9 +131,18 @@ public sealed class ModuleManagementTests : IDisposable
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+
+        // Verify soft-deleted record exists with IgnoreQueryFilters
         var module = await _platformDb.TenantModules
+            .IgnoreQueryFilters()
             .FirstAsync(tm => tm.TenantId == _tenantId && tm.ModuleName == "crm");
-        module.IsActive.Should().BeFalse();
+        module.IsDeleted.Should().BeTrue();
+
+        // Verify global query filter excludes soft-deleted records
+        var filteredCount = await _platformDb.TenantModules
+            .Where(tm => tm.TenantId == _tenantId && tm.ModuleName == "crm")
+            .CountAsync();
+        filteredCount.Should().Be(0);
     }
 
     [Fact]

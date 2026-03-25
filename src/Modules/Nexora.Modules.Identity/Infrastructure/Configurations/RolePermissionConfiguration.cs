@@ -16,6 +16,6 @@ public sealed class RolePermissionConfiguration : IEntityTypeConfiguration<RoleP
         builder.Property(rp => rp.Id).HasConversion(id => id.Value, v => RolePermissionId.From(v));
         builder.Property(rp => rp.RoleId).HasConversion(id => id.Value, v => RoleId.From(v));
         builder.Property(rp => rp.PermissionId).HasConversion(id => id.Value, v => PermissionId.From(v));
-        builder.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
+        builder.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

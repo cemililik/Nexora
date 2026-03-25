@@ -90,6 +90,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 3. [x] Tenant A and Tenant B have isolated schemas (verified: `tenant_0000...0001` schema with Identity + Contacts + Documents + Notifications tables)
 4. [x] Keycloak issues JWT, APISIX validates it (openid-connect plugin + `KC_HOSTNAME_BACKCHANNEL_DYNAMIC` for issuer alignment), .NET resolves tenant from `tenant_id` claim *(defense in depth: gateway + backend both validate)*
 5. [x] Frontend clients (`nexora-admin`, `nexora-portal`) authenticate via Keycloak, route API calls through APISIX gateway (`localhost:9080`), receive CORS headers and correlation IDs
+6. [x] Global soft delete infrastructure — `ISoftDeletable` interface, `AuditableEntity<T>` with IsDeleted/DeletedAt/DeletedBy, BaseDbContext auto-converts `Remove()` to soft delete, global query filters exclude deleted records, 23 unique indexes with partial filters, module lifecycle (activate/deactivate/uninstall with table rename)
 
 ### Completed Work
 - **Solution structure**: 16 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, Notifications module, Documents module, Reporting module, plus 8 test projects)
@@ -234,9 +235,11 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Middleware refactor — getToken() pattern eliminating type cast issues (NextAuth v5 + next-intl)
 - [x] 47 frontend tests (8 test files: api, authStore, useAuth, useModules, currency, SectionRenderer, RequireAuth, RequirePermission)
 - [x] CODE_REVIEW_STANDARDS.md — 65+ checklist items, 10 categories, severity classification
-- [ ] Refactor portal profile & dashboard pages to pass user data from server layout instead of client-side `useAuthStore` — reduce hydration mismatch risk *(CODE TODO: `profile/page.tsx:3`, `dashboard/page.tsx:3`)*
-- [ ] Switch portal i18n to namespace-keyed messages (`{ common: ..., error: ..., [module]: ... }`) — prerequisite for Phase 2 module translations *(CODE TODO: `i18n/request.ts:23`)*
+- [x] Refactor portal profile & dashboard pages to pass user data from server layout — server component page → client child component pattern (DashboardContent, ProfileContent), `serverUser` prop with Zustand fallback
+- [x] Switch portal i18n to namespace-keyed messages (`{ common, error, validation, navigation }`) — already implemented via next-intl with 4 namespaces
 - [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
+- [x] Portal auth stability fixes — server-side `accessToken` passed to PortalShell via `serverAccessToken` prop, `setAuthToken` called in `useEffect` on mount, `useAuth` defensive refactor (no `clearSession` when user exists in store, `hasInitialized` guard for unauthenticated state), `api.ts` 401 interceptor skips redirect when no token is set (race condition fix)
+- [x] Tests: 9 test files, 54 portal tests passing
 
 ### 1.6 Admin Dashboard (nexora-admin)
 
@@ -287,10 +290,24 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Cross-module data aggregation (SQL joins across module tables in tenant schema, SET search_path isolation)
 - [x] Tenant-specific custom reports (organization-scoped ReportDefinition, parameterized queries)
 - [x] SQL query security (SELECT/WITH whitelist, DDL/DML block, semicolon guard, READ ONLY transaction, 30s timeout)
-- [x] Backend: 4 domain entities, 10 commands, 9 queries, 4 API endpoint groups, 2 Hangfire jobs, 7 permissions (total: 63)
-- [x] Frontend: 6 pages (ReportList, ReportDetail, ScheduleList, DashboardList, DashboardView), 4 hooks, 7 components (ChartWidget with Recharts Bar/Line/Area/Pie, KpiWidget, TableWidget, DashboardGrid)
-- [x] Localization: 53 translation keys (en + tr)
+- [x] Backend: 4 domain entities, 10 commands, 11 queries, 5 API endpoint groups, 2 Hangfire jobs, 7 permissions (total: 63)
+- [x] Frontend: 6 pages (ReportList, ReportDetail, ScheduleList, DashboardList, DashboardView), 6 hooks, 10 components (ChartWidget with Recharts Bar/Line/Area/Pie, KpiWidget, TableWidget, DashboardGrid, SqlEditor, SqlTestResult)
+- [x] Localization: 65 translation keys (en + tr)
 - [x] Tests: 25 backend tests (domain: 19, application: 6) + 347 frontend tests passing
+- [x] Report download & preview (API-proxied file streaming, in-page PDF iframe, CSV/JSON text preview)
+- [x] Report definition CRUD UI (edit dialog, delete confirmation on detail page)
+- [x] SQL validation on create/update (SqlQueryValidator enforced at handler level, not just execution)
+
+- [x] SQL syntax highlighting in query editor (CodeMirror with PostgreSQL dialect, create & edit forms)
+- [x] "Test Query" button (POST /test-query endpoint, execute SQL with LIMIT 10, show preview table in form)
+
+#### Nice-to-Have Enhancements
+- [ ] Table/column autocomplete in SQL editor (fetch tenant schema metadata, suggest in editor)
+- [ ] Visual query builder — Metabase-style UI (select table → pick columns → add filters → group by)
+- [ ] Report templates (pre-built SQL for common reports per module: contact list, donation summary, etc.)
+- [ ] Report sharing (generate public link with token-based access, no auth required)
+- [ ] Report versioning (track query changes, rollback to previous version)
+- [ ] Email delivery for on-demand reports (send completed report as attachment)
 
 ---
 

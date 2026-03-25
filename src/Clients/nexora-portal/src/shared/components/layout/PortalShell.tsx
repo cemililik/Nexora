@@ -1,8 +1,9 @@
 'use client';
 
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef, useEffect } from 'react';
 
 import { useAuth } from '@/shared/hooks/useAuth';
+import { setAuthToken } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 import type { UserInfo } from '@/shared/types/auth';
 
@@ -10,22 +11,18 @@ import { PortalLayout } from './PortalLayout';
 
 interface PortalShellProps {
   children: ReactNode;
-  /** User info fetched server-side in the portal layout. */
   serverUser?: UserInfo | null;
   serverTenantId?: string | null;
   serverOrganizationId?: string | null;
   serverPermissions?: string[] | null;
+  serverAccessToken?: string | null;
 }
 
 /**
  * Client component wrapper that initializes auth state and renders the portal layout.
  *
- * When serverUser is provided (fetched in the server layout), Zustand is populated
- * synchronously before the first render — eliminating hydration mismatch between
- * server (user data available) and client (Zustand initially empty).
- *
- * useAuth() still runs for token refresh error handling, but skips the /me fetch
- * because the user is already in the store.
+ * Populates Zustand synchronously before first render (hydration-safe).
+ * Sets API auth token in useEffect (side effect, runs after hydration).
  */
 export function PortalShell({
   children,
@@ -33,12 +30,11 @@ export function PortalShell({
   serverTenantId,
   serverOrganizationId,
   serverPermissions,
+  serverAccessToken,
 }: PortalShellProps) {
   const initialized = useRef(false);
 
-  // Synchronous Zustand initialization — runs during render, before commit.
-  // This ensures the store is populated for the first client render, matching
-  // what the server rendered with the same user data.
+  // Synchronous Zustand initialization — before first render
   if (!initialized.current && serverUser) {
     initialized.current = true;
     useAuthStore.getState().setSession({
@@ -48,6 +44,13 @@ export function PortalShell({
       permissions: serverPermissions ?? [],
     });
   }
+
+  // Set API token after mount — ensures client-side API calls include auth header
+  useEffect(() => {
+    if (serverAccessToken) {
+      setAuthToken(serverAccessToken);
+    }
+  }, [serverAccessToken]);
 
   useAuth();
 

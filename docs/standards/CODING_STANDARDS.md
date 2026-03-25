@@ -420,7 +420,38 @@ Structured logs (ILogger) use English strings — they are not user-facing:
 logger.LogInformation("Donation {DonationId} confirmed", id);
 ```
 
-## 11. Module Plugin Rules
+## 11. Soft Delete
+
+### Global Pattern
+All entities extending `AuditableEntity<T>` automatically implement `ISoftDeletable` and support soft delete:
+
+```csharp
+// Soft delete happens automatically — just call Remove():
+dbContext.Users.Remove(user);
+await dbContext.SaveChangesAsync(ct);
+// BaseDbContext intercepts Deleted state → sets IsDeleted=true, DeletedAt, DeletedBy
+// Entity stays in DB, excluded from all queries via global query filter
+```
+
+### Key Rules
+- **NEVER** hard-delete `AuditableEntity<T>` descendants — `Remove()` auto-converts to soft delete
+- All SELECT queries automatically filter `WHERE IsDeleted = false` via global query filter
+- Use `IgnoreQueryFilters()` only for admin/audit scenarios (viewing deleted records)
+- Unique indexes use `HasFilter("\"IsDeleted\" = false")` — same email/slug can be reused after soft delete
+- `IsActive` (temporary deactivation) is different from `IsDeleted` (permanent removal)
+
+### Exceptions (Hard Delete Allowed)
+- `RequestGdprDeleteCommand` — KVKK/GDPR legal requirement for permanent data erasure
+- Join table reconciliation (`AssignUserRolesCommand`) — role reassignment cleanup
+- Orphan cleanup (`UninstallModuleCommand` RolePermission removal)
+
+### Entity Methods
+```csharp
+entity.MarkAsDeleted(DateTimeOffset.UtcNow, userId);  // Manual soft delete (rarely needed)
+entity.UndoDelete();                                     // Reverse a soft delete (admin only)
+```
+
+## 12. Module Plugin Rules
 
 **See full spec**: `docs/architecture/MODULE_SYSTEM.md`
 

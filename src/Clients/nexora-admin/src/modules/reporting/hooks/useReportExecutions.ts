@@ -68,3 +68,29 @@ export function useDownloadReportResult(executionId: string) {
     enabled: false, // Only fetch on demand
   });
 }
+
+export function useDownloadReport() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (executionId: string) =>
+      api.get<DownloadReportResultDto>(
+        `/reporting/executions/${encodeURIComponent(executionId)}/download`,
+      ),
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function useReportFile() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: async (executionId: string) => {
+      const blob = await api.blob(
+        `/reporting/executions/${encodeURIComponent(executionId)}/file`,
+      );
+      return blob;
+    },
+    onError: (err) => handleApiError(err),
+  });
+}

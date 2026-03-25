@@ -23,7 +23,10 @@ import {
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { usePermissions } from '@/shared/hooks/usePermissions';
+import { Link } from 'react-router';
 import { useRoles, useCreateRole } from '../hooks/useRoles';
+import { PermissionSelector } from '../components/PermissionSelector';
 import type { RoleDto } from '../types';
 
 function createRoleSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
@@ -39,7 +42,9 @@ export default function RoleListPage() {
   const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
 
   const createRoleSchema = useMemo(() => createRoleSchemaFactory(t), [t]);
 
@@ -56,10 +61,11 @@ export default function RoleListPage() {
   }, [setBreadcrumbs]);
 
   const onSubmit = form.handleSubmit((data) => {
-    createRole.mutate(data, {
+    createRole.mutate({ ...data, permissionIds: selectedPermissionIds.length > 0 ? selectedPermissionIds : undefined }, {
       onSuccess: () => {
         setIsDialogOpen(false);
         form.reset();
+        setSelectedPermissionIds([]);
       },
       onError: (err) => handleApiError(err, form.setError),
     });
@@ -90,9 +96,11 @@ export default function RoleListPage() {
             {t('lockey_identity_roles_description')}
           </p>
         </div>
-        <Button type="button" onClick={() => setIsDialogOpen(true)}>
-          {t('lockey_identity_roles_create')}
-        </Button>
+        {hasPermission('identity.roles.create') && (
+          <Button type="button" onClick={() => setIsDialogOpen(true)}>
+            {t('lockey_identity_roles_create')}
+          </Button>
+        )}
       </div>
 
       {!roles?.length ? (
@@ -100,24 +108,26 @@ export default function RoleListPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {roles.map((role: RoleDto) => (
-            <Card key={role.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  {role.name}
-                  {role.isSystemRole && (
-                    <Badge variant="secondary">{t('lockey_identity_col_system_role')}</Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  {role.description ?? '—'}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {t('lockey_identity_col_permissions_count')}: {role.permissions.length}
-                </p>
-              </CardContent>
-            </Card>
+            <Link key={role.id} to={`/identity/roles/${role.id}`}>
+              <Card className="transition-colors hover:border-primary cursor-pointer">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {role.name}
+                    {role.isSystemRole && (
+                      <Badge variant="secondary">{t('lockey_identity_col_system_role')}</Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {role.description?.startsWith('lockey_') ? t(role.description) : (role.description ?? '—')}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {t('lockey_identity_col_permissions_count')}: {role.permissions.length}
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
@@ -145,6 +155,13 @@ export default function RoleListPage() {
                 {t('lockey_identity_form_role_description')}
               </label>
               <Input id="roleDescription" {...form.register('description')} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">{t('lockey_identity_permissions')}</label>
+              <PermissionSelector
+                selectedIds={selectedPermissionIds}
+                onChange={setSelectedPermissionIds}
+              />
             </div>
             <div className="flex justify-end gap-2">
               <Button

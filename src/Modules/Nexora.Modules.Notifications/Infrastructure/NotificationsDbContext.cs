@@ -24,5 +24,6 @@ public sealed class NotificationsDbContext(
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(NotificationsDbContext).Assembly);
+        ApplySoftDeleteFilters(modelBuilder);
     }
 }

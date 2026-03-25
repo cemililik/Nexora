@@ -45,5 +45,15 @@
   "lockey_common_yes": "Yes",
   "lockey_common_no": "No",
   "lockey_common_select": "Select...",
-  "lockey_common_module_not_installed": "This module is not installed for your organization."
+  "lockey_common_module_not_installed": "This module is not installed for your organization.",
+  "lockey_common_dashboard_subtitle": "Here's an overview of your platform.",
+  "lockey_common_recent_activity": "Recent Activity",
+  "lockey_common_no_recent_activity": "No recent activity to display.",
+  "lockey_common_quick_stats": "Quick Stats",
+  "lockey_common_stats_coming_soon": "Detailed analytics coming soon.",
+  "lockey_common_module_identity": "Identity & Access",
+  "lockey_common_module_contacts": "Contacts",
+  "lockey_common_module_documents": "Documents",
+  "lockey_common_module_notifications": "Notifications",
+  "lockey_common_module_reporting": "Reporting"
 }

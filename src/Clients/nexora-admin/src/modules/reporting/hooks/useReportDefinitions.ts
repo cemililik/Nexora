@@ -8,6 +8,7 @@ import type { PagedResult } from '@/shared/types/api';
 import type {
   CreateReportDefinitionRequest,
   ReportDefinitionDto,
+  TestReportQueryResultDto,
   UpdateReportDefinitionRequest,
 } from '../types';
 
@@ -71,6 +72,16 @@ export function useUpdateReportDefinition() {
       void queryClient.invalidateQueries({ queryKey: reportDefinitionKeys.all });
       toast.success(t('lockey_reporting_toast_definition_updated'));
     },
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function useTestReportQuery() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (queryText: string) =>
+      api.post<TestReportQueryResultDto>('/reporting/definitions/test-query', { queryText }),
     onError: (err) => handleApiError(err),
   });
 }

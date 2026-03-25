@@ -29,6 +29,10 @@ export const identityManifest: AdminModuleManifest = {
       component: lazy(() => import('./pages/RoleListPage')),
     },
     {
+      path: 'roles/:id',
+      component: lazy(() => import('./pages/RoleDetailPage')),
+    },
+    {
       path: 'organizations',
       component: lazy(() => import('./pages/OrganizationListPage')),
     },

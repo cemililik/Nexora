@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Application.DTOs;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Infrastructure;
+using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -50,6 +51,10 @@ public sealed class UpdateReportDefinitionHandler(
         if (definition is null)
             return Result<ReportDefinitionDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_definition_not_found"));
+
+        if (!SqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+            return Result<ReportDefinitionDto>.Failure(
+                LocalizedMessage.Of("lockey_reporting_error_invalid_query", new() { ["reason"] = sqlError! }));
 
         if (!Enum.TryParse<ReportFormat>(request.DefaultFormat, true, out var format))
             return Result<ReportDefinitionDto>.Failure(

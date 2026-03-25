@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Base;
@@ -6,7 +7,7 @@ namespace Nexora.Infrastructure.Persistence;
 
 /// <summary>
 /// Base DbContext for all module contexts. Provides schema-per-tenant support,
-/// audit fields, and domain event dispatching.
+/// audit fields, soft delete global filters, and domain event dispatching.
 /// </summary>
 public abstract class BaseDbContext(
     DbContextOptions options,
@@ -28,14 +29,30 @@ public abstract class BaseDbContext(
         catch (InvalidOperationException)
         {
             // Tenant context not set — used during migrations or design-time
-            // Schema will be applied at runtime via connection
+        }
+
+    }
+
+    /// <summary>
+    /// Applies global soft delete query filters. Call this in child OnModelCreating
+    /// AFTER ApplyConfigurationsFromAssembly so all entity conversions are registered.
+    /// </summary>
+    protected static void ApplySoftDeleteFilters(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+            {
+                modelBuilder.Entity(entityType.ClrType)
+                    .HasQueryFilter(BuildSoftDeleteFilter(entityType.ClrType));
+            }
         }
     }
 
-    /// <summary>Saves changes, sets audit fields, and dispatches domain events.</summary>
+    /// <summary>Saves changes, converts hard deletes to soft deletes, sets audit fields, and dispatches domain events.</summary>
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        SetAuditFields();
+        ConvertDeletesAndSetAuditFields();
         var result = await base.SaveChangesAsync(ct);
 
         if (domainEventDispatcher is not null)
@@ -44,7 +61,7 @@ public abstract class BaseDbContext(
         return result;
     }
 
-    private void SetAuditFields()
+    private void ConvertDeletesAndSetAuditFields()
     {
         var now = DateTimeOffset.UtcNow;
         string? userId = null;
@@ -60,9 +77,17 @@ public abstract class BaseDbContext(
 
         foreach (var entry in ChangeTracker.Entries())
         {
-            var entityType = entry.Entity.GetType();
+            // Convert hard deletes to soft deletes for ISoftDeletable entities
+            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable)
+            {
+                entry.State = EntityState.Modified;
+                entry.Property(nameof(ISoftDeletable.IsDeleted)).CurrentValue = true;
+                entry.Property(nameof(ISoftDeletable.DeletedAt)).CurrentValue = now;
+                entry.Property(nameof(ISoftDeletable.DeletedBy)).CurrentValue = userId;
+                continue;
+            }
 
-            if (!IsAuditableEntity(entityType))
+            if (!IsAuditableEntity(entry.Entity.GetType()))
                 continue;
 
             switch (entry.State)
@@ -89,5 +114,14 @@ public abstract class BaseDbContext(
             current = current.BaseType;
         }
         return false;
+    }
+
+    /// <summary>Builds a lambda expression: e => !e.IsDeleted</summary>
+    private static LambdaExpression BuildSoftDeleteFilter(Type entityType)
+    {
+        var parameter = Expression.Parameter(entityType, "e");
+        var property = Expression.Property(parameter, nameof(ISoftDeletable.IsDeleted));
+        var condition = Expression.Equal(property, Expression.Constant(false));
+        return Expression.Lambda(condition, parameter);
     }
 }

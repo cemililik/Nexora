@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Api;
@@ -75,6 +76,35 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
+
+        group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new DeleteUserCommand(id), ct);
+            return result.IsSuccess
+                ? Results.NoContent()
+                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+        });
+
+        group.MapGet("/{id:guid}/roles", async (Guid id, Guid? organizationId, ISender sender, CancellationToken ct) =>
+        {
+            if (organizationId is null)
+                return Results.BadRequest(ApiEnvelope<List<RoleDto>>.Fail(
+                    new Error(LocalizedMessage.Of("lockey_validation_required", new() { ["field"] = "organizationId" }))));
+
+            var result = await sender.Send(new GetUserRolesQuery(id, organizationId.Value), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<List<RoleDto>>.Success(result.Value!))
+                : Results.NotFound(ApiEnvelope<List<RoleDto>>.Fail(result.Error!));
+        });
+
+        group.MapPut("/{id:guid}/roles", async (Guid id, AssignRolesRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new AssignUserRolesCommand(id, request.OrganizationId, request.RoleIds);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+        });
     }
 }
 
@@ -83,3 +113,6 @@ public sealed record UpdateProfileRequest(string FirstName, string LastName, str
 
 /// <summary>Request body for changing a user's status.</summary>
 public sealed record UpdateUserStatusRequest(string Action);
+
+/// <summary>Request body for assigning roles to a user within an organization.</summary>
+public sealed record AssignRolesRequest(Guid OrganizationId, List<Guid> RoleIds);

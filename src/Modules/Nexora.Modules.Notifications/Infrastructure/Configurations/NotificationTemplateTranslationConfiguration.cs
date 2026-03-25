@@ -20,6 +20,6 @@ public sealed class NotificationTemplateTranslationConfiguration : IEntityTypeCo
         builder.Property(t => t.Subject).HasMaxLength(500).IsRequired();
         builder.Property(t => t.Body).IsRequired();
 
-        builder.HasIndex(t => new { t.TemplateId, t.LanguageCode }).IsUnique();
+        builder.HasIndex(t => new { t.TemplateId, t.LanguageCode }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

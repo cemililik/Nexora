@@ -215,6 +215,12 @@ Nexora.Modules.{ModuleName}/
 - Use structured logging: `logger.LogInformation("Tenant {TenantId} created", id)` — no string interpolation
 - DomainException ONLY from domain entities — handlers return `Result.Failure()` instead
 - Never use `catch(Exception)` in module code
+- **Soft Delete**: All `AuditableEntity<T>` entities use soft delete automatically:
+  - `dbContext.Remove(entity)` → auto-converts to `IsDeleted=true` (never hard deletes)
+  - All queries auto-filter `WHERE IsDeleted = false` via global query filter
+  - Use `IgnoreQueryFilters()` only for admin audit views
+  - `IsActive` (temporary) ≠ `IsDeleted` (permanent) — different concepts
+  - GDPR delete is the ONLY exception where hard delete is allowed
 
 ## When Writing Frontend Code
 **Full spec**: `docs/standards/FRONTEND_STANDARDS.md`

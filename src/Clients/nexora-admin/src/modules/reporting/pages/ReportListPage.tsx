@@ -5,6 +5,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
+import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
@@ -24,7 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { useReportDefinitions, useCreateReportDefinition } from '../hooks/useReportDefinitions';
+import { useReportDefinitions, useCreateReportDefinition, useTestReportQuery } from '../hooks/useReportDefinitions';
+import { SqlEditor } from '../components/SqlEditor';
+import { SqlTestResult } from '../components/SqlTestResult';
 
 const FORMATS = ['Csv', 'Excel', 'Pdf', 'Json'] as const;
 
@@ -52,8 +56,11 @@ export default function ReportListPage() {
   const page = Number(searchParams.get('page') ?? '1');
   const search = searchParams.get('search') ?? '';
 
+  const { hasPermission } = usePermissions();
+  const { handleApiError } = useApiError();
   const { data, isLoading } = useReportDefinitions({ page, pageSize: 20, search: search || undefined });
   const createDefinition = useCreateReportDefinition();
+  const testQuery = useTestReportQuery();
 
   const schema = useMemo(() => createSchema(t), [t]);
 
@@ -86,6 +93,7 @@ export default function ReportListPage() {
           setDialogOpen(false);
           form.reset();
         },
+        onError: (err) => handleApiError(err),
       },
     );
   };
@@ -96,9 +104,11 @@ export default function ReportListPage() {
         <h1 className="text-2xl font-bold text-foreground">
           {t('lockey_reporting_nav_reports')}
         </h1>
-        <Button onClick={() => setDialogOpen(true)}>
-          {t('lockey_reporting_action_create_definition')}
-        </Button>
+        {hasPermission('reporting.definition.manage') && (
+          <Button onClick={() => setDialogOpen(true)}>
+            {t('lockey_reporting_action_create_definition')}
+          </Button>
+        )}
       </div>
 
       <Input
@@ -219,7 +229,7 @@ export default function ReportListPage() {
                 <Input
                   id="rd-module"
                   {...form.register('module')}
-                  placeholder="contacts"
+                  placeholder={t('lockey_reporting_module_placeholder')}
                 />
                 {form.formState.errors.module && (
                   <p className="text-sm text-destructive">{form.formState.errors.module.message}</p>
@@ -250,19 +260,35 @@ export default function ReportListPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="rd-query" className="text-sm font-medium">
-                {t('lockey_reporting_query')}
-              </label>
-              <Textarea
-                id="rd-query"
-                {...form.register('queryText')}
-                rows={4}
-                placeholder="SELECT id, name FROM contacts_contacts"
-                className="font-mono text-sm"
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  {t('lockey_reporting_query')}
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={testQuery.isPending || !form.watch('queryText')}
+                  onClick={() => testQuery.mutate(form.getValues('queryText'))}
+                >
+                  {t('lockey_reporting_action_test_query')}
+                </Button>
+              </div>
+              <Controller
+                control={form.control}
+                name="queryText"
+                render={({ field }) => (
+                  <SqlEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder={t('lockey_reporting_query_placeholder')}
+                  />
+                )}
               />
               {form.formState.errors.queryText && (
                 <p className="text-sm text-destructive">{form.formState.errors.queryText.message}</p>
               )}
+              <SqlTestResult result={testQuery.data} isPending={testQuery.isPending} />
             </div>
 
             <DialogFooter>

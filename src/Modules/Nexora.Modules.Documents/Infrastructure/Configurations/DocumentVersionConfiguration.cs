@@ -19,6 +19,6 @@ public sealed class DocumentVersionConfiguration : IEntityTypeConfiguration<Docu
         builder.Property(v => v.StorageKey).HasMaxLength(1000).IsRequired();
         builder.Property(v => v.ChangeNote).HasMaxLength(500);
 
-        builder.HasIndex(v => new { v.DocumentId, v.VersionNumber }).IsUnique();
+        builder.HasIndex(v => new { v.DocumentId, v.VersionNumber }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

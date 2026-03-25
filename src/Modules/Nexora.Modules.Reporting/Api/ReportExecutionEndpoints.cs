@@ -51,5 +51,15 @@ public static class ReportExecutionEndpoints
                 ? Results.Ok(ApiEnvelope<DownloadReportResultDto>.Success(result.Value!))
                 : Results.NotFound(ApiEnvelope<DownloadReportResultDto>.Fail(result.Error!));
         });
+
+        group.MapGet("/{id:guid}/file", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetReportFileQuery(id), ct);
+            if (!result.IsSuccess)
+                return Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
+
+            var file = result.Value!;
+            return Results.File(file.Data, file.ContentType, file.FileName);
+        });
     }
 }

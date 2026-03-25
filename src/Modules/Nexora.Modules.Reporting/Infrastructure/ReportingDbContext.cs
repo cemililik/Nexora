@@ -21,5 +21,6 @@ public sealed class ReportingDbContext(
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ReportingDbContext).Assembly);
+        ApplySoftDeleteFilters(modelBuilder);
     }
 }

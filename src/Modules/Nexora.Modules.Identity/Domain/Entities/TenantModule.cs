@@ -4,13 +4,16 @@ using Nexora.SharedKernel.Domain.Base;
 namespace Nexora.Modules.Identity.Domain.Entities;
 
 /// <summary>Represents a module installed for a tenant.</summary>
-public sealed class TenantModule : Entity<TenantModuleId>
+public sealed class TenantModule : AuditableEntity<TenantModuleId>
 {
     public TenantId TenantId { get; private set; }
     public string ModuleName { get; private set; } = default!;
     public DateTimeOffset InstalledAt { get; private set; }
     public string? InstalledBy { get; private set; }
     public bool IsActive { get; private set; } = true;
+
+    /// <summary>Comma-separated list of renamed table names after uninstall.</summary>
+    public string? DeletedTableNames { get; private set; }
 
     private TenantModule() { }
 
@@ -29,4 +32,13 @@ public sealed class TenantModule : Entity<TenantModuleId>
 
     /// <summary>Deactivates this module installation.</summary>
     public void Deactivate() => IsActive = false;
+
+    /// <summary>Activates this module installation.</summary>
+    public void Activate() => IsActive = true;
+
+    /// <summary>Records the renamed table names during uninstall.</summary>
+    public void RecordUninstall(string deletedTableNames)
+    {
+        DeletedTableNames = deletedTableNames;
+    }
 }

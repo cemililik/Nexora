@@ -33,7 +33,12 @@
   "lockey_reporting_action_create_definition": "Rapor Oluştur",
   "lockey_reporting_action_create_dashboard": "Pano Oluştur",
   "lockey_reporting_action_execute": "Raporu Çalıştır",
+  "lockey_reporting_action_download": "İndir",
+  "lockey_reporting_action_preview": "Önizle",
+  "lockey_reporting_action_edit": "Raporu Düzenle",
+  "lockey_reporting_action_save": "Kaydet",
   "lockey_reporting_action_delete": "Sil",
+  "lockey_reporting_confirm_delete": "Bu raporu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
   "lockey_reporting_prev": "Önceki",
   "lockey_reporting_next": "Sonraki",
   "lockey_reporting_status_queued": "Kuyrukta",
@@ -58,5 +63,14 @@
   "lockey_reporting_permission_schedule_manage": "Rapor zamanlamalarını yönet",
   "lockey_reporting_permission_dashboard_read": "Panoları görüntüle",
   "lockey_reporting_permission_dashboard_manage": "Panoları yönet",
-  "lockey_reporting_error_execution_already_finished": "Rapor çalıştırması zaten tamamlanmış"
+  "lockey_reporting_error_execution_already_finished": "Rapor çalıştırması zaten tamamlanmış",
+  "lockey_reporting_error_invalid_query": "Geçersiz SQL sorgusu: {{reason}}",
+  "lockey_reporting_error_query_failed": "Sorgu başarısız: {{reason}}",
+  "lockey_reporting_action_test_query": "Sorguyu Test Et",
+  "lockey_reporting_test_query_success": "Sorgu {{count}} satır döndürdü",
+
+  "lockey_reporting_row_count": "{{count}} satır",
+  "lockey_reporting_duration": "{{ms}}ms",
+  "lockey_reporting_module_placeholder": "ör. contacts",
+  "lockey_reporting_query_placeholder": "SELECT id, name FROM contacts_contacts"
 }

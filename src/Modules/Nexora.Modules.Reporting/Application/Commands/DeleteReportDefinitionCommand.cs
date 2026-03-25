@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
@@ -10,6 +11,15 @@ using Nexora.SharedKernel.Results;
 namespace Nexora.Modules.Reporting.Application.Commands;
 
 public sealed record DeleteReportDefinitionCommand(Guid Id) : ICommand;
+
+/// <summary>Validates report definition deletion input.</summary>
+public sealed class DeleteReportDefinitionValidator : AbstractValidator<DeleteReportDefinitionCommand>
+{
+    public DeleteReportDefinitionValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty().WithMessage("lockey_validation_required");
+    }
+}
 
 public sealed class DeleteReportDefinitionHandler(
     ReportingDbContext dbContext,

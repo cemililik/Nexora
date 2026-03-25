@@ -42,7 +42,7 @@ public sealed class DeleteOrganizationHandler(
         if (org is null)
         {
             logger.LogWarning("Organization deletion failed: organization {OrganizationId} not found for tenant {TenantId}", request.OrganizationId, tenantId);
-            return Result.Failure("lockey_identity_error_org_not_found");
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
         }
 
         org.Deactivate();
@@ -50,6 +50,6 @@ public sealed class DeleteOrganizationHandler(
 
         logger.LogInformation("Organization {OrganizationId} deactivated for tenant {TenantId}", org.Id, tenantId);
 
-        return Result.Success(new LocalizedMessage("lockey_identity_org_deactivated"));
+        return Result.Success(LocalizedMessage.Of("lockey_identity_org_deactivated"));
     }
 }

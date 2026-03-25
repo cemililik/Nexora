@@ -45,5 +45,15 @@
   "lockey_common_yes": "Evet",
   "lockey_common_no": "Hayır",
   "lockey_common_select": "Seçin...",
-  "lockey_common_module_not_installed": "Bu modül kuruluşunuz için yüklü değil."
+  "lockey_common_module_not_installed": "Bu modül kuruluşunuz için yüklü değil.",
+  "lockey_common_dashboard_subtitle": "Platformunuzun genel görünümü.",
+  "lockey_common_recent_activity": "Son Aktiviteler",
+  "lockey_common_no_recent_activity": "Gösterilecek son aktivite yok.",
+  "lockey_common_quick_stats": "Hızlı İstatistikler",
+  "lockey_common_stats_coming_soon": "Detaylı analizler yakında.",
+  "lockey_common_module_identity": "Kimlik ve Erişim",
+  "lockey_common_module_contacts": "Kişiler",
+  "lockey_common_module_documents": "Belgeler",
+  "lockey_common_module_notifications": "Bildirimler",
+  "lockey_common_module_reporting": "Raporlama"
 }

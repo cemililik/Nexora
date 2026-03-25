@@ -43,6 +43,13 @@ public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
         };
     }
 
+    /// <summary>Updates the role's name and description.</summary>
+    public void Update(string name, string? description)
+    {
+        Name = name;
+        Description = description;
+    }
+
     /// <summary>Assigns a permission to this role if not already assigned.</summary>
     public void AssignPermission(Permission permission)
     {

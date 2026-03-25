@@ -30,6 +30,6 @@ public sealed class GetTenantModulesHandler(
             .ToListAsync(cancellationToken);
 
         return Result<List<TenantModuleDto>>.Success(modules,
-            new LocalizedMessage("lockey_identity_modules_listed"));
+            LocalizedMessage.Of("lockey_identity_modules_listed"));
     }
 }
