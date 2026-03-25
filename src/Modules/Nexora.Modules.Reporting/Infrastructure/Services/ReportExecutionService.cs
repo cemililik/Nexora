@@ -1,5 +1,7 @@
 using System.Data;
 using Dapper;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Application.Services;
@@ -28,7 +30,7 @@ public sealed class ReportExecutionService(
         if (!sqlQueryValidator.IsValid(queryText, out var validationError))
         {
             logger.LogWarning("SQL validation failed for tenant {TenantId}: {Error}", tenantId, validationError);
-            throw new InvalidOperationException(validationError);
+            throw new ValidationException([new ValidationFailure("queryText", validationError!)]);
         }
 
         var connectionString = configuration.GetConnectionString("Default");
