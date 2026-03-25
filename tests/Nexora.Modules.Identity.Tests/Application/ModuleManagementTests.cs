@@ -132,8 +132,9 @@ public sealed class ModuleManagementTests : IDisposable
 
         result.IsSuccess.Should().BeTrue();
         var module = await _platformDb.TenantModules
+            .IgnoreQueryFilters()
             .FirstAsync(tm => tm.TenantId == _tenantId && tm.ModuleName == "crm");
-        module.IsActive.Should().BeFalse();
+        module.IsDeleted.Should().BeTrue();
     }
 
     [Fact]

@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { useTenant, useUpdateTenantStatus } from '../hooks/useTenants';
-import { useTenantModules, useInstallModule, useUninstallModule } from '../hooks/useModuleManagement';
+import { useTenantModules, useInstallModule, useActivateModule, useDeactivateModule, useUninstallModule } from '../hooks/useModuleManagement';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
 
 export default function TenantDetailPage() {
@@ -31,6 +31,8 @@ export default function TenantDetailPage() {
   const updateStatus = useUpdateTenantStatus(id);
   const { data: modules } = useTenantModules(id);
   const installModule = useInstallModule(id);
+  const activateModule = useActivateModule(id);
+  const deactivateModule = useDeactivateModule(id);
   const uninstallModule = useUninstallModule(id);
 
   const [confirmAction, setConfirmAction] = useState<'suspend' | 'terminate' | null>(null);
@@ -131,30 +133,59 @@ export default function TenantDetailPage() {
                         {mod.isActive ? t('lockey_identity_status_active') : t('lockey_identity_status_inactive')}
                       </Badge>
                     </div>
-                    {mod.isActive ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setModuleToUninstall(mod.moduleName)}
-                      >
-                        {t('lockey_identity_action_uninstall')}
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          installModule.mutate(mod.moduleName, {
-                            onError: (err) => handleApiError(err),
-                          });
-                        }}
-                        disabled={installModule.isPending}
-                      >
-                        {t('lockey_identity_action_install')}
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {mod.isActive ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={deactivateModule.isPending}
+                            onClick={() => {
+                              deactivateModule.mutate(mod.moduleName, {
+                                onError: (err) => handleApiError(err),
+                              });
+                            }}
+                          >
+                            {t('lockey_identity_action_deactivate_module')}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => setModuleToUninstall(mod.moduleName)}
+                          >
+                            {t('lockey_identity_action_uninstall')}
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={activateModule.isPending}
+                            onClick={() => {
+                              activateModule.mutate(mod.moduleName, {
+                                onError: (err) => handleApiError(err),
+                              });
+                            }}
+                          >
+                            {t('lockey_identity_action_activate_module')}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => setModuleToUninstall(mod.moduleName)}
+                          >
+                            {t('lockey_identity_action_uninstall')}
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -194,7 +225,7 @@ export default function TenantDetailPage() {
         open={moduleToUninstall !== null}
         onOpenChange={() => setModuleToUninstall(null)}
         title={t('lockey_identity_action_uninstall')}
-        description={t('lockey_identity_confirm_uninstall_module')}
+        description={t('lockey_identity_confirm_uninstall_module_permanent')}
         variant="destructive"
         onConfirm={() => {
           if (moduleToUninstall) {

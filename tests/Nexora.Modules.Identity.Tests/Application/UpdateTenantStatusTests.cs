@@ -24,7 +24,7 @@ public sealed class UpdateTenantStatusTests : IDisposable
         await _platformDb.Tenants.AddAsync(tenant);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UpdateTenantStatusHandler(_platformDb);
+        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(tenant.Id.Value, "activate"), CancellationToken.None);
 
@@ -41,7 +41,7 @@ public sealed class UpdateTenantStatusTests : IDisposable
         await _platformDb.Tenants.AddAsync(tenant);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UpdateTenantStatusHandler(_platformDb);
+        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(tenant.Id.Value, "suspend"), CancellationToken.None);
 
@@ -57,7 +57,7 @@ public sealed class UpdateTenantStatusTests : IDisposable
         await _platformDb.Tenants.AddAsync(tenant);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UpdateTenantStatusHandler(_platformDb);
+        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(tenant.Id.Value, "terminate"), CancellationToken.None);
 
@@ -69,7 +69,7 @@ public sealed class UpdateTenantStatusTests : IDisposable
     [Fact]
     public async Task Handle_NotFound_ShouldReturnFailure()
     {
-        var handler = new UpdateTenantStatusHandler(_platformDb);
+        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(Guid.NewGuid(), "activate"), CancellationToken.None);
 

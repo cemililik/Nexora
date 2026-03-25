@@ -39,6 +39,38 @@ export function useInstallModule(tenantId: string) {
   });
 }
 
+export function useActivateModule(tenantId: string) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('identity');
+
+  return useMutation({
+    mutationFn: (moduleName: string) =>
+      api.patch<void>(
+        `/identity/tenants/${encodeURIComponent(tenantId)}/modules/${encodeURIComponent(moduleName)}/activate`,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: moduleKeys.all(tenantId) });
+      toast.success(t('lockey_identity_module_activated'));
+    },
+  });
+}
+
+export function useDeactivateModule(tenantId: string) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('identity');
+
+  return useMutation({
+    mutationFn: (moduleName: string) =>
+      api.patch<void>(
+        `/identity/tenants/${encodeURIComponent(tenantId)}/modules/${encodeURIComponent(moduleName)}/deactivate`,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: moduleKeys.all(tenantId) });
+      toast.success(t('lockey_identity_module_deactivated'));
+    },
+  });
+}
+
 export function useUninstallModule(tenantId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');

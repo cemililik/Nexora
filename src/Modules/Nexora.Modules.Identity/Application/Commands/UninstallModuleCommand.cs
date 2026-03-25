@@ -10,7 +10,7 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
-/// <summary>Command to uninstall (deactivate) a module for a specific tenant.</summary>
+/// <summary>Command to permanently uninstall a module for a tenant. Renames tables and soft-deletes the record.</summary>
 public sealed record UninstallModuleCommand(
     Guid TenantId,
     string ModuleName) : ICommand;
@@ -28,7 +28,14 @@ public sealed class UninstallModuleValidator : AbstractValidator<UninstallModule
     }
 }
 
-/// <summary>Soft-uninstalls a module by deactivating its tenant module record and cleaning up role-permission associations.</summary>
+/// <summary>
+/// Uninstalls a module by:
+/// 1. Calling module's OnUninstallAsync callback
+/// 2. Removing orphaned role-permission associations
+/// 3. Renaming module tables with _del_{timestamp} suffix
+/// 4. Recording renamed table names
+/// 5. Soft-deleting the TenantModule record (IsDeleted=true)
+/// </summary>
 public sealed class UninstallModuleHandler(
     PlatformDbContext platformDb,
     IdentityDbContext identityDb,
@@ -83,11 +90,80 @@ public sealed class UninstallModuleHandler(
             await identityDb.SaveChangesAsync(cancellationToken);
         }
 
-        tenantModule.Deactivate();
+        // Rename module tables in tenant schema with _del_{timestamp} suffix
+        var renamedTables = await RenameModuleTablesAsync(
+            request.TenantId, request.ModuleName, cancellationToken);
+
+        if (renamedTables.Count > 0)
+        {
+            tenantModule.RecordUninstall(string.Join(",", renamedTables));
+            logger.LogInformation("Renamed {Count} tables for module {ModuleName} in tenant {TenantId}: {Tables}",
+                renamedTables.Count, request.ModuleName, request.TenantId, string.Join(", ", renamedTables));
+        }
+
+        // Soft delete the TenantModule record
+        platformDb.TenantModules.Remove(tenantModule);
         await platformDb.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Module {ModuleName} uninstalled for tenant {TenantId}", request.ModuleName, request.TenantId);
 
         return Result.Success(new LocalizedMessage("lockey_identity_module_uninstalled"));
+    }
+
+    /// <summary>
+    /// Renames module tables in the tenant schema by appending _del_{timestamp}.
+    /// Returns the list of new table names.
+    /// </summary>
+    private async Task<List<string>> RenameModuleTablesAsync(
+        Guid tenantId, string moduleName, CancellationToken ct)
+    {
+        var schemaName = $"tenant_{tenantId:N}";
+        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
+        var prefix = $"{moduleName}_";
+        var renamedTables = new List<string>();
+
+        try
+        {
+            // Find all tables in the tenant schema that belong to this module
+            var tableQuery = $@"
+                SELECT table_name FROM information_schema.tables
+                WHERE table_schema = '{schemaName}'
+                AND table_name LIKE '{prefix}%'
+                AND table_name NOT LIKE '%_del_%'
+                ORDER BY table_name";
+
+            await using var connection = platformDb.Database.GetDbConnection();
+            await connection.OpenAsync(ct);
+
+            var tableNames = new List<string>();
+            await using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = tableQuery;
+                await using var reader = await cmd.ExecuteReaderAsync(ct);
+                while (await reader.ReadAsync(ct))
+                    tableNames.Add(reader.GetString(0));
+            }
+
+            // Rename each table
+            foreach (var tableName in tableNames)
+            {
+                var newName = $"{tableName}_del_{timestamp}";
+                var renameSQL = $"ALTER TABLE \"{schemaName}\".\"{tableName}\" RENAME TO \"{newName}\"";
+
+                await using var renameCmd = connection.CreateCommand();
+                renameCmd.CommandText = renameSQL;
+                await renameCmd.ExecuteNonQueryAsync(ct);
+
+                renamedTables.Add(newName);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to rename tables for module {ModuleName} in tenant {TenantId}",
+                moduleName, tenantId);
+            // Don't fail the uninstall — tables may not exist or be already renamed
+        }
+
+        return renamedTables;
     }
 }
