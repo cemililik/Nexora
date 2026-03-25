@@ -3,8 +3,8 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Application.DTOs;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure;
-using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -35,17 +35,19 @@ public sealed class CreateReportDefinitionValidator : AbstractValidator<CreateRe
 
 public sealed class CreateReportDefinitionHandler(
     ReportingDbContext dbContext,
+    ISqlQueryValidator sqlQueryValidator,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<CreateReportDefinitionHandler> logger) : ICommandHandler<CreateReportDefinitionCommand, ReportDefinitionDto>
 {
     public async Task<Result<ReportDefinitionDto>> Handle(CreateReportDefinitionCommand request, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
         var orgId = Guid.Parse(tenantContextAccessor.Current.OrganizationId!);
 
-        if (!SqlQueryValidator.IsValid(request.QueryText, out var sqlError))
-            return Result<ReportDefinitionDto>.Failure(
-                LocalizedMessage.Of("lockey_reporting_error_invalid_query", new() { ["reason"] = sqlError! }));
+        if (!sqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+            return Result<ReportDefinitionDto>.Failure(LocalizedMessage.Of(sqlError!));
 
         if (!Enum.TryParse<ReportFormat>(request.DefaultFormat, true, out var format))
             return Result<ReportDefinitionDto>.Failure(

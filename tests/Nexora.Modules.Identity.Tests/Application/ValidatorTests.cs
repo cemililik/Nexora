@@ -8,14 +8,14 @@ public sealed class CreateTenantValidatorTests
     private readonly CreateTenantValidator _validator = new();
 
     [Fact]
-    public void Validate_ValidCommand_ShouldPass()
+    public void CreateTenantValidator_WithValidData_ValidationPasses()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("Acme", "acme"));
         result.ShouldNotHaveAnyValidationErrors();
     }
 
     [Fact]
-    public void Validate_EmptyName_ShouldFail()
+    public void CreateTenantValidator_WithEmptyName_ValidationFails()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("", "acme"));
         result.ShouldHaveValidationErrorFor(x => x.Name)
@@ -23,7 +23,7 @@ public sealed class CreateTenantValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptySlug_ShouldFail()
+    public void CreateTenantValidator_WithEmptySlug_ValidationFails()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("Acme", ""));
         result.ShouldHaveValidationErrorFor(x => x.Slug)
@@ -31,7 +31,7 @@ public sealed class CreateTenantValidatorTests
     }
 
     [Fact]
-    public void Validate_InvalidSlugFormat_ShouldFail()
+    public void CreateTenantValidator_WithInvalidSlugFormat_ValidationFails()
     {
         var result = _validator.TestValidate(new CreateTenantCommand("Acme", "UPPER CASE!"));
         result.ShouldHaveValidationErrorFor(x => x.Slug)
@@ -39,7 +39,7 @@ public sealed class CreateTenantValidatorTests
     }
 
     [Fact]
-    public void Validate_SlugTooLong_ShouldFail()
+    public void CreateTenantValidator_WithSlugTooLong_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateTenantCommand("Acme", new string('a', 101)));
@@ -56,7 +56,7 @@ public sealed class UpdateTenantStatusValidatorTests
     [InlineData("activate")]
     [InlineData("suspend")]
     [InlineData("terminate")]
-    public void Validate_ValidAction_ShouldPass(string action)
+    public void UpdateTenantStatusValidator_WithValidAction_ValidationPasses(string action)
     {
         var result = _validator.TestValidate(
             new UpdateTenantStatusCommand(Guid.NewGuid(), action));
@@ -64,7 +64,7 @@ public sealed class UpdateTenantStatusValidatorTests
     }
 
     [Fact]
-    public void Validate_InvalidAction_ShouldFail()
+    public void UpdateTenantStatusValidator_WithInvalidAction_ValidationFails()
     {
         var result = _validator.TestValidate(
             new UpdateTenantStatusCommand(Guid.NewGuid(), "destroy"));
@@ -73,7 +73,7 @@ public sealed class UpdateTenantStatusValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyTenantId_ShouldFail()
+    public void UpdateTenantStatusValidator_WithEmptyTenantId_ValidationFails()
     {
         var result = _validator.TestValidate(
             new UpdateTenantStatusCommand(Guid.Empty, "activate"));
@@ -86,7 +86,7 @@ public sealed class CreateUserValidatorTests
     private readonly CreateUserValidator _validator = new();
 
     [Fact]
-    public void Validate_ValidCommand_ShouldPass()
+    public void CreateUserValidator_WithValidData_ValidationPasses()
     {
         var result = _validator.TestValidate(
             new CreateUserCommand("user@test.com", "John", "Doe", "TempPass1!"));
@@ -94,7 +94,7 @@ public sealed class CreateUserValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyEmail_ShouldFail()
+    public void CreateUserValidator_WithEmptyEmail_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateUserCommand("", "John", "Doe", "TempPass1!"));
@@ -103,7 +103,7 @@ public sealed class CreateUserValidatorTests
     }
 
     [Fact]
-    public void Validate_InvalidEmail_ShouldFail()
+    public void CreateUserValidator_WithInvalidEmail_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateUserCommand("not-an-email", "John", "Doe", "TempPass1!"));
@@ -112,7 +112,7 @@ public sealed class CreateUserValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyFirstName_ShouldFail()
+    public void CreateUserValidator_WithEmptyFirstName_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateUserCommand("u@t.com", "", "Doe", "TempPass1!"));
@@ -120,7 +120,7 @@ public sealed class CreateUserValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyPassword_ShouldFail()
+    public void CreateUserValidator_WithEmptyPassword_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateUserCommand("u@t.com", "J", "D", ""));
@@ -129,7 +129,7 @@ public sealed class CreateUserValidatorTests
     }
 
     [Fact]
-    public void Validate_ShortPassword_ShouldFail()
+    public void CreateUserValidator_WithShortPassword_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateUserCommand("u@t.com", "J", "D", "short"));
@@ -143,7 +143,7 @@ public sealed class CreateRoleValidatorTests
     private readonly CreateRoleValidator _validator = new();
 
     [Fact]
-    public void Validate_ValidCommand_ShouldPass()
+    public void CreateRoleValidator_WithValidData_ValidationPasses()
     {
         var result = _validator.TestValidate(
             new CreateRoleCommand("Admin", "Full access", null));
@@ -151,7 +151,7 @@ public sealed class CreateRoleValidatorTests
     }
 
     [Fact]
-    public void Validate_EmptyName_ShouldFail()
+    public void CreateRoleValidator_WithEmptyName_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateRoleCommand("", null, null));
@@ -160,11 +160,170 @@ public sealed class CreateRoleValidatorTests
     }
 
     [Fact]
-    public void Validate_NameTooLong_ShouldFail()
+    public void CreateRoleValidator_WithNameTooLong_ValidationFails()
     {
         var result = _validator.TestValidate(
             new CreateRoleCommand(new string('x', 101), null, null));
         result.ShouldHaveValidationErrorFor(x => x.Name)
             .WithErrorMessage("lockey_identity_validation_role_name_max_length");
+    }
+}
+
+public sealed class UpdateRoleValidatorTests
+{
+    private readonly UpdateRoleValidator _validator = new();
+
+    [Fact]
+    public void UpdateRoleValidator_WithEmptyId_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new UpdateRoleCommand(Guid.Empty, "Admin", null, null));
+        result.ShouldHaveValidationErrorFor(x => x.Id);
+    }
+
+    [Fact]
+    public void UpdateRoleValidator_WithEmptyName_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new UpdateRoleCommand(Guid.NewGuid(), "", null, null));
+        result.ShouldHaveValidationErrorFor(x => x.Name)
+            .WithErrorMessage("lockey_validation_required");
+    }
+
+    [Fact]
+    public void UpdateRoleValidator_WithNameTooLong_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new UpdateRoleCommand(Guid.NewGuid(), new string('x', 101), null, null));
+        result.ShouldHaveValidationErrorFor(x => x.Name)
+            .WithErrorMessage("lockey_validation_max_length");
+    }
+
+    [Fact]
+    public void UpdateRoleValidator_WithValidData_ValidationPasses()
+    {
+        var result = _validator.TestValidate(
+            new UpdateRoleCommand(Guid.NewGuid(), "Admin", "Full access", null));
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+}
+
+public sealed class DeleteRoleValidatorTests
+{
+    private readonly DeleteRoleValidator _validator = new();
+
+    [Fact]
+    public void DeleteRoleValidator_WithEmptyId_ValidationFails()
+    {
+        var result = _validator.TestValidate(new DeleteRoleCommand(Guid.Empty));
+        result.ShouldHaveValidationErrorFor(x => x.Id);
+    }
+
+    [Fact]
+    public void DeleteRoleValidator_WithValidData_ValidationPasses()
+    {
+        var result = _validator.TestValidate(new DeleteRoleCommand(Guid.NewGuid()));
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+}
+
+public sealed class DeleteUserValidatorTests
+{
+    private readonly DeleteUserValidator _validator = new();
+
+    [Fact]
+    public void DeleteUserValidator_WithEmptyId_ValidationFails()
+    {
+        var result = _validator.TestValidate(new DeleteUserCommand(Guid.Empty));
+        result.ShouldHaveValidationErrorFor(x => x.Id);
+    }
+
+    [Fact]
+    public void DeleteUserValidator_WithValidData_ValidationPasses()
+    {
+        var result = _validator.TestValidate(new DeleteUserCommand(Guid.NewGuid()));
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+}
+
+public sealed class AssignUserRolesValidatorTests
+{
+    private readonly AssignUserRolesValidator _validator = new();
+
+    [Fact]
+    public void AssignUserRolesValidator_WithEmptyUserId_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new AssignUserRolesCommand(Guid.Empty, Guid.NewGuid(), new List<Guid>()));
+        result.ShouldHaveValidationErrorFor(x => x.UserId);
+    }
+
+    [Fact]
+    public void AssignUserRolesValidator_WithEmptyOrganizationId_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new AssignUserRolesCommand(Guid.NewGuid(), Guid.Empty, new List<Guid>()));
+        result.ShouldHaveValidationErrorFor(x => x.OrganizationId);
+    }
+
+    [Fact]
+    public void AssignUserRolesValidator_WithNullRoleIds_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new AssignUserRolesCommand(Guid.NewGuid(), Guid.NewGuid(), null!));
+        result.ShouldHaveValidationErrorFor(x => x.RoleIds)
+            .WithErrorMessage("lockey_validation_required");
+    }
+
+    [Fact]
+    public void AssignUserRolesValidator_WithValidData_ValidationPasses()
+    {
+        var result = _validator.TestValidate(
+            new AssignUserRolesCommand(Guid.NewGuid(), Guid.NewGuid(), new List<Guid> { Guid.NewGuid() }));
+        result.ShouldNotHaveAnyValidationErrors();
+    }
+}
+
+public sealed class ActivateModuleValidatorTests
+{
+    private readonly ActivateModuleValidator _validator = new();
+
+    [Fact]
+    public void ActivateModuleValidator_WithEmptyTenantId_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new ActivateModuleCommand(Guid.Empty, "CRM"));
+        result.ShouldHaveValidationErrorFor(x => x.TenantId);
+    }
+
+    [Fact]
+    public void ActivateModuleValidator_WithEmptyModuleName_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new ActivateModuleCommand(Guid.NewGuid(), ""));
+        result.ShouldHaveValidationErrorFor(x => x.ModuleName)
+            .WithErrorMessage("lockey_validation_required");
+    }
+}
+
+public sealed class DeactivateModuleValidatorTests
+{
+    private readonly DeactivateModuleValidator _validator = new();
+
+    [Fact]
+    public void DeactivateModuleValidator_WithEmptyTenantId_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new DeactivateModuleCommand(Guid.Empty, "CRM"));
+        result.ShouldHaveValidationErrorFor(x => x.TenantId);
+    }
+
+    [Fact]
+    public void DeactivateModuleValidator_WithEmptyModuleName_ValidationFails()
+    {
+        var result = _validator.TestValidate(
+            new DeactivateModuleCommand(Guid.NewGuid(), ""));
+        result.ShouldHaveValidationErrorFor(x => x.ModuleName)
+            .WithErrorMessage("lockey_validation_required");
     }
 }

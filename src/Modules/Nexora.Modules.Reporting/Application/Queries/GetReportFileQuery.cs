@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure.Services;
@@ -20,10 +21,13 @@ public sealed record ReportFileDto(byte[] Data, string ContentType, string FileN
 public sealed class GetReportFileHandler(
     ReportingDbContext dbContext,
     IFileStorageService fileStorageService,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetReportFileQuery, ReportFileDto>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetReportFileHandler> logger) : IQueryHandler<GetReportFileQuery, ReportFileDto>
 {
     public async Task<Result<ReportFileDto>> Handle(GetReportFileQuery request, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
         var executionId = ReportExecutionId.From(request.ExecutionId);
 
@@ -32,8 +36,11 @@ public sealed class GetReportFileHandler(
             .FirstOrDefaultAsync(e => e.Id == executionId && e.TenantId == tenantId, ct);
 
         if (execution is null)
+        {
+            logger.LogDebug("Report execution {ExecutionId} not found for tenant {TenantId}", request.ExecutionId, tenantId);
             return Result<ReportFileDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_execution_not_found"));
+        }
 
         if (execution.Status != ReportStatus.Completed || string.IsNullOrEmpty(execution.ResultStorageKey))
             return Result<ReportFileDto>.Failure(

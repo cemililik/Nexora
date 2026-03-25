@@ -3,8 +3,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Application.DTOs;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure;
-using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -37,11 +37,14 @@ public sealed class UpdateReportDefinitionValidator : AbstractValidator<UpdateRe
 
 public sealed class UpdateReportDefinitionHandler(
     ReportingDbContext dbContext,
+    ISqlQueryValidator sqlQueryValidator,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<UpdateReportDefinitionHandler> logger) : ICommandHandler<UpdateReportDefinitionCommand, ReportDefinitionDto>
 {
     public async Task<Result<ReportDefinitionDto>> Handle(UpdateReportDefinitionCommand request, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
         var definitionId = ReportDefinitionId.From(request.Id);
 
@@ -52,9 +55,8 @@ public sealed class UpdateReportDefinitionHandler(
             return Result<ReportDefinitionDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_definition_not_found"));
 
-        if (!SqlQueryValidator.IsValid(request.QueryText, out var sqlError))
-            return Result<ReportDefinitionDto>.Failure(
-                LocalizedMessage.Of("lockey_reporting_error_invalid_query", new() { ["reason"] = sqlError! }));
+        if (!sqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+            return Result<ReportDefinitionDto>.Failure(LocalizedMessage.Of(sqlError!));
 
         if (!Enum.TryParse<ReportFormat>(request.DefaultFormat, true, out var format))
             return Result<ReportDefinitionDto>.Failure(

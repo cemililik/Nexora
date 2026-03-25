@@ -6,10 +6,14 @@ import { type ReactNode } from 'react';
 // Mock API
 const mockApiGet = vi.fn();
 const mockApiPost = vi.fn();
+const mockApiPut = vi.fn();
+const mockApiDelete = vi.fn();
 vi.mock('@/shared/lib/api', () => ({
   api: {
     get: (...args: unknown[]) => mockApiGet(...args),
     post: (...args: unknown[]) => mockApiPost(...args),
+    put: (...args: unknown[]) => mockApiPut(...args),
+    delete: (...args: unknown[]) => mockApiDelete(...args),
   },
 }));
 
@@ -17,7 +21,15 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-import { roleKeys, useRoles, usePermissions, useCreateRole } from './useRoles';
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+vi.mock('@/shared/hooks/useApiError', () => ({
+  useApiError: () => ({ handleApiError: vi.fn() }),
+}));
+
+import { roleKeys, useRoles, useRole, usePermissions, useCreateRole, useUpdateRole, useDeleteRole } from './useRoles';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -33,15 +45,15 @@ function createWrapper() {
 }
 
 describe('roleKeys', () => {
-  it('all_Called_ReturnsBaseKey', () => {
+  it('should return base key when all is accessed', () => {
     expect(roleKeys.all).toEqual(['identity', 'roles']);
   });
 
-  it('list_Called_ReturnsListKey', () => {
+  it('should return list key', () => {
     expect(roleKeys.list()).toEqual(['identity', 'roles', 'list']);
   });
 
-  it('permissions_WithModule_IncludesModule', () => {
+  it('should include module in permissions key when module is provided', () => {
     expect(roleKeys.permissions('contacts')).toEqual([
       'identity',
       'permissions',
@@ -49,7 +61,7 @@ describe('roleKeys', () => {
     ]);
   });
 
-  it('permissions_WithoutModule_UsesAll', () => {
+  it('should use all when module is not provided', () => {
     expect(roleKeys.permissions()).toEqual(['identity', 'permissions', 'all']);
   });
 });
@@ -133,5 +145,48 @@ describe('useCreateRole', () => {
     });
 
     expect(mockApiPost).toHaveBeenCalledWith('/identity/roles', payload);
+  });
+});
+
+describe('useRole', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('should call api.get with encoded role id', async () => {
+    mockApiGet.mockResolvedValue({ id: 'r1', name: 'Admin' });
+    const { result } = renderHook(() => useRole('r1'), { wrapper: createWrapper() });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/roles/r1');
+  });
+
+  it('should be disabled when id is empty', () => {
+    const { result } = renderHook(() => useRole(''), { wrapper: createWrapper() });
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(mockApiGet).not.toHaveBeenCalled();
+  });
+});
+
+describe('useUpdateRole', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('should call api.put with correct endpoint and payload', async () => {
+    const updatedRole = { id: 'r1', name: 'Updated', isSystemRole: false, isActive: true, permissions: [] };
+    mockApiPut.mockResolvedValue(updatedRole);
+    const { result } = renderHook(() => useUpdateRole(), { wrapper: createWrapper() });
+    const payload = { id: 'r1', name: 'Updated', description: 'Updated desc', permissionIds: [] };
+    result.current.mutate(payload);
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(mockApiPut).toHaveBeenCalledWith('/identity/roles/r1', { name: 'Updated', description: 'Updated desc', permissionIds: [] });
+  });
+});
+
+describe('useDeleteRole', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('should call api.delete with encoded role id', async () => {
+    mockApiDelete.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useDeleteRole(), { wrapper: createWrapper() });
+    result.current.mutate('r1');
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(mockApiDelete).toHaveBeenCalledWith('/identity/roles/r1');
   });
 });

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Infrastructure;
@@ -18,13 +19,13 @@ public sealed class UpdateTenantStatusTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_Activate_ShouldChangeStatus()
+    public async Task UpdateTenantStatus_WithActivateAction_ChangesStatusToActive()
     {
         var tenant = Tenant.Create("Test", "test");
         await _platformDb.Tenants.AddAsync(tenant);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
+        var handler = new UpdateTenantStatusHandler(_platformDb, NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(tenant.Id.Value, "activate"), CancellationToken.None);
 
@@ -34,14 +35,14 @@ public sealed class UpdateTenantStatusTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_Suspend_ShouldChangeStatus()
+    public async Task UpdateTenantStatus_WithSuspendAction_ChangesStatusToSuspended()
     {
         var tenant = Tenant.Create("Test", "test");
         tenant.Activate();
         await _platformDb.Tenants.AddAsync(tenant);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
+        var handler = new UpdateTenantStatusHandler(_platformDb, NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(tenant.Id.Value, "suspend"), CancellationToken.None);
 
@@ -51,13 +52,13 @@ public sealed class UpdateTenantStatusTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_Terminate_ShouldChangeStatus()
+    public async Task UpdateTenantStatus_WithTerminateAction_ChangesStatusToTerminated()
     {
         var tenant = Tenant.Create("Test", "test");
         await _platformDb.Tenants.AddAsync(tenant);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
+        var handler = new UpdateTenantStatusHandler(_platformDb, NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(tenant.Id.Value, "terminate"), CancellationToken.None);
 
@@ -67,9 +68,9 @@ public sealed class UpdateTenantStatusTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_NotFound_ShouldReturnFailure()
+    public async Task UpdateTenantStatus_WithNonExistentTenant_ReturnsFailure()
     {
-        var handler = new UpdateTenantStatusHandler(_platformDb, Microsoft.Extensions.Logging.Abstractions.NullLogger<UpdateTenantStatusHandler>.Instance);
+        var handler = new UpdateTenantStatusHandler(_platformDb, NullLogger<UpdateTenantStatusHandler>.Instance);
         var result = await handler.Handle(
             new UpdateTenantStatusCommand(Guid.NewGuid(), "activate"), CancellationToken.None);
 
