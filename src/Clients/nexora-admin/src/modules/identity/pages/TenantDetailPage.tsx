@@ -248,7 +248,7 @@ export default function TenantDetailPage() {
       <InstallModuleDialog
         open={installOpen}
         onOpenChange={setInstallOpen}
-        installedModules={modules?.filter((m) => m.isActive).map((m) => m.moduleName) ?? []}
+        installedModules={modules?.map((m) => m.moduleName) ?? []}
         onInstall={(moduleName) => {
           installModule.mutate(moduleName, {
             onSuccess: () => setInstallOpen(false),

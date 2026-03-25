@@ -238,7 +238,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Refactor portal profile & dashboard pages to pass user data from server layout — server component page → client child component pattern (DashboardContent, ProfileContent), `serverUser` prop with Zustand fallback
 - [x] Switch portal i18n to namespace-keyed messages (`{ common, error, validation, navigation }`) — already implemented via next-intl with 4 namespaces
 - [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
-- [x] Portal auth stability fixes — server-side `accessToken` passed to PortalShell via `serverAccessToken` prop, `setAuthToken` called in `useEffect` on mount, `useAuth` defansive refactor (no `clearSession` when user exists in store, `hasInitialized` guard for unauthenticated state), `api.ts` 401 interceptor skips redirect when no token is set (race condition fix)
+- [x] Portal auth stability fixes — server-side `accessToken` passed to PortalShell via `serverAccessToken` prop, `setAuthToken` called in `useEffect` on mount, `useAuth` defensive refactor (no `clearSession` when user exists in store, `hasInitialized` guard for unauthenticated state), `api.ts` 401 interceptor skips redirect when no token is set (race condition fix)
 - [x] Tests: 9 test files, 54 portal tests passing
 
 ### 1.6 Admin Dashboard (nexora-admin)

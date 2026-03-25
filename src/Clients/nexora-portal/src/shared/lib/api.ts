@@ -83,7 +83,7 @@ export const api = {
     if (resp.status === 204 || resp.data?.data == null) {
       return undefined as T;
     }
-    return resp.data.data;
+    return unwrapEnvelope(resp.data, url);
   },
 
   /**

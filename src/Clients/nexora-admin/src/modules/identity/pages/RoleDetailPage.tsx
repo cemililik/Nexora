@@ -37,7 +37,7 @@ export default function RoleDetailPage() {
 
   useEffect(() => {
     setBreadcrumbs([
-      { label: 'lockey_identity_nav_roles', href: '/identity/roles' },
+      { label: 'lockey_identity_nav_roles', path: '/identity/roles' },
       { label: role?.name ?? '...' },
     ]);
   }, [setBreadcrumbs, role?.name]);

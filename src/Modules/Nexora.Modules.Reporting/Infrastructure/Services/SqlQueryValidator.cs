@@ -34,8 +34,8 @@ public static partial class SqlQueryValidator
 
         var trimmed = queryText.Trim();
 
-        // Semicolons outside string literals (prevent statement chaining)
-        // Simple check: no semicolons at all (parameterized queries don't need them)
+        // No semicolons allowed anywhere (prevents statement chaining).
+        // This also rejects semicolons inside string literals, which is an acceptable trade-off.
         if (trimmed.Contains(';'))
         {
             errorMessage = "Semicolons are not allowed";

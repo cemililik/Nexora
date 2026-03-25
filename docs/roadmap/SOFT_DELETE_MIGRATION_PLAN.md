@@ -38,7 +38,7 @@ Soft delete sonrası duplicate key hatası riski taşıyan index'ler:
 | `notifications_template_translations` | `(TemplateId, LanguageCode)` | Silinen çeviri tekrar eklenemez |
 | `platform_tenants` | `(Slug)` | Silinen tenant slug'ı tekrar kullanılamaz |
 | `platform_tenant_modules` | `(TenantId, ModuleName)` | Silinen modül tekrar yüklenemez |
-| `identity_permissions` | `(Module, Resource, Action)` | Düşük risk — permissionlar seed edilir |
+| `identity_permissions` | `(Module, Resource, Action)` | Düşük risk — izinler seed edilir |
 
 **Çözüm:** Tüm unique index'lere `WHERE "IsDeleted" = false` partial filter eklenmeli.
 
