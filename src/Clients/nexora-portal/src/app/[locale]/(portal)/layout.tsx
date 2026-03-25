@@ -51,6 +51,7 @@ export default async function PortalRouteLayout({
       serverTenantId={session.tenantId}
       serverOrganizationId={session.organizationId}
       serverPermissions={session.permissions}
+      serverAccessToken={session.accessToken}
     >
       {children}
     </PortalShell>

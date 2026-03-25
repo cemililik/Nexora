@@ -117,3 +117,9 @@ export interface DownloadReportResultDto {
   url: string;
   expiresAt: string;
 }
+
+export interface TestReportQueryResultDto {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+}

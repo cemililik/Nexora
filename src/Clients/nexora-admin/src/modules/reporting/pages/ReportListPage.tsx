@@ -24,7 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { useReportDefinitions, useCreateReportDefinition } from '../hooks/useReportDefinitions';
+import { useReportDefinitions, useCreateReportDefinition, useTestReportQuery } from '../hooks/useReportDefinitions';
+import { SqlEditor } from '../components/SqlEditor';
+import { SqlTestResult } from '../components/SqlTestResult';
 
 const FORMATS = ['Csv', 'Excel', 'Pdf', 'Json'] as const;
 
@@ -54,6 +56,7 @@ export default function ReportListPage() {
 
   const { data, isLoading } = useReportDefinitions({ page, pageSize: 20, search: search || undefined });
   const createDefinition = useCreateReportDefinition();
+  const testQuery = useTestReportQuery();
 
   const schema = useMemo(() => createSchema(t), [t]);
 
@@ -250,19 +253,35 @@ export default function ReportListPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="rd-query" className="text-sm font-medium">
-                {t('lockey_reporting_query')}
-              </label>
-              <Textarea
-                id="rd-query"
-                {...form.register('queryText')}
-                rows={4}
-                placeholder="SELECT id, name FROM contacts_contacts"
-                className="font-mono text-sm"
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">
+                  {t('lockey_reporting_query')}
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={testQuery.isPending || !form.watch('queryText')}
+                  onClick={() => testQuery.mutate(form.getValues('queryText'))}
+                >
+                  {t('lockey_reporting_action_test_query')}
+                </Button>
+              </div>
+              <Controller
+                control={form.control}
+                name="queryText"
+                render={({ field }) => (
+                  <SqlEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="SELECT id, name FROM contacts_contacts"
+                  />
+                )}
               />
               {form.formState.errors.queryText && (
                 <p className="text-sm text-destructive">{form.formState.errors.queryText.message}</p>
               )}
+              <SqlTestResult result={testQuery.data} isPending={testQuery.isPending} />
             </div>
 
             <DialogFooter>

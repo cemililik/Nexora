@@ -62,8 +62,18 @@ public static class ReportDefinitionEndpoints
                 ? Results.NoContent()
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
+
+        group.MapPost("/test-query", async (TestQueryRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new TestReportQueryQuery(request.QueryText), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<TestReportQueryResultDto>.Success(result.Value!))
+                : Results.BadRequest(ApiEnvelope<TestReportQueryResultDto>.Fail(result.Error!));
+        });
     }
 }
+
+public sealed record TestQueryRequest(string QueryText);
 
 public sealed record UpdateReportDefinitionRequest(
     string Name,

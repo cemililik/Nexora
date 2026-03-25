@@ -4,6 +4,7 @@ using Nexora.Modules.Reporting.Application.DTOs;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Infrastructure;
+using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -41,6 +42,10 @@ public sealed class CreateReportDefinitionHandler(
     {
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
         var orgId = Guid.Parse(tenantContextAccessor.Current.OrganizationId!);
+
+        if (!SqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+            return Result<ReportDefinitionDto>.Failure(
+                LocalizedMessage.Of("lockey_reporting_error_invalid_query", new() { ["reason"] = sqlError! }));
 
         if (!Enum.TryParse<ReportFormat>(request.DefaultFormat, true, out var format))
             return Result<ReportDefinitionDto>.Failure(

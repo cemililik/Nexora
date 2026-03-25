@@ -128,6 +128,11 @@ export const api = {
     return resp.data.data;
   },
 
+  async blob(url: string): Promise<Blob> {
+    const response = await apiClient.get<Blob>(url, { responseType: 'blob' });
+    return response.data;
+  },
+
   /**
    * Get the raw ApiEnvelope response (for cases where you need
    * the message, meta, or validation errors).

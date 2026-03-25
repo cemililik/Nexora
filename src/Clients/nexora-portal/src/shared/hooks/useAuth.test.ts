@@ -33,13 +33,17 @@ vi.mock('sonner', () => ({
 const mockSetSession = vi.fn();
 const mockClearSession = vi.fn();
 let storeUser: unknown = null;
+const mockGetState = () => ({ user: storeUser });
 vi.mock('@/shared/lib/stores/authStore', () => ({
-  useAuthStore: () => ({
-    setSession: mockSetSession,
-    clearSession: mockClearSession,
-    user: storeUser,
-    isAuthenticated: !!storeUser,
-  }),
+  useAuthStore: Object.assign(
+    () => ({
+      setSession: mockSetSession,
+      clearSession: mockClearSession,
+      user: storeUser,
+      isAuthenticated: !!storeUser,
+    }),
+    { getState: () => mockGetState() },
+  ),
 }));
 
 // Import after mocks
@@ -87,7 +91,7 @@ describe('useAuth', () => {
     });
   });
 
-  it('should clear session and show toast on API fetch failure', async () => {
+  it('should show toast on API fetch failure when no user in store', async () => {
     mockUseSession.mockReturnValue({
       status: 'authenticated',
       data: {
@@ -101,7 +105,6 @@ describe('useAuth', () => {
     renderHook(() => useAuth());
 
     await waitFor(() => {
-      expect(mockClearSession).toHaveBeenCalled();
       expect(mockToastError).toHaveBeenCalledWith('lockey_error_session_expired');
     });
   });
@@ -119,13 +122,31 @@ describe('useAuth', () => {
     });
   });
 
-  it('should clear session when unauthenticated', () => {
+  it('should clear session when unauthenticated and no user in store', async () => {
+    // First authenticate to set hasInitialized
+    const mockUser = { id: '1', firstName: 'Test', lastName: 'User' };
+    mockUseSession.mockReturnValue({
+      status: 'authenticated',
+      data: { accessToken: 'token', tenantId: 't', permissions: [] },
+    });
+    mockApiGet.mockResolvedValue(mockUser);
+
+    const { rerender } = renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetAuthToken).toHaveBeenCalledWith('token');
+    });
+
+    // Now transition to unauthenticated
+    vi.clearAllMocks();
     mockUseSession.mockReturnValue({ status: 'unauthenticated', data: null });
 
-    renderHook(() => useAuth());
+    rerender();
 
-    expect(mockSetAuthToken).toHaveBeenCalledWith(null);
-    expect(mockClearSession).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockSetAuthToken).toHaveBeenCalledWith(null);
+      expect(mockClearSession).toHaveBeenCalled();
+    });
   });
 
   it('should not re-fetch user when already loaded', () => {

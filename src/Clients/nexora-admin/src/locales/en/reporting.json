@@ -33,7 +33,12 @@
   "lockey_reporting_action_create_definition": "Create Report",
   "lockey_reporting_action_create_dashboard": "Create Dashboard",
   "lockey_reporting_action_execute": "Run Report",
+  "lockey_reporting_action_download": "Download",
+  "lockey_reporting_action_preview": "Preview",
+  "lockey_reporting_action_edit": "Edit Report",
+  "lockey_reporting_action_save": "Save",
   "lockey_reporting_action_delete": "Delete",
+  "lockey_reporting_confirm_delete": "Are you sure you want to delete this report? This action cannot be undone.",
   "lockey_reporting_prev": "Previous",
   "lockey_reporting_next": "Next",
   "lockey_reporting_status_queued": "Queued",
@@ -58,5 +63,9 @@
   "lockey_reporting_permission_schedule_manage": "Manage report schedules",
   "lockey_reporting_permission_dashboard_read": "View dashboards",
   "lockey_reporting_permission_dashboard_manage": "Manage dashboards",
-  "lockey_reporting_error_execution_already_finished": "Report execution has already finished"
+  "lockey_reporting_error_execution_already_finished": "Report execution has already finished",
+  "lockey_reporting_error_invalid_query": "Invalid SQL query: {{reason}}",
+  "lockey_reporting_error_query_failed": "Query failed: {{reason}}",
+  "lockey_reporting_action_test_query": "Test Query",
+  "lockey_reporting_test_query_success": "Query returned {{count}} rows"
 }

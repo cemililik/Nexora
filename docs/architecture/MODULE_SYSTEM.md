@@ -529,7 +529,7 @@ The following table lists all Nexora modules, their phases, and dependency profi
 | 2 | Contact Management | `contacts` | Core | identity | — | Yes |
 | 3 | Notification Engine | `notifications` | Core | identity, contacts | — | Yes |
 | 4 | Document Management | `documents` | Core | identity | — | No |
-| 5 | Reporting Engine | `reporting` | Core | identity | — | No |
+| 5 | Reporting Engine | `reporting` | Core | identity | contacts, notifications, documents | No |
 | 6 | Portal Framework | `portal` | Core | identity | — | No |
 | 7 | CRM | `crm` | Phase 2 | contacts, notifications | — | No |
 | 8 | Donations & Fundraising | `donations` | Phase 2 | contacts, notifications, documents | — | No |
@@ -549,6 +549,17 @@ The following table lists all Nexora modules, their phases, and dependency profi
 | 22 | Project Management | `projects` | Phase 4 | contacts, notifications | documents, accounting | No |
 
 > **Note**: All modules implicitly depend on `identity` for authentication, tenant resolution, and RBAC. This is not listed as a separate dependency since Identity is the foundational module that must always be present.
+
+#### Module Specifications
+| Module | Spec |
+|--------|------|
+| Identity & Access | [SPEC.md](../modules/identity/SPEC.md) |
+| Contact Management | [SPEC.md](../modules/contacts/SPEC.md) |
+| Notification Engine | [SPEC.md](../modules/notifications/SPEC.md) |
+| Document Management | [SPEC.md](../modules/documents/SPEC.md) |
+| Reporting Engine | [SPEC.md](../modules/reporting/SPEC.md) |
+| CRM | [SPEC.md](../modules/crm/SPEC.md) |
+| Donations & Fundraising | [SPEC.md](../modules/donations/SPEC.md) |
 
 ### Module Classification
 

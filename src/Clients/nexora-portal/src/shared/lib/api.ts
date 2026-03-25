@@ -16,7 +16,12 @@ function createApiClient(): AxiosInstance {
   client.interceptors.response.use(
     (response) => response,
     (error: AxiosError) => {
-      if (error.response?.status === 401 && typeof window !== 'undefined') {
+      // Only redirect on 401 if a token was actually set (not a missing-token race condition)
+      if (
+        error.response?.status === 401 &&
+        typeof window !== 'undefined' &&
+        apiClient.defaults.headers.common['Authorization']
+      ) {
         const pathSegments = window.location.pathname.split('/');
         const firstSegment = pathSegments[1] ?? '';
         const currentLocale = (routing.locales as readonly string[]).includes(firstSegment)
