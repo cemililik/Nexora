@@ -277,7 +277,11 @@ cat > /tmp/user-attrs.json << 'USEREOF'
       "notifications.notification.read","notifications.notification.send",
       "notifications.template.read","notifications.template.manage",
       "notifications.provider.read","notifications.provider.manage",
-      "notifications.schedule.read","notifications.schedule.manage"
+      "notifications.schedule.read","notifications.schedule.manage",
+      "reporting.definition.read","reporting.definition.manage",
+      "reporting.execution.run","reporting.execution.read",
+      "reporting.schedule.manage",
+      "reporting.dashboard.read","reporting.dashboard.manage"
     ]
   }
 }
@@ -311,7 +315,7 @@ echo "  Clients:     nexora-admin (public, PKCE)"
 echo "               nexora-portal (confidential)"
 echo "               nexora-api (confidential, service account)"
 echo "  Test user:   admin@nexora.dev / Admin123!"
-echo "  Permissions: 51 (all modules)"
+echo "  Permissions: 63 (all modules)"
 echo ""
 echo "  Admin Console: http://localhost:8080/admin"
 echo "  Account:       http://localhost:8080/realms/$REALM/account"

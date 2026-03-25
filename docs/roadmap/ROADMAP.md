@@ -64,7 +64,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] APISIX ↔ Keycloak issuer alignment — `KC_HOSTNAME=http://localhost:8080` + `KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true` (frontend issuer matches JWT `iss`, backchannel URLs use Docker-internal hostname for JWKS fetch)
 - [x] `nexora-gateway` Keycloak client — confidential client for APISIX openid-connect plugin OIDC discovery
 - [x] Frontend API routing via APISIX — both `nexora-admin` and `nexora-portal` route all API calls through `localhost:9080` (APISIX gateway), not directly to backend
-- [x] Development tenant provisioning (`DevelopmentSeed.cs`) — idempotent startup seed: platform tables, dev tenant record, tenant schema, Identity/Contacts/Documents/Notifications module tables (generic `EnsureModuleTablesAsync<T>`), permissions (56), Platform Admin role, Keycloak admin user sync, tenant module registration
+- [x] Development tenant provisioning (`DevelopmentSeed.cs`) — idempotent startup seed: platform tables, dev tenant record, tenant schema, Identity/Contacts/Documents/Notifications/Reporting module tables (generic `EnsureModuleTablesAsync<T>`), permissions (63), Platform Admin role, Keycloak admin user sync, tenant module registration
 - [x] Dapr sidecar setup (pub/sub, state store, secret store bindings)
 - [x] Redis configuration (caching layer, session management)
 - [x] Kafka topic design and cluster setup
@@ -92,7 +92,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 5. [x] Frontend clients (`nexora-admin`, `nexora-portal`) authenticate via Keycloak, route API calls through APISIX gateway (`localhost:9080`), receive CORS headers and correlation IDs
 
 ### Completed Work
-- **Solution structure**: 14 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, Notifications module, Documents module, plus 7 test projects)
+- **Solution structure**: 16 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, Notifications module, Documents module, Reporting module, plus 8 test projects)
 - **SharedKernel**: Entity/AuditableEntity base classes, strongly-typed IDs, Result<T> pattern, PagedResult<T>, LocalizedMessage (lockey_ enforcement), DomainException, value objects (Money, DateRange, EmailAddress, PhoneNumber), CQRS interfaces, ICacheService, ISecretProvider (generic overload), IJobScheduler, IModule, IModuleAvailability, ITenantContext, ITenantSchemaManager, IModuleMigration, JobQueues, ApiEnvelope<T> (with `TraceId` — `JsonIgnore` WhenWritingNull, `Fail()` + `ValidationFail()` accept optional `traceId`)
 - **Infrastructure**: BaseDbContext with DomainEventDispatcher, TenantMiddleware (401 for missing tenant, public path skip, reads `tenant_id` + `organization_id` + `sub` claims), DaprCacheService (L1+L2 with prefix invalidation + key tracking), DaprEventBus, DaprSecretProvider, HangfireJobScheduler, TenantJobFilter (tenant context capture/restore), TenantSchemaManager (PostgreSQL schema lifecycle), ValidationBehavior (all errors in Error.Details), LoggingBehavior, DatabaseTenantConfiguration, HangfireAuthFilters
 - **Host**: Program.cs with Serilog, Dapr, module discovery, Hangfire dashboard (/admin/hangfire with role-based auth), `TraceIdEndpointFilter` (auto-injects TraceId into all error responses via `ModuleExtensions`)
@@ -109,7 +109,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Dev Tools Port Map**: Nexora API `:5100`, APISIX Gateway `:9080`, APISIX Metrics `:9091`, Keycloak `:8080`, PostgreSQL `:5433`, Redis `:6380`, Kafka `:9092`, MinIO API `:9000`, MinIO Console `:9001`, Vault `:8200`, Grafana `:3300`, Tempo `:3200`, Loki `:3100`, OTel gRPC `:4327`, OTel HTTP `:4328`, Prometheus `:8889`, pgAdmin `:5051`, RedisInsight `:5541`, Kafka UI `:8085`, Dapr Placement `:50006`, Admin Dashboard `:3001` (dev), Portal `:3000` (dev)
 - **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500 — all with `TraceId` in response + log message), TraceIdEndpointFilter (endpoint-level business errors get TraceId via reflection), OTel Collector Loki exporter with `default_labels_enabled` (job label), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
 - **Standards compliance**: 7 rounds of audit — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging)
-- **Tests**: 1253 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 162, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 347 frontend tests (47 suites) across admin dashboard
+- **Tests**: 1278 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 162, Reporting: 25, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 347 frontend tests (47 suites) across admin dashboard
 - **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
 - **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
 - **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
@@ -259,7 +259,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Code review fix (round 13): URL param whitelist validation (ContactListPage), `useModules` empty-string token guard, `useNotes` missing `onError` handlers, `htmlFor`/`id` pairs (CustomFieldManagementPage), ContactImportJob null-safety (`LastCellUsed`, `Enum.TryParse`), StartContactImport Hangfire job ID capture, test type-safety (`as never` → proper types across 10 test files)
 - [x] Documents Module UI: 8 pages, 6 hooks, 4 components, manifest (8 routes, 11 permissions) — folder tree, document browser, version history, access control, signature workflow (create/send/sign/decline/cancel), template management (CRUD + activate/deactivate + render)
 - [x] Notifications Module UI: 7 pages, 4 hooks, 4 components, manifest (7 routes, 8 permissions) — notification list/detail, send/bulk send, template editor (CRUD + translations), provider config (CRUD + test), schedule management
-- [x] ADR-004: Centralized permission seeding — all module permissions (56 total: Identity 16, Contacts 21, Documents 11, Notifications 8) seeded in `IdentityModuleMigration.SeedAsync`
+- [x] ADR-004: Centralized permission seeding — all module permissions (63 total: Identity 16, Contacts 21, Documents 11, Notifications 8, Reporting 7) seeded in `IdentityModuleMigration.SeedAsync`
 - [x] Standards audit (all 85 files): eliminated all `as never` casts (22 occurrences in 16 test files), added `onError: handleApiError` to all mutation hooks (21 hooks across 7 files + 6 page-level call sites), replaced string concat with `cn()`, added URL param whitelist validation (3 pages), removed hardcoded `defaultValue` strings, added `aria-label` to all `SelectTrigger`/`table` elements, added `htmlFor`/`id` to all label/input groups, centralized duplicated badge constants, replaced `catch(Exception)` with specific types, added `ILogger` to `IdentityModuleMigration`, fixed test naming conventions
 - [x] 47 test suites, 347 frontend tests + 1253 backend tests passing, 0 TS errors, Vite build OK
 
@@ -279,12 +279,18 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 ### 1.7 Reporting Engine
 
-- [ ] Report definition (SQL-based + LINQ-based)
-- [ ] Dashboard builder (widgets, charts, KPIs)
-- [ ] Cross-module data aggregation
-- [ ] Export (PDF, Excel, CSV)
-- [ ] Scheduled reports (email delivery)
-- [ ] Tenant-specific custom reports
+- [x] Report definition (SQL-based, parameterized, cross-module SQL joins on tenant schema)
+- [x] Report execution + result caching (Dapper SQL execution, MinIO storage, Hangfire job)
+- [x] Export (CSV via CsvHelper, Excel via ClosedXML, PDF via QuestPDF, JSON)
+- [x] Scheduled reports (cron-based schedules, email delivery via INotificationService, ScheduledReportDispatcherJob)
+- [x] Dashboard builder (widgets: Chart/KPI/Table, position/size grid, JSON config)
+- [x] Cross-module data aggregation (SQL joins across module tables in tenant schema, SET search_path isolation)
+- [x] Tenant-specific custom reports (organization-scoped ReportDefinition, parameterized queries)
+- [x] SQL query security (SELECT/WITH whitelist, DDL/DML block, semicolon guard, READ ONLY transaction, 30s timeout)
+- [x] Backend: 4 domain entities, 10 commands, 9 queries, 4 API endpoint groups, 2 Hangfire jobs, 7 permissions (total: 63)
+- [x] Frontend: 6 pages (ReportList, ReportDetail, ScheduleList, DashboardList, DashboardView), 4 hooks, 7 components (ChartWidget with Recharts Bar/Line/Area/Pie, KpiWidget, TableWidget, DashboardGrid)
+- [x] Localization: 53 translation keys (en + tr)
+- [x] Tests: 25 backend tests (domain: 19, application: 6) + 347 frontend tests passing
 
 ---
 
@@ -533,6 +539,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 | Contact Management | Core | identity | — | 360-view contributors |
 | Notification Engine | Core | identity, contacts | — | All modules (event-driven) |
 | Document Management | Core | identity | contacts | MinIO, Sign |
+| Reporting Engine | Core | identity | contacts, notifications, documents | Dapper SQL, MinIO, Recharts |
 | CRM | Phase 2 | contacts, notifications | — | Web forms, Events |
 | Donations | Phase 2 | contacts, notifications, documents | — | Stripe, iyzico, Bank import |
 | Sponsorship | Phase 2 | contacts, donations, notifications | — | Donor portal |

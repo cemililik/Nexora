@@ -2,7 +2,7 @@
 
 import { signOut, useSession } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { api, setAuthToken } from '@/shared/lib/api';
@@ -17,7 +17,6 @@ import type { UserInfo } from '@/shared/types/auth';
 export function useAuth() {
   const { data: session, status } = useSession();
   const { setSession, clearSession, user, isAuthenticated } = useAuthStore();
-  const [fetchFailed, setFetchFailed] = useState(false);
   const locale = useLocale();
   const te = useTranslations('error');
 
@@ -31,8 +30,9 @@ export function useAuth() {
     if (status === 'authenticated' && session?.accessToken) {
       setAuthToken(session.accessToken);
 
-      // Fetch full user info only if not already loaded and not previously failed
-      if (!user && !fetchFailed) {
+      // Fetch full user info only if not already loaded
+      // Will automatically retry on fresh session (when user changes)
+      if (!user) {
         api
           .get<UserInfo>('/identity/users/me')
           .then((userInfo) => {
@@ -44,7 +44,8 @@ export function useAuth() {
             });
           })
           .catch(() => {
-            setFetchFailed(true);
+            // On error, clear session to force re-login
+            // User can retry by logging out and back in, which creates a fresh session
             clearSession();
             toast.error(te('lockey_error_session_expired'));
           });
@@ -52,9 +53,8 @@ export function useAuth() {
     } else if (status === 'unauthenticated') {
       setAuthToken(null);
       clearSession();
-      setFetchFailed(false);
     }
-  }, [session, status, user, fetchFailed, setSession, clearSession, locale, te]);
+  }, [session, status, user, setSession, clearSession, locale, te]);
 
   return {
     user,

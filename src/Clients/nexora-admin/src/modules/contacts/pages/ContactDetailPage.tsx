@@ -746,7 +746,7 @@ interface CustomFieldsTabProps {
   t: ReturnType<typeof useTranslation>['t'];
 }
 
-const createCustomFieldSchema = (_t: (key: string, options?: Record<string, unknown>) => string) =>
+const createCustomFieldSchema = () =>
   z.object({
     value: z.string().optional(),
   });
@@ -762,7 +762,7 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
   const canManage = hasPermission('contacts.custom-field.manage');
   const [editingField, setEditingField] = useState<string | null>(null);
 
-  const customFieldSchema = useMemo(() => createCustomFieldSchema(t), [t]);
+  const customFieldSchema = useMemo(() => createCustomFieldSchema(), []);
   const {
     register,
     handleSubmit,

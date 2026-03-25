@@ -699,3 +699,55 @@ NEXT_PUBLIC_DEFAULT_LOCALE=en
 - `.env` files in `.gitignore` — use `.env.example` as template
 - **NEVER** put secrets in frontend env vars (they're public!)
 - All `VITE_` and `NEXT_PUBLIC_` vars are exposed to the browser
+
+## 16. Code Quality: Linting & Pre-Commit Checks
+
+### ESLint Configuration
+
+Both projects use **ESLint v9** with TypeScript support:
+- **nexora-admin**: Vite + React 19 + ESLint
+- **nexora-portal**: Next.js 16 + ESLint
+
+**Configuration files:**
+- `eslint.config.mjs` — Flat config format (ESLint v9 standard)
+- Extends: `@eslint/js`, `typescript-eslint`, `eslint-plugin-react`, `eslint-plugin-react-hooks`
+- **NEVER** use deprecated `.eslintrc.json` format
+
+### Pre-Commit Linting (MANDATORY)
+
+**CRITICAL**: Before committing ANY changes in `src/Clients/` (nexora-admin or nexora-portal), you MUST run the linter and fix all errors.
+
+```bash
+# For React admin:
+cd src/Clients/nexora-admin
+npm run lint
+
+# For Next.js portal:
+cd src/Clients/nexora-portal
+npm run lint
+```
+
+**Exit codes:**
+- `0` = Success (no errors or warnings)
+- `1` = Linting failed (errors detected)
+- `2` = Configuration error
+
+**DO NOT commit if linter fails.** The CI/CD pipeline will reject the PR.
+
+### Common Linting Issues
+
+| Issue | Rule | Solution |
+|-------|------|----------|
+| Unused variable | `@typescript-eslint/no-unused-vars` | Remove or prefix with `_` (e.g., `_unused`) |
+| Missing dependency | `react-hooks/exhaustive-deps` | Add to dependency array or add ESLint disable comment with reason |
+| Missing import | `@typescript-eslint/no-unused-vars` | Remove unused import or add code that uses it |
+| Unused import | `@typescript-eslint/no-unused-vars` | Remove the import |
+| setState in effect | `react-hooks/set-state-in-effect` | Use proper effect structure or add disable comment if intentional |
+
+### TypeScript Strict Mode
+
+Both projects enforce **TypeScript strict mode** — violations cause linting failure:
+- ✅ `noImplicitAny: true`
+- ✅ `strictNullChecks: true`
+- ✅ `strictFunctionTypes: true`
+- ✅ No `any` type usage — always specify types explicitly
