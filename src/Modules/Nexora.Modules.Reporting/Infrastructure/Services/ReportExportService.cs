@@ -28,7 +28,7 @@ public sealed class ReportExportService
             "EXCEL" => ExportExcel(rows, reportName),
             "PDF" => ExportPdf(rows, reportName, noDataLabel),
             "JSON" => ExportJson(rows),
-            _ => throw new ArgumentException(format, nameof(format))
+            _ => throw new ArgumentException($"Unsupported format: {format}", nameof(format))
         };
     }
 

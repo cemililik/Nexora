@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Infrastructure.Persistence;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -9,9 +10,12 @@ namespace Nexora.Modules.Reporting.Infrastructure;
 public sealed class ReportingDbContext(
     DbContextOptions<ReportingDbContext> options,
     ITenantContextAccessor tenantContextAccessor,
+    ILogger<ReportingDbContext>? logger = null,
     DomainEventDispatcher? domainEventDispatcher = null)
     : BaseDbContext(options, tenantContextAccessor, domainEventDispatcher)
 {
+    private readonly ILogger<ReportingDbContext>? _logger = logger;
+
     public DbSet<ReportDefinition> ReportDefinitions => Set<ReportDefinition>();
     public DbSet<ReportExecution> ReportExecutions => Set<ReportExecution>();
     public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
@@ -28,7 +32,10 @@ public sealed class ReportingDbContext(
             try
             {
                 var orgId = TenantContextAccessor.Current.OrganizationId;
-                return orgId is not null ? Guid.Parse(orgId) : Guid.Empty;
+                if (orgId is null) return Guid.Empty;
+                if (Guid.TryParse(orgId, out var parsed)) return parsed;
+                _logger?.LogWarning("Tenant context contains invalid OrganizationId format: {OrganizationId}", orgId);
+                return Guid.Empty;
             }
             catch (InvalidOperationException)
             {
