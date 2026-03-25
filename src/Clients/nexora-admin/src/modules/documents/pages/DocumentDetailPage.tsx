@@ -45,7 +45,7 @@ const ACCESS_PERMISSIONS: AccessPermission[] = ['View', 'Edit', 'Manage'];
 function createVersionSchema(t: (key: string, options?: Record<string, string>) => string) {
   return z.object({
     storageKey: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
-    fileSize: z.number().min(0, t('lockey_validation_required', { ns: 'validation' })),
+    fileSize: z.number().min(1, t('lockey_validation_required', { ns: 'validation' })),
     changeNote: z.string().optional(),
   });
 }
@@ -112,7 +112,7 @@ export default function DocumentDetailPage() {
   const versionSchema = useMemo(() => createVersionSchema(t), [t]);
   const versionForm = useForm<VersionFormValues>({
     resolver: zodResolver(versionSchema),
-    defaultValues: { storageKey: '', fileSize: 0, changeNote: '' },
+    defaultValues: { storageKey: '', fileSize: 1, changeNote: '' },
   });
 
   const accessSchema = useMemo(() => createAccessSchema(t), [t]);
@@ -450,7 +450,7 @@ export default function DocumentDetailPage() {
                 type="number"
                 {...versionForm.register('fileSize', { valueAsNumber: true })}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                min={0}
+                min={1}
               />
               {versionForm.formState.errors.fileSize?.message && (
                 <p className="mt-1 text-sm text-destructive">
