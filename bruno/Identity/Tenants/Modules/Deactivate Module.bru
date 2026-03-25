@@ -1,0 +1,15 @@
+meta {
+  name: Deactivate Module
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/identity/tenants/{{tenantId}}/modules/crm/deactivate
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Get Download URL
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reporting/executions/{{reportExecutionId}}/download
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

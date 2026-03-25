@@ -1,0 +1,24 @@
+meta {
+  name: Update Dashboard
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/reporting/dashboards/{{dashboardId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Sales Overview (Updated)",
+    "description": "Updated key metrics for the sales team",
+    "widgets": "[{\"id\":\"widget-1\",\"type\":\"kpi\",\"reportDefinitionId\":\"{{reportDefinitionId}}\",\"title\":\"Total Contacts\",\"position\":{\"x\":0,\"y\":0,\"w\":3,\"h\":2}}]",
+    "isDefault": true
+  }
+}
