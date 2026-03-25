@@ -120,12 +120,22 @@ export const api = {
     return unwrapEnvelope(response.data, url);
   },
 
+  async patch<T>(url: string, data?: unknown): Promise<T> {
+    const response = await apiClient.patch<ApiEnvelope<T>>(url, data);
+    return unwrapEnvelope(response.data, url);
+  },
+
   async delete<T = void>(url: string): Promise<T> {
     const resp = await apiClient.delete<ApiEnvelope<T>>(url);
     if (resp.status === 204 || resp.data?.data == null) {
       return undefined as T;
     }
     return resp.data.data;
+  },
+
+  async blob(url: string): Promise<Blob> {
+    const response = await apiClient.get<Blob>(url, { responseType: 'blob' });
+    return response.data;
   },
 
   /**

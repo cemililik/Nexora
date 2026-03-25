@@ -17,6 +17,6 @@ public sealed class ContactTagConfiguration : IEntityTypeConfiguration<ContactTa
         builder.Property(ct => ct.ContactId).HasConversion(id => id.Value, v => ContactId.From(v));
         builder.Property(ct => ct.TagId).HasConversion(id => id.Value, v => TagId.From(v));
 
-        builder.HasIndex(ct => new { ct.ContactId, ct.TagId, ct.OrganizationId }).IsUnique();
+        builder.HasIndex(ct => new { ct.ContactId, ct.TagId, ct.OrganizationId }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

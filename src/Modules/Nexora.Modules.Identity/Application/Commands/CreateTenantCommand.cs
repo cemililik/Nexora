@@ -53,8 +53,8 @@ public sealed class CreateTenantHandler(
         {
             logger.LogWarning("Tenant creation failed: slug {Slug} already taken", request.Slug);
             return Result<TenantDto>.Failure(
-                "lockey_identity_error_tenant_slug_taken",
-                new Dictionary<string, string> { ["slug"] = request.Slug });
+                LocalizedMessage.Of("lockey_identity_error_tenant_slug_taken",
+                new Dictionary<string, string> { ["slug"] = request.Slug }));
         }
 
         // Create tenant entity
@@ -93,6 +93,6 @@ public sealed class CreateTenantHandler(
         logger.LogInformation("Tenant {TenantId} created with slug {Slug}", tenant.Id, tenant.Slug);
 
         return Result<TenantDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_tenant_created"));
+            LocalizedMessage.Of("lockey_identity_tenant_created"));
     }
 }

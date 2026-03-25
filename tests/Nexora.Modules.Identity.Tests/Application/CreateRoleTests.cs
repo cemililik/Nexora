@@ -28,7 +28,7 @@ public sealed class CreateRoleTests : IDisposable
     [Fact]
     public async Task Handle_ValidCommand_ShouldCreateRole()
     {
-        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor);
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateRoleHandler>.Instance);
         var command = new CreateRoleCommand("Editor", "Can edit content", null);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -47,7 +47,7 @@ public sealed class CreateRoleTests : IDisposable
         await _dbContext.Permissions.AddAsync(permission);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor);
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateRoleHandler>.Instance);
         var command = new CreateRoleCommand("Viewer", null, [permission.Id.Value]);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -60,7 +60,7 @@ public sealed class CreateRoleTests : IDisposable
     [Fact]
     public async Task Handle_DuplicateName_ShouldReturnFailure()
     {
-        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor);
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateRoleHandler>.Instance);
         await handler.Handle(new CreateRoleCommand("Admin", null, null), CancellationToken.None);
 
         var result = await handler.Handle(

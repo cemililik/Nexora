@@ -45,6 +45,6 @@ public sealed class GetRolesHandler(
         )).ToList();
 
         return Result<List<RoleDto>>.Success(dtos,
-            new LocalizedMessage("lockey_identity_roles_listed"));
+            LocalizedMessage.Of("lockey_identity_roles_listed"));
     }
 }

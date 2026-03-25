@@ -17,7 +17,7 @@ public sealed class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(r => r.TenantId).HasConversion(id => id.Value, v => TenantId.From(v));
 
         builder.Property(r => r.Name).HasMaxLength(100).IsRequired();
-        builder.HasIndex(r => new { r.TenantId, r.Name }).IsUnique();
+        builder.HasIndex(r => new { r.TenantId, r.Name }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(r => r.Description).HasMaxLength(500);
         builder.Property(r => r.IsSystemRole).IsRequired().HasDefaultValue(false);
         builder.Property(r => r.IsActive).IsRequired().HasDefaultValue(true);

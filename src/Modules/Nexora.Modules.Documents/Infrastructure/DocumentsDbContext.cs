@@ -34,5 +34,6 @@ public sealed class DocumentsDbContext(
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentsDbContext).Assembly);
+        ApplySoftDeleteFilters(modelBuilder);
     }
 }

@@ -52,8 +52,8 @@ public sealed class CreateOrganizationHandler(
         {
             logger.LogWarning("Organization creation failed: slug {Slug} already taken for tenant {TenantId}", request.Slug, tenantId);
             return Result<OrganizationDto>.Failure(
-                "lockey_identity_error_org_slug_taken",
-                new Dictionary<string, string> { ["slug"] = request.Slug });
+                LocalizedMessage.Of("lockey_identity_error_org_slug_taken",
+                new Dictionary<string, string> { ["slug"] = request.Slug }));
         }
 
         var organization = Organization.Create(tenantId, request.Name, request.Slug);
@@ -73,6 +73,6 @@ public sealed class CreateOrganizationHandler(
         logger.LogInformation("Organization {OrganizationId} created with slug {Slug} for tenant {TenantId}", organization.Id, organization.Slug, tenantId);
 
         return Result<OrganizationDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_org_created"));
+            LocalizedMessage.Of("lockey_identity_org_created"));
     }
 }

@@ -17,6 +17,7 @@ public sealed class MinioFileStorageService(
     ILogger<MinioFileStorageService> logger) : IFileStorageService
 {
     private IMinioClient? _client;
+    private IMinioClient? _publicClient;
     private readonly SemaphoreSlim _initLock = new(1, 1);
 
     /// <inheritdoc />
@@ -30,7 +31,8 @@ public sealed class MinioFileStorageService(
         var client = await GetClientAsync(ct);
         await EnsureBucketExistsAsync(client, bucketName, ct);
 
-        var url = await client.PresignedPutObjectAsync(
+        var publicClient = await GetPublicClientAsync(ct);
+        var url = await publicClient.PresignedPutObjectAsync(
             new PresignedPutObjectArgs()
                 .WithBucket(bucketName)
                 .WithObject(objectKey)
@@ -51,9 +53,10 @@ public sealed class MinioFileStorageService(
         TimeSpan expiry,
         CancellationToken ct = default)
     {
-        var client = await GetClientAsync(ct);
+        await GetClientAsync(ct);
 
-        var url = await client.PresignedGetObjectAsync(
+        var publicClient = await GetPublicClientAsync(ct);
+        var url = await publicClient.PresignedGetObjectAsync(
             new PresignedGetObjectArgs()
                 .WithBucket(bucketName)
                 .WithObject(objectKey)
@@ -181,14 +184,10 @@ public sealed class MinioFileStorageService(
             var accessKey = await secretProvider.GetSecretAsync(opts.AccessKeySecret, ct);
             var secretKey = await secretProvider.GetSecretAsync(opts.SecretKeySecret, ct);
 
-            var builder = new MinioClient()
-                .WithEndpoint(opts.Endpoint)
-                .WithCredentials(accessKey, secretKey);
+            _client = BuildClient(opts.Endpoint, accessKey, secretKey, opts.UseSsl);
 
-            if (opts.UseSsl)
-                builder.WithSSL();
-
-            _client = builder.Build();
+            if (!string.IsNullOrEmpty(opts.PublicEndpoint) && opts.PublicEndpoint != opts.Endpoint)
+                _publicClient = BuildClient(opts.PublicEndpoint, accessKey, secretKey, opts.UseSsl);
 
             logger.LogInformation("MinIO client initialized for endpoint {Endpoint}", opts.Endpoint);
             return _client;
@@ -197,6 +196,27 @@ public sealed class MinioFileStorageService(
         {
             _initLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Returns the public-facing client for presigned URL generation, or falls back to the internal client.
+    /// </summary>
+    private async Task<IMinioClient> GetPublicClientAsync(CancellationToken ct)
+    {
+        await GetClientAsync(ct);
+        return _publicClient ?? _client!;
+    }
+
+    private static IMinioClient BuildClient(string endpoint, string accessKey, string secretKey, bool useSsl)
+    {
+        var builder = new MinioClient()
+            .WithEndpoint(endpoint)
+            .WithCredentials(accessKey, secretKey);
+
+        if (useSsl)
+            builder.WithSSL();
+
+        return builder.Build();
     }
 
     private static async Task EnsureBucketExistsAsync(IMinioClient client, string bucketName, CancellationToken ct)

@@ -62,6 +62,30 @@ export interface CreateRoleRequest {
   permissionIds?: string[];
 }
 
+/** Request body for PUT /identity/roles/:id. */
+export interface UpdateRoleRequest {
+  name: string;
+  description?: string;
+  permissionIds?: string[];
+}
+
+/** Role detail from GET /identity/roles/:id. */
+export interface RoleDetailDto {
+  id: string;
+  name: string;
+  description?: string;
+  isSystemRole: boolean;
+  isActive: boolean;
+  permissions: PermissionDto[];
+  assignedUserCount: number;
+}
+
+/** Request body for PUT /identity/users/:id/roles. */
+export interface AssignRolesRequest {
+  organizationId: string;
+  roleIds: string[];
+}
+
 // ─── Permissions ────────────────────────────────────────────
 
 /** Permission from GET /identity/permissions. */

@@ -16,7 +16,7 @@ public sealed class TenantModuleConfiguration : IEntityTypeConfiguration<TenantM
         builder.Property(tm => tm.Id).HasConversion(id => id.Value, v => TenantModuleId.From(v));
         builder.Property(tm => tm.TenantId).HasConversion(id => id.Value, v => TenantId.From(v));
         builder.Property(tm => tm.ModuleName).HasMaxLength(50).IsRequired();
-        builder.HasIndex(tm => new { tm.TenantId, tm.ModuleName }).IsUnique();
+        builder.HasIndex(tm => new { tm.TenantId, tm.ModuleName }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(tm => tm.InstalledBy).HasMaxLength(200);
     }
 }

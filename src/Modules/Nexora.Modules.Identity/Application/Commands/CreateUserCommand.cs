@@ -65,8 +65,8 @@ public sealed class CreateUserHandler(
         {
             logger.LogWarning("User creation failed: email {Email} already taken for tenant {TenantId}", request.Email, tenantId);
             return Result<UserDto>.Failure(
-                "lockey_identity_error_user_email_taken",
-                new Dictionary<string, string> { ["email"] = request.Email });
+                LocalizedMessage.Of("lockey_identity_error_user_email_taken",
+                new Dictionary<string, string> { ["email"] = request.Email }));
         }
 
         // Resolve tenant's Keycloak realm
@@ -76,7 +76,7 @@ public sealed class CreateUserHandler(
         if (tenant?.RealmId is null)
         {
             logger.LogWarning("User creation failed: tenant {TenantId} realm not configured", tenantId);
-            return Result<UserDto>.Failure("lockey_identity_error_tenant_realm_not_configured");
+            return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_realm_not_configured"));
         }
 
         // Create user in Keycloak
@@ -107,6 +107,6 @@ public sealed class CreateUserHandler(
         logger.LogInformation("User {UserId} created with email {Email} for tenant {TenantId}", user.Id, user.Email, tenantId);
 
         return Result<UserDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_user_created"));
+            LocalizedMessage.Of("lockey_identity_user_created"));
     }
 }

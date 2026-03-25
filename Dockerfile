@@ -34,7 +34,8 @@ RUN dotnet publish src/Nexora.Host/Nexora.Host.csproj -c Release -o /app --no-re
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
 WORKDIR /app
 
-RUN addgroup -S nexora && adduser -S nexora -G nexora
+RUN apk add --no-cache curl \
+    && addgroup -S nexora && adduser -S nexora -G nexora
 USER nexora
 
 COPY --from=build /app .
@@ -45,6 +46,6 @@ ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 5000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health/ready || exit 1
+  CMD curl --fail --silent http://localhost:5000/health/ready || exit 1
 
 ENTRYPOINT ["dotnet", "Nexora.Host.dll"]

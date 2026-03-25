@@ -120,27 +120,43 @@ public sealed class DonationsModule : IModule
 
 ## 3. Module Lifecycle
 
+Modules have three distinct management operations:
+
+| Operation | Endpoint | Effect | Reversible? |
+|-----------|----------|--------|-------------|
+| **Install** | `POST /modules` | Creates TenantModule record, runs migrations | Yes (via Uninstall) |
+| **Activate** | `PATCH /modules/{name}/activate` | Sets `IsActive=true`, runs migration check | Yes |
+| **Deactivate** | `PATCH /modules/{name}/deactivate` | Sets `IsActive=false`, tables untouched | Yes |
+| **Uninstall** | `DELETE /modules/{name}` | Renames tables with `_del_{timestamp}`, soft-deletes record | **No** |
+
 ```mermaid
 ---
 title: Module Installation Lifecycle
 ---
 stateDiagram-v2
     [*] --> Available: Module exists in registry
-    Available --> Installing: Tenant admin installs
-    Installing --> Installed: Migration + seed successful
+    Available --> Installing: POST /modules
+    Installing --> Active: Migration + seed successful
     Installing --> Failed: Installation error
     Failed --> Available: Retry / fix
-    Installed --> Active: Module operational
-    Active --> Uninstalling: Tenant admin removes
-    Uninstalling --> Archived: Data archived, routes removed
-    Archived --> Installing: Reinstall (restore archived data)
-    Active --> Updating: New version available
-    Updating --> Active: Migration successful
-    Updating --> Active: Rollback on failure
+    Active --> Inactive: PATCH deactivate
+    Inactive --> Active: PATCH activate (migration check)
+    Active --> Uninstalled: DELETE (with confirmation)
+    Inactive --> Uninstalled: DELETE (with confirmation)
+    Uninstalled --> [*]: IsDeleted=true
 
     note right of Active: Endpoints registered\nEvents consumed\nJobs scheduled
-    note right of Archived: Data preserved\nEndpoints removed\nEvents unsubscribed
+    note right of Inactive: IsActive=false\nTables preserved\nEndpoints hidden
+    note right of Uninstalled: Tables renamed _del_timestamp\nDeletedTableNames recorded\nIrreversible
 ```
+
+### Uninstall Process
+1. Module's `OnUninstallAsync()` callback invoked
+2. Orphaned RolePermission associations removed
+3. Module tables renamed: `{module}_contacts` → `{module}_contacts_del_20260325_143022`
+4. Renamed table names recorded in `TenantModule.DeletedTableNames`
+5. TenantModule record soft-deleted (`IsDeleted=true`)
+6. New install creates fresh tables (old data preserved in renamed tables)
 
 ## 4. Module Discovery & Loading
 
@@ -529,7 +545,7 @@ The following table lists all Nexora modules, their phases, and dependency profi
 | 2 | Contact Management | `contacts` | Core | identity | — | Yes |
 | 3 | Notification Engine | `notifications` | Core | identity, contacts | — | Yes |
 | 4 | Document Management | `documents` | Core | identity | — | No |
-| 5 | Reporting Engine | `reporting` | Core | identity | — | No |
+| 5 | Reporting Engine | `reporting` | Core | identity | contacts, notifications, documents | No |
 | 6 | Portal Framework | `portal` | Core | identity | — | No |
 | 7 | CRM | `crm` | Phase 2 | contacts, notifications | — | No |
 | 8 | Donations & Fundraising | `donations` | Phase 2 | contacts, notifications, documents | — | No |
@@ -549,6 +565,17 @@ The following table lists all Nexora modules, their phases, and dependency profi
 | 22 | Project Management | `projects` | Phase 4 | contacts, notifications | documents, accounting | No |
 
 > **Note**: All modules implicitly depend on `identity` for authentication, tenant resolution, and RBAC. This is not listed as a separate dependency since Identity is the foundational module that must always be present.
+
+#### Module Specifications
+| Module | Spec |
+|--------|------|
+| Identity & Access | [SPEC.md](../modules/identity/SPEC.md) |
+| Contact Management | [SPEC.md](../modules/contacts/SPEC.md) |
+| Notification Engine | [SPEC.md](../modules/notifications/SPEC.md) |
+| Document Management | [SPEC.md](../modules/documents/SPEC.md) |
+| Reporting Engine | [SPEC.md](../modules/reporting/SPEC.md) |
+| CRM | [SPEC.md](../modules/crm/SPEC.md) |
+| Donations & Fundraising | [SPEC.md](../modules/donations/SPEC.md) |
 
 ### Module Classification
 

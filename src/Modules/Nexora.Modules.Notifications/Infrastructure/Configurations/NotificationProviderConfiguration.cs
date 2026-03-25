@@ -19,7 +19,7 @@ public sealed class NotificationProviderConfiguration : IEntityTypeConfiguration
         builder.Property(p => p.ProviderName).HasConversion<string>().HasMaxLength(50).IsRequired();
         builder.Property(p => p.Config).HasColumnType("jsonb").IsRequired();
 
-        builder.HasIndex(p => new { p.TenantId, p.Channel, p.ProviderName }).IsUnique();
+        builder.HasIndex(p => new { p.TenantId, p.Channel, p.ProviderName }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.HasIndex(p => new { p.TenantId, p.Channel, p.IsDefault });
     }
 }

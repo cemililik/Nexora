@@ -132,7 +132,9 @@ Every review MUST check the following areas. Items marked **[B]** apply to backe
 | ARCH-15 | Server Actions not used — all API calls go through the `api.ts` client layer | [F] | `FRONTEND_STANDARDS.md` §Architecture |
 | ARCH-16 | `QueryClient` instantiated inside a factory function, not at module scope (SSR safety) | [F] | `FRONTEND_STANDARDS.md` §State |
 | ARCH-17 | Integration event handlers implement idempotency (duplicate message safe) | [B] | `CODING_STANDARDS.md` §Events |
-
+| ARCH-18 | Delete operations use soft delete (`dbContext.Remove()` auto-converts for `AuditableEntity<T>`) — hard delete only for GDPR/join cleanup | [B] | `CODING_STANDARDS.md` §Soft Delete |
+| ARCH-19 | New unique indexes include `HasFilter` for soft-delete-safe uniqueness | [B] | `CODING_STANDARDS.md` §Soft Delete |
+| ARCH-20 | `IsActive` (temporary deactivation) never confused with `IsDeleted` (permanent soft delete) | [B] | `CODING_STANDARDS.md` §Soft Delete |
 ### 4.3 Localization
 
 | # | Check | Scope | Standard Reference |

@@ -17,9 +17,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.TenantId).HasConversion(id => id.Value, v => TenantId.From(v));
 
         builder.Property(u => u.KeycloakUserId).HasMaxLength(200).IsRequired();
-        builder.HasIndex(u => new { u.TenantId, u.KeycloakUserId }).IsUnique();
+        builder.HasIndex(u => new { u.TenantId, u.KeycloakUserId }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(u => u.Email).HasMaxLength(256).IsRequired();
-        builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique();
+        builder.HasIndex(u => new { u.TenantId, u.Email }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(u => u.FirstName).HasMaxLength(100).IsRequired();
         builder.Property(u => u.LastName).HasMaxLength(100).IsRequired();
         builder.Property(u => u.Phone).HasMaxLength(30);

@@ -52,7 +52,7 @@ public sealed class AddOrganizationMemberHandler(
         if (!orgExists)
         {
             logger.LogWarning("Organization {OrganizationId} not found for tenant {TenantId}", request.OrganizationId, tenantId);
-            return Result<OrganizationMemberDto>.Failure("lockey_identity_error_org_not_found");
+            return Result<OrganizationMemberDto>.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
         }
 
         // Verify user exists in tenant
@@ -62,7 +62,7 @@ public sealed class AddOrganizationMemberHandler(
         if (user is null)
         {
             logger.LogWarning("User {UserId} not found for tenant {TenantId}", request.UserId, tenantId);
-            return Result<OrganizationMemberDto>.Failure("lockey_identity_error_user_not_found");
+            return Result<OrganizationMemberDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
         }
 
         // Check duplicate membership
@@ -72,7 +72,7 @@ public sealed class AddOrganizationMemberHandler(
         if (alreadyMember)
         {
             logger.LogWarning("User {UserId} is already a member of organization {OrganizationId}", request.UserId, request.OrganizationId);
-            return Result<OrganizationMemberDto>.Failure("lockey_identity_error_user_already_member");
+            return Result<OrganizationMemberDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_already_member"));
         }
 
         var orgUser = OrganizationUser.Create(userId, orgId, request.IsDefault);
@@ -86,6 +86,6 @@ public sealed class AddOrganizationMemberHandler(
         logger.LogInformation("Member {UserId} added to organization {OrganizationId}", request.UserId, request.OrganizationId);
 
         return Result<OrganizationMemberDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_org_member_added"));
+            LocalizedMessage.Of("lockey_identity_org_member_added"));
     }
 }

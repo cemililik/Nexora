@@ -50,7 +50,7 @@ public sealed class InstallModuleHandler(
         if (tenant is null)
         {
             logger.LogWarning("Tenant {TenantId} not found", request.TenantId);
-            return Result<TenantModuleDto>.Failure("lockey_identity_error_tenant_not_found");
+            return Result<TenantModuleDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_not_found"));
         }
 
         // Verify module is registered in the platform
@@ -59,8 +59,8 @@ public sealed class InstallModuleHandler(
         {
             logger.LogWarning("Module {ModuleName} is not registered in the platform", request.ModuleName);
             return Result<TenantModuleDto>.Failure(
-                "lockey_identity_error_module_not_found",
-                new Dictionary<string, string> { ["module"] = request.ModuleName });
+                LocalizedMessage.Of("lockey_identity_error_module_not_found",
+                new Dictionary<string, string> { ["module"] = request.ModuleName }));
         }
 
         // Check if already installed
@@ -71,8 +71,8 @@ public sealed class InstallModuleHandler(
         {
             logger.LogWarning("Module {ModuleName} is already installed for tenant {TenantId}", request.ModuleName, request.TenantId);
             return Result<TenantModuleDto>.Failure(
-                "lockey_identity_error_module_already_installed",
-                new Dictionary<string, string> { ["module"] = request.ModuleName });
+                LocalizedMessage.Of("lockey_identity_error_module_already_installed",
+                new Dictionary<string, string> { ["module"] = request.ModuleName }));
         }
 
         // Check dependencies
@@ -85,8 +85,8 @@ public sealed class InstallModuleHandler(
             {
                 logger.LogWarning("Dependency {DependencyName} for module {ModuleName} is not installed for tenant {TenantId}", dep, request.ModuleName, request.TenantId);
                 return Result<TenantModuleDto>.Failure(
-                    "lockey_identity_error_module_dependency_missing",
-                    new Dictionary<string, string> { ["module"] = request.ModuleName, ["dependency"] = dep });
+                    LocalizedMessage.Of("lockey_identity_error_module_dependency_missing",
+                    new Dictionary<string, string> { ["module"] = request.ModuleName, ["dependency"] = dep }));
             }
         }
 
@@ -101,6 +101,6 @@ public sealed class InstallModuleHandler(
         logger.LogInformation("Module {ModuleName} installed for tenant {TenantId}", request.ModuleName, request.TenantId);
 
         return Result<TenantModuleDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_module_installed"));
+            LocalizedMessage.Of("lockey_identity_module_installed"));
     }
 }

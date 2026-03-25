@@ -12,6 +12,9 @@ public sealed class MinioStorageOptions
     /// <summary>MinIO server endpoint (e.g., "minio:9000").</summary>
     public string Endpoint { get; set; } = "localhost:9000";
 
+    /// <summary>Public-facing endpoint for presigned URLs that browsers can reach (e.g., "localhost:9000").</summary>
+    public string? PublicEndpoint { get; set; }
+
     /// <summary>Whether to use SSL for MinIO connections.</summary>
     public bool UseSsl { get; set; }
 

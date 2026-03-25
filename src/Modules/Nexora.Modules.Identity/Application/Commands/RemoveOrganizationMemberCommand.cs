@@ -49,7 +49,7 @@ public sealed class RemoveOrganizationMemberHandler(
         if (!orgExists)
         {
             logger.LogWarning("Organization {OrganizationId} not found for tenant {TenantId}", request.OrganizationId, tenantId);
-            return Result.Failure("lockey_identity_error_org_not_found");
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
         }
 
         var membership = await dbContext.OrganizationUsers
@@ -58,7 +58,7 @@ public sealed class RemoveOrganizationMemberHandler(
         if (membership is null)
         {
             logger.LogWarning("User {UserId} is not a member of organization {OrganizationId}", request.UserId, request.OrganizationId);
-            return Result.Failure("lockey_identity_error_user_not_member");
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_member"));
         }
 
         dbContext.OrganizationUsers.Remove(membership);
@@ -66,6 +66,6 @@ public sealed class RemoveOrganizationMemberHandler(
 
         logger.LogInformation("Member {UserId} removed from organization {OrganizationId}", request.UserId, request.OrganizationId);
 
-        return Result.Success(new LocalizedMessage("lockey_identity_org_member_removed"));
+        return Result.Success(LocalizedMessage.Of("lockey_identity_org_member_removed"));
     }
 }
