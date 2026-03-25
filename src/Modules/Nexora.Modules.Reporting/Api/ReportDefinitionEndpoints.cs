@@ -73,8 +73,10 @@ public static class ReportDefinitionEndpoints
     }
 }
 
+/// <summary>Request body for testing a SQL report query.</summary>
 public sealed record TestQueryRequest(string QueryText);
 
+/// <summary>Request body for updating an existing report definition.</summary>
 public sealed record UpdateReportDefinitionRequest(
     string Name,
     string? Description,

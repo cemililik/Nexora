@@ -67,5 +67,10 @@
   "lockey_reporting_error_invalid_query": "Geçersiz SQL sorgusu: {{reason}}",
   "lockey_reporting_error_query_failed": "Sorgu başarısız: {{reason}}",
   "lockey_reporting_action_test_query": "Sorguyu Test Et",
-  "lockey_reporting_test_query_success": "Sorgu {{count}} satır döndürdü"
+  "lockey_reporting_test_query_success": "Sorgu {{count}} satır döndürdü",
+
+  "lockey_reporting_row_count": "{{count}} satır",
+  "lockey_reporting_duration": "{{ms}}ms",
+  "lockey_reporting_module_placeholder": "ör. contacts",
+  "lockey_reporting_query_placeholder": "SELECT id, name FROM contacts_contacts"
 }

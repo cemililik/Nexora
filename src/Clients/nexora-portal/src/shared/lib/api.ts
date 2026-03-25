@@ -79,8 +79,11 @@ export const api = {
   },
 
   async delete<T = void>(url: string): Promise<T> {
-    const response = await apiClient.delete<ApiEnvelope<T>>(url);
-    return unwrapEnvelope(response.data, url);
+    const resp = await apiClient.delete<ApiEnvelope<T>>(url);
+    if (resp.status === 204 || resp.data?.data == null) {
+      return undefined as T;
+    }
+    return resp.data.data;
   },
 
   /**

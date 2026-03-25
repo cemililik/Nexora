@@ -17,7 +17,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 
         builder.Property(t => t.Name).HasMaxLength(200).IsRequired();
         builder.Property(t => t.Slug).HasMaxLength(100).IsRequired();
-        builder.HasIndex(t => t.Slug).IsUnique();
+        builder.HasIndex(t => t.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(t => t.RealmId).HasMaxLength(200);
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(50);
         builder.Property(t => t.Settings).HasColumnType("jsonb");

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Download, Eye, Pencil, Trash2 } from 'lucide-react';
 
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -52,6 +53,7 @@ export default function ReportDetailPage() {
     page: 1,
     pageSize: 10,
   });
+  const { hasPermission } = usePermissions();
   const executeReport = useExecuteReport();
   const updateDefinition = useUpdateReportDefinition();
   const deleteDefinition = useDeleteReportDefinition();
@@ -136,12 +138,16 @@ export default function ReportDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" title={t('lockey_reporting_action_edit')} onClick={() => setEditOpen(true)}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" title={t('lockey_reporting_action_delete')} onClick={() => setDeleteOpen(true)}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          {hasPermission('reporting.definition.manage') && (
+            <Button variant="outline" size="icon" title={t('lockey_reporting_action_edit')} onClick={() => setEditOpen(true)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
+          {hasPermission('reporting.definition.manage') && (
+            <Button variant="outline" size="icon" title={t('lockey_reporting_action_delete')} onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          )}
           <Button onClick={() => handleExecute()} disabled={executeReport.isPending}>
             {t('lockey_reporting_action_execute')}
           </Button>
@@ -179,8 +185,8 @@ export default function ReportDetailPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {exec.rowCount != null && <span>{exec.rowCount} rows</span>}
-                        {exec.durationMs != null && <span>{exec.durationMs}ms</span>}
+                        {exec.rowCount != null && <span>{t('lockey_reporting_row_count', { count: exec.rowCount })}</span>}
+                        {exec.durationMs != null && <span>{t('lockey_reporting_duration', { ms: exec.durationMs })}</span>}
                         <span>{exec.format}</span>
                         {exec.status === 'Completed' && (
                           <>

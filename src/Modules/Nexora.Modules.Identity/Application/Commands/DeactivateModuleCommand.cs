@@ -9,8 +9,10 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to deactivate a module for a tenant without removing data.</summary>
 public sealed record DeactivateModuleCommand(Guid TenantId, string ModuleName) : ICommand;
 
+/// <summary>Validates the <see cref="DeactivateModuleCommand"/> inputs.</summary>
 public sealed class DeactivateModuleValidator : AbstractValidator<DeactivateModuleCommand>
 {
     public DeactivateModuleValidator()
@@ -42,7 +44,10 @@ public sealed class DeactivateModuleHandler(
         }
 
         if (!tenantModule.IsActive)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Module already inactive", "TenantModule", request.ModuleName);
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_module_already_inactive"));
+        }
 
         tenantModule.Deactivate();
         await platformDb.SaveChangesAsync(ct);

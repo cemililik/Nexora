@@ -27,6 +27,9 @@ public sealed class PlatformDbContext(
                 entry.State = EntityState.Modified;
                 entry.Property(nameof(ISoftDeletable.IsDeleted)).CurrentValue = true;
                 entry.Property(nameof(ISoftDeletable.DeletedAt)).CurrentValue = now;
+                // DeletedBy is intentionally null for platform-level operations where user context
+                // (ITenantContextAccessor) is not available. Platform operations are admin-initiated
+                // and tracked via audit logs rather than per-entity DeletedBy fields.
                 entry.Property(nameof(ISoftDeletable.DeletedBy)).CurrentValue = (string?)null;
                 continue;
             }

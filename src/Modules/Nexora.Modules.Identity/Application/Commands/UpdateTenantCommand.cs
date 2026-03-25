@@ -50,7 +50,7 @@ public sealed class UpdateTenantStatusHandler(
         if (tenant is null)
         {
             logger.LogWarning("Tenant {TenantId} not found", request.TenantId);
-            return Result.Failure("lockey_identity_error_tenant_not_found");
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_not_found"));
         }
 
         switch (request.Action.ToLowerInvariant())
@@ -83,6 +83,6 @@ public sealed class UpdateTenantStatusHandler(
 
         await platformDb.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(new LocalizedMessage("lockey_identity_tenant_status_updated"));
+        return Result.Success(LocalizedMessage.Of("lockey_identity_tenant_status_updated"));
     }
 }

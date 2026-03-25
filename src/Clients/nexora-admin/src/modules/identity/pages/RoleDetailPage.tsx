@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useRole, useUpdateRole, useDeleteRole } from '../hooks/useRoles';
 import { PermissionSelector } from '../components/PermissionSelector';
 
@@ -24,6 +25,7 @@ export default function RoleDetailPage() {
   const navigate = useNavigate();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data: role, isLoading } = useRole(id ?? '');
+  const { hasPermission } = usePermissions();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
 
@@ -109,15 +111,15 @@ export default function RoleDetailPage() {
             </>
           ) : (
             <>
-              {!role.isSystemRole && (
-                <>
-                  <Button variant="outline" size="icon" title={t('lockey_identity_action_edit')} onClick={() => setEditing(true)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="outline" size="icon" title={t('lockey_identity_action_delete')} onClick={() => setDeleteOpen(true)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </>
+              {hasPermission('identity.roles.update') && !role.isSystemRole && (
+                <Button variant="outline" size="icon" title={t('lockey_identity_action_edit')} onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              {hasPermission('identity.roles.delete') && !role.isSystemRole && (
+                <Button variant="outline" size="icon" title={t('lockey_identity_action_delete')} onClick={() => setDeleteOpen(true)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               )}
             </>
           )}
@@ -222,6 +224,7 @@ export default function RoleDetailPage() {
 }
 
 function PermissionReadOnly({ permissions }: { permissions: Array<{ module: string; resource: string; action: string }> }) {
+  const { t } = useTranslation('identity');
   const grouped = permissions.reduce<Record<string, Array<{ resource: string; action: string }>>>((acc, p) => {
     (acc[p.module] ??= []).push(p);
     return acc;
@@ -245,7 +248,7 @@ function PermissionReadOnly({ permissions }: { permissions: Array<{ module: stri
         </div>
       ))}
       {permissions.length === 0 && (
-        <p className="text-sm text-muted-foreground">No permissions assigned</p>
+        <p className="text-sm text-muted-foreground">{t('lockey_identity_no_permissions')}</p>
       )}
     </div>
   );

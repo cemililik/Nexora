@@ -6,13 +6,16 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Reporting.Application.Queries;
 
+/// <summary>Query to test-execute a SQL report query and return a limited preview of results.</summary>
 public sealed record TestReportQueryQuery(string QueryText) : IQuery<TestReportQueryResultDto>;
 
+/// <summary>DTO containing the column names, preview rows, and row count from a test query execution.</summary>
 public sealed record TestReportQueryResultDto(
     IReadOnlyList<string> Columns,
     IReadOnlyList<Dictionary<string, object?>> Rows,
     int RowCount);
 
+/// <summary>Handles test-executing a SQL query with a limited row count for preview purposes.</summary>
 public sealed class TestReportQueryHandler(
     ReportExecutionService executionService,
     ITenantContextAccessor tenantContextAccessor) : IQueryHandler<TestReportQueryQuery, TestReportQueryResultDto>
@@ -41,10 +44,10 @@ public sealed class TestReportQueryHandler(
             return Result<TestReportQueryResultDto>.Success(
                 new TestReportQueryResultDto(columns, rows, rows.Count));
         }
-        catch (Exception ex)
+        catch (Npgsql.PostgresException)
         {
             return Result<TestReportQueryResultDto>.Failure(
-                LocalizedMessage.Of("lockey_reporting_error_query_failed", new() { ["reason"] = ex.Message }));
+                LocalizedMessage.Of("lockey_reporting_error_query_failed"));
         }
     }
 }

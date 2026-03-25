@@ -10,8 +10,10 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to activate a previously deactivated module for a tenant.</summary>
 public sealed record ActivateModuleCommand(Guid TenantId, string ModuleName) : ICommand;
 
+/// <summary>Validates the <see cref="ActivateModuleCommand"/> inputs.</summary>
 public sealed class ActivateModuleValidator : AbstractValidator<ActivateModuleCommand>
 {
     public ActivateModuleValidator()
@@ -44,7 +46,10 @@ public sealed class ActivateModuleHandler(
         }
 
         if (tenantModule.IsActive)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Module already active", "TenantModule", request.ModuleName);
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_module_already_active"));
+        }
 
         // Run migration check to ensure tables are up-to-date
         var schemaName = $"tenant_{request.TenantId:N}";
@@ -54,7 +59,7 @@ public sealed class ActivateModuleHandler(
             logger.LogInformation("Migration check completed for module {ModuleName} in schema {Schema}",
                 request.ModuleName, schemaName);
         }
-        catch (Exception ex)
+        catch (Npgsql.NpgsqlException ex)
         {
             logger.LogError(ex, "Migration check failed for module {ModuleName} in tenant {TenantId}",
                 request.ModuleName, request.TenantId);

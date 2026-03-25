@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -55,7 +56,7 @@ public sealed class UninstallModuleHandler(
         if (tenantModule is null)
         {
             logger.LogWarning("Module {ModuleName} is not installed for tenant {TenantId}", request.ModuleName, request.TenantId);
-            return Result.Failure("lockey_identity_error_module_not_installed");
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_module_not_installed"));
         }
 
         // Call module's OnUninstallAsync if available
@@ -107,7 +108,7 @@ public sealed class UninstallModuleHandler(
 
         logger.LogInformation("Module {ModuleName} uninstalled for tenant {TenantId}", request.ModuleName, request.TenantId);
 
-        return Result.Success(new LocalizedMessage("lockey_identity_module_uninstalled"));
+        return Result.Success(LocalizedMessage.Of("lockey_identity_module_uninstalled"));
     }
 
     /// <summary>
@@ -117,34 +118,52 @@ public sealed class UninstallModuleHandler(
     private async Task<List<string>> RenameModuleTablesAsync(
         Guid tenantId, string moduleName, CancellationToken ct)
     {
+        // Validate moduleName against registered module names to prevent SQL injection
+        var registeredNames = registeredModules.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!registeredNames.Contains(moduleName) && !Regex.IsMatch(moduleName, "^[a-z][a-z0-9_]*$"))
+        {
+            logger.LogWarning("Invalid module name rejected: {ModuleName}", moduleName);
+            return [];
+        }
+
         var schemaName = $"tenant_{tenantId:N}";
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
-        var prefix = $"{moduleName}_";
+        var prefix = $"{moduleName}\\_%";
         var renamedTables = new List<string>();
 
         try
         {
-            // Find all tables in the tenant schema that belong to this module
-            var tableQuery = $@"
-                SELECT table_name FROM information_schema.tables
-                WHERE table_schema = '{schemaName}'
-                AND table_name LIKE '{prefix}%'
-                AND table_name NOT LIKE '%_del_%'
-                ORDER BY table_name";
-
             await using var connection = platformDb.Database.GetDbConnection();
             await connection.OpenAsync(ct);
 
+            // Find all tables in the tenant schema that belong to this module using parameterized query
             var tableNames = new List<string>();
             await using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = tableQuery;
+                cmd.CommandText = @"
+                    SELECT table_name FROM information_schema.tables
+                    WHERE table_schema = @schemaName
+                    AND table_name LIKE @prefix
+                    AND table_name NOT LIKE '%\_del\_%' ESCAPE '\'
+                    ORDER BY table_name";
+
+                var schemaParam = cmd.CreateParameter();
+                schemaParam.ParameterName = "@schemaName";
+                schemaParam.Value = schemaName;
+                cmd.Parameters.Add(schemaParam);
+
+                var prefixParam = cmd.CreateParameter();
+                prefixParam.ParameterName = "@prefix";
+                prefixParam.Value = prefix;
+                cmd.Parameters.Add(prefixParam);
+
                 await using var reader = await cmd.ExecuteReaderAsync(ct);
                 while (await reader.ReadAsync(ct))
                     tableNames.Add(reader.GetString(0));
             }
 
-            // Rename each table
+            // Rename each table (table/schema names can't be parameterized in PostgreSQL,
+            // but moduleName is validated above against registered modules or regex whitelist)
             foreach (var tableName in tableNames)
             {
                 var newName = $"{tableName}_del_{timestamp}";
@@ -157,11 +176,15 @@ public sealed class UninstallModuleHandler(
                 renamedTables.Add(newName);
             }
         }
-        catch (Exception ex)
+        catch (Npgsql.NpgsqlException ex)
         {
             logger.LogError(ex, "Failed to rename tables for module {ModuleName} in tenant {TenantId}",
                 moduleName, tenantId);
             // Don't fail the uninstall — tables may not exist or be already renamed
+        }
+        catch (InvalidOperationException)
+        {
+            // InMemory/non-relational provider — skip table rename (only works with PostgreSQL)
         }
 
         return renamedTables;

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -9,11 +10,14 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
 
+/// <summary>Query to retrieve all roles assigned to a user within a specific organization.</summary>
 public sealed record GetUserRolesQuery(Guid UserId, Guid OrganizationId) : IQuery<List<RoleDto>>;
 
+/// <summary>Handles retrieving a user's roles within an organization, including permission keys.</summary>
 public sealed class GetUserRolesHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetUserRolesQuery, List<RoleDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetUserRolesHandler> logger) : IQueryHandler<GetUserRolesQuery, List<RoleDto>>
 {
     public async Task<Result<List<RoleDto>>> Handle(GetUserRolesQuery request, CancellationToken ct)
     {
@@ -27,8 +31,11 @@ public sealed class GetUserRolesHandler(
             .FirstOrDefaultAsync(ou => ou.UserId == userId && ou.OrganizationId == orgId, ct);
 
         if (orgUser is null)
+        {
+            logger.LogDebug("User {UserId} not found in organization {OrgId}", request.UserId, request.OrganizationId);
             return Result<List<RoleDto>>.Failure(
                 LocalizedMessage.Of("lockey_identity_error_user_not_in_org"));
+        }
 
         var roleIds = orgUser.UserRoles.Select(ur => ur.RoleId).ToList();
 

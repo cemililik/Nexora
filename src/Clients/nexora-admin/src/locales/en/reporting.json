@@ -67,5 +67,10 @@
   "lockey_reporting_error_invalid_query": "Invalid SQL query: {{reason}}",
   "lockey_reporting_error_query_failed": "Query failed: {{reason}}",
   "lockey_reporting_action_test_query": "Test Query",
-  "lockey_reporting_test_query_success": "Query returned {{count}} rows"
+  "lockey_reporting_test_query_success": "Query returned {{count}} rows",
+
+  "lockey_reporting_row_count": "{{count}} rows",
+  "lockey_reporting_duration": "{{ms}}ms",
+  "lockey_reporting_module_placeholder": "e.g. contacts",
+  "lockey_reporting_query_placeholder": "SELECT id, name FROM contacts_contacts"
 }

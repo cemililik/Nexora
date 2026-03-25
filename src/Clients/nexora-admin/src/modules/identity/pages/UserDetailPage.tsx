@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -10,10 +11,10 @@ import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
-import { useUser, useUpdateProfile, useUpdateUserStatus, useDeleteUser, useUserRoles, useAssignUserRoles } from '../hooks/useUsers';
+import { useUser, useUpdateProfile, useUpdateUserStatus, useDeleteUser, useUserRoles, useAssignUserRoles, userKeys } from '../hooks/useUsers';
 import { toast } from 'sonner';
 import { useRoles } from '../hooks/useRoles';
-import { useOrganizations, useRemoveMember } from '../hooks/useOrganizations';
+import { useOrganizations, useRemoveMember, orgKeys } from '../hooks/useOrganizations';
 import { api } from '@/shared/lib/api';
 import {
   Dialog,
@@ -26,6 +27,7 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { UserStatusBadge } from '../components/UserStatusBadge';
 import { UserForm } from '../components/UserForm';
+import type { RoleDto, OrganizationDto, UserOrganizationDto } from '../types';
 
 export default function UserDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -245,8 +247,6 @@ export default function UserDetailPage() {
 
 /* ── Org Row with leave button ── */
 
-import type { RoleDto, OrganizationDto, UserOrganizationDto } from '../types';
-
 function UserOrgRow({ userId, org }: { userId: string; org: UserOrganizationDto }) {
   const { t } = useTranslation('identity');
   const removeMember = useRemoveMember(org.organizationId);
@@ -302,21 +302,18 @@ function AddToOrgDialog({
     ? available.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
     : available;
 
-  // We need addMember per org — use a wrapper
-  const [adding, setAdding] = useState(false);
-
-  const handleAdd = async (orgId: string) => {
-    setAdding(true);
-    try {
-      await api.post(`/identity/organizations/${encodeURIComponent(orgId)}/members`, { userId });
+  const queryClient = useQueryClient();
+  const addMember = useMutation({
+    mutationFn: (orgId: string) =>
+      api.post(`/identity/organizations/${encodeURIComponent(orgId)}/members`, { userId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_member_added'));
       onOpenChange(false);
-    } catch (err) {
-      handleApiError(err);
-    } finally {
-      setAdding(false);
-    }
-  };
+    },
+    onError: (err) => handleApiError(err),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -340,8 +337,8 @@ function AddToOrgDialog({
               <button
                 key={org.id}
                 type="button"
-                disabled={adding}
-                onClick={() => void handleAdd(org.id)}
+                disabled={addMember.isPending}
+                onClick={() => addMember.mutate(org.id)}
                 className="flex w-full items-center rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
               >
                 {org.name}

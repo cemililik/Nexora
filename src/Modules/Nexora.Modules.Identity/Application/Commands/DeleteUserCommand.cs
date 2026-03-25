@@ -12,8 +12,10 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to delete a user and disable their Keycloak account.</summary>
 public sealed record DeleteUserCommand(Guid Id) : ICommand;
 
+/// <summary>Validates the <see cref="DeleteUserCommand"/> inputs.</summary>
 public sealed class DeleteUserValidator : AbstractValidator<DeleteUserCommand>
 {
     public DeleteUserValidator()
@@ -22,6 +24,7 @@ public sealed class DeleteUserValidator : AbstractValidator<DeleteUserCommand>
     }
 }
 
+/// <summary>Handles user deletion, including Keycloak disablement and organization membership cleanup.</summary>
 public sealed class DeleteUserHandler(
     IdentityDbContext dbContext,
     PlatformDbContext platformDbContext,
@@ -47,7 +50,10 @@ public sealed class DeleteUserHandler(
         // Prevent self-deletion
         var currentKeycloakId = tenantContextAccessor.Current.UserId;
         if (user.KeycloakUserId == currentKeycloakId)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Self-delete attempt", "User", request.Id);
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_cannot_delete_self"));
+        }
 
         // Remove from Keycloak
         if (!string.IsNullOrEmpty(user.KeycloakUserId))
@@ -61,7 +67,7 @@ public sealed class DeleteUserHandler(
                 if (tenant?.RealmId is not null)
                     await keycloakAdmin.DisableUserAsync(tenant.RealmId, user.KeycloakUserId, ct);
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
             {
                 logger.LogError(ex, "Failed to delete user {UserId} from Keycloak", request.Id);
                 // Continue with local deletion even if KC fails

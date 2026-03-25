@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -9,6 +10,7 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
 
+/// <summary>Query to retrieve a role by its identifier, including permissions and assigned user count.</summary>
 public sealed record GetRoleByIdQuery(Guid Id) : IQuery<RoleDetailDto>;
 
 /// <summary>Extended role DTO with permission details and assigned user count.</summary>
@@ -21,9 +23,11 @@ public sealed record RoleDetailDto(
     List<PermissionDto> Permissions,
     int AssignedUserCount);
 
+/// <summary>Handles retrieving a single role with its permission details and assigned user count.</summary>
 public sealed class GetRoleByIdHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetRoleByIdQuery, RoleDetailDto>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetRoleByIdHandler> logger) : IQueryHandler<GetRoleByIdQuery, RoleDetailDto>
 {
     public async Task<Result<RoleDetailDto>> Handle(GetRoleByIdQuery request, CancellationToken ct)
     {
@@ -36,8 +40,11 @@ public sealed class GetRoleByIdHandler(
             .FirstOrDefaultAsync(r => r.Id == roleId && r.TenantId == tenantId, ct);
 
         if (role is null)
+        {
+            logger.LogDebug("Role {RoleId} not found for tenant {TenantId}", request.Id, tenantId);
             return Result<RoleDetailDto>.Failure(
                 LocalizedMessage.Of("lockey_identity_error_role_not_found"));
+        }
 
         // Load permission details
         var permissionIds = role.Permissions.Select(rp => rp.PermissionId).ToList();

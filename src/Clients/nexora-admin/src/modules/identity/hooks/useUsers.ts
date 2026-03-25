@@ -45,6 +45,7 @@ export function useUser(id: string) {
 export function useCreateUser() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: CreateUserRequest) =>
@@ -53,12 +54,14 @@ export function useCreateUser() {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
       toast.success(t('lockey_identity_user_created'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateProfile(userId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: UpdateProfileRequest) =>
@@ -70,12 +73,15 @@ export function useUpdateProfile(userId: string) {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
       toast.success(t('lockey_identity_user_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateUserStatus(userId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+
+  const { handleApiError } = useApiError();
 
   const mutate = useMutation({
     mutationFn: (data: UpdateUserStatusRequest) =>
@@ -87,6 +93,7 @@ export function useUpdateUserStatus(userId: string) {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
       toast.success(t('lockey_identity_user_status_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 
   const activate = useCallback(

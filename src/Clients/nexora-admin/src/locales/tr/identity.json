@@ -223,5 +223,7 @@
   "lockey_identity_permission_roles_update": "Rolleri güncelle",
   "lockey_identity_permission_roles_delete": "Rolleri sil",
   "lockey_identity_permission_modules_read": "Modülleri görüntüle",
-  "lockey_identity_permission_modules_manage": "Modülleri yönet"
+  "lockey_identity_permission_modules_manage": "Modülleri yönet",
+
+  "lockey_identity_no_permissions": "Atanmış izin yok"
 }

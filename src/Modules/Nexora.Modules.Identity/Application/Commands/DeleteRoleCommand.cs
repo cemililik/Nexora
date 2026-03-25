@@ -10,8 +10,10 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to delete a non-system role by its identifier.</summary>
 public sealed record DeleteRoleCommand(Guid Id) : ICommand;
 
+/// <summary>Validates the <see cref="DeleteRoleCommand"/> inputs.</summary>
 public sealed class DeleteRoleValidator : AbstractValidator<DeleteRoleCommand>
 {
     public DeleteRoleValidator()
@@ -20,6 +22,7 @@ public sealed class DeleteRoleValidator : AbstractValidator<DeleteRoleCommand>
     }
 }
 
+/// <summary>Handles role deletion, enforcing system-role and assigned-user constraints.</summary>
 public sealed class DeleteRoleHandler(
     IdentityDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
@@ -41,13 +44,19 @@ public sealed class DeleteRoleHandler(
         }
 
         if (role.IsSystemRole)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Cannot delete system role", "Role", request.Id);
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_system_role_immutable"));
+        }
 
         // Check if role is assigned to any users
         var assignedCount = await dbContext.UserRoles.CountAsync(ur => ur.RoleId == roleId, ct);
         if (assignedCount > 0)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Role has assigned users", "Role", request.Id);
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_role_has_users",
                 new() { ["count"] = assignedCount.ToString() }));
+        }
 
         dbContext.Roles.Remove(role);
         await dbContext.SaveChangesAsync(ct);

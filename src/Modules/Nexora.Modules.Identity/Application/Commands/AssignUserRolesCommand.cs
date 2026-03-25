@@ -11,11 +11,13 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to assign a set of roles to a user within an organization.</summary>
 public sealed record AssignUserRolesCommand(
     Guid UserId,
     Guid OrganizationId,
     List<Guid> RoleIds) : ICommand;
 
+/// <summary>Validates the <see cref="AssignUserRolesCommand"/> inputs.</summary>
 public sealed class AssignUserRolesValidator : AbstractValidator<AssignUserRolesCommand>
 {
     public AssignUserRolesValidator()
@@ -26,6 +28,7 @@ public sealed class AssignUserRolesValidator : AbstractValidator<AssignUserRoles
     }
 }
 
+/// <summary>Handles role assignment by reconciling current and requested roles for a user.</summary>
 public sealed class AssignUserRolesHandler(
     IdentityDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
@@ -58,8 +61,11 @@ public sealed class AssignUserRolesHandler(
             .ToListAsync(ct);
 
         if (validRoles.Count != requestedRoleIds.Count)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Invalid roles in request", "User", request.UserId);
             return Result.Failure(
                 LocalizedMessage.Of("lockey_identity_error_invalid_roles"));
+        }
 
         // Reconcile: remove roles not in request, add new ones
         var currentRoleIds = orgUser.UserRoles.Select(ur => ur.RoleId).ToHashSet();

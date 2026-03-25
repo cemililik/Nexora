@@ -223,5 +223,7 @@
   "lockey_identity_permission_roles_update": "Update roles",
   "lockey_identity_permission_roles_delete": "Delete roles",
   "lockey_identity_permission_modules_read": "View modules",
-  "lockey_identity_permission_modules_manage": "Manage modules"
+  "lockey_identity_permission_modules_manage": "Manage modules",
+
+  "lockey_identity_no_permissions": "No permissions assigned"
 }

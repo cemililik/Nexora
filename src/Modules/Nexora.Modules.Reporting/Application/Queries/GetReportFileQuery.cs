@@ -10,10 +10,13 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Reporting.Application.Queries;
 
+/// <summary>Query to download the generated file for a completed report execution.</summary>
 public sealed record GetReportFileQuery(Guid ExecutionId) : IQuery<ReportFileDto>;
 
+/// <summary>DTO containing the report file data, content type, and file name.</summary>
 public sealed record ReportFileDto(byte[] Data, string ContentType, string FileName);
 
+/// <summary>Handles retrieving the exported report file from storage.</summary>
 public sealed class GetReportFileHandler(
     ReportingDbContext dbContext,
     IFileStorageService fileStorageService,

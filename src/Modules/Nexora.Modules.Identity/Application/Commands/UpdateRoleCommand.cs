@@ -11,12 +11,14 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Commands;
 
+/// <summary>Command to update a role's name, description, and permissions.</summary>
 public sealed record UpdateRoleCommand(
     Guid Id,
     string Name,
     string? Description,
     List<Guid>? PermissionIds) : ICommand<RoleDto>;
 
+/// <summary>Validates the <see cref="UpdateRoleCommand"/> inputs.</summary>
 public sealed class UpdateRoleValidator : AbstractValidator<UpdateRoleCommand>
 {
     public UpdateRoleValidator()
@@ -27,6 +29,7 @@ public sealed class UpdateRoleValidator : AbstractValidator<UpdateRoleCommand>
     }
 }
 
+/// <summary>Handles updating a role's details and reconciling its permissions.</summary>
 public sealed class UpdateRoleHandler(
     IdentityDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
@@ -49,8 +52,11 @@ public sealed class UpdateRoleHandler(
         }
 
         if (role.IsSystemRole)
+        {
+            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Cannot modify system role", "Role", request.Id);
             return Result<RoleDto>.Failure(
                 LocalizedMessage.Of("lockey_identity_error_system_role_immutable"));
+        }
 
         // Check name uniqueness (excluding self)
         var nameExists = await dbContext.Roles

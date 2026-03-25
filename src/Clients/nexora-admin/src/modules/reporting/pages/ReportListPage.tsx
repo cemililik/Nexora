@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
@@ -54,6 +55,7 @@ export default function ReportListPage() {
   const page = Number(searchParams.get('page') ?? '1');
   const search = searchParams.get('search') ?? '';
 
+  const { hasPermission } = usePermissions();
   const { data, isLoading } = useReportDefinitions({ page, pageSize: 20, search: search || undefined });
   const createDefinition = useCreateReportDefinition();
   const testQuery = useTestReportQuery();
@@ -99,9 +101,11 @@ export default function ReportListPage() {
         <h1 className="text-2xl font-bold text-foreground">
           {t('lockey_reporting_nav_reports')}
         </h1>
-        <Button onClick={() => setDialogOpen(true)}>
-          {t('lockey_reporting_action_create_definition')}
-        </Button>
+        {hasPermission('reporting.definition.manage') && (
+          <Button onClick={() => setDialogOpen(true)}>
+            {t('lockey_reporting_action_create_definition')}
+          </Button>
+        )}
       </div>
 
       <Input
@@ -222,7 +226,7 @@ export default function ReportListPage() {
                 <Input
                   id="rd-module"
                   {...form.register('module')}
-                  placeholder="contacts"
+                  placeholder={t('lockey_reporting_module_placeholder')}
                 />
                 {form.formState.errors.module && (
                   <p className="text-sm text-destructive">{form.formState.errors.module.message}</p>
@@ -274,7 +278,7 @@ export default function ReportListPage() {
                   <SqlEditor
                     value={field.value}
                     onChange={field.onChange}
-                    placeholder="SELECT id, name FROM contacts_contacts"
+                    placeholder={t('lockey_reporting_query_placeholder')}
                   />
                 )}
               />
