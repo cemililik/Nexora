@@ -54,6 +54,6 @@ public sealed class RecordAuditLogHandler(
 
         logger.LogInformation("Audit log recorded: {Action} by user {UserId}", request.Action, request.UserId);
 
-        return Result.Success(new LocalizedMessage("lockey_identity_audit_log_recorded"));
+        return Result.Success(LocalizedMessage.Of("lockey_identity_audit_log_recorded"));
     }
 }

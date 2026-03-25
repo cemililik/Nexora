@@ -11,6 +11,7 @@ import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUser, useUpdateProfile, useUpdateUserStatus, useDeleteUser, useUserRoles, useAssignUserRoles, userKeys } from '../hooks/useUsers';
 import { toast } from 'sonner';
 import { useRoles } from '../hooks/useRoles';
@@ -35,6 +36,7 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
 
   const { data: user, isPending } = useUser(id);
   const updateProfile = useUpdateProfile(id);
@@ -68,39 +70,47 @@ export default function UserDetailPage() {
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
         <div className="flex gap-2">
-          {user.status === 'Active' ? (
+          {hasPermission('identity.users.update') && (
+            <>
+              {user.status === 'Active' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmAction('deactivate')}
+                >
+                  {t('lockey_identity_action_deactivate')}
+                </Button>
+              ) : user.status === 'Inactive' ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmAction('activate')}
+                >
+                  {t('lockey_identity_action_activate')}
+                </Button>
+              ) : null}
+            </>
+          )}
+          {hasPermission('identity.users.update') && (
+            <Button
+              type="button"
+              variant={isEditing ? 'outline' : 'default'}
+              onClick={() => setIsEditing(!isEditing)}
+            >
+              {isEditing ? t('lockey_common_cancel', { ns: 'common' }) : t('lockey_identity_action_edit')}
+            </Button>
+          )}
+          {hasPermission('identity.users.delete') && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmAction('deactivate')}
+              size="icon"
+              title={t('lockey_identity_action_delete_user')}
+              onClick={() => setConfirmAction('delete')}
             >
-              {t('lockey_identity_action_deactivate')}
+              <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
-          ) : user.status === 'Inactive' ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmAction('activate')}
-            >
-              {t('lockey_identity_action_activate')}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant={isEditing ? 'outline' : 'default'}
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? t('lockey_common_cancel', { ns: 'common' }) : t('lockey_identity_action_edit')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            title={t('lockey_identity_action_delete_user')}
-            onClick={() => setConfirmAction('delete')}
-          >
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          )}
         </div>
       </div>
 

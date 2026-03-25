@@ -89,7 +89,7 @@ public static class UserEndpoints
         {
             if (organizationId is null)
                 return Results.BadRequest(ApiEnvelope<List<RoleDto>>.Fail(
-                    new Error(new LocalizedMessage("lockey_validation_required", new() { ["field"] = "organizationId" }))));
+                    new Error(LocalizedMessage.Of("lockey_validation_required", new() { ["field"] = "organizationId" }))));
 
             var result = await sender.Send(new GetUserRolesQuery(id, organizationId.Value), ct);
             return result.IsSuccess

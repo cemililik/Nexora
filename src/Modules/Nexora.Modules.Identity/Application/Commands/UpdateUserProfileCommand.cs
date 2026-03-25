@@ -58,7 +58,7 @@ public sealed class UpdateUserProfileHandler(
         if (user is null)
         {
             logger.LogWarning("User profile update failed: user {UserId} not found for tenant {TenantId}", request.UserId, tenantId);
-            return Result<UserDto>.Failure("lockey_identity_error_user_not_found");
+            return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
         }
 
         user.UpdateProfile(request.FirstName, request.LastName, request.Phone);
@@ -82,6 +82,6 @@ public sealed class UpdateUserProfileHandler(
         logger.LogInformation("User {UserId} profile updated for tenant {TenantId}", user.Id, tenantId);
 
         return Result<UserDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_user_profile_updated"));
+            LocalizedMessage.Of("lockey_identity_user_profile_updated"));
     }
 }

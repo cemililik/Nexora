@@ -9,6 +9,7 @@ import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ export default function TenantDetailPage() {
   const { t, i18n } = useTranslation('identity');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
 
   const { data: tenant, isPending } = useTenant(id);
   const updateStatus = useUpdateTenantStatus(id);
@@ -62,12 +64,12 @@ export default function TenantDetailPage() {
           <p className="text-sm text-muted-foreground">{tenant.slug}</p>
         </div>
         <div className="flex gap-2">
-          {canActivate && (
+          {hasPermission('identity.tenants.update') && canActivate && (
             <Button type="button" onClick={() => updateStatus.activate()}>
               {t('lockey_identity_action_activate')}
             </Button>
           )}
-          {canSuspend && (
+          {hasPermission('identity.tenants.update') && canSuspend && (
             <Button
               type="button"
               variant="outline"
@@ -76,7 +78,7 @@ export default function TenantDetailPage() {
               {t('lockey_identity_action_suspend')}
             </Button>
           )}
-          {canTerminate && (
+          {hasPermission('identity.tenants.update') && canTerminate && (
             <Button
               type="button"
               variant="destructive"
@@ -114,9 +116,11 @@ export default function TenantDetailPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>{t('lockey_identity_tenant_modules_title')}</CardTitle>
-            <Button size="sm" onClick={() => setInstallOpen(true)}>
-              {t('lockey_identity_action_install_module')}
-            </Button>
+            {hasPermission('identity.modules.manage') && (
+              <Button size="sm" onClick={() => setInstallOpen(true)}>
+                {t('lockey_identity_action_install_module')}
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {!modules?.length ? (
@@ -128,7 +132,7 @@ export default function TenantDetailPage() {
                 {modules.map((mod) => (
                   <li key={mod.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{mod.moduleName}</span>
+                      <span className="font-medium">{t('lockey_common_module_' + mod.moduleName, { ns: 'common', defaultValue: mod.moduleName })}</span>
                       <Badge variant={mod.isActive ? 'default' : 'secondary'}>
                         {mod.isActive ? t('lockey_identity_status_active') : t('lockey_identity_status_inactive')}
                       </Badge>
@@ -302,7 +306,7 @@ function InstallModuleDialog({
                 onClick={() => onInstall(moduleName)}
                 className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors capitalize"
               >
-                {moduleName}
+                {t('lockey_common_module_' + moduleName, { ns: 'common', defaultValue: moduleName })}
               </button>
             ))
           )}

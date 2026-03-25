@@ -73,7 +73,7 @@ export function PermissionSelector({ selectedIds, onChange, disabled }: Permissi
                 disabled={disabled}
                 className="h-4 w-4 rounded border-input"
               />
-              <span className="capitalize">{module}</span>
+              <span className="capitalize">{t('lockey_common_module_' + module, { ns: 'common', defaultValue: module })}</span>
               <span className="text-xs text-muted-foreground">
                 ({moduleIds.filter((id) => selectedSet.has(id)).length}/{moduleIds.length})
               </span>

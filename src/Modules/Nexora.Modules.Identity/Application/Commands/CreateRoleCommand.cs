@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
@@ -31,7 +32,8 @@ public sealed class CreateRoleValidator : AbstractValidator<CreateRoleCommand>
 /// <summary>Creates a role and assigns requested permissions within the tenant.</summary>
 public sealed class CreateRoleHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : ICommandHandler<CreateRoleCommand, RoleDto>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<CreateRoleHandler> logger) : ICommandHandler<CreateRoleCommand, RoleDto>
 {
     public async Task<Result<RoleDto>> Handle(
         CreateRoleCommand request,
@@ -44,9 +46,10 @@ public sealed class CreateRoleHandler(
 
         if (nameExists)
         {
+            logger.LogWarning("Role creation failed: name {RoleName} already taken for tenant {TenantId}", request.Name, tenantId);
             return Result<RoleDto>.Failure(
-                "lockey_identity_error_role_name_taken",
-                new Dictionary<string, string> { ["name"] = request.Name });
+                LocalizedMessage.Of("lockey_identity_error_role_name_taken",
+                new Dictionary<string, string> { ["name"] = request.Name }));
         }
 
         var role = Role.Create(tenantId, request.Name, request.Description);
@@ -79,7 +82,9 @@ public sealed class CreateRoleHandler(
             role.IsActive,
             permissionKeys);
 
+        logger.LogInformation("Role {RoleId} created for tenant {TenantId}", role.Id, tenantId);
+
         return Result<RoleDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_role_created"));
+            LocalizedMessage.Of("lockey_identity_role_created"));
     }
 }

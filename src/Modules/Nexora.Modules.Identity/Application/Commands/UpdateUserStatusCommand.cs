@@ -54,7 +54,7 @@ public sealed class UpdateUserStatusHandler(
         if (user is null)
         {
             logger.LogWarning("User status update failed: user {UserId} not found for tenant {TenantId}", request.UserId, tenantId);
-            return Result.Failure("lockey_identity_error_user_not_found");
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
         }
 
         var tenant = await platformDb.Tenants
@@ -78,6 +78,6 @@ public sealed class UpdateUserStatusHandler(
 
         logger.LogInformation("User {UserId} status changed to {Action}", user.Id, request.Action);
 
-        return Result.Success(new LocalizedMessage("lockey_identity_user_status_updated"));
+        return Result.Success(LocalizedMessage.Of("lockey_identity_user_status_updated"));
     }
 }

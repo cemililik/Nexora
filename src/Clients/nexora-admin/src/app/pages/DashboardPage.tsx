@@ -104,6 +104,7 @@ export default function DashboardPage() {
 }
 
 function StatsCardItem({ card }: { card: StatsCard }) {
+  const { t } = useTranslation('common');
   const { data, isLoading } = useQuery({
     queryKey: card.queryKey,
     queryFn: card.queryFn,
@@ -123,7 +124,7 @@ function StatsCardItem({ card }: { card: StatsCard }) {
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold">
-          {isLoading ? '...' : (data?.totalCount ?? '—')}
+          {isLoading ? t('lockey_common_loading') : (data?.totalCount ?? '–')}
         </p>
       </CardContent>
     </Card>

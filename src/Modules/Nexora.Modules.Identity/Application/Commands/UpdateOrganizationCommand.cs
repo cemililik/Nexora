@@ -64,7 +64,7 @@ public sealed class UpdateOrganizationHandler(
         if (org is null)
         {
             logger.LogWarning("Organization update failed: organization {OrganizationId} not found for tenant {TenantId}", request.OrganizationId, tenantId);
-            return Result<OrganizationDto>.Failure("lockey_identity_error_org_not_found");
+            return Result<OrganizationDto>.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
         }
 
         org.Update(request.Name, request.Timezone, request.DefaultCurrency, request.DefaultLanguage);
@@ -77,6 +77,6 @@ public sealed class UpdateOrganizationHandler(
         logger.LogInformation("Organization {OrganizationId} updated for tenant {TenantId}", org.Id, tenantId);
 
         return Result<OrganizationDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_org_updated"));
+            LocalizedMessage.Of("lockey_identity_org_updated"));
     }
 }

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Download, Eye, Pencil, Trash2 } from 'lucide-react';
 
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import {
@@ -54,6 +55,7 @@ export default function ReportDetailPage() {
     pageSize: 10,
   });
   const { hasPermission } = usePermissions();
+  const { handleApiError } = useApiError();
   const executeReport = useExecuteReport();
   const updateDefinition = useUpdateReportDefinition();
   const deleteDefinition = useDeleteReportDefinition();
@@ -76,8 +78,9 @@ export default function ReportDetailPage() {
         link.click();
         URL.revokeObjectURL(url);
       },
+      onError: (err) => handleApiError(err),
     });
-  }, [reportFile]);
+  }, [reportFile, handleApiError]);
 
   const handlePreview = useCallback((executionId: string, format: string) => {
     reportFile.mutate(executionId, {
@@ -91,8 +94,9 @@ export default function ReportDetailPage() {
           setPreviewUrl(null);
         }
       },
+      onError: (err) => handleApiError(err),
     });
-  }, [reportFile]);
+  }, [reportFile, handleApiError]);
 
   const closePreview = useCallback(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -107,6 +111,7 @@ export default function ReportDetailPage() {
         setDeleteOpen(false);
         void navigate('/reporting/reports');
       },
+      onError: (err) => handleApiError(err),
     });
   };
 
@@ -125,6 +130,8 @@ export default function ReportDetailPage() {
       parameterValues: Object.keys(paramValues).length > 0
         ? JSON.stringify(paramValues)
         : undefined,
+    }, {
+      onError: (err) => handleApiError(err),
     });
   };
 
@@ -271,7 +278,7 @@ export default function ReportDetailPage() {
         onSave={(values) => {
           updateDefinition.mutate(
             { id: definition.id, ...values },
-            { onSuccess: () => setEditOpen(false) },
+            { onSuccess: () => setEditOpen(false), onError: (err) => handleApiError(err) },
           );
         }}
         isPending={updateDefinition.isPending}

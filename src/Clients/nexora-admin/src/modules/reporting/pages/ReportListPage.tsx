@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Textarea } from '@/shared/components/ui/textarea';
@@ -56,6 +57,7 @@ export default function ReportListPage() {
   const search = searchParams.get('search') ?? '';
 
   const { hasPermission } = usePermissions();
+  const { handleApiError } = useApiError();
   const { data, isLoading } = useReportDefinitions({ page, pageSize: 20, search: search || undefined });
   const createDefinition = useCreateReportDefinition();
   const testQuery = useTestReportQuery();
@@ -91,6 +93,7 @@ export default function ReportListPage() {
           setDialogOpen(false);
           form.reset();
         },
+        onError: (err) => handleApiError(err),
       },
     );
   };

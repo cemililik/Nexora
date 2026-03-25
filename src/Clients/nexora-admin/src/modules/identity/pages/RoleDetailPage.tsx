@@ -224,7 +224,7 @@ export default function RoleDetailPage() {
 }
 
 function PermissionReadOnly({ permissions }: { permissions: Array<{ module: string; resource: string; action: string }> }) {
-  const { t } = useTranslation('identity');
+  const { t } = useTranslation(['identity', 'common']);
   const grouped = permissions.reduce<Record<string, Array<{ resource: string; action: string }>>>((acc, p) => {
     (acc[p.module] ??= []).push(p);
     return acc;
@@ -234,7 +234,7 @@ function PermissionReadOnly({ permissions }: { permissions: Array<{ module: stri
     <div className="space-y-3">
       {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([module, perms]) => (
         <div key={module}>
-          <p className="text-sm font-medium capitalize mb-1">{module}</p>
+          <p className="text-sm font-medium capitalize mb-1">{t('lockey_common_module_' + module, { ns: 'common', defaultValue: module })}</p>
           <div className="flex flex-wrap gap-1">
             {perms.map((p) => (
               <span

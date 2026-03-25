@@ -11,7 +11,7 @@ export interface ReportDefinitionDto {
   category?: string;
   queryText: string;
   parameters?: string;
-  defaultFormat: string;
+  defaultFormat: ReportFormat;
   isActive: boolean;
   createdAt: string;
   createdBy?: string;
@@ -20,9 +20,9 @@ export interface ReportDefinitionDto {
 export interface ReportExecutionDto {
   id: string;
   definitionId: string;
-  status: string;
+  status: ReportStatus;
   parameterValues?: string;
-  format: string;
+  format: ReportFormat;
   rowCount?: number;
   durationMs?: number;
   errorDetails?: string;
@@ -88,7 +88,7 @@ export interface UpdateReportDefinitionRequest extends CreateReportDefinitionReq
 
 export interface ExecuteReportRequest {
   definitionId: string;
-  format?: string;
+  format?: ReportFormat;
   parameterValues?: string;
 }
 

@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
@@ -10,6 +11,15 @@ using Nexora.SharedKernel.Results;
 namespace Nexora.Modules.Reporting.Application.Commands;
 
 public sealed record DeleteDashboardCommand(Guid Id) : ICommand;
+
+/// <summary>Validates dashboard deletion input.</summary>
+public sealed class DeleteDashboardValidator : AbstractValidator<DeleteDashboardCommand>
+{
+    public DeleteDashboardValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty().WithMessage("lockey_validation_required");
+    }
+}
 
 public sealed class DeleteDashboardHandler(
     ReportingDbContext dbContext,

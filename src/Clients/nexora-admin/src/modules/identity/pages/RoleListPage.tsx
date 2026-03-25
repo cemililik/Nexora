@@ -23,6 +23,7 @@ import {
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { Link } from 'react-router';
 import { useRoles, useCreateRole } from '../hooks/useRoles';
 import { PermissionSelector } from '../components/PermissionSelector';
@@ -41,6 +42,7 @@ export default function RoleListPage() {
   const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
   const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<string[]>([]);
 
@@ -94,9 +96,11 @@ export default function RoleListPage() {
             {t('lockey_identity_roles_description')}
           </p>
         </div>
-        <Button type="button" onClick={() => setIsDialogOpen(true)}>
-          {t('lockey_identity_roles_create')}
-        </Button>
+        {hasPermission('identity.roles.create') && (
+          <Button type="button" onClick={() => setIsDialogOpen(true)}>
+            {t('lockey_identity_roles_create')}
+          </Button>
+        )}
       </div>
 
       {!roles?.length ? (
