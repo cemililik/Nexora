@@ -90,6 +90,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 3. [x] Tenant A and Tenant B have isolated schemas (verified: `tenant_0000...0001` schema with Identity + Contacts + Documents + Notifications tables)
 4. [x] Keycloak issues JWT, APISIX validates it (openid-connect plugin + `KC_HOSTNAME_BACKCHANNEL_DYNAMIC` for issuer alignment), .NET resolves tenant from `tenant_id` claim *(defense in depth: gateway + backend both validate)*
 5. [x] Frontend clients (`nexora-admin`, `nexora-portal`) authenticate via Keycloak, route API calls through APISIX gateway (`localhost:9080`), receive CORS headers and correlation IDs
+6. [x] Global soft delete infrastructure — `ISoftDeletable` interface, `AuditableEntity<T>` with IsDeleted/DeletedAt/DeletedBy, BaseDbContext auto-converts `Remove()` to soft delete, global query filters exclude deleted records, 23 unique indexes with partial filters, module lifecycle (activate/deactivate/uninstall with table rename)
 
 ### Completed Work
 - **Solution structure**: 16 projects (Host, SharedKernel, Infrastructure, Identity module, Contacts module, Notifications module, Documents module, Reporting module, plus 8 test projects)

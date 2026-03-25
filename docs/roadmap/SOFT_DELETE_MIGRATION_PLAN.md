@@ -317,21 +317,31 @@ ALTER TABLE platform_tenant_modules ADD COLUMN "DeletedTableNames" text;
 
 ---
 
-## Uygulama Sırası ve Tahmini İş Yükü
+## Uygulama Durumu
 
-| Sıra | Adım | Dosya Sayısı | Açıklama |
-|------|------|-------------|----------|
-| 1 | `ISoftDeletable` interface | 1 yeni | SharedKernel'e ekle |
-| 2 | `AuditableEntity` güncelle | 1 güncelle | IsDeleted, DeletedAt, DeletedBy ekle |
-| 3 | `BaseDbContext` güncelle | 1 güncelle | Global query filter + SaveChanges interceptor |
-| 4 | `PlatformDbContext` güncelle | 1 güncelle | Aynı pattern |
-| 5 | EF Configurations güncelle | ~18 güncelle | Unique index'lere partial filter |
-| 6 | `TenantModule` entity güncelle | 1 güncelle | DeletedTableNames alanı |
-| 7 | Delete handler'ları gözden geçir | ~12 güncelle | Çoğu otomatik, istisnalar işaretle |
-| 8 | Frontend güncelle | ~3 güncelle | Module lifecycle UI |
-| 9 | Test güncelle | ~10 güncelle | Soft delete davranışı test et |
-| 10 | Migration oluştur | 6 yeni | Her DbContext için migration |
-| **Toplam** | | **~55 dosya** | |
+> **Durum: TAMAMLANDI** — Tüm adımlar uygulandı ve 1309 test geçiyor.
+
+| Sıra | Adım | Durum | Notlar |
+|------|------|-------|--------|
+| 1 | `ISoftDeletable` interface | ✅ Tamamlandı | `SharedKernel/Domain/Base/ISoftDeletable.cs` |
+| 2 | `AuditableEntity` güncelle | ✅ Tamamlandı | IsDeleted, DeletedAt, DeletedBy + MarkAsDeleted(), UndoDelete() |
+| 3 | `BaseDbContext` güncelle | ✅ Tamamlandı | SaveChanges interceptor (Deleted → Modified), ApplySoftDeleteFilters() helper |
+| 4 | `PlatformDbContext` güncelle | ✅ Tamamlandı | Inline query filters + audit fields + soft delete columns |
+| 5 | EF Configurations güncelle | ✅ Tamamlandı | 18 dosya, 23 unique index → `HasFilter("\"IsDeleted\" = false")` |
+| 6 | `TenantModule` entity güncelle | ✅ Tamamlandı | AuditableEntity'ye yükseltildi, DeletedTableNames + Activate() eklendi |
+| 7 | Delete handler'lar | ✅ Otomatik | SaveChanges interceptor sayesinde Remove() → soft delete otomatik |
+| 8 | Module lifecycle | ✅ Tamamlandı | Activate/Deactivate/Uninstall 3 akış, tablo rename + DeletedTableNames |
+| 9 | Tenant lifecycle | ✅ Tamamlandı | Terminate → tüm modüller deactivate |
+| 10 | DB Migration | ✅ Tamamlandı | ALTER TABLE ile IsDeleted, DeletedAt, DeletedBy eklendi |
+| 11 | Testler | ✅ Geçiyor | 1309 backend test, IgnoreQueryFilters() test'te kullanıldı |
+
+### İstisnalar (Hard Delete Kalan)
+
+| Handler | Neden |
+|---------|-------|
+| `RequestGdprDeleteCommand` | KVKK/GDPR yasal zorunluluk |
+| `AssignUserRolesCommand` (reconciliation) | Role reassignment join kayıtları |
+| `UninstallModuleCommand` (RolePermission cleanup) | Orphan permission temizliği |
 
 ## Riskler ve Dikkat Edilecekler
 
