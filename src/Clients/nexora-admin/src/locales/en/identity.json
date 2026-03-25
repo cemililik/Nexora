@@ -167,7 +167,6 @@
   "lockey_identity_action_activate_module": "Activate",
   "lockey_identity_action_deactivate_module": "Deactivate",
   "lockey_identity_confirm_uninstall_module_permanent": "This will permanently uninstall the module and rename its database tables. This action cannot be undone. Are you sure?",
-  "lockey_identity_col_name": "Name",
   "lockey_identity_org_created": "Organization created successfully.",
   "lockey_identity_org_updated": "Organization updated.",
   "lockey_identity_org_deleted": "Organization deleted.",

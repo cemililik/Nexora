@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
+import { userKeys } from './useUsers';
 import type {
   OrganizationDto,
   OrganizationDetailDto,
@@ -118,6 +119,29 @@ export function useAddMember(orgId: string) {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_member_added'));
     },
+  });
+}
+
+export function useAddUserToOrganization(
+  userId: string,
+  options?: { onSuccess?: () => void; onError?: (err: Error) => void },
+) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('identity');
+
+  return useMutation({
+    mutationFn: (orgId: string) =>
+      api.post(
+        `/identity/organizations/${encodeURIComponent(orgId)}/members`,
+        { userId },
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      void queryClient.invalidateQueries({ queryKey: orgKeys.all });
+      toast.success(t('lockey_identity_member_added'));
+      options?.onSuccess?.();
+    },
+    onError: options?.onError,
   });
 }
 
