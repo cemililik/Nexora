@@ -1,0 +1,34 @@
+meta {
+  name: Create Schedule
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reporting/schedules
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "definitionId": "{{reportDefinitionId}}",
+    "cronExpression": "0 8 * * 1",
+    "format": "PDF",
+    "recipients": "admin@example.com,manager@example.com"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("reportScheduleId", body.data.id);
+      console.log("reportScheduleId set to " + body.data.id);
+    }
+  }
+}

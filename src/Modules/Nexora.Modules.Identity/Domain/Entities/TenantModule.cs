@@ -39,6 +39,7 @@ public sealed class TenantModule : AuditableEntity<TenantModuleId>
     /// <summary>Records the renamed table names during uninstall.</summary>
     public void RecordUninstall(string deletedTableNames)
     {
+        ArgumentException.ThrowIfNullOrEmpty(deletedTableNames);
         DeletedTableNames = deletedTableNames;
     }
 }

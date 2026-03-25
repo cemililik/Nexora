@@ -1,0 +1,33 @@
+meta {
+  name: Execute Report
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reporting/executions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "definitionId": "{{reportDefinitionId}}",
+    "format": "PDF",
+    "parameterValues": null
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("reportExecutionId", body.data.id);
+      console.log("reportExecutionId set to " + body.data.id);
+    }
+  }
+}

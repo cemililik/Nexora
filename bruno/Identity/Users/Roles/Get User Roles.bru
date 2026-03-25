@@ -1,0 +1,19 @@
+meta {
+  name: Get User Roles
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/identity/users/{{userId}}/roles?organizationId={{organizationId}}
+  body: none
+  auth: bearer
+}
+
+params:query {
+  organizationId: {{organizationId}}
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

@@ -282,6 +282,7 @@ export default function ReportListPage() {
                     value={field.value}
                     onChange={field.onChange}
                     placeholder={t('lockey_reporting_query_placeholder')}
+                    aria-label={t('lockey_reporting_query')}
                   />
                 )}
               />

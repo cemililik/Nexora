@@ -1,0 +1,37 @@
+meta {
+  name: Create Definition
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reporting/definitions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Monthly Contact Summary",
+    "description": "Lists all contacts created this month",
+    "module": "contacts",
+    "category": "summary",
+    "queryText": "SELECT id, first_name, last_name, email, created_at FROM contacts_contacts WHERE created_at >= date_trunc('month', now())",
+    "parameters": null,
+    "defaultFormat": "PDF"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("reportDefinitionId", body.data.id);
+      console.log("reportDefinitionId set to " + body.data.id);
+    }
+  }
+}

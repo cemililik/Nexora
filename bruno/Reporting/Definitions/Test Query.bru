@@ -1,0 +1,21 @@
+meta {
+  name: Test Query
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reporting/definitions/test-query
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "queryText": "SELECT id, first_name, last_name FROM contacts_contacts LIMIT 10"
+  }
+}

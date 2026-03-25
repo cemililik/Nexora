@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
@@ -26,9 +27,9 @@ public sealed class CreateRoleTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldCreateRole()
+    public async Task CreateRole_WithValidCommand_ReturnsCreatedRole()
     {
-        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateRoleHandler>.Instance);
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, NullLogger<CreateRoleHandler>.Instance);
         var command = new CreateRoleCommand("Editor", "Can edit content", null);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -40,14 +41,14 @@ public sealed class CreateRoleTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WithPermissions_ShouldAssignPermissions()
+    public async Task CreateRole_WithPermissions_AssignsPermissions()
     {
         // Seed a permission
         var permission = Permission.Create("crm", "contacts", "read");
         await _dbContext.Permissions.AddAsync(permission);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateRoleHandler>.Instance);
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, NullLogger<CreateRoleHandler>.Instance);
         var command = new CreateRoleCommand("Viewer", null, [permission.Id.Value]);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -58,9 +59,9 @@ public sealed class CreateRoleTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_DuplicateName_ShouldReturnFailure()
+    public async Task CreateRole_WithDuplicateName_ReturnsFailure()
     {
-        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, Microsoft.Extensions.Logging.Abstractions.NullLogger<CreateRoleHandler>.Instance);
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, NullLogger<CreateRoleHandler>.Instance);
         await handler.Handle(new CreateRoleCommand("Admin", null, null), CancellationToken.None);
 
         var result = await handler.Handle(

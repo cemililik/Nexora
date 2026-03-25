@@ -431,6 +431,7 @@ function EditReportDialog({ open, onOpenChange, definition, onSave, isPending }:
                 <SqlEditor
                   value={field.value}
                   onChange={field.onChange}
+                  aria-label={t('lockey_reporting_query')}
                 />
               )}
             />

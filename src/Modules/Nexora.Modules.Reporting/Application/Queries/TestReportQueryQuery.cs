@@ -1,4 +1,5 @@
-using Nexora.Modules.Reporting.Infrastructure.Services;
+using Microsoft.Extensions.Logging;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -17,16 +18,22 @@ public sealed record TestReportQueryResultDto(
 
 /// <summary>Handles test-executing a SQL query with a limited row count for preview purposes.</summary>
 public sealed class TestReportQueryHandler(
-    ReportExecutionService executionService,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<TestReportQueryQuery, TestReportQueryResultDto>
+    ISqlQueryValidator sqlQueryValidator,
+    IReportExecutionService executionService,
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<TestReportQueryHandler> logger) : IQueryHandler<TestReportQueryQuery, TestReportQueryResultDto>
 {
     private const int PreviewLimit = 10;
 
     public async Task<Result<TestReportQueryResultDto>> Handle(TestReportQueryQuery request, CancellationToken ct)
     {
-        if (!SqlQueryValidator.IsValid(request.QueryText, out var sqlError))
-            return Result<TestReportQueryResultDto>.Failure(
-                LocalizedMessage.Of("lockey_reporting_error_invalid_query", new() { ["reason"] = sqlError! }));
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!sqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+        {
+            logger.LogWarning("Test query validation failed for tenant {TenantId}: {SqlError}", tenantContextAccessor.Current.TenantId, sqlError);
+            return Result<TestReportQueryResultDto>.Failure(LocalizedMessage.Of(sqlError!));
+        }
 
         var tenantId = tenantContextAccessor.Current.TenantId;
 
@@ -44,8 +51,9 @@ public sealed class TestReportQueryHandler(
             return Result<TestReportQueryResultDto>.Success(
                 new TestReportQueryResultDto(columns, rows, rows.Count));
         }
-        catch (Npgsql.PostgresException)
+        catch (Npgsql.PostgresException ex)
         {
+            logger.LogError(ex, "Test query execution failed for tenant {TenantId}", tenantId);
             return Result<TestReportQueryResultDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_query_failed"));
         }

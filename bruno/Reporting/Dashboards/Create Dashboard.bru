@@ -1,0 +1,33 @@
+meta {
+  name: Create Dashboard
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/reporting/dashboards
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Sales Overview",
+    "description": "Key metrics for the sales team",
+    "isDefault": false
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    const body = res.getBody();
+    if (body.data && body.data.id) {
+      bru.setEnvVar("dashboardId", body.data.id);
+      console.log("dashboardId set to " + body.data.id);
+    }
+  }
+}

@@ -16,9 +16,10 @@ interface SqlEditorProps {
   className?: string;
   darkMode?: boolean;
   readOnly?: boolean;
+  'aria-label'?: string;
 }
 
-export function SqlEditor({ value, onChange, placeholder, className, darkMode, readOnly }: SqlEditorProps) {
+export function SqlEditor({ value, onChange, placeholder, className, darkMode, readOnly, 'aria-label': ariaLabel }: SqlEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -91,6 +92,9 @@ export function SqlEditor({ value, onChange, placeholder, className, darkMode, r
   return (
     <div
       ref={containerRef}
+      role="textbox"
+      aria-label={ariaLabel}
+      aria-multiline="true"
       className={cn(
         'overflow-hidden rounded-md border border-input bg-background text-sm [&_.cm-editor]:min-h-[100px] [&_.cm-editor]:outline-none [&_.cm-scroller]:p-2 [&_.cm-gutters]:bg-muted [&_.cm-activeLine]:bg-muted/50',
         className,

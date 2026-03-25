@@ -1,0 +1,23 @@
+meta {
+  name: Update Schedule
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/reporting/schedules/{{reportScheduleId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "cronExpression": "0 9 * * 1-5",
+    "format": "PDF",
+    "recipients": "admin@example.com"
+  }
+}

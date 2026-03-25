@@ -1,0 +1,22 @@
+meta {
+  name: Assign User Roles
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/identity/users/{{userId}}/roles
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "organizationId": "{{organizationId}}",
+    "roleIds": ["{{roleId}}"]
+  }
+}

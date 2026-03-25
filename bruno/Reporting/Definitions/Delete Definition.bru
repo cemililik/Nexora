@@ -1,0 +1,15 @@
+meta {
+  name: Delete Definition
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/reporting/definitions/{{reportDefinitionId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

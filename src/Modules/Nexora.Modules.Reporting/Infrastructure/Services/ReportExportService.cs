@@ -19,15 +19,16 @@ public sealed class ReportExportService
     public byte[] Export(
         IReadOnlyList<Dictionary<string, object?>> rows,
         string format,
-        string reportName)
+        string reportName,
+        string noDataLabel = "lockey_reporting_no_data")
     {
         return format.ToUpperInvariant() switch
         {
             "CSV" => ExportCsv(rows),
             "EXCEL" => ExportExcel(rows, reportName),
-            "PDF" => ExportPdf(rows, reportName),
+            "PDF" => ExportPdf(rows, reportName, noDataLabel),
             "JSON" => ExportJson(rows),
-            _ => throw new ArgumentException($"Unsupported format: {format}")
+            _ => throw new ArgumentException($"Unsupported format: {format}", nameof(format))
         };
     }
 
@@ -113,7 +114,7 @@ public sealed class ReportExportService
         return stream.ToArray();
     }
 
-    private static byte[] ExportPdf(IReadOnlyList<Dictionary<string, object?>> rows, string reportName)
+    private static byte[] ExportPdf(IReadOnlyList<Dictionary<string, object?>> rows, string reportName, string noDataLabel)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
@@ -130,7 +131,7 @@ public sealed class ReportExportService
                 {
                     if (rows.Count == 0)
                     {
-                        content.Text("No data").FontSize(12).Italic();
+                        content.Text(noDataLabel).FontSize(12).Italic();
                         return;
                     }
 

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Reporting.Application.Commands;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Infrastructure;
+using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -12,6 +14,7 @@ public sealed class CreateReportDefinitionTests : IDisposable
 {
     private readonly ReportingDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly ISqlQueryValidator _sqlQueryValidator = new SqlQueryValidator();
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
@@ -27,10 +30,10 @@ public sealed class CreateReportDefinitionTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidCommand_ShouldCreateDefinition()
+    public async Task CreateReportDefinition_WithValidData_ReturnsCreatedDefinition()
     {
         var handler = new CreateReportDefinitionHandler(
-            _dbContext, _tenantAccessor,
+            _dbContext, _sqlQueryValidator, _tenantAccessor,
             NullLogger<CreateReportDefinitionHandler>.Instance);
 
         var command = new CreateReportDefinitionCommand(
@@ -51,10 +54,10 @@ public sealed class CreateReportDefinitionTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_InvalidFormat_ShouldReturnFailure()
+    public async Task CreateReportDefinition_WithInvalidFormat_ReturnsFailure()
     {
         var handler = new CreateReportDefinitionHandler(
-            _dbContext, _tenantAccessor,
+            _dbContext, _sqlQueryValidator, _tenantAccessor,
             NullLogger<CreateReportDefinitionHandler>.Instance);
 
         var command = new CreateReportDefinitionCommand(

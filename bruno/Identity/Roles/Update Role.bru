@@ -1,0 +1,23 @@
+meta {
+  name: Update Role
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/identity/roles/{{roleId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "name": "Organization Admin",
+    "description": "Full access to organization management",
+    "permissionIds": []
+  }
+}

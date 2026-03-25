@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,11 +11,9 @@ import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
-import { useUser, useUpdateProfile, useUpdateUserStatus, useDeleteUser, useUserRoles, useAssignUserRoles, userKeys } from '../hooks/useUsers';
-import { toast } from 'sonner';
+import { useUser, useUpdateProfile, useUpdateUserStatus, useDeleteUser, useUserRoles, useAssignUserRoles } from '../hooks/useUsers';
 import { useRoles } from '../hooks/useRoles';
-import { useOrganizations, useRemoveMember, orgKeys } from '../hooks/useOrganizations';
-import { api } from '@/shared/lib/api';
+import { useOrganizations, useRemoveMember, useAddUserToOrganization } from '../hooks/useOrganizations';
 import {
   Dialog,
   DialogContent,
@@ -312,16 +309,8 @@ function AddToOrgDialog({
     ? available.filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
     : available;
 
-  const queryClient = useQueryClient();
-  const addMember = useMutation({
-    mutationFn: (orgId: string) =>
-      api.post(`/identity/organizations/${encodeURIComponent(orgId)}/members`, { userId }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: userKeys.all });
-      void queryClient.invalidateQueries({ queryKey: orgKeys.all });
-      toast.success(t('lockey_identity_member_added'));
-      onOpenChange(false);
-    },
+  const addMember = useAddUserToOrganization(userId, {
+    onSuccess: () => onOpenChange(false),
     onError: (err) => handleApiError(err),
   });
 
