@@ -88,7 +88,7 @@ public abstract class AuditableEntity<TId> : Entity<TId>, ISoftDeletable
     }
 
     /// <summary>Restores a soft-deleted entity.</summary>
-    public void Restore()
+    public void UndoDelete()
     {
         IsDeleted = false;
         DeletedAt = null;
@@ -319,7 +319,7 @@ ALTER TABLE platform_tenant_modules ADD COLUMN "DeletedTableNames" text;
 
 ## Uygulama Durumu
 
-> **Durum: TAMAMLANDI** — Tüm adımlar uygulandı ve 1309 test geçiyor.
+> **Durum: TAMAMLANDI** — Tüm adımlar uygulandı ve 1360 backend test geçiyor.
 
 | Sıra | Adım | Durum | Notlar |
 |------|------|-------|--------|
@@ -333,7 +333,7 @@ ALTER TABLE platform_tenant_modules ADD COLUMN "DeletedTableNames" text;
 | 8 | Module lifecycle | ✅ Tamamlandı | Activate/Deactivate/Uninstall 3 akış, tablo rename + DeletedTableNames |
 | 9 | Tenant lifecycle | ✅ Tamamlandı | Terminate → tüm modüller deactivate |
 | 10 | DB Migration | ✅ Tamamlandı | ALTER TABLE ile IsDeleted, DeletedAt, DeletedBy eklendi |
-| 11 | Testler | ✅ Geçiyor | 1309 backend test, IgnoreQueryFilters() test'te kullanıldı |
+| 11 | Testler | ✅ Geçiyor | 1360 backend test, IgnoreQueryFilters() test'te kullanıldı |
 
 ### İstisnalar (Hard Delete Kalan)
 

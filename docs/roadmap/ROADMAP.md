@@ -109,8 +109,8 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Observability stack**: OTel Collector (OTLP gRPC/HTTP → Tempo traces + Loki logs + Prometheus metrics), Grafana with auto-provisioned datasources (Tempo/Loki/Prometheus with trace-to-log correlation) + auto-provisioned "Nexora — Overview" dashboard, Serilog → OpenTelemetry sink, .NET OTel SDK (ASP.NET Core + HttpClient + EF Core + Runtime instrumentation, custom ActivitySource "Nexora.*"), health endpoints (/health/live, /health/ready, /health/startup)
 - **Dev Tools Port Map**: Nexora API `:5100`, APISIX Gateway `:9080`, APISIX Metrics `:9091`, Keycloak `:8080`, PostgreSQL `:5433`, Redis `:6380`, Kafka `:9092`, MinIO API `:9000`, MinIO Console `:9001`, Vault `:8200`, Grafana `:3300`, Tempo `:3200`, Loki `:3100`, OTel gRPC `:4327`, OTel HTTP `:4328`, Prometheus `:8889`, pgAdmin `:5051`, RedisInsight `:5541`, Kafka UI `:8085`, Dapr Placement `:50006`, Admin Dashboard `:3001` (dev), Portal `:3000` (dev)
 - **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500 — all with `TraceId` in response + log message), TraceIdEndpointFilter (endpoint-level business errors get TraceId via reflection), OTel Collector Loki exporter with `default_labels_enabled` (job label), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
-- **Standards compliance**: 7 rounds of audit — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging)
-- **Tests**: 1278 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 162, Reporting: 25, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 347 frontend tests (47 suites) across admin dashboard
+- **Standards compliance**: 7 rounds of audit + PR-39 code review (61 inline comments, 8 critical/4 major/11 minor fixes) — all violations found and fixed (LocalizedMessage in all query handlers, XML docs on all public types, test naming conventions, HTTP status codes, structured logging, Clean Architecture, SaveChanges overloads, secrets management)
+- **Tests**: 1360 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 213, Reporting: 56, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 358 admin frontend tests (47 suites) + 65 portal frontend tests (9 suites)
 - **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
 - **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
 - **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
@@ -239,7 +239,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Switch portal i18n to namespace-keyed messages (`{ common, error, validation, navigation }`) — already implemented via next-intl with 4 namespaces
 - [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
 - [x] Portal auth stability fixes — server-side `accessToken` passed to PortalShell via `serverAccessToken` prop, `setAuthToken` called in `useEffect` on mount, `useAuth` defensive refactor (no `clearSession` when user exists in store, `hasInitialized` guard for unauthenticated state), `api.ts` 401 interceptor skips redirect when no token is set (race condition fix)
-- [x] Tests: 9 test files, 54 portal tests passing
+- [x] Tests: 9 test files, 65 portal tests passing
 
 ### 1.6 Admin Dashboard (nexora-admin)
 
@@ -264,7 +264,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Notifications Module UI: 7 pages, 4 hooks, 4 components, manifest (7 routes, 8 permissions) — notification list/detail, send/bulk send, template editor (CRUD + translations), provider config (CRUD + test), schedule management
 - [x] ADR-004: Centralized permission seeding — all module permissions (63 total: Identity 16, Contacts 21, Documents 11, Notifications 8, Reporting 7) seeded in `IdentityModuleMigration.SeedAsync`
 - [x] Standards audit (all 85 files): eliminated all `as never` casts (22 occurrences in 16 test files), added `onError: handleApiError` to all mutation hooks (21 hooks across 7 files + 6 page-level call sites), replaced string concat with `cn()`, added URL param whitelist validation (3 pages), removed hardcoded `defaultValue` strings, added `aria-label` to all `SelectTrigger`/`table` elements, added `htmlFor`/`id` to all label/input groups, centralized duplicated badge constants, replaced `catch(Exception)` with specific types, added `ILogger` to `IdentityModuleMigration`, fixed test naming conventions
-- [x] 47 test suites, 347 frontend tests + 1253 backend tests passing, 0 TS errors, Vite build OK
+- [x] 47 test suites, 358 frontend tests + 1360 backend tests passing, 0 TS errors, Vite build OK
 
 **Completed TODO (Admin Dashboard) — all resolved:**
 - [x] Integrate ErrorBoundary with OpenTelemetry for frontend error reporting to observability stack
@@ -293,10 +293,13 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Backend: 4 domain entities, 10 commands, 11 queries, 5 API endpoint groups, 2 Hangfire jobs, 7 permissions (total: 63)
 - [x] Frontend: 6 pages (ReportList, ReportDetail, ScheduleList, DashboardList, DashboardView), 6 hooks, 10 components (ChartWidget with Recharts Bar/Line/Area/Pie, KpiWidget, TableWidget, DashboardGrid, SqlEditor, SqlTestResult)
 - [x] Localization: 65 translation keys (en + tr)
-- [x] Tests: 25 backend tests (domain: 19, application: 6) + 347 frontend tests passing
+- [x] Tests: 56 backend tests (domain: 19, application: 37) + 358 frontend tests passing
 - [x] Report download & preview (API-proxied file streaming, in-page PDF iframe, CSV/JSON text preview)
 - [x] Report definition CRUD UI (edit dialog, delete confirmation on detail page)
 - [x] SQL validation on create/update (SqlQueryValidator enforced at handler level, not just execution)
+- [x] SqlQueryValidator Clean Architecture refactor (ISqlQueryValidator interface in Application layer, compiled [GeneratedRegex] patterns)
+- [x] PR-39 code review fixes: 8 critical (secrets gitignore, SaveChanges overloads, Clean Architecture, ReportingDbContext org filters, type safety, accessibility), 4 major (ILogger injection, SPEC diagrams, Dockerfile), 11 minor (duplicate lockey keys, query optimization, compiled regex, doc fixes, inline mutation extraction)
+- [x] PR-39 missing tests: 47 new backend tests (ActivateModule, DeactivateModule, UpdateRole, DeleteRole, DeleteUser, AssignUserRoles, GetRoleById, GetUserRoles, 6 validators), 17 new frontend tests (useRoles, useUsers, portal api)
 
 - [x] SQL syntax highlighting in query editor (CodeMirror with PostgreSQL dialect, create & edit forms)
 - [x] "Test Query" button (POST /test-query endpoint, execute SQL with LIMIT 10, show preview table in form)

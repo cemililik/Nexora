@@ -34,6 +34,7 @@ RUN dotnet publish src/Nexora.Host/Nexora.Host.csproj -c Release -o /app --no-re
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
 WORKDIR /app
 
+# curl is needed for HEALTHCHECK; version is pinned to the base image's Alpine release
 RUN apk add --no-cache curl \
     && addgroup -S nexora && adduser -S nexora -G nexora
 USER nexora

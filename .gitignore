@@ -6,6 +6,9 @@
 # dotenv files
 .env
 
+# Dapr secrets
+dapr/components/secrets.json
+
 # Code review documents (local only)
 docs/code-reviews/
 
