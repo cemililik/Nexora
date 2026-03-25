@@ -22,7 +22,7 @@ public sealed class NotificationTemplateConfiguration : IEntityTypeConfiguration
         builder.Property(t => t.Body).IsRequired();
         builder.Property(t => t.Format).HasConversion<string>().HasMaxLength(20).IsRequired();
 
-        builder.HasIndex(t => new { t.TenantId, t.Code, t.Channel }).IsUnique();
+        builder.HasIndex(t => new { t.TenantId, t.Code, t.Channel }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.HasIndex(t => new { t.TenantId, t.Module });
 
         builder.HasMany(t => t.Translations).WithOne().HasForeignKey(tr => tr.TemplateId);

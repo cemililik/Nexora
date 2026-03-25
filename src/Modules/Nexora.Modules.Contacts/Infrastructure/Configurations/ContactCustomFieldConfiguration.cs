@@ -18,6 +18,6 @@ public sealed class ContactCustomFieldConfiguration : IEntityTypeConfiguration<C
         builder.Property(cf => cf.FieldDefinitionId).HasConversion(id => id.Value, v => CustomFieldDefinitionId.From(v));
         builder.Property(cf => cf.Value).HasMaxLength(1000);
 
-        builder.HasIndex(cf => new { cf.ContactId, cf.FieldDefinitionId }).IsUnique();
+        builder.HasIndex(cf => new { cf.ContactId, cf.FieldDefinitionId }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

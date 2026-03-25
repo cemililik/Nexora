@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Identity.Domain.Entities;
+using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Infrastructure;
 
 /// <summary>
 /// Platform-level DbContext for tenant management.
 /// Uses 'public' schema — NOT tenant-scoped.
-/// Only contains: Tenants, TenantModules (platform-wide tables).
+/// Handles audit fields and soft delete conversion like BaseDbContext.
 /// </summary>
 public sealed class PlatformDbContext(
     DbContextOptions<PlatformDbContext> options) : DbContext(options)
@@ -20,9 +21,22 @@ public sealed class PlatformDbContext(
         var now = DateTimeOffset.UtcNow;
         foreach (var entry in ChangeTracker.Entries())
         {
-            if (entry.State == EntityState.Added && entry.Properties.Any(p => p.Metadata.Name == "CreatedAt"))
+            // Convert hard deletes to soft deletes
+            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable)
+            {
+                entry.State = EntityState.Modified;
+                entry.Property(nameof(ISoftDeletable.IsDeleted)).CurrentValue = true;
+                entry.Property(nameof(ISoftDeletable.DeletedAt)).CurrentValue = now;
+                entry.Property(nameof(ISoftDeletable.DeletedBy)).CurrentValue = (string?)null;
+                continue;
+            }
+
+            var hasCreatedAt = entry.Properties.Any(p => p.Metadata.Name == "CreatedAt");
+            if (!hasCreatedAt) continue;
+
+            if (entry.State == EntityState.Added)
                 entry.Property("CreatedAt").CurrentValue = now;
-            else if (entry.State == EntityState.Modified && entry.Properties.Any(p => p.Metadata.Name == "UpdatedAt"))
+            else if (entry.State == EntityState.Modified)
                 entry.Property("UpdatedAt").CurrentValue = now;
         }
 
@@ -43,7 +57,7 @@ public sealed class PlatformDbContext(
                 .HasConversion(id => id.Value, v => Domain.ValueObjects.TenantId.From(v));
             e.Property(t => t.Name).HasMaxLength(200).IsRequired();
             e.Property(t => t.Slug).HasMaxLength(100).IsRequired();
-            e.HasIndex(t => t.Slug).IsUnique();
+            e.HasIndex(t => t.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
             e.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(t => t.Settings).HasColumnType("jsonb");
             e.Property(t => t.RealmId).HasMaxLength(200);
@@ -54,8 +68,15 @@ public sealed class PlatformDbContext(
             e.Property("UpdatedAt");
             e.Property("UpdatedBy").HasMaxLength(200);
 
+            // Soft delete fields
+            e.Property("IsDeleted").HasDefaultValue(false);
+            e.Property("DeletedAt");
+            e.Property("DeletedBy").HasMaxLength(200);
+
             e.Ignore(t => t.Organizations);
             e.Ignore(t => t.Modules);
+
+            e.HasQueryFilter(t => !t.IsDeleted);
         });
 
         modelBuilder.Entity<TenantModule>(e =>
@@ -67,7 +88,21 @@ public sealed class PlatformDbContext(
             e.Property(tm => tm.TenantId)
                 .HasConversion(id => id.Value, v => Domain.ValueObjects.TenantId.From(v));
             e.Property(tm => tm.ModuleName).HasMaxLength(100).IsRequired();
-            e.HasIndex(tm => new { tm.TenantId, tm.ModuleName }).IsUnique();
+            e.HasIndex(tm => new { tm.TenantId, tm.ModuleName }).IsUnique().HasFilter("\"IsDeleted\" = false");
+            e.Property(tm => tm.DeletedTableNames).HasMaxLength(4000);
+
+            // Soft delete fields
+            e.Property("IsDeleted").HasDefaultValue(false);
+            e.Property("DeletedAt");
+            e.Property("DeletedBy").HasMaxLength(200);
+
+            // Audit fields
+            e.Property("CreatedAt");
+            e.Property("CreatedBy").HasMaxLength(200);
+            e.Property("UpdatedAt");
+            e.Property("UpdatedBy").HasMaxLength(200);
+
+            e.HasQueryFilter(tm => !tm.IsDeleted);
         });
     }
 }

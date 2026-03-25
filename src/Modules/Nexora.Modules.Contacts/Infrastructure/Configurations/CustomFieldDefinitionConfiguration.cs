@@ -19,6 +19,6 @@ public sealed class CustomFieldDefinitionConfiguration : IEntityTypeConfiguratio
         builder.Property(d => d.FieldType).HasMaxLength(50).IsRequired();
         builder.Property(d => d.Options).HasColumnType("jsonb");
 
-        builder.HasIndex(d => new { d.TenantId, d.FieldName }).IsUnique();
+        builder.HasIndex(d => new { d.TenantId, d.FieldName }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

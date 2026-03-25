@@ -30,5 +30,6 @@ public sealed class ContactsDbContext(
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ContactsDbContext).Assembly);
+        ApplySoftDeleteFilters(modelBuilder);
     }
 }

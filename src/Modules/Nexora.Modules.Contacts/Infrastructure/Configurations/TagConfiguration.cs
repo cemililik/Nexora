@@ -19,6 +19,6 @@ public sealed class TagConfiguration : IEntityTypeConfiguration<Tag>
         builder.Property(t => t.Color).HasMaxLength(20);
         builder.Property(t => t.Category).HasConversion<string>().HasMaxLength(50);
 
-        builder.HasIndex(t => new { t.TenantId, t.Name }).IsUnique();
+        builder.HasIndex(t => new { t.TenantId, t.Name }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

@@ -18,6 +18,6 @@ public sealed class CommunicationPreferenceConfiguration : IEntityTypeConfigurat
         builder.Property(cp => cp.Channel).HasConversion<string>().HasMaxLength(50);
         builder.Property(cp => cp.OptInSource).HasMaxLength(100);
 
-        builder.HasIndex(cp => new { cp.ContactId, cp.Channel }).IsUnique();
+        builder.HasIndex(cp => new { cp.ContactId, cp.Channel }).IsUnique().HasFilter("\"IsDeleted\" = false");
     }
 }

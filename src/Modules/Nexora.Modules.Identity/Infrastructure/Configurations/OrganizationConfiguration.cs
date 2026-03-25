@@ -18,7 +18,7 @@ public sealed class OrganizationConfiguration : IEntityTypeConfiguration<Organiz
 
         builder.Property(o => o.Name).HasMaxLength(200).IsRequired();
         builder.Property(o => o.Slug).HasMaxLength(100).IsRequired();
-        builder.HasIndex(o => new { o.TenantId, o.Slug }).IsUnique();
+        builder.HasIndex(o => new { o.TenantId, o.Slug }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(o => o.LogoUrl).HasMaxLength(500);
         builder.Property(o => o.Timezone).HasMaxLength(50);
         builder.Property(o => o.DefaultCurrency).HasMaxLength(3);
