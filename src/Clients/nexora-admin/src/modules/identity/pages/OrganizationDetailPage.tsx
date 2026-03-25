@@ -16,12 +16,22 @@ import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import {
   useOrganization,
   useUpdateOrganization,
   useDeleteOrganization,
   useOrganizationMembers,
+  useAddMember,
   useRemoveMember,
 } from '../hooks/useOrganizations';
+import { useUsers } from '../hooks/useUsers';
 import type { OrganizationMemberDto, UpdateOrganizationRequest } from '../types';
 
 function updateOrgSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
@@ -46,11 +56,13 @@ export default function OrganizationDetailPage() {
   const updateOrg = useUpdateOrganization(id);
   const deleteOrg = useDeleteOrganization();
   const { data: membersData, isPending: membersLoading } = useOrganizationMembers(id, { page, pageSize });
+  const addMember = useAddMember(id);
   const removeMember = useRemoveMember(id);
 
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<string | null>(null);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
 
   const updateOrgSchema = useMemo(() => updateOrgSchemaFactory(t), [t]);
 
@@ -217,8 +229,13 @@ export default function OrganizationDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t('lockey_identity_org_members_title')}</CardTitle>
+          {hasPermission('identity.organization.add-member') && (
+            <Button size="sm" onClick={() => setAddMemberOpen(true)}>
+              {t('lockey_identity_action_add_member')}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <DataTable
@@ -264,6 +281,93 @@ export default function OrganizationDetailPage() {
         }}
         isPending={removeMember.isPending}
       />
+
+      <AddMemberDialog
+        open={addMemberOpen}
+        onOpenChange={setAddMemberOpen}
+        onAdd={(userId) => {
+          addMember.mutate({ userId }, {
+            onSuccess: () => setAddMemberOpen(false),
+            onError: (err) => handleApiError(err),
+          });
+        }}
+        isPending={addMember.isPending}
+        existingMemberIds={membersData?.items.map((m) => m.userId) ?? []}
+      />
     </div>
+  );
+}
+
+function AddMemberDialog({
+  open,
+  onOpenChange,
+  onAdd,
+  isPending,
+  existingMemberIds,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdd: (userId: string) => void;
+  isPending: boolean;
+  existingMemberIds: string[];
+}) {
+  const { t } = useTranslation('identity');
+  const [search, setSearch] = useState('');
+  const { data: usersData } = useUsers({ page: 1, pageSize: 50 });
+
+  const availableUsers = usersData?.items.filter(
+    (u) => !existingMemberIds.includes(u.id),
+  ) ?? [];
+
+  const filtered = search
+    ? availableUsers.filter(
+        (u) =>
+          u.firstName.toLowerCase().includes(search.toLowerCase()) ||
+          u.lastName.toLowerCase().includes(search.toLowerCase()) ||
+          u.email.toLowerCase().includes(search.toLowerCase()),
+      )
+    : availableUsers;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('lockey_identity_action_add_member')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('lockey_identity_action_add_member')}</DialogDescription>
+        </DialogHeader>
+        <Input
+          placeholder={t('lockey_identity_search_users')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="max-h-60 overflow-y-auto space-y-1">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {t('lockey_identity_no_users_available')}
+            </p>
+          ) : (
+            filtered.map((user) => (
+              <button
+                key={user.id}
+                type="button"
+                disabled={isPending}
+                onClick={() => onAdd(user.id)}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
+              >
+                <div>
+                  <p className="font-medium">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {t('lockey_identity_cancel')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

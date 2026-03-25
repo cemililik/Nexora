@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import type {
   UserDto,
@@ -11,6 +12,8 @@ import type {
   CreateUserRequest,
   UpdateProfileRequest,
   UpdateUserStatusRequest,
+  AssignRolesRequest,
+  RoleDto,
 } from '../types';
 
 export const userKeys = {
@@ -97,4 +100,50 @@ export function useUpdateUserStatus(userId: string) {
   );
 
   return { ...mutate, activate, deactivate };
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/identity/users/${encodeURIComponent(id)}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      toast.success(t('lockey_identity_toast_user_deleted'));
+    },
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function useUserRoles(userId: string, organizationId: string) {
+  return useQuery({
+    queryKey: [...userKeys.detail(userId), 'roles', organizationId] as const,
+    queryFn: () =>
+      api.get<RoleDto[]>(`/identity/users/${encodeURIComponent(userId)}/roles`, {
+        organizationId,
+      }),
+    enabled: !!userId && !!organizationId,
+  });
+}
+
+export function useAssignUserRoles(userId: string) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (data: AssignRolesRequest) =>
+      api.put<void>(
+        `/identity/users/${encodeURIComponent(userId)}/roles`,
+        data,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      toast.success(t('lockey_identity_toast_roles_updated'));
+    },
+    onError: (err) => handleApiError(err),
+  });
 }
