@@ -68,7 +68,7 @@ public sealed partial class SqlQueryValidator : ISqlQueryValidator
         // Check for row-locking clauses (FOR UPDATE, FOR SHARE, etc.)
         if (ForLockingRegex().IsMatch(stripped))
         {
-            errorMessage = "lockey_reporting_validation_query_forbidden_keyword";
+            errorMessage = "lockey_reporting_validation_query_locking_forbidden";
             return false;
         }
 
