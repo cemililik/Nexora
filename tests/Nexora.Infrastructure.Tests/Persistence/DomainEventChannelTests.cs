@@ -15,24 +15,24 @@ public sealed class DomainEventChannelTests
     }
 
     [Fact]
-    public async Task TryWrite_WhenFull_DropWriteDropsOldestAndReturnsTrue()
+    public async Task TryWrite_WhenFull_DropWriteDropsIncomingAndReturnsTrue()
     {
-        // DropWrite mode accepts the write but drops an item to make room
+        // DropWrite mode silently drops the incoming (newest) item, not the oldest
         var channel = CreateChannel(capacity: 2);
 
         channel.TryWrite(new TestDomainEvent("1")).Should().BeTrue();
         channel.TryWrite(new TestDomainEvent("2")).Should().BeTrue();
-        channel.TryWrite(new TestDomainEvent("3")).Should().BeTrue(); // Accepted, oldest dropped
+        channel.TryWrite(new TestDomainEvent("3")).Should().BeTrue(); // Accepted but "3" is dropped
 
-        // Only 2 events should be readable (capacity is 2)
+        // The original two items remain — "3" was the one dropped
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
-        var events = new List<IDomainEvent>();
+        var events = new List<TestDomainEvent>();
         await foreach (var e in channel.ReadAllAsync(cts.Token))
         {
-            events.Add(e);
+            events.Add((TestDomainEvent)e);
             if (events.Count == 2) break;
         }
-        events.Should().HaveCount(2);
+        events.Select(e => e.Name).Should().ContainInOrder("1", "2");
     }
 
     [Fact]
@@ -59,6 +59,30 @@ public sealed class DomainEventChannelTests
     {
         var options = new DomainEventChannelOptions();
         options.Capacity.Should().Be(10_000);
+    }
+
+    [Fact]
+    public void OptionsValidator_WithZeroCapacity_Fails()
+    {
+        var validator = new DomainEventChannelOptionsValidator();
+        var result = validator.Validate(null, new DomainEventChannelOptions { Capacity = 0 });
+        result.Failed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionsValidator_WithNegativeCapacity_Fails()
+    {
+        var validator = new DomainEventChannelOptionsValidator();
+        var result = validator.Validate(null, new DomainEventChannelOptions { Capacity = -1 });
+        result.Failed.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OptionsValidator_WithPositiveCapacity_Succeeds()
+    {
+        var validator = new DomainEventChannelOptionsValidator();
+        var result = validator.Validate(null, new DomainEventChannelOptions { Capacity = 100 });
+        result.Succeeded.Should().BeTrue();
     }
 
     private static DomainEventChannel CreateChannel(int capacity) =>

@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using Nexora.Infrastructure.Persistence;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Events;
@@ -88,7 +87,7 @@ public sealed class DomainEventDispatcherTests : IDisposable
     }
 
     [Fact]
-    public async Task DispatchEvents_Sync_QueuesEventsToChannel()
+    public async Task DispatchEvents_WhenEntityRaisesEvent_EnqueuesEventToChannel()
     {
         var entity = TestEntity.Create();
         entity.RaiseEvent(new TestDomainEvent("Queued"));
@@ -97,13 +96,12 @@ public sealed class DomainEventDispatcherTests : IDisposable
 
         _dispatcher.DispatchEvents(_dbContext);
 
-        // Event should be readable from the channel
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var events = new List<IDomainEvent>();
         await foreach (var e in _channel.ReadAllAsync(cts.Token))
         {
             events.Add(e);
-            break; // Read one and stop
+            break;
         }
         events.Should().ContainSingle()
             .Which.Should().BeOfType<TestDomainEvent>()
@@ -111,7 +109,7 @@ public sealed class DomainEventDispatcherTests : IDisposable
     }
 
     [Fact]
-    public async Task DispatchEvents_Sync_ClearsEntitiesEvenWhenQueuing()
+    public async Task DispatchEvents_WithPendingEvents_ClearsEntitiesAfterQueuing()
     {
         var entity = TestEntity.Create();
         entity.RaiseEvent(new TestDomainEvent("X"));

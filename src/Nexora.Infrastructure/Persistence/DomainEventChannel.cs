@@ -24,7 +24,7 @@ public sealed class DomainEventChannel
             });
     }
 
-    /// <summary>Attempts to write an event. Returns false if the channel is full or completed.</summary>
+    /// <summary>Attempts to write an event. Returns false only if the channel writer is completed (e.g. shutdown). When at capacity, DropWrite mode silently drops the incoming event and returns true.</summary>
     public bool TryWrite(IDomainEvent domainEvent) => _channel.Writer.TryWrite(domainEvent);
 
     /// <summary>Reads all events asynchronously. Completes when the channel is closed or cancelled.</summary>
