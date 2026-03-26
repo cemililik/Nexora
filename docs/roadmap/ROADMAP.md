@@ -304,7 +304,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] SQL syntax highlighting in query editor (CodeMirror with PostgreSQL dialect, create & edit forms)
 - [x] "Test Query" button (POST /test-query endpoint, execute SQL with LIMIT 10, show preview table in form)
 
-#### Nice-to-Have Enhancements
+#### Deferred Enhancements (moved to later phases — prioritize based on production feedback)
 - [ ] Table/column autocomplete in SQL editor (fetch tenant schema metadata, suggest in editor)
 - [ ] Visual query builder — Metabase-style UI (select table → pick columns → add filters → group by)
 - [ ] Report templates (pre-built SQL for common reports per module: contact list, donation summary, etc.)
