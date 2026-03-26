@@ -1,5 +1,6 @@
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
@@ -39,7 +40,9 @@ public sealed class TenantModule : AuditableEntity<TenantModuleId>
     /// <summary>Records the renamed table names during uninstall.</summary>
     public void RecordUninstall(string deletedTableNames)
     {
-        ArgumentException.ThrowIfNullOrEmpty(deletedTableNames);
+        if (string.IsNullOrEmpty(deletedTableNames))
+            throw new DomainException("lockey_identity_error_deleted_table_names_required");
+
         DeletedTableNames = deletedTableNames;
     }
 }
