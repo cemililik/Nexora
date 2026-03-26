@@ -1,7 +1,5 @@
-using System.Threading.Channels;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Events;
@@ -64,70 +62,5 @@ public sealed class DomainEventDispatcher(
             entity.ClearDomainEvents();
 
         return domainEvents;
-    }
-}
-
-/// <summary>
-/// Bounded channel for domain events queued by synchronous SaveChanges callers.
-/// Registered as a singleton so the dispatcher and background processor share the same instance.
-/// </summary>
-public sealed class DomainEventChannel
-{
-    private const int Capacity = 10_000;
-
-    private readonly Channel<IDomainEvent> _channel = Channel.CreateBounded<IDomainEvent>(
-        new BoundedChannelOptions(Capacity)
-        {
-            SingleReader = true,
-            FullMode = BoundedChannelFullMode.DropWrite
-        });
-
-    /// <summary>Attempts to write an event. Returns false if the channel is full or completed.</summary>
-    public bool TryWrite(IDomainEvent domainEvent) => _channel.Writer.TryWrite(domainEvent);
-
-    public IAsyncEnumerable<IDomainEvent> ReadAllAsync(CancellationToken ct) =>
-        _channel.Reader.ReadAllAsync(ct);
-}
-
-/// <summary>
-/// Background service that processes domain events queued via <see cref="DomainEventChannel"/>.
-/// Retries transient failures before logging and dropping the event.
-/// </summary>
-public sealed class DomainEventBackgroundProcessor(
-    DomainEventChannel channel,
-    IPublisher publisher,
-    ILogger<DomainEventBackgroundProcessor> logger) : BackgroundService
-{
-    private const int MaxRetries = 3;
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        await foreach (var domainEvent in channel.ReadAllAsync(stoppingToken))
-        {
-            var eventType = domainEvent.GetType().Name;
-
-            for (var attempt = 1; attempt <= MaxRetries; attempt++)
-            {
-                try
-                {
-                    await publisher.Publish(domainEvent, stoppingToken);
-                    break;
-                }
-                catch (Exception ex) when (attempt < MaxRetries)
-                {
-                    var delay = TimeSpan.FromMilliseconds(100 * Math.Pow(2, attempt - 1));
-                    logger.LogWarning(ex,
-                        "Domain event {EventType} dispatch failed (attempt {Attempt}/{MaxRetries}), retrying in {DelayMs}ms",
-                        eventType, attempt, MaxRetries, delay.TotalMilliseconds);
-                    await Task.Delay(delay, stoppingToken);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Domain event {EventType} dispatch failed after {MaxRetries} attempts — event dropped",
-                        eventType, MaxRetries);
-                }
-            }
-        }
     }
 }

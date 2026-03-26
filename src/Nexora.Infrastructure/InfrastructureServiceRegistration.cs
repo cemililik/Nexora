@@ -55,6 +55,8 @@ public static class InfrastructureServiceRegistration
             cfg.RegisterServicesFromAssembly(typeof(InfrastructureServiceRegistration).Assembly));
 
         // Domain event dispatching
+        services.AddOptions<DomainEventChannelOptions>()
+            .BindConfiguration("DomainEvents");
         services.AddSingleton<DomainEventChannel>();
         services.AddScoped<DomainEventDispatcher>();
         services.AddHostedService<DomainEventBackgroundProcessor>();
