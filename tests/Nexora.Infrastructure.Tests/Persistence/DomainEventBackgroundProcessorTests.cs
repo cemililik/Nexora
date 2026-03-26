@@ -77,7 +77,7 @@ public sealed class DomainEventBackgroundProcessorTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_WithScopedPublisher_CreatesNewScopePerEvent()
+    public async Task ExecuteAsync_WithMultipleEvents_CreatesOneScopePerEvent()
     {
         var publisher = Substitute.For<IPublisher>();
         var scopeFactory = Substitute.For<IServiceScopeFactory>();
@@ -91,15 +91,15 @@ public sealed class DomainEventBackgroundProcessorTests
         var processor = new DomainEventBackgroundProcessor(
             _channel, scopeFactory, NullLogger<DomainEventBackgroundProcessor>.Instance);
 
-        _channel.TryWrite(new TestDomainEvent("Scoped"));
+        _channel.TryWrite(new TestDomainEvent("First"));
+        _channel.TryWrite(new TestDomainEvent("Second"));
+        _channel.TryWrite(new TestDomainEvent("Third"));
 
         await processor.StartAsync(CancellationToken.None);
         await processor.StopAsync(CancellationToken.None);
 
-        scopeFactory.Received().CreateScope();
-        await publisher.Received(1).Publish(
-            Arg.Is<TestDomainEvent>(e => e.Name == "Scoped"),
-            Arg.Any<CancellationToken>());
+        scopeFactory.Received(3).CreateScope();
+        await publisher.Received(3).Publish(Arg.Any<IDomainEvent>(), Arg.Any<CancellationToken>());
     }
 
     private DomainEventBackgroundProcessor CreateProcessor(IPublisher publisher)

@@ -57,7 +57,8 @@ public static class InfrastructureServiceRegistration
 
         // Domain event dispatching
         services.AddOptions<DomainEventChannelOptions>()
-            .BindConfiguration("DomainEvents");
+            .BindConfiguration("DomainEvents")
+            .ValidateOnStart();
         services.AddSingleton<IValidateOptions<DomainEventChannelOptions>, DomainEventChannelOptionsValidator>();
         services.AddSingleton<DomainEventChannel>();
         services.AddScoped<DomainEventDispatcher>();

@@ -9,7 +9,7 @@ public sealed class DomainEventChannelOptions
     public int Capacity { get; set; } = 10_000;
 }
 
-/// <summary>Validates <see cref="DomainEventChannelOptions"/> at startup.</summary>
+/// <summary>Validates <see cref="DomainEventChannelOptions"/> for correctness.</summary>
 public sealed class DomainEventChannelOptionsValidator
     : IValidateOptions<DomainEventChannelOptions>
 {

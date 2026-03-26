@@ -80,7 +80,7 @@ sequenceDiagram
 3. DB timeout → handler başarısız → Kafka NACK
 4. Kafka retry → handler tekrar çalıştı → bu sefer başarılı ✅
 5. Kafka bir kez daha retry → handler TEKRAR çalıştı → zaten iptal edilmiş olanları tekrar iptal etmeye çalıştı
-   → İdempotent olmayan handler'da veri tutarsızlığı
+   → idempotent olmayan handler'da veri tutarsızlığı
 ```
 
 ### 2.3 Etkilenen Modüller ve Event'ler
@@ -138,8 +138,9 @@ sequenceDiagram
     D->>D: CollectAndClearEvents()
     D->>M: publisher.Publish(domainEvent)
     M->>DH: Handle(domainEvent)
-    DH->>OT: INSERT outbox_messages (aynı transaction)
-    H->>DB: COMMIT — entity + outbox atomik ✅
+    DH->>DB: entity oku (AsNoTracking)
+    DH->>OT: INSERT outbox_messages (ayrı transaction — lokal DB)
+    Note over DH,OT: ⚠️ Entity commit ile outbox yazımı<br/>ayrı transaction'larda.<br/>Lokal DB olduğu için risk minimal.
 
     Note over DB,K: Ayrı süreç (BackgroundService)
 
@@ -260,7 +261,7 @@ public async Task Handle(ContactCreatedEvent notification, CancellationToken ct)
 ### 4.1 Inbox Tablosu
 
 ```sql
--- Her modül'ün kendi schema'sında (tenant-scoped)
+-- Her modülün kendi schema'sında (tenant-scoped)
 CREATE TABLE {schema}.inbox_messages (
     event_id        UUID PRIMARY KEY,        -- IntegrationEvent.EventId
     event_type      VARCHAR(500)  NOT NULL,
@@ -364,42 +365,58 @@ public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationTo
 
 ### 5.2 Olası Problemler
 
-#### Problem 1: Transaction Sınırı
+#### Problem 1: Transaction Sınırı ve Yaklaşım Seçimi
 
 **Sorun:** `DomainEventHandler` şu an `SaveChanges` **sonrası** çalışıyor. Bu noktada orijinal transaction zaten commit edilmiş. Outbox yazımı farklı bir transaction'da olur.
 
-**Çözüm:** İki yaklaşım var:
+İki olası yaklaşım değerlendirilmiştir:
 
-**A) SaveChanges İçinde Outbox Yazımı (Tercih Edilen)**
+**A) SaveChanges İçinde Outbox Yazımı (Tam Atomik)**
 ```
 SaveChangesAsync() {
     ConvertDeletesAndSetAuditFields()
     CollectDomainEvents → serialize → outbox_messages INSERT
     base.SaveChangesAsync()  ← entity + outbox aynı transaction
-    // Domain event dispatch kaldırılır (handler'lara gerek yok)
 }
 ```
-Bu yaklaşımda domain event handler'lar tamamen kaldırılır. Event'ler doğrudan outbox'a yazılır. OutboxProcessor okuyup Kafka'ya publish eder.
+- ✅ Tam atomiklik — entity + event tek transaction'da
+- ❌ Domain event handler'lar kaldırılmalı (büyük refactoring)
+- ❌ Clean Architecture ihlali — domain event → integration event dönüşümü SaveChanges sırasında yapılamaz (entity okuma, DTO mapping gerektirir)
+- ❌ Handler'lardaki iş mantığı (tenant context okuma, entity lookup) SaveChanges'e taşınamaz
 
-**B) Handler İçinde Outbox Yazımı**
+**B) Handler İçinde Outbox Yazımı (Seçilen Yaklaşım)**
 ```
 SaveChangesAsync() → entity commit
 DispatchEventsAsync() → handler'lar çalışır
-Handler: outbox.EnqueueAsync() → AYRI transaction ile outbox'a yaz
+Handler: outbox.EnqueueAsync() → outbox'a yaz (ayrı transaction)
 ```
-Bu yaklaşımda atomiklik kaybolur — handler başarısız olursa event outbox'a yazılmaz.
+- ✅ Mevcut handler mimarisini korur — minimum refactoring
+- ✅ Clean Architecture uyumlu — dönüşüm mantığı handler'larda kalır
+- ⚠️ Tam atomik değil — entity commit ile outbox yazımı arasında küçük bir pencere var
 
-**Tercih: A yaklaşımı** — tek transaction, tam atomiklik. Ama bu büyük bir mimari değişiklik: tüm domain event handler'lar kaldırılır, event'ler SaveChanges içinde outbox'a serialize edilir.
+**Karar: B yaklaşımı uygulanacaktır.**
+
+**Gerekçe:** A yaklaşımının gerektirdiği mimari değişiklik (12 handler'ın kaldırılması, SaveChanges içinde integration event serialize edilmesi, Clean Architecture ihlali) faydaya göre orantısız büyüktür. B yaklaşımı Kafka'ya doğrudan publish yerine **lokal PostgreSQL'e yazma** yaptığı için risk büyük ölçüde azalır:
+
+| Hata noktası | Mevcut (doğrudan Kafka) | B yaklaşımı (lokal DB) |
+|-------------|------------------------|----------------------|
+| Harici servis down | Event kaybolur | Outbox'a yazılır (lokal DB) |
+| Uygulama crash (publish sırasında) | Event kaybolur | Event kaybolur (ama pencere çok küçük — ms) |
+| DB down | Entity de yazılamaz | Entity de yazılamaz (tutarlı) |
+
+**Bu, "Reliable Event Publishing" (Güvenilir Event Yayınlama) olarak tanımlanabilir** — tam Transactional Outbox'ın atomiklik garantisi olmasa da, harici servis bağımlılığını ortadan kaldırarak event kaybı riskini büyük ölçüde azaltır.
+
+> **Not:** Mimari diyagram (Bölüm 3.1) bu seçilen yaklaşımı yansıtacak şekilde güncellenmiştir.
 
 #### Problem 2: Event Serialization/Deserialization
 
-**Sorun:** Domain event → Integration event dönüşümü şu an handler'larda yapılıyor (entity okuma, DTO mapping). Outbox'a yazmak için integration event'in SaveChanges anında hazır olması gerekir.
+**Sorun:** Handler'lar integration event oluşturmak için entity okuma ve tenant context erişimi yapıyor. Bu işlemler SaveChanges sonrası gerçekleşmelidir.
 
-**Çözüm:** Domain entity'ler integration event oluşturma sorumluluğunu alamaz (Clean Architecture ihlali). Bunun yerine:
-- SaveChanges sonrası domain event handler'lar çalışır (mevcut akış)
+**Çözüm (B yaklaşımı ile uyumlu):**
+- SaveChanges sonrası domain event handler'lar çalışır (mevcut akış korunur)
 - Handler'lar `IOutbox.EnqueueAsync()` çağırır (`IEventBus.PublishAsync()` yerine)
-- Outbox tablosu ayrı bir DbContext kullanır (public schema)
-- **Atomiklik kaybı kabul edilir** — ama outbox yazımı lokal DB'ye olduğu için başarısızlık olasılığı çok düşük (Kafka'ya kıyasla)
+- Outbox tablosu `OutboxDbContext` ile yönetilir (public schema, ayrı bağlantı)
+- Handler'daki entity okuma ve tenant context erişimi aynen devam eder
 
 #### Problem 3: Event Sıralama (Ordering)
 
@@ -524,17 +541,19 @@ Bu yaklaşımda atomiklik kaybolur — handler başarısız olursa event outbox'
 
 ## 9. Riskler ve Dikkat Edilecekler
 
-1. **Eventual consistency penceresi:** Outbox polling aralığı (varsayılan 5s) kadar gecikme olacak. Real-time gereksinimi olan akışlar (webhook callback gibi) için outbox bypass mekanizması düşünülmeli.
+1. **Atomiklik penceresi (B yaklaşımı):** Seçilen yaklaşımda entity commit ile outbox yazımı ayrı transaction'lardadır. Entity commit başarılı olup outbox yazımı başarısız olursa (lokal DB'ye yazma — çok düşük olasılık) event kaybolabilir. Bu risk Kafka'ya doğrudan publish'e göre büyük ölçüde azaltılmıştır ancak tam atomik değildir. Eğer gelecekte bu pencere kabul edilemez hale gelirse (ör. finansal işlemler), A yaklaşımına geçiş değerlendirilmelidir.
 
-2. **Outbox tablosu büyümesi:** Yoğun sistemde tablo hızla büyüyebilir. Cleanup job'un düzenli çalışması ve partial index'lerin varlığı kritik.
+2. **Eventual consistency penceresi:** Outbox polling aralığı (varsayılan 5s) kadar gecikme olacak. Real-time gereksinimi olan akışlar (webhook callback gibi) için outbox bypass mekanizması düşünülmeli.
 
-3. **Serialization uyumluluğu:** Event sınıflarında property eklendiğinde/kaldırıldığında outbox'taki eski event'lerin deserialize edilebilmesi gerekir. Geriye dönük uyumlu serialization politikası belirlenmeli.
+3. **Outbox tablosu büyümesi:** Yoğun sistemde tablo hızla büyüyebilir. Cleanup job'un düzenli çalışması ve partial index'lerin varlığı kritik.
 
-4. **Inbox tablosu tenant migration'ı:** Her tenant schema'sına `inbox_messages` tablosu eklenecek. Mevcut tenant'lar için migration gerekli.
+4. **Serialization uyumluluğu:** Event sınıflarında property eklendiğinde/kaldırıldığında outbox'taki eski event'lerin deserialize edilebilmesi gerekir. Geriye dönük uyumlu serialization politikası belirlenmeli.
 
-5. **Test karmaşıklığı:** Integration testlerde outbox processor'un event'i işlemesini beklemek gerekir. Test setup'ı daha karmaşık hale gelir.
+5. **Inbox tablosu tenant migration'ı:** Her tenant schema'sına `inbox_messages` tablosu eklenecek. Mevcut tenant'lar için migration gerekli.
 
-6. **DomainEventDispatcher ile etkileşim:** Mevcut `DomainEventDispatcher` + `DomainEventChannel` + `DomainEventBackgroundProcessor` yapısı outbox ile birlikte gereksiz hale gelebilir. Geçiş döneminde her ikisi de aktif olabilir, sonra eski yapı kaldırılabilir.
+6. **Test karmaşıklığı:** Integration testlerde outbox processor'un event'i işlemesini beklemek gerekir. Test setup'ı daha karmaşık hale gelir.
+
+7. **DomainEventDispatcher ile etkileşim:** Mevcut `DomainEventDispatcher` + `DomainEventChannel` + `DomainEventBackgroundProcessor` yapısı outbox ile birlikte gereksiz hale gelebilir. Geçiş döneminde her ikisi de aktif olabilir, sonra eski yapı kaldırılabilir.
 
 ---
 
