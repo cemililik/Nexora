@@ -317,6 +317,17 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 ## Phase 2: NGO & Foundation Modules
 > **Goal**: Complete solution for non-profit/foundation organizations
 
+### 2.0 Infrastructure Hardening (Pre-Phase 2)
+
+**Plan**: [OUTBOX_INBOX_PATTERN_PLAN.md](OUTBOX_INBOX_PATTERN_PLAN.md)
+
+Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı (CRM) geleceği için event güvenilirlik altyapısı Phase 2 öncesinde tamamlanmalıdır.
+
+- [ ] **Transactional Outbox Pattern** — Domain event → integration event publish'i DB transaction'ı ile atomik hale getirme. Event kaybını önleme (Kafka down, uygulama crash senaryoları). 12 domain event handler'ın outbox'a geçirilmesi. OutboxProcessor BackgroundService (polling-based).
+- [ ] **Inbox Pattern (Idempotent Consumer)** — Integration event handler'larda EventId bazlı dedup mekanizması. Kafka consumer rebalance ve retry senaryolarında duplikasyonu önleme. 4 integration event handler'ın inbox guard'ı ile korunması.
+- [ ] **Outbox/Inbox Monitoring** — Grafana dashboard paneli (queue depth, processing latency, duplicate hit rate)
+- [ ] **Cleanup Jobs** — OutboxCleanupJob (7 gün), InboxCleanupJob (30 gün)
+
 ### 2.1 CRM Module
 **Spec**: [modules/crm/SPEC.md](../modules/crm/SPEC.md)
 - [ ] Lead management (create, assign, qualify)
