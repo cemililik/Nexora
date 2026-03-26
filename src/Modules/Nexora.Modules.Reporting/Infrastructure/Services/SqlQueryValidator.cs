@@ -61,7 +61,7 @@ public sealed partial class SqlQueryValidator : ISqlQueryValidator
         // Check for SELECT INTO (data export/table creation)
         if (SelectIntoRegex().IsMatch(stripped))
         {
-            errorMessage = "lockey_reporting_validation_query_forbidden_keyword";
+            errorMessage = "lockey_reporting_validation_query_select_into_forbidden";
             return false;
         }
 
