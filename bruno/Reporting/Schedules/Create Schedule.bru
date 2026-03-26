@@ -30,10 +30,10 @@ script:post-response {
       bru.setEnvVar("reportScheduleId", body.data.id);
       console.log("reportScheduleId set to " + body.data.id);
     } else {
-      console.error("Create Schedule succeeded but response missing data.id:", JSON.stringify(body));
+      throw new Error("Create Schedule succeeded but response missing data.id: " + JSON.stringify(body));
     }
   } else {
     const body = res.getBody();
-    console.error("Create Schedule failed with status " + res.status + ":", JSON.stringify(body));
+    throw new Error("Create Schedule failed with status " + res.status + ": " + JSON.stringify(body));
   }
 }
