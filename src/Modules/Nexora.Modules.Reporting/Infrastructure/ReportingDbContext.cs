@@ -37,8 +37,9 @@ public sealed class ReportingDbContext(
                 _logger?.LogWarning("Tenant context contains invalid OrganizationId format: {OrganizationId}", orgId);
                 return Guid.Empty;
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
+                _logger?.LogWarning(ex, "Tenant context not available when resolving CurrentOrganizationId");
                 return Guid.Empty;
             }
         }

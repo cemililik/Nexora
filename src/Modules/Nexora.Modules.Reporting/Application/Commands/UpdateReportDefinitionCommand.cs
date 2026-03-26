@@ -52,15 +52,24 @@ public sealed class UpdateReportDefinitionHandler(
             .FirstOrDefaultAsync(d => d.Id == definitionId && d.TenantId == tenantId, ct);
 
         if (definition is null)
+        {
+            logger.LogWarning("Report definition {DefinitionId} not found for tenant {TenantId}", request.Id, tenantId);
             return Result<ReportDefinitionDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_definition_not_found"));
+        }
 
         if (!sqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+        {
+            logger.LogWarning("SQL validation failed for report definition {DefinitionId}: {SqlError}", request.Id, sqlError);
             return Result<ReportDefinitionDto>.Failure(LocalizedMessage.Of(sqlError!));
+        }
 
         if (!Enum.TryParse<ReportFormat>(request.DefaultFormat, true, out var format))
+        {
+            logger.LogWarning("Invalid report format {Format} for definition {DefinitionId}", request.DefaultFormat, request.Id);
             return Result<ReportDefinitionDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_invalid_format"));
+        }
 
         definition.Update(request.Name, request.Description, request.Module,
             request.Category, request.QueryText, request.Parameters, format);

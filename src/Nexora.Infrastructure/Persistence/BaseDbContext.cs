@@ -63,18 +63,38 @@ public abstract class BaseDbContext(
         return result;
     }
 
-    /// <summary>Saves changes, converts hard deletes to soft deletes, and sets audit fields.</summary>
+    /// <summary>Saves changes, converts hard deletes to soft deletes, sets audit fields, and dispatches domain events.</summary>
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken ct = default)
+    {
+        ConvertDeletesAndSetAuditFields();
+        var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, ct);
+
+        if (_domainEventDispatcher is not null)
+            await _domainEventDispatcher.DispatchEventsAsync(this, ct);
+
+        return result;
+    }
+
+    /// <summary>Saves changes, converts hard deletes to soft deletes, sets audit fields, and dispatches domain events.</summary>
     public override int SaveChanges()
     {
         ConvertDeletesAndSetAuditFields();
-        return base.SaveChanges();
+        var result = base.SaveChanges();
+
+        _domainEventDispatcher?.DispatchEvents(this);
+
+        return result;
     }
 
-    /// <summary>Saves changes, converts hard deletes to soft deletes, and sets audit fields.</summary>
+    /// <summary>Saves changes, converts hard deletes to soft deletes, sets audit fields, and dispatches domain events.</summary>
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ConvertDeletesAndSetAuditFields();
-        return base.SaveChanges(acceptAllChangesOnSuccess);
+        var result = base.SaveChanges(acceptAllChangesOnSuccess);
+
+        _domainEventDispatcher?.DispatchEvents(this);
+
+        return result;
     }
 
     private void ConvertDeletesAndSetAuditFields()
