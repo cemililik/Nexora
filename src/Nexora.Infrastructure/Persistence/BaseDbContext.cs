@@ -81,8 +81,7 @@ public abstract class BaseDbContext(
         ConvertDeletesAndSetAuditFields();
         var result = base.SaveChanges();
 
-        if (_domainEventDispatcher is not null)
-            _domainEventDispatcher.DispatchEventsAsync(this, CancellationToken.None).GetAwaiter().GetResult();
+        _domainEventDispatcher?.DispatchEvents(this);
 
         return result;
     }
@@ -93,8 +92,7 @@ public abstract class BaseDbContext(
         ConvertDeletesAndSetAuditFields();
         var result = base.SaveChanges(acceptAllChangesOnSuccess);
 
-        if (_domainEventDispatcher is not null)
-            _domainEventDispatcher.DispatchEventsAsync(this, CancellationToken.None).GetAwaiter().GetResult();
+        _domainEventDispatcher?.DispatchEvents(this);
 
         return result;
     }
