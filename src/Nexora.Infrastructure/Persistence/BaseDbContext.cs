@@ -14,6 +14,8 @@ public abstract class BaseDbContext(
     ITenantContextAccessor tenantContextAccessor,
     DomainEventDispatcher? domainEventDispatcher = null) : DbContext(options), IUnitOfWork
 {
+    private readonly DomainEventDispatcher? _domainEventDispatcher = domainEventDispatcher;
+
     protected ITenantContextAccessor TenantContextAccessor { get; } = tenantContextAccessor;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -55,10 +57,24 @@ public abstract class BaseDbContext(
         ConvertDeletesAndSetAuditFields();
         var result = await base.SaveChangesAsync(ct);
 
-        if (domainEventDispatcher is not null)
-            await domainEventDispatcher.DispatchEventsAsync(this, ct);
+        if (_domainEventDispatcher is not null)
+            await _domainEventDispatcher.DispatchEventsAsync(this, ct);
 
         return result;
+    }
+
+    /// <summary>Saves changes, converts hard deletes to soft deletes, and sets audit fields.</summary>
+    public override int SaveChanges()
+    {
+        ConvertDeletesAndSetAuditFields();
+        return base.SaveChanges();
+    }
+
+    /// <summary>Saves changes, converts hard deletes to soft deletes, and sets audit fields.</summary>
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ConvertDeletesAndSetAuditFields();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     private void ConvertDeletesAndSetAuditFields()

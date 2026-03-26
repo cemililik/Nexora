@@ -1,0 +1,15 @@
+meta {
+  name: Get Definition
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reporting/definitions/{{reportDefinitionId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

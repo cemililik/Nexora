@@ -478,7 +478,7 @@ public sealed class MyHandler(IContactQueryService contacts) { ... }
 using Nexora.Modules.Donations.Domain.Entities; // FORBIDDEN
 ```
 
-## 12. Infrastructure Usage Rules
+## 13. Infrastructure Usage Rules
 
 **See full standard**: `docs/standards/INFRASTRUCTURE_STANDARDS.md`
 

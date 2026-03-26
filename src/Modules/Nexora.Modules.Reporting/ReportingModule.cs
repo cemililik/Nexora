@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Reporting.Api;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Modules;
@@ -34,7 +35,8 @@ public sealed class ReportingModule : IModule
 
         services.AddSingleton<IModuleMigration, ReportingModuleMigration>();
 
-        services.AddScoped<ReportExecutionService>();
+        services.AddSingleton<ISqlQueryValidator, SqlQueryValidator>();
+        services.AddScoped<IReportExecutionService, ReportExecutionService>();
         services.AddScoped<ReportExportService>();
     }
 

@@ -133,6 +133,89 @@ stateDiagram-v2
     Inactive --> [*]: Delete
 ```
 
+## Architecture Diagrams
+
+### C4 Component Diagram
+
+```mermaid
+C4Component
+    title Reporting Module - Component Diagram
+
+    Container_Boundary(reporting, "Reporting Module") {
+        Component(defMgmt, "ReportDefinition Management", "Application Service", "CRUD operations for report definitions with SQL validation")
+        Component(execEngine, "Report Execution Engine", "Application Service", "Executes SQL queries, exports results to CSV/Excel/PDF/JSON, uploads to storage")
+        Component(scheduler, "Report Scheduling", "Application Service", "Cron-based scheduling via Hangfire, dispatches executions for due schedules")
+        Component(dashMgmt, "Dashboard Management", "Application Service", "CRUD for dashboards and widget-based layout with live data")
+        Component(sqlValidator, "SQL Query Validator", "Domain Service", "Validates SQL safety: SELECT/WITH only, blocks DML/DDL, prevents injection")
+        Component(fileStorage, "File Storage Client", "Infrastructure", "Uploads and retrieves report files from object storage")
+        Component(dbAccess, "Database Access", "Infrastructure", "Read-only tenant-scoped SQL execution via Dapper")
+    }
+
+    Rel(defMgmt, sqlValidator, "Validates query text")
+    Rel(execEngine, sqlValidator, "Re-validates before execution")
+    Rel(execEngine, dbAccess, "Executes report SQL")
+    Rel(execEngine, fileStorage, "Uploads exported files")
+    Rel(scheduler, execEngine, "Creates executions for due schedules")
+    Rel(dashMgmt, execEngine, "Fetches widget data")
+
+    ContainerDb(postgres, "PostgreSQL", "Tenant Schema", "Report definitions, executions, schedules, dashboards")
+    Container(minio, "MinIO", "Object Storage", "nexora-reports bucket for exported files")
+
+    Rel(dbAccess, postgres, "READ ONLY transactions")
+    Rel(fileStorage, minio, "PutObject / GetObject")
+```
+
+### Integration Diagram
+
+```mermaid
+flowchart TB
+    subgraph reporting["Reporting Module"]
+        defApi["Report Definitions API"]
+        execApi["Report Executions API"]
+        schedApi["Report Schedules API"]
+        dashApi["Dashboards API"]
+        execEngine["Execution Engine"]
+    end
+
+    subgraph identity["Identity Module"]
+        authn["Authentication"]
+        authz["Authorization"]
+        tenant["Tenant Context"]
+    end
+
+    subgraph contacts["Contacts Module"]
+        contactDb[("contacts_* tables")]
+    end
+
+    subgraph documents["Documents Module"]
+        docStorage["Document Storage"]
+    end
+
+    subgraph notifications["Notifications Module"]
+        notifService["Notification Service"]
+    end
+
+    %% Identity integration
+    authn -- "JWT validation" --> defApi
+    authn -- "JWT validation" --> execApi
+    authn -- "JWT validation" --> schedApi
+    authn -- "JWT validation" --> dashApi
+    authz -- "Permission checks\n(reporting.*)" --> defApi
+    authz -- "Permission checks\n(reporting.*)" --> execApi
+    authz -- "Permission checks\n(reporting.*)" --> schedApi
+    authz -- "Permission checks\n(reporting.*)" --> dashApi
+    tenant -- "Tenant schema\n(search_path)" --> execEngine
+
+    %% Contacts integration
+    execEngine -- "SQL joins on\ncontact data" --> contactDb
+
+    %% Documents integration
+    execEngine -. "Potential storage\nof generated reports" .-> docStorage
+
+    %% Notifications integration
+    execEngine -- "ReportExecutionCompletedEvent\n(scheduled report email delivery)" --> notifService
+```
+
 ## API Endpoints
 
 All endpoints require authorization. Responses wrapped in `ApiEnvelope<T>`.

@@ -40,7 +40,7 @@ public sealed class GetUserRolesHandler(
         var roleIds = orgUser.UserRoles.Select(ur => ur.RoleId).ToList();
 
         if (roleIds.Count == 0)
-            return Result<List<RoleDto>>.Success([]);
+            return Result<List<RoleDto>>.Success([], LocalizedMessage.Of("lockey_identity_user_roles_retrieved"));
 
         // Load roles with permissions
         var roles = await dbContext.Roles
@@ -49,7 +49,15 @@ public sealed class GetUserRolesHandler(
             .Where(r => roleIds.Contains(r.Id) && r.TenantId == tenantId)
             .ToListAsync(ct);
 
-        var allPermissions = await dbContext.Permissions.AsNoTracking().ToListAsync(ct);
+        var relevantPermissionIds = roles
+            .SelectMany(r => r.Permissions)
+            .Select(rp => rp.PermissionId)
+            .Distinct()
+            .ToList();
+        var allPermissions = await dbContext.Permissions
+            .AsNoTracking()
+            .Where(p => relevantPermissionIds.Contains(p.Id))
+            .ToListAsync(ct);
         var permMap = allPermissions.ToDictionary(p => p.Id, p => p.Key);
 
         var dtos = roles.Select(r => new RoleDto(
@@ -60,6 +68,6 @@ public sealed class GetUserRolesHandler(
                 .ToList()
         )).ToList();
 
-        return Result<List<RoleDto>>.Success(dtos);
+        return Result<List<RoleDto>>.Success(dtos, LocalizedMessage.Of("lockey_identity_user_roles_retrieved"));
     }
 }

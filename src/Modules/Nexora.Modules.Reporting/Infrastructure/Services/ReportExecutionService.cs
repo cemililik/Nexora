@@ -1,7 +1,10 @@
 using System.Data;
 using Dapper;
+using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Nexora.Modules.Reporting.Application.Services;
 using Npgsql;
 
 namespace Nexora.Modules.Reporting.Infrastructure.Services;
@@ -11,8 +14,9 @@ namespace Nexora.Modules.Reporting.Infrastructure.Services;
 /// Enforces read-only transactions and query timeouts.
 /// </summary>
 public sealed class ReportExecutionService(
+    ISqlQueryValidator sqlQueryValidator,
     IConfiguration configuration,
-    ILogger<ReportExecutionService> logger)
+    ILogger<ReportExecutionService> logger) : IReportExecutionService
 {
     private const int QueryTimeoutSeconds = 30;
 
@@ -23,10 +27,10 @@ public sealed class ReportExecutionService(
         Dictionary<string, object?>? parameters,
         CancellationToken ct)
     {
-        if (!SqlQueryValidator.IsValid(queryText, out var validationError))
+        if (!sqlQueryValidator.IsValid(queryText, out var validationError))
         {
             logger.LogWarning("SQL validation failed for tenant {TenantId}: {Error}", tenantId, validationError);
-            throw new InvalidOperationException($"Invalid query: {validationError}");
+            throw new ValidationException([new ValidationFailure("queryText", validationError!)]);
         }
 
         var connectionString = configuration.GetConnectionString("Default");

@@ -5,11 +5,29 @@ import { type ReactNode } from 'react';
 
 // Mock API
 const mockApiGet = vi.fn();
+const mockApiPut = vi.fn();
+const mockApiDelete = vi.fn();
 vi.mock('@/shared/lib/api', () => ({
-  api: { get: (...args: unknown[]) => mockApiGet(...args) },
+  api: {
+    get: (...args: unknown[]) => mockApiGet(...args),
+    put: (...args: unknown[]) => mockApiPut(...args),
+    delete: (...args: unknown[]) => mockApiDelete(...args),
+  },
 }));
 
-import { userKeys, useUsers, useUser } from './useUsers';
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+vi.mock('@/shared/hooks/useApiError', () => ({
+  useApiError: () => ({ handleApiError: vi.fn() }),
+}));
+
+import { userKeys, useUsers, useUser, useDeleteUser, useUserRoles, useAssignUserRoles } from './useUsers';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -25,16 +43,16 @@ function createWrapper() {
 }
 
 describe('userKeys', () => {
-  it('all_Called_ReturnsBaseKey', () => {
+  it('should return base key when all is accessed', () => {
     expect(userKeys.all).toEqual(['identity', 'users']);
   });
 
-  it('list_WithParams_IncludesParams', () => {
+  it('should include pagination params in list key', () => {
     const params = { page: 2, pageSize: 25 };
     expect(userKeys.list(params)).toEqual(['identity', 'users', 'list', params]);
   });
 
-  it('detail_WithId_IncludesId', () => {
+  it('should include user ID in detail key', () => {
     expect(userKeys.detail('user-123')).toEqual([
       'identity',
       'users',
@@ -118,5 +136,51 @@ describe('useUser', () => {
 
     expect(result.current.fetchStatus).toBe('idle');
     expect(mockApiGet).not.toHaveBeenCalled();
+  });
+});
+
+describe('useDeleteUser', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('should call api.delete with encoded user id', async () => {
+    mockApiDelete.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useDeleteUser(), { wrapper: createWrapper() });
+    result.current.mutate('user-42');
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(mockApiDelete).toHaveBeenCalledWith('/identity/users/user-42');
+  });
+});
+
+describe('useUserRoles', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('should call api.get with userId and organizationId params', async () => {
+    mockApiGet.mockResolvedValue([{ id: 'r1', name: 'Admin' }]);
+    const { result } = renderHook(() => useUserRoles('user-1', 'org-1'), { wrapper: createWrapper() });
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/users/user-1/roles', { organizationId: 'org-1' });
+  });
+
+  it('should be disabled when userId is empty', () => {
+    const { result } = renderHook(() => useUserRoles('', 'org-1'), { wrapper: createWrapper() });
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+
+  it('should be disabled when organizationId is empty', () => {
+    const { result } = renderHook(() => useUserRoles('user-1', ''), { wrapper: createWrapper() });
+    expect(result.current.fetchStatus).toBe('idle');
+  });
+});
+
+describe('useAssignUserRoles', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('should call api.put with correct endpoint and payload', async () => {
+    mockApiPut.mockResolvedValue(undefined);
+    const { result } = renderHook(() => useAssignUserRoles('user-1'), { wrapper: createWrapper() });
+    const payload = { organizationId: 'org-1', roleIds: ['r1', 'r2'] };
+    result.current.mutate(payload);
+    await waitFor(() => { expect(result.current.isSuccess).toBe(true); });
+    expect(mockApiPut).toHaveBeenCalledWith('/identity/users/user-1/roles', payload);
   });
 });

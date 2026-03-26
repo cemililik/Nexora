@@ -1,0 +1,15 @@
+meta {
+  name: Get File
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/reporting/executions/{{reportExecutionId}}/file
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

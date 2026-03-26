@@ -33,11 +33,11 @@ export function SqlTestResult({ result, isPending }: SqlTestResultProps) {
               </tr>
             </thead>
             <tbody>
-              {result.rows.map((row, i) => (
-                <tr key={i} className="border-t">
-                  {result.columns.map((col) => (
-                    <td key={col} className="px-2 py-1 text-foreground">
-                      {row[col] != null ? String(row[col]) : <span className="text-muted-foreground">null</span>}
+              {result.rows.map((row, rowIndex) => (
+                <tr key={rowIndex} className="border-t">
+                  {result.columns.map((colKey) => (
+                    <td key={`${rowIndex}-${colKey}`} className="px-2 py-1 text-foreground">
+                      {row[colKey] != null ? String(row[colKey]) : <span className="text-muted-foreground">{t('lockey_reporting_null')}</span>}
                     </td>
                   ))}
                 </tr>

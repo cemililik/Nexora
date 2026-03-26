@@ -53,7 +53,7 @@ public sealed class UpdateRoleHandler(
 
         if (role.IsSystemRole)
         {
-            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Cannot modify system role", "Role", request.Id);
+            logger.LogWarning("Cannot modify system role. RoleId {RoleId} for tenant {TenantId}", request.Id, tenantId);
             return Result<RoleDto>.Failure(
                 LocalizedMessage.Of("lockey_identity_error_system_role_immutable"));
         }
@@ -100,7 +100,10 @@ public sealed class UpdateRoleHandler(
         logger.LogInformation("Role {RoleId} updated for tenant {TenantId}", role.Id, tenantId);
 
         // Build permission keys
-        var allPermissions = await dbContext.Permissions.ToListAsync(ct);
+        var rolePermissionIds = role.Permissions.Select(rp => rp.PermissionId).ToList();
+        var allPermissions = await dbContext.Permissions
+            .Where(p => rolePermissionIds.Contains(p.Id))
+            .ToListAsync(ct);
         var permMap = allPermissions.ToDictionary(p => p.Id, p => p.Key);
         var permKeys = role.Permissions
             .Select(rp => permMap.GetValueOrDefault(rp.PermissionId, ""))

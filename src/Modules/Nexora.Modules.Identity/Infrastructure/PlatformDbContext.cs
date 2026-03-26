@@ -18,6 +18,33 @@ public sealed class PlatformDbContext(
     /// <inheritdoc />
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        ConvertDeletesAndSetAuditFields();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ConvertDeletesAndSetAuditFields();
+        return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override int SaveChanges()
+    {
+        ConvertDeletesAndSetAuditFields();
+        return base.SaveChanges();
+    }
+
+    /// <inheritdoc />
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ConvertDeletesAndSetAuditFields();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    private void ConvertDeletesAndSetAuditFields()
+    {
         var now = DateTimeOffset.UtcNow;
         foreach (var entry in ChangeTracker.Entries())
         {
@@ -42,8 +69,6 @@ public sealed class PlatformDbContext(
             else if (entry.State == EntityState.Modified)
                 entry.Property("UpdatedAt").CurrentValue = now;
         }
-
-        return await base.SaveChangesAsync(cancellationToken);
     }
 
     /// <inheritdoc />

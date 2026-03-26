@@ -1,0 +1,15 @@
+meta {
+  name: Delete Schedule
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/reporting/schedules/{{reportScheduleId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}

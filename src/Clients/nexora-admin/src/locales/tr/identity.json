@@ -167,7 +167,6 @@
   "lockey_identity_action_activate_module": "Aktifleştir",
   "lockey_identity_action_deactivate_module": "Devre Dışı",
   "lockey_identity_confirm_uninstall_module_permanent": "Bu modülü kalıcı olarak kaldıracak ve veritabanı tablolarını yeniden adlandıracaktır. Bu işlem geri alınamaz. Emin misiniz?",
-  "lockey_identity_col_name": "Ad",
   "lockey_identity_org_created": "Organizasyon başarıyla oluşturuldu.",
   "lockey_identity_org_updated": "Organizasyon güncellendi.",
   "lockey_identity_org_deleted": "Organizasyon silindi.",
