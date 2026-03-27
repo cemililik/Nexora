@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json.Serialization;
 using Nexora.SharedKernel.Localization;
 
@@ -13,7 +14,7 @@ public sealed record ApiEnvelope<T>
     public Dictionary<string, string>? Meta { get; init; }
     public List<ApiValidationError>? Errors { get; init; }
 
-    /// <summary>Trace ID for correlating error responses with backend logs/traces. Only included on errors.</summary>
+    /// <summary>Trace ID for correlating responses with backend logs/traces.</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? TraceId { get; init; }
 
@@ -21,7 +22,8 @@ public sealed record ApiEnvelope<T>
     public static ApiEnvelope<T> Success(T data, LocalizedMessage? message = null) => new()
     {
         Data = data,
-        Message = message?.Key
+        Message = message?.Key,
+        TraceId = Activity.Current?.TraceId.ToString()
     };
 
     /// <summary>Creates a failure envelope from an error with optional validation details.</summary>

@@ -68,7 +68,7 @@ public static class TemplateEndpoints
             var result = await sender.Send(new DeleteNotificationTemplateCommand(id), ct);
 
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope<object>.Success(null!, result.Message));
 
             return result.Error!.Message.Key switch
             {

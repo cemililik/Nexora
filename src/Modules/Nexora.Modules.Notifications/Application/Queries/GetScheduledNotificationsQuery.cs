@@ -25,8 +25,8 @@ public sealed class GetScheduledNotificationsHandler(
     {
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = from s in dbContext.NotificationSchedules
-                    join n in dbContext.Notifications on s.NotificationId equals n.Id
+        var query = from s in dbContext.NotificationSchedules.AsNoTracking()
+                    join n in dbContext.Notifications.AsNoTracking() on s.NotificationId equals n.Id
                     where n.TenantId == tenantId && s.Status == ScheduleStatus.Pending
                     orderby s.ScheduledAt
                     select new NotificationScheduleDto(

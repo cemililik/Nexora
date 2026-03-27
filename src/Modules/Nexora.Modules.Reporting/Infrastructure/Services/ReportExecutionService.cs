@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.RegularExpressions;
 using Dapper;
 using FluentValidation;
 using FluentValidation.Results;
@@ -37,9 +38,14 @@ public sealed class ReportExecutionService(
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(ct);
 
-        // Set tenant schema
+        // Validate tenant ID format to prevent SQL injection
+        if (!Regex.IsMatch(tenantId, @"^[a-zA-Z0-9_\-]+$"))
+            throw new ArgumentException("Invalid tenant ID format");
+
+        // Set tenant schema using quoted identifier for safety
         var schemaName = $"tenant_{tenantId}";
-        await connection.ExecuteAsync($"SET search_path TO '{schemaName}'");
+        var quotedSchema = $"\"{schemaName.Replace("\"", "\"\"")}\"";
+        await connection.ExecuteAsync($"SET search_path TO {quotedSchema}");
 
         // Read-only transaction with timeout
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);

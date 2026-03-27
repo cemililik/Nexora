@@ -19,7 +19,7 @@ public sealed class GetTenantsHandler(
         GetTenantsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = platformDb.Tenants.OrderBy(t => t.Name);
+        var query = platformDb.Tenants.AsNoTracking().OrderBy(t => t.Name);
         var totalCount = await query.CountAsync(cancellationToken);
 
         var items = await query

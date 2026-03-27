@@ -58,7 +58,7 @@ public static class ModuleEndpoints
             var result = await sender.Send(new UninstallModuleCommand(tenantId, moduleName), ct);
 
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope<object>.Success(null!, result.Message));
 
             return result.Error!.Message.Key switch
             {

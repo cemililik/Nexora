@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Reporting.Api;
 using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure;
+using Nexora.Modules.Reporting.Infrastructure.Jobs;
 using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -55,9 +56,10 @@ public sealed class ReportingModule : IModule
 
     public void ConfigureJobs(IJobScheduler scheduler)
     {
-        scheduler.AddOrUpdate<Infrastructure.Jobs.ScheduledReportDispatcherJob>(
+        scheduler.AddOrUpdate<ScheduledReportDispatcherJob>(
             "reporting:scheduled-report-dispatch",
             "*/15 * * * *", // Every 15 minutes
+            job => job.RunAsync(new ScheduledReportDispatcherJobParams { TenantId = "system" }, CancellationToken.None),
             "default");
     }
 

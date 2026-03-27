@@ -59,7 +59,7 @@ public static class OrganizationEndpoints
         {
             var result = await sender.Send(new DeleteOrganizationCommand(id), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
 
@@ -96,7 +96,7 @@ public static class OrganizationEndpoints
         {
             var result = await sender.Send(new RemoveOrganizationMemberCommand(id, userId), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
     }

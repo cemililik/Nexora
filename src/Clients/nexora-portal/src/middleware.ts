@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   // getToken() uses AUTH_SECRET env var to decode the encrypted JWT.
   const authSecret = process.env.AUTH_SECRET;
   if (!authSecret) {
-    console.error('[middleware] AUTH_SECRET is not set');
+    if (process.env.NODE_ENV !== 'production') console.error('[middleware] AUTH_SECRET is not set');
     return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
   }
   const token = await getToken({ req: request, secret: authSecret });

@@ -27,7 +27,7 @@ public sealed class GetNotificationsHandler(
     {
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = dbContext.Notifications
+        var query = dbContext.Notifications.AsNoTracking()
             .Where(n => n.TenantId == tenantId);
 
         if (request.Channel is not null &&

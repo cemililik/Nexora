@@ -75,16 +75,19 @@ public sealed class NotificationsModule : IModule
         scheduler.AddOrUpdate<DailyProviderResetJob>(
             "notifications:daily-provider-reset",
             "0 0 * * *", // Every day at midnight UTC
+            job => job.RunAsync(new DailyProviderResetJobParams { TenantId = "system" }, CancellationToken.None),
             JobQueues.Maintenance);
 
         scheduler.AddOrUpdate<NotificationCleanupJob>(
             "notifications:cleanup-old-notifications",
             "0 3 * * 0", // Every Sunday at 03:00 UTC
+            job => job.RunAsync(new NotificationCleanupJobParams { TenantId = "system" }, CancellationToken.None),
             JobQueues.Maintenance);
 
         scheduler.AddOrUpdate<ScheduledNotificationDispatcherJob>(
             "notifications:dispatch-scheduled",
             "*/5 * * * *", // Every 5 minutes
+            job => job.RunAsync(new ScheduledNotificationDispatcherJobParams { TenantId = "system" }, CancellationToken.None),
             JobQueues.Default);
     }
 

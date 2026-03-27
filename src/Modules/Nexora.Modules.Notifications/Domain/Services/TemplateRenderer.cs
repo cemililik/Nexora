@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.RegularExpressions;
 using Nexora.Modules.Notifications.Domain.Entities;
 
@@ -32,8 +33,8 @@ public static partial class TemplateRenderer
             }
         }
 
-        subject = SubstituteVariables(subject, variables);
-        body = SubstituteVariables(body, variables);
+        subject = SubstituteVariables(subject, variables, htmlEncode: false);
+        body = SubstituteVariables(body, variables, htmlEncode: true);
 
         return (subject, body);
     }
@@ -41,10 +42,13 @@ public static partial class TemplateRenderer
     /// <summary>
     /// Renders inline content (no template) with variable substitution.
     /// </summary>
-    public static string RenderInline(string content, Dictionary<string, string> variables) =>
-        SubstituteVariables(content, variables);
+    /// <param name="content">The content with <c>{{variable}}</c> placeholders.</param>
+    /// <param name="variables">Variable name to value mappings.</param>
+    /// <param name="htmlEncode">Whether to HTML-encode variable values before substitution.</param>
+    public static string RenderInline(string content, Dictionary<string, string> variables, bool htmlEncode = true) =>
+        SubstituteVariables(content, variables, htmlEncode);
 
-    private static string SubstituteVariables(string content, Dictionary<string, string> variables)
+    private static string SubstituteVariables(string content, Dictionary<string, string> variables, bool htmlEncode = true)
     {
         if (variables.Count == 0)
             return content;
@@ -52,9 +56,19 @@ public static partial class TemplateRenderer
         return VariablePattern().Replace(content, match =>
         {
             var key = match.Groups[1].Value;
-            return variables.TryGetValue(key, out var value) ? value : match.Value;
+            if (!variables.TryGetValue(key, out var value))
+                return match.Value;
+
+            return htmlEncode ? EscapeHtml(value) : value;
         });
     }
+
+    private static string EscapeHtml(string value) =>
+        value.Replace("&", "&amp;")
+             .Replace("<", "&lt;")
+             .Replace(">", "&gt;")
+             .Replace("\"", "&quot;")
+             .Replace("'", "&#39;");
 
     [GeneratedRegex(@"\{\{(\w+)\}\}")]
     private static partial Regex VariablePattern();

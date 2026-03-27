@@ -59,7 +59,7 @@ public static class RoleEndpoints
         {
             var result = await sender.Send(new DeleteRoleCommand(id), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
 

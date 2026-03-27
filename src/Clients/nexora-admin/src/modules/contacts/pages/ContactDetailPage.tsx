@@ -235,6 +235,7 @@ function OverviewTab({
           {isEditing ? (
             <ContactForm
               mode="edit"
+              contactType={contact.type}
               defaultValues={{
                 title: contact.title,
                 firstName: contact.firstName,

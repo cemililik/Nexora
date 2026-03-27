@@ -33,7 +33,7 @@ export function initTelemetry(): void {
     provider.register();
     initialized = true;
   } catch (err) {
-    console.error('[Telemetry] initTelemetry failed:', err);
+    if (process.env.NODE_ENV !== 'production') console.error('[Telemetry] initTelemetry failed:', err);
   }
 }
 

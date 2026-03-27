@@ -47,7 +47,7 @@ public static class ContactRelationshipEndpoints
         {
             var result = await sender.Send(new RemoveContactRelationshipCommand(contactId, relationshipId), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope<object>.Success(null!, result.Message));
 
             return result.Error!.Message.Key switch
             {

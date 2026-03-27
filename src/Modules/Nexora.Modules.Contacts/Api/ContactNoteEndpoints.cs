@@ -55,7 +55,7 @@ public static class ContactNoteEndpoints
         {
             var result = await sender.Send(new DeleteContactNoteCommand(contactId, noteId), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope<object>.Success(null!, result.Message));
 
             return result.Error!.Message.Key switch
             {

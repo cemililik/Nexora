@@ -72,11 +72,15 @@ public sealed class ReportExecutionJob(
 
             // Export to format
             var formatStr = execution.Format.ToString();
-            var bytes = exportService.Export(rows, formatStr, definition.Name);
+            using var exportStream = exportService.Export(rows, formatStr, definition.Name);
 
             // Upload to MinIO
             var extension = ReportExportService.GetFileExtension(formatStr);
             var storageKey = $"reports/{parameters.TenantId}/{execution.Id.Value}{extension}";
+
+            var bytes = new byte[exportStream.Length];
+            exportStream.Position = 0;
+            await exportStream.ReadExactlyAsync(bytes, ct);
 
             await fileStorageService.UploadObjectAsync(
                 "nexora-reports", storageKey, bytes,

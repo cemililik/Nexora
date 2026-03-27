@@ -1,3 +1,4 @@
+using Cronos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.Entities;
@@ -39,8 +40,24 @@ public sealed class ScheduledReportDispatcherJob(
 
             await dbContext.ReportExecutions.AddAsync(execution, ct);
 
-            // Simple next execution calculation (would use a proper cron parser in production)
-            schedule.RecordExecution(now, now.AddHours(24));
+            DateTimeOffset? nextAt = null;
+            try
+            {
+                var cron = CronExpression.Parse(schedule.CronExpression);
+                var nextOccurrence = cron.GetNextOccurrence(now.UtcDateTime, TimeZoneInfo.Utc);
+                nextAt = nextOccurrence.HasValue
+                    ? new DateTimeOffset(nextOccurrence.Value, TimeSpan.Zero)
+                    : null;
+            }
+            catch (CronFormatException ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Invalid cron expression {CronExpression} for schedule {ScheduleId}, skipping next execution calculation",
+                    schedule.CronExpression, schedule.Id);
+            }
+
+            schedule.RecordExecution(now, nextAt);
 
             logger.LogInformation(
                 "Enqueued execution {ExecutionId} for scheduled report {ScheduleId}",

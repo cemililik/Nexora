@@ -79,11 +79,13 @@ public sealed class DocumentsModule : IModule
         scheduler.AddOrUpdate<SignatureExpiryJob>(
             "documents:signature-expiry",
             "0 1 * * *", // Every day at 01:00 UTC
+            job => job.RunAsync(new SignatureExpiryJobParams { TenantId = "system" }, CancellationToken.None),
             JobQueues.Default);
 
         scheduler.AddOrUpdate<SignatureReminderJob>(
             "documents:signature-reminder",
             "0 8 * * *", // Every day at 08:00 UTC
+            job => job.RunAsync(new SignatureReminderJobParams { TenantId = "system" }, CancellationToken.None),
             JobQueues.Default);
     }
 

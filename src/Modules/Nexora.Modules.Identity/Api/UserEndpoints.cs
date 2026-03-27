@@ -81,7 +81,7 @@ public static class UserEndpoints
         {
             var result = await sender.Send(new DeleteUserCommand(id), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
 

@@ -62,7 +62,11 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
                 [typeof(Error)]);
 
             if (failureMethod is not null)
-                return (TResponse)failureMethod.Invoke(null, [primaryError])!;
+            {
+                var result = failureMethod.Invoke(null, [primaryError]);
+                if (result is not null)
+                    return (TResponse)result;
+            }
         }
 
         throw new ValidationException(failures);
