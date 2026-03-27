@@ -11,7 +11,8 @@ namespace Nexora.Infrastructure.Tests.Persistence;
 public sealed class DomainEventBackgroundProcessorTests
 {
     private readonly DomainEventChannel _channel = new(
-        Options.Create(new DomainEventChannelOptions { Capacity = 100 }));
+        Options.Create(new DomainEventChannelOptions { Capacity = 100 }),
+        NullLogger<DomainEventChannel>.Instance);
 
     [Fact]
     public async Task ExecuteAsync_WithQueuedEvent_DispatchesEvent()

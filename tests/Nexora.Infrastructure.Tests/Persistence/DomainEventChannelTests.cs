@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Nexora.Infrastructure.Persistence;
 using Nexora.SharedKernel.Domain.Events;
@@ -15,16 +16,16 @@ public sealed class DomainEventChannelTests
     }
 
     [Fact]
-    public async Task TryWrite_WhenFull_DropWriteDropsIncomingAndReturnsTrue()
+    public async Task TryWrite_WhenFull_ReturnsFalseAndLogsWarning()
     {
-        // DropWrite mode silently drops the incoming (newest) item, not the oldest
+        // Wait mode makes TryWrite return false when channel is full
         var channel = CreateChannel(capacity: 2);
 
         channel.TryWrite(new TestDomainEvent("1")).Should().BeTrue();
         channel.TryWrite(new TestDomainEvent("2")).Should().BeTrue();
-        channel.TryWrite(new TestDomainEvent("3")).Should().BeTrue(); // Accepted but "3" is dropped
+        channel.TryWrite(new TestDomainEvent("3")).Should().BeFalse(); // Channel full — rejected
 
-        // The original two items remain — "3" was the one dropped
+        // The original two items remain
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
         var events = new List<TestDomainEvent>();
         await foreach (var e in channel.ReadAllAsync(cts.Token))
@@ -86,5 +87,6 @@ public sealed class DomainEventChannelTests
     }
 
     private static DomainEventChannel CreateChannel(int capacity) =>
-        new(Options.Create(new DomainEventChannelOptions { Capacity = capacity }));
+        new(Options.Create(new DomainEventChannelOptions { Capacity = capacity }),
+            NullLogger<DomainEventChannel>.Instance);
 }

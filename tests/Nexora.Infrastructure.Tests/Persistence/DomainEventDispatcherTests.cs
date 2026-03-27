@@ -54,7 +54,8 @@ public sealed class DomainEventDispatcherTests : IDisposable
         _dbContext = new TestDbContext(options);
 
         _publisher = Substitute.For<IPublisher>();
-        _channel = new DomainEventChannel(Options.Create(new DomainEventChannelOptions()));
+        _channel = new DomainEventChannel(Options.Create(new DomainEventChannelOptions()),
+            NullLogger<DomainEventChannel>.Instance);
         _dispatcher = new DomainEventDispatcher(
             _publisher, _channel, NullLogger<DomainEventDispatcher>.Instance);
     }
