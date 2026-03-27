@@ -106,7 +106,7 @@ title: Notification Delivery Pipeline
 flowchart TB
     Event["Module Event\n(e.g., DonationConfirmed)"] --> Handler["Notification Handler\n(resolve template, recipients)"]
     Handler --> Consent["Check Consent\n(KVKK/GDPR)"]
-    Consent -->|Opted in| Render["Render Template\n(variable substitution,\nlanguage selection)"]
+    Consent -->|Opted in| Render["Render Template\n(variable substitution,\nlanguage selection,\nHtml format → HtmlEncode values)"]
     Consent -->|Opted out| Skip["Skip (log suppression)"]
     Render --> Queue["Kafka Queue\n(per channel)"]
 
@@ -126,6 +126,14 @@ flowchart TB
     style Queue fill:#231f20,color:#fff
     style Track fill:#27ae60,color:#fff
 ```
+
+## Template Rendering
+
+`TemplateRenderer` performs variable substitution on notification templates. Encoding behavior depends on the template's `Format` field (`TemplateFormat` enum: `Html`, `Text`, `Markdown`):
+
+- **Html**: Variable values are encoded via `WebUtility.HtmlEncode` before substitution to prevent XSS in rendered HTML content.
+- **Text / Markdown**: Variable values are inserted as-is without encoding.
+- **Subject lines**: Never encoded regardless of template format.
 
 ## Use Cases
 

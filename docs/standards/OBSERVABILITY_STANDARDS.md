@@ -581,7 +581,9 @@ public sealed class IdentityModule : IModule
 
 ## 7. API Error Response Formatı
 
-Tüm hatalar (handler Result.Failure, unhandled exception, validation) aynı `ApiEnvelope` formatında döner:
+Tüm hatalar (handler Result.Failure, unhandled exception, validation) aynı `ApiEnvelope` formatında döner.
+
+> **TraceId on ALL responses:** `traceId` is now included on **all** `ApiEnvelope` responses — both success and error. It is sourced from `Activity.Current?.TraceId` and serialized with `JsonIgnoreCondition.WhenWritingNull`, so it is omitted from JSON when no Activity is present. This enables end-to-end trace correlation from any API response.
 
 ### 7.1 Business Rule Hatası (Result.Failure → 400/404/422)
 ```json

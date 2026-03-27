@@ -38,6 +38,7 @@ public interface IModule
     void ConfigureEventHandlers(IEventBusBuilder builder);
 
     /// Register background jobs (Hangfire)
+    /// AddOrUpdate accepts Expression<Func<TJob, Task>> to specify the job method
     void ConfigureJobs(IJobScheduler scheduler);
 
     /// Run when module is installed for a tenant (create tables, seed data)
@@ -89,6 +90,15 @@ public sealed class DonationsModule : IModule
     {
         builder.Subscribe<ContactMergedEvent, DonationContactMergeHandler>();
         builder.Subscribe<OrganizationCreatedEvent, SeedDonationCategoriesHandler>();
+    }
+
+    public void ConfigureJobs(IJobScheduler scheduler)
+    {
+        scheduler.AddOrUpdate<RecurringChargeJob>(
+            "donations:recurring-charge",
+            "0 3 * * *",
+            job => job.RunAsync(new RecurringChargeParams(), CancellationToken.None),
+            "critical");
     }
 
     public async Task OnInstallAsync(TenantContext tenant, CancellationToken ct)

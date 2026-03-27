@@ -101,6 +101,9 @@ public sealed class CreateLeadHandler(
 ```
 
 ### Domain Entities
+
+> **Note:** `Entity.Equals` has built-in null safety — no need for manual null checks when comparing entities.
+
 ```csharp
 // Rich domain model — behavior lives on the entity
 public sealed class Donation : AuditableEntity, IAggregateRoot
@@ -245,9 +248,8 @@ GET    /api/v1/donations/campaigns/{id}/progress
 ### HTTP Status Codes
 | Code | Usage |
 |------|-------|
-| 200 | Successful GET/PUT |
+| 200 | Successful GET/PUT/DELETE (DELETE returns ApiEnvelope with message, no data) |
 | 201 | Successful POST (resource created) |
-| 204 | Successful DELETE |
 | 400 | Validation error |
 | 401 | Not authenticated |
 | 403 | Not authorized |
@@ -450,6 +452,8 @@ await dbContext.SaveChangesAsync(ct);
 entity.MarkAsDeleted(DateTimeOffset.UtcNow, userId);  // Manual soft delete (rarely needed)
 entity.UndoDelete();                                     // Reverse a soft delete (admin only)
 ```
+
+> **Note:** `MarkAsDeleted` validates its parameters — it throws `ArgumentException` if the timestamp is `default(DateTimeOffset)`, preventing accidental use of uninitialized values.
 
 ## 12. Module Plugin Rules
 
