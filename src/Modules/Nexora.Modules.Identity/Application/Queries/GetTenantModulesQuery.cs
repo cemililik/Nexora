@@ -21,7 +21,7 @@ public sealed class GetTenantModulesHandler(
     {
         var tenantId = TenantId.From(request.TenantId);
 
-        var modules = await platformDb.TenantModules
+        var modules = await platformDb.TenantModules.AsNoTracking()
             .Where(tm => tm.TenantId == tenantId)
             .OrderBy(tm => tm.ModuleName)
             .Select(tm => new TenantModuleDto(

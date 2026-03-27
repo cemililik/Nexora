@@ -39,7 +39,7 @@ public static class ScheduleEndpoints
         {
             var result = await sender.Send(new CancelScheduledNotificationCommand(id), ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
 

@@ -24,7 +24,7 @@ public sealed class GetOrganizationsHandler(
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = dbContext.Organizations
+        var query = dbContext.Organizations.AsNoTracking()
             .Where(o => o.TenantId == tenantId)
             .OrderBy(o => o.Name);
 

@@ -30,7 +30,7 @@ export function initTelemetry(): void {
     provider.register();
     initialized = true;
   } catch (err) {
-    console.error('[Telemetry] initTelemetry failed:', err);
+    if (import.meta.env.DEV) console.error('[Telemetry] initTelemetry failed:', err);
   }
 }
 

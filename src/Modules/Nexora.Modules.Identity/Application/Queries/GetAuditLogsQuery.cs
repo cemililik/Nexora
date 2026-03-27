@@ -29,7 +29,7 @@ public sealed class GetAuditLogsHandler(
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = dbContext.AuditLogs
+        var query = dbContext.AuditLogs.AsNoTracking()
             .Where(a => a.TenantId == tenantId);
 
         if (request.UserId.HasValue)

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,10 +72,11 @@ public sealed record TenantInstallContext(
 /// </summary>
 public interface IJobScheduler
 {
-    /// <summary>Registers or updates a recurring job with the given cron schedule.</summary>
+    /// <summary>Registers or updates a recurring job with the given cron schedule and explicit method call.</summary>
     void AddOrUpdate<TJob>(
         string jobId,
         string cronExpression,
+        Expression<Func<TJob, Task>> methodCall,
         string queue = "default") where TJob : class;
 }
 

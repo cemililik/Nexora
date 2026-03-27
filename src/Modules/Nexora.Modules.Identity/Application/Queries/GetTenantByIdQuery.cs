@@ -21,15 +21,15 @@ public sealed class GetTenantByIdHandler(
     {
         var tenantId = TenantId.From(request.TenantId);
 
-        var tenant = await platformDb.Tenants
+        var tenant = await platformDb.Tenants.AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
 
         if (tenant is null)
         {
-            return Result<TenantDetailDto>.Failure("lockey_identity_error_tenant_not_found");
+            return Result<TenantDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_not_found"));
         }
 
-        var installedModules = await platformDb.TenantModules
+        var installedModules = await platformDb.TenantModules.AsNoTracking()
             .Where(tm => tm.TenantId == tenantId && tm.IsActive)
             .Select(tm => tm.ModuleName)
             .ToListAsync(cancellationToken);

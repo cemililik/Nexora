@@ -30,8 +30,20 @@ public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
 
     public void ClearDomainEvents() => _domainEvents.Clear();
 
-    public override bool Equals(object? obj) =>
-        obj is Entity<TId> other && Id.Equals(other.Id);
+    public override bool Equals(object? obj)
+    {
+        if (obj is not Entity<TId> other)
+            return false;
 
-    public override int GetHashCode() => Id.GetHashCode();
+        if (ReferenceEquals(this, other))
+            return true;
+
+        if (Id is null || other.Id is null)
+            return false;
+
+        return Id.Equals(other.Id);
+    }
+
+    public override int GetHashCode() =>
+        Id is null ? 0 : Id.GetHashCode();
 }

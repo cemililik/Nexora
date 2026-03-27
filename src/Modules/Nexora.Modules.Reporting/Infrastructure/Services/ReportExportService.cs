@@ -15,8 +15,8 @@ namespace Nexora.Modules.Reporting.Infrastructure.Services;
 /// </summary>
 public sealed class ReportExportService
 {
-    /// <summary>Exports rows to the specified format and returns the file bytes.</summary>
-    public byte[] Export(
+    /// <summary>Exports rows to the specified format and returns a seekable stream. Caller owns the stream.</summary>
+    public Stream Export(
         IReadOnlyList<Dictionary<string, object?>> rows,
         string format,
         string reportName,
@@ -52,42 +52,55 @@ public sealed class ReportExportService
         _ => ".bin"
     };
 
-    private static byte[] ExportCsv(IReadOnlyList<Dictionary<string, object?>> rows)
+    private static Stream ExportCsv(IReadOnlyList<Dictionary<string, object?>> rows)
     {
         if (rows.Count == 0)
-            return Encoding.UTF8.GetBytes(string.Empty);
-
-        using var stream = new MemoryStream();
-        using var writer = new StreamWriter(stream, Encoding.UTF8);
-        using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
-
-        var headers = rows[0].Keys.ToList();
-
-        foreach (var header in headers)
-            csv.WriteField(header);
-        csv.NextRecord();
-
-        foreach (var row in rows)
         {
-            foreach (var header in headers)
-                csv.WriteField(row.GetValueOrDefault(header)?.ToString() ?? string.Empty);
-            csv.NextRecord();
+            var emptyStream = new MemoryStream(Encoding.UTF8.GetBytes(string.Empty));
+            emptyStream.Position = 0;
+            return emptyStream;
         }
 
-        writer.Flush();
-        return stream.ToArray();
+        var stream = new MemoryStream();
+        try
+        {
+            using var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
+            using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
+
+            var headers = rows[0].Keys.ToList();
+
+            foreach (var header in headers)
+                csv.WriteField(header);
+            csv.NextRecord();
+
+            foreach (var row in rows)
+            {
+                foreach (var header in headers)
+                    csv.WriteField(row.GetValueOrDefault(header)?.ToString() ?? string.Empty);
+                csv.NextRecord();
+            }
+        }
+        catch
+        {
+            stream.Dispose();
+            throw;
+        }
+
+        stream.Position = 0;
+        return stream;
     }
 
-    private static byte[] ExportExcel(IReadOnlyList<Dictionary<string, object?>> rows, string reportName)
+    private static Stream ExportExcel(IReadOnlyList<Dictionary<string, object?>> rows, string reportName)
     {
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add(reportName.Length > 31 ? reportName[..31] : reportName);
 
         if (rows.Count == 0)
         {
-            using var emptyStream = new MemoryStream();
+            var emptyStream = new MemoryStream();
             workbook.SaveAs(emptyStream);
-            return emptyStream.ToArray();
+            emptyStream.Position = 0;
+            return emptyStream;
         }
 
         var headers = rows[0].Keys.ToList();
@@ -109,12 +122,13 @@ public sealed class ReportExportService
 
         worksheet.Columns().AdjustToContents();
 
-        using var stream = new MemoryStream();
+        var stream = new MemoryStream();
         workbook.SaveAs(stream);
-        return stream.ToArray();
+        stream.Position = 0;
+        return stream;
     }
 
-    private static byte[] ExportPdf(IReadOnlyList<Dictionary<string, object?>> rows, string reportName, string noDataLabel)
+    private static Stream ExportPdf(IReadOnlyList<Dictionary<string, object?>> rows, string reportName, string noDataLabel)
     {
         QuestPDF.Settings.License = LicenseType.Community;
 
@@ -175,17 +189,21 @@ public sealed class ReportExportService
             });
         });
 
-        using var stream = new MemoryStream();
+        var stream = new MemoryStream();
         document.GeneratePdf(stream);
-        return stream.ToArray();
+        stream.Position = 0;
+        return stream;
     }
 
-    private static byte[] ExportJson(IReadOnlyList<Dictionary<string, object?>> rows)
+    private static Stream ExportJson(IReadOnlyList<Dictionary<string, object?>> rows)
     {
-        return JsonSerializer.SerializeToUtf8Bytes(rows, new JsonSerializerOptions
+        var stream = new MemoryStream();
+        JsonSerializer.Serialize(stream, rows, new JsonSerializerOptions
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
+        stream.Position = 0;
+        return stream;
     }
 }

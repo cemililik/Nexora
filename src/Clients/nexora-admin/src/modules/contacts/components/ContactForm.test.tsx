@@ -103,6 +103,7 @@ describe('ContactForm', () => {
       render(
         <ContactForm
           mode="edit"
+          contactType="Individual"
           defaultValues={defaultValues}
           onSubmit={vi.fn()}
           isPending={false}
@@ -126,6 +127,7 @@ describe('ContactForm', () => {
       render(
         <ContactForm
           mode="edit"
+          contactType="Individual"
           defaultValues={defaultValues}
           onSubmit={vi.fn()}
           isPending={false}
@@ -145,6 +147,7 @@ describe('ContactForm', () => {
       render(
         <ContactForm
           mode="edit"
+          contactType="Individual"
           defaultValues={defaultValues}
           onSubmit={vi.fn()}
           isPending={false}
@@ -158,6 +161,7 @@ describe('ContactForm', () => {
       render(
         <ContactForm
           mode="edit"
+          contactType="Individual"
           defaultValues={defaultValues}
           onSubmit={vi.fn()}
           isPending={true}

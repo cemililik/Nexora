@@ -109,7 +109,7 @@ public static class DocumentEndpoints
         {
             var result = await sender.Send(new ArchiveDocumentCommand(id), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return result.Error!.Message.Key switch
             {
@@ -153,7 +153,7 @@ public static class DocumentEndpoints
         {
             var result = await sender.Send(new UnlinkDocumentFromEntityCommand(id), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });

@@ -1,5 +1,5 @@
+using System.Linq.Expressions;
 using Hangfire;
-using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
 
 namespace Nexora.Infrastructure.Jobs;
@@ -13,14 +13,13 @@ public sealed class HangfireJobScheduler : IJobScheduler
     public void AddOrUpdate<TJob>(
         string jobId,
         string cronExpression,
+        Expression<Func<TJob, Task>> methodCall,
         string queue = "default") where TJob : class
     {
-        // TODO: Refactor IJobScheduler to accept TParams and call job.RunAsync(params, CancellationToken.None)
-        // Currently uses ToString() as a no-op — recurring jobs must be registered with proper method invocation.
-        RecurringJob.AddOrUpdate<TJob>(
+        RecurringJob.AddOrUpdate(
             jobId,
             queue,
-            job => job.ToString(),
+            methodCall,
             cronExpression,
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
     }

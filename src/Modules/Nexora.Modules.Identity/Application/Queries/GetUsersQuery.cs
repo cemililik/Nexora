@@ -24,7 +24,7 @@ public sealed class GetUsersHandler(
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = dbContext.Users
+        var query = dbContext.Users.AsNoTracking()
             .Where(u => u.TenantId == tenantId)
             .OrderBy(u => u.LastName).ThenBy(u => u.FirstName);
 

@@ -76,6 +76,43 @@ public sealed class EntityTests
     }
 
     [Fact]
+    public void Equals_Null_ShouldBeFalse()
+    {
+        var entity = TestEntity.Create("test");
+
+        entity.Equals(null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Equals_SameReference_ShouldBeTrue()
+    {
+        var entity = TestEntity.Create("test");
+
+        entity.Equals(entity).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Equals_DifferentType_ShouldBeFalse()
+    {
+        var entity = TestEntity.Create("test");
+
+        entity.Equals("not an entity").Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetHashCode_SameId_ShouldBeEqual()
+    {
+        var id = Guid.NewGuid();
+        var entity1 = new TestEntity { Name = "a" };
+        var entity2 = new TestEntity { Name = "b" };
+
+        typeof(Entity<Guid>).GetProperty("Id")!.SetValue(entity1, id);
+        typeof(Entity<Guid>).GetProperty("Id")!.SetValue(entity2, id);
+
+        entity1.GetHashCode().Should().Be(entity2.GetHashCode());
+    }
+
+    [Fact]
     public void IHasDomainEvents_ShouldBeImplemented()
     {
         var entity = TestEntity.Create("test");

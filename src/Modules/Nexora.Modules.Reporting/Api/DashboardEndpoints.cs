@@ -55,7 +55,7 @@ public static class DashboardEndpoints
         {
             var result = await sender.Send(new DeleteDashboardCommand(id), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
 

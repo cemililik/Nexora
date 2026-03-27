@@ -24,13 +24,13 @@ public sealed class GetOrganizationByIdHandler(
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
         var orgId = OrganizationId.From(request.OrganizationId);
 
-        var org = await dbContext.Organizations
+        var org = await dbContext.Organizations.AsNoTracking()
             .FirstOrDefaultAsync(o => o.Id == orgId && o.TenantId == tenantId, cancellationToken);
 
         if (org is null)
-            return Result<OrganizationDetailDto>.Failure("lockey_identity_error_org_not_found");
+            return Result<OrganizationDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
 
-        var memberCount = await dbContext.OrganizationUsers
+        var memberCount = await dbContext.OrganizationUsers.AsNoTracking()
             .CountAsync(ou => ou.OrganizationId == orgId, cancellationToken);
 
         var dto = new OrganizationDetailDto(

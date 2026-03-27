@@ -52,7 +52,7 @@ public static class TagEndpoints
         {
             var result = await sender.Send(new DeleteTagCommand(id), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return result.Error!.Message.Key switch
             {
@@ -88,7 +88,7 @@ public static class TagEndpoints
             var command = new RemoveTagFromContactCommand(contactId, tagId);
             var result = await sender.Send(command, ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return result.Error!.Message.Key switch
             {

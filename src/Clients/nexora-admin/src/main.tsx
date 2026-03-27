@@ -8,7 +8,7 @@ import { initTelemetry } from '@/shared/lib/telemetry';
 try {
   initTelemetry();
 } catch (err) {
-  console.error('[Telemetry] Failed to initialize:', err);
+  if (import.meta.env.DEV) console.error('[Telemetry] Failed to initialize:', err);
 }
 
 import { App } from '@/app/App';

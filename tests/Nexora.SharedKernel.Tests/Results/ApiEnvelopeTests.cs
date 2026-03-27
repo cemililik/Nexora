@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -78,5 +79,31 @@ public sealed class ApiEnvelopeTests
         envelope.Message.Should().Be("lockey_validation_failed");
         envelope.Errors.Should().HaveCount(2);
         envelope.Errors![1].Params!["max"].Should().Be("100");
+    }
+
+    [Fact]
+    public void Success_WithActiveTrace_ShouldIncludeTraceId()
+    {
+        using var activitySource = new ActivitySource("TestSource");
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var activity = activitySource.StartActivity("TestOperation");
+
+        var envelope = ApiEnvelope<string>.Success("data");
+
+        envelope.TraceId.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void Success_WithoutActiveTrace_ShouldHaveNullTraceId()
+    {
+        var envelope = ApiEnvelope<string>.Success("data");
+
+        envelope.TraceId.Should().BeNull();
     }
 }

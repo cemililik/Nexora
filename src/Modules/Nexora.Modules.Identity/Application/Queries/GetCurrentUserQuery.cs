@@ -23,14 +23,14 @@ public sealed class GetCurrentUserHandler(
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
-        var user = await dbContext.Users
+        var user = await dbContext.Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.KeycloakUserId == request.KeycloakUserId && u.TenantId == tenantId,
                 cancellationToken);
 
         if (user is null)
-            return Result<UserDetailDto>.Failure("lockey_identity_error_user_not_found");
+            return Result<UserDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
 
-        var orgs = await dbContext.OrganizationUsers
+        var orgs = await dbContext.OrganizationUsers.AsNoTracking()
             .Where(ou => ou.UserId == user.Id)
             .Join(dbContext.Organizations,
                 ou => ou.OrganizationId,

@@ -64,7 +64,7 @@ export function useAuth() {
           const status = (err as { response?: { status?: number } })?.response?.status;
           if (status === 401 || status === 403) {
             // Token rejected by backend — force re-login
-            console.error('[useAuth] /me returned', status, '— redirecting to login');
+            if (import.meta.env.DEV) console.error('[useAuth] /me returned', status, '— redirecting to login');
             setAuthToken(null);
             clearSession();
             setIsInitializing(false);
@@ -72,7 +72,7 @@ export function useAuth() {
             return;
           }
           // 404 (tenant not provisioned), network errors, 5xx — fall back to token claims
-          console.warn('[useAuth] /me failed, falling back to token claims', err);
+          if (import.meta.env.DEV) console.warn('[useAuth] /me failed, falling back to token claims', err);
         }
 
         setSession({

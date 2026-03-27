@@ -40,4 +40,41 @@ public sealed class AuditableEntityTests
         entity.Should().BeAssignableTo<IHasDomainEvents>();
         entity.DomainEvents.Should().BeEmpty();
     }
+
+    [Fact]
+    public void MarkAsDeleted_ShouldSetDeletedFields()
+    {
+        var entity = TestAuditableEntity.Create();
+        var now = DateTimeOffset.UtcNow;
+
+        entity.MarkAsDeleted(now, "admin");
+
+        entity.IsDeleted.Should().BeTrue();
+        entity.DeletedAt.Should().Be(now);
+        entity.DeletedBy.Should().Be("admin");
+    }
+
+    [Fact]
+    public void MarkAsDeleted_WithDefaultTimestamp_ShouldThrow()
+    {
+        var entity = TestAuditableEntity.Create();
+
+        var act = () => entity.MarkAsDeleted(default, "admin");
+
+        act.Should().Throw<ArgumentException>()
+            .WithParameterName("at");
+    }
+
+    [Fact]
+    public void UndoDelete_ShouldClearDeletedFields()
+    {
+        var entity = TestAuditableEntity.Create();
+        entity.MarkAsDeleted(DateTimeOffset.UtcNow, "admin");
+
+        entity.UndoDelete();
+
+        entity.IsDeleted.Should().BeFalse();
+        entity.DeletedAt.Should().BeNull();
+        entity.DeletedBy.Should().BeNull();
+    }
 }
