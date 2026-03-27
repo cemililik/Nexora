@@ -16,7 +16,7 @@ public sealed class DomainEventChannelTests
     }
 
     [Fact]
-    public async Task TryWrite_WhenFull_ReturnsFalseAndLogsWarning()
+    public async Task TryWrite_WhenFull_ReturnsFalse()
     {
         // Wait mode makes TryWrite return false when channel is full
         var channel = CreateChannel(capacity: 2);

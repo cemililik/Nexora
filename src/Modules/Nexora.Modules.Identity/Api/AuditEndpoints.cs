@@ -35,7 +35,7 @@ public static class AuditEndpoints
         {
             var result = await sender.Send(command, ct);
             return result.IsSuccess
-                ? Results.Created("/api/v1/identity/audit-logs", ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Created("/api/v1/identity/audit-logs", ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
     }

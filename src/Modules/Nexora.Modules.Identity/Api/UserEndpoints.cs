@@ -73,7 +73,7 @@ public static class UserEndpoints
             var command = new UpdateUserStatusCommand(id, request.Action);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
 
@@ -81,7 +81,7 @@ public static class UserEndpoints
         {
             var result = await sender.Send(new DeleteUserCommand(id), ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
 
@@ -102,7 +102,7 @@ public static class UserEndpoints
             var command = new AssignUserRolesCommand(id, request.OrganizationId, request.RoleIds);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
     }

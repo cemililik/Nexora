@@ -62,25 +62,30 @@ public sealed class ReportExportService
         }
 
         var stream = new MemoryStream();
-        var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
-        var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
-
-        var headers = rows[0].Keys.ToList();
-
-        foreach (var header in headers)
-            csv.WriteField(header);
-        csv.NextRecord();
-
-        foreach (var row in rows)
+        try
         {
+            using var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
+            using var csv = new CsvWriter(writer, new CsvConfiguration(CultureInfo.InvariantCulture));
+
+            var headers = rows[0].Keys.ToList();
+
             foreach (var header in headers)
-                csv.WriteField(row.GetValueOrDefault(header)?.ToString() ?? string.Empty);
+                csv.WriteField(header);
             csv.NextRecord();
+
+            foreach (var row in rows)
+            {
+                foreach (var header in headers)
+                    csv.WriteField(row.GetValueOrDefault(header)?.ToString() ?? string.Empty);
+                csv.NextRecord();
+            }
+        }
+        catch
+        {
+            stream.Dispose();
+            throw;
         }
 
-        writer.Flush();
-        csv.Dispose();
-        writer.Dispose();
         stream.Position = 0;
         return stream;
     }

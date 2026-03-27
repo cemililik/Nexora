@@ -12,6 +12,7 @@ public static partial class TemplateRenderer
     /// <summary>
     /// Renders a template with variable substitution and language resolution.
     /// Falls back to the template's default language if the requested language is not available.
+    /// HTML-encodes variable values only for HTML-format templates to prevent XSS.
     /// </summary>
     public static (string Subject, string Body) Render(
         NotificationTemplate template,
@@ -33,8 +34,10 @@ public static partial class TemplateRenderer
             }
         }
 
+        var htmlEncode = template.Format == ValueObjects.TemplateFormat.Html;
+
         subject = SubstituteVariables(subject, variables, htmlEncode: false);
-        body = SubstituteVariables(body, variables, htmlEncode: true);
+        body = SubstituteVariables(body, variables, htmlEncode);
 
         return (subject, body);
     }
@@ -59,16 +62,9 @@ public static partial class TemplateRenderer
             if (!variables.TryGetValue(key, out var value))
                 return match.Value;
 
-            return htmlEncode ? EscapeHtml(value) : value;
+            return htmlEncode ? WebUtility.HtmlEncode(value) : value;
         });
     }
-
-    private static string EscapeHtml(string value) =>
-        value.Replace("&", "&amp;")
-             .Replace("<", "&lt;")
-             .Replace(">", "&gt;")
-             .Replace("\"", "&quot;")
-             .Replace("'", "&#39;");
 
     [GeneratedRegex(@"\{\{(\w+)\}\}")]
     private static partial Regex VariablePattern();

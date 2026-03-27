@@ -39,8 +39,11 @@ public sealed class ReportExecutionService(
         await connection.OpenAsync(ct);
 
         // Validate tenant ID format to prevent SQL injection
-        if (!Regex.IsMatch(tenantId, @"^[a-zA-Z0-9_\-]+$"))
-            throw new ArgumentException("Invalid tenant ID format");
+        if (string.IsNullOrWhiteSpace(tenantId) ||
+            !Regex.IsMatch(tenantId, @"^[a-zA-Z0-9_\-]+$"))
+        {
+            throw new ArgumentException("Invalid tenant ID format", nameof(tenantId));
+        }
 
         // Set tenant schema using quoted identifier for safety
         var schemaName = $"tenant_{tenantId}";

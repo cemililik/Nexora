@@ -44,5 +44,15 @@ public sealed record ApiEnvelope<T>
     };
 }
 
+/// <summary>
+/// Non-generic helper for API responses that carry no data (e.g. delete/archive operations).
+/// </summary>
+public static class ApiEnvelope
+{
+    /// <summary>Creates a success envelope with no data payload — used for delete/archive-style operations.</summary>
+    public static ApiEnvelope<object> Success(LocalizedMessage? message = null) =>
+        ApiEnvelope<object>.Success(default!, message);
+}
+
 /// <summary>Represents a single validation error with a localization key and optional parameters.</summary>
 public sealed record ApiValidationError(string Key, Dictionary<string, string>? Params = null);
