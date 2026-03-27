@@ -343,7 +343,7 @@ public sealed class DonationsModule : IModule
             Cron.Daily(2, 0),
             job => job.RunAsync(
                 new RecurringChargeParams { TenantId = "system" },
-                CancellationToken.None),
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
             JobQueues.Critical);
 
         // Her saat başı
@@ -352,7 +352,7 @@ public sealed class DonationsModule : IModule
             Cron.Hourly(),
             job => job.RunAsync(
                 new OverdueDetectionParams { TenantId = "system" },
-                CancellationToken.None),
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
             JobQueues.Default);
 
         // Her Pazartesi 09:00'da
@@ -361,7 +361,7 @@ public sealed class DonationsModule : IModule
             Cron.Weekly(DayOfWeek.Monday, 9, 0),
             job => job.RunAsync(
                 new WeeklyReportParams { TenantId = "system" },
-                CancellationToken.None),
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
             JobQueues.Bulk);
     }
 }

@@ -43,13 +43,26 @@ public sealed class DaprCacheService(
         return key;
     }
 
+    private static readonly TimeSpan CleanupInterval = TimeSpan.FromSeconds(30);
+    private static DateTimeOffset _lastCleanup = DateTimeOffset.MinValue;
+
     /// <summary>
     /// Removes tracked keys that are older than <see cref="MaxKeyTtl"/>.
-    /// Called periodically during write operations to bound memory usage.
+    /// Throttled to run at most once per <see cref="CleanupInterval"/> to avoid
+    /// scanning the entire dictionary on every write.
     /// </summary>
     private static void CleanupExpiredKeys()
     {
-        var cutoff = DateTimeOffset.UtcNow - MaxKeyTtl;
+        var now = DateTimeOffset.UtcNow;
+
+        var lastRun = _lastCleanup;
+        if (now - lastRun < CleanupInterval)
+            return;
+
+        if (Interlocked.CompareExchange(ref _lastCleanup, now, lastRun) != lastRun)
+            return;
+
+        var cutoff = now - MaxKeyTtl;
         foreach (var kvp in _trackedKeys)
         {
             if (kvp.Value < cutoff)

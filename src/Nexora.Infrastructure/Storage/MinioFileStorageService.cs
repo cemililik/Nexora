@@ -83,6 +83,10 @@ public sealed class MinioFileStorageService(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The stream must be seekable. Position is reset to 0 before upload to ensure
+    /// all content is uploaded regardless of the caller's stream position.
+    /// </remarks>
     public async Task UploadObjectAsync(
         string bucketName,
         string objectKey,
@@ -93,6 +97,7 @@ public sealed class MinioFileStorageService(
         var client = await GetClientAsync(ct);
         await EnsureBucketExistsAsync(client, bucketName, ct);
 
+        stream.Position = 0;
         await client.PutObjectAsync(
             new PutObjectArgs()
                 .WithBucket(bucketName)

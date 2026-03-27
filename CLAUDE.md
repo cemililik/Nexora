@@ -163,8 +163,7 @@ Nexora.Modules.{ModuleName}/
 
 ### Cache
 - Use **only** `ICacheService` for caching — never `IDistributedCache`, `IMemoryCache`, or `DaprClient` directly
-- Cache key format: `{module}:{tenant}:{entity}:{identifier}`
-- Tenant ID prefix is **automatically enforced** by `DaprCacheService` via `ITenantContextAccessor` — modules do NOT manually include tenant ID in cache keys. The infrastructure layer prepends it transparently
+- Cache key format (module perspective): `{module}:{entity}:{identifier}` — tenant ID prefix is **automatically enforced** by `DaprCacheService` via `ITenantContextAccessor`. Modules do NOT include tenant ID in keys; the infrastructure layer prepends it transparently (actual stored key: `{tenantId}:{module}:{entity}:{identifier}`)
 - L1 (in-memory, 2 min) → L2 (Redis via Dapr, 15 min) → Database
 - Cache-aside pattern: `GetOrSetAsync` for reads, explicit invalidation on writes
 

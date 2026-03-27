@@ -97,7 +97,7 @@ public sealed class DonationsModule : IModule
         scheduler.AddOrUpdate<RecurringChargeJob>(
             "donations:recurring-charge",
             "0 3 * * *",
-            job => job.RunAsync(new RecurringChargeParams(), CancellationToken.None),
+            job => job.RunAsync(new RecurringChargeParams(), CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
             "critical");
     }
 
