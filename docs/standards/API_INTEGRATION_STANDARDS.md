@@ -65,6 +65,7 @@ interface ApiEnvelope<T> {
   message?: string;                // Always a lockey_ key — NEVER a translated string
   meta?: Record<string, string>;   // Message interpolation parameters
   errors?: ApiValidationError[];   // Only present on 400 responses
+  traceId?: string;                // Present on ALL responses (success + error) when Activity exists; null/omitted otherwise
 }
 
 /** Single validation error */
@@ -98,9 +99,12 @@ interface PagedResult<T> {
     "email": "ali@example.com",
     "createdAt": "2026-03-21T10:30:00Z"
   },
-  "message": "lockey_contacts_contact_created"
+  "message": "lockey_contacts_contact_created",
+  "traceId": "00-abc123def456..."
 }
 ```
+
+> **Note:** `traceId` is now included on **all** responses (success and error). It is sourced from the current `Activity.TraceId` and serialized with `JsonIgnoreCondition.WhenWritingNull` — so it is omitted from the JSON when no Activity is present.
 
 **Success — paginated list (200)**:
 
@@ -157,9 +161,8 @@ Backend MUST use these status codes consistently. Frontend MUST handle each as d
 
 | Status | Meaning | Frontend Action | Example |
 |--------|---------|----------------|---------|
-| **200** | Success (GET, PUT, PATCH) | Display data | List loaded |
+| **200** | Success (GET, PUT, PATCH, DELETE) | Display data or show success toast | List loaded, Contact deleted |
 | **201** | Created (POST) | Navigate to detail or show success toast | Contact created |
-| **204** | Deleted (DELETE) | Invalidate query, navigate back | Contact deleted |
 | **400** | Validation error | Set field-level errors on form via `setError()` | Missing required field |
 | **401** | Not authenticated | Redirect to locale-prefixed login page | Expired token |
 | **403** | Not authorized | Show `lockey_error_forbidden` toast | Missing permission |
@@ -347,10 +350,15 @@ export const api = {
     }
     return data.data;
   },
-  async delete(url: string): Promise<void> {
-    await apiClient.delete(url);
+  async delete(url: string): Promise<ApiEnvelope<undefined>> {
+    const { data } = await apiClient.delete<ApiEnvelope<undefined>>(url);
+    return data;
   },
 };
+
+/** Non-generic helper — used by backend for delete/archive operations (no data payload) */
+// Backend: ApiEnvelope.Success(message) returns { message: "lockey_...", traceId: "..." }
+// Frontend receives this via api.delete() as the resolved envelope.
 ```
 
 ### 6.2 Forbidden Patterns
@@ -578,12 +586,15 @@ export function useUpdateContact(id: string) {
   });
 }
 
-/** Delete — invalidates list on success */
+/** Delete — returns 200 with ApiEnvelope, invalidates list on success */
 export function useDeleteContact() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/contacts/contacts/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: contactKeys.lists() }),
+    onSuccess: (envelope) => {
+      queryClient.invalidateQueries({ queryKey: contactKeys.lists() });
+      if (envelope.message) toast.success(t(envelope.message));
+    },
   });
 }
 ```

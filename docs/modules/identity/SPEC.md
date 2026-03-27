@@ -306,10 +306,10 @@ stateDiagram-v2
 | POST | `/api/v1/identity/roles` | Create role | `admin.roles.manage` |
 | GET | `/api/v1/identity/roles` | List roles | `admin.roles.read` |
 | PUT | `/api/v1/identity/roles/{id}` | Update role | `admin.roles.manage` |
-| DELETE | `/api/v1/identity/roles/{id}` | Delete role | `admin.roles.manage` |
+| DELETE | `/api/v1/identity/roles/{id}` | Delete role (returns 200 OK with ApiEnvelope) | `admin.roles.manage` |
 | GET | `/api/v1/identity/permissions` | List all permissions | `admin.roles.read` |
 | POST | `/api/v1/identity/users/{id}/roles` | Assign role to user | `admin.users.manage` |
-| DELETE | `/api/v1/identity/users/{id}/roles/{roleId}` | Revoke role | `admin.users.manage` |
+| DELETE | `/api/v1/identity/users/{id}/roles/{roleId}` | Revoke role (returns 200 OK with ApiEnvelope) | `admin.users.manage` |
 
 ### Audit Log
 | Method | Path | Description | Auth |

@@ -5,8 +5,12 @@ using Nexora.SharedKernel.Results;
 namespace Nexora.Api.ContractTests;
 
 /// <summary>
-/// Verifies HTTP status code conventions for CRUD operations.
-/// Scans endpoint source code patterns to ensure correct status codes are used:
+/// Convention-level smoke tests for HTTP status code usage in CRUD operations.
+/// These verify that the expected HTTP result methods (Created, Ok, NotFound, BadRequest, Conflict)
+/// are available and that ApiEnvelope wraps responses correctly. They are NOT exhaustive per-endpoint
+/// validators -- full status code behavior is covered by integration tests with WebApplicationFactory.
+///
+/// Expected conventions:
 /// - POST (create) -> 201 Created
 /// - DELETE -> 200 OK with ApiEnvelope
 /// - GET (not found) -> 404 NotFound

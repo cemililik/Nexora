@@ -160,6 +160,10 @@ public sealed class ApiEnvelopeContractTests
         // Verify ApiValidationError is a record by checking for the compiler-generated <Clone>$ method.
         // Note: record equality for Dictionary properties uses reference equality (Dictionary
         // does not override Equals), so we verify the record nature via reflection instead.
+        //
+        // Heuristic: There is no Type.IsRecord property at runtime. The C# compiler emits a
+        // <Clone>$ method on every record type, so its presence is the most reliable runtime
+        // indicator that a type was declared as a record.
         var type = typeof(ApiValidationError);
         var cloneMethod = type.GetMethod("<Clone>$");
 
@@ -178,6 +182,10 @@ public sealed class ApiEnvelopeContractTests
         // C# records compile as classes with System.Object as the base type —
         // they do NOT inherit from a special record base class. The correct way
         // to verify a type is a record is to check for the compiler-generated <Clone>$ method.
+        //
+        // Heuristic: There is no Type.IsRecord property at runtime. The C# compiler emits a
+        // <Clone>$ method on every record type, so its presence is the most reliable runtime
+        // indicator that a type was declared as a record.
         var envelopeType = typeof(ApiEnvelope<>);
 
         envelopeType.IsSealed.Should().BeTrue("ApiEnvelope should be sealed");

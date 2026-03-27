@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -21,7 +22,8 @@ public sealed record GetAuditLogsQuery(
 /// <summary>Returns paginated and filtered audit logs for the current tenant.</summary>
 public sealed class GetAuditLogsHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetAuditLogsQuery, PagedResult<AuditLogDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetAuditLogsHandler> logger) : IQueryHandler<GetAuditLogsQuery, PagedResult<AuditLogDto>>
 {
     public async Task<Result<PagedResult<AuditLogDto>>> Handle(
         GetAuditLogsQuery request,
@@ -58,6 +60,9 @@ public sealed class GetAuditLogsHandler(
                 a.IpAddress, a.UserAgent, a.Timestamp, a.Details))
             .ToListAsync(cancellationToken);
 
+        if (items.Count == 0)
+            logger.LogDebug("No audit logs found for tenant {TenantId} with given filters", tenantId);
+
         var result = new PagedResult<AuditLogDto>
         {
             TotalCount = totalCount,
@@ -67,6 +72,6 @@ public sealed class GetAuditLogsHandler(
         };
 
         return Result<PagedResult<AuditLogDto>>.Success(result,
-            new LocalizedMessage("lockey_identity_audit_logs_listed"));
+            LocalizedMessage.Of("lockey_identity_audit_logs_listed"));
     }
 }

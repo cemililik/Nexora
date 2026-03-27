@@ -31,6 +31,7 @@ Toplam **15 düzeltme** 5 paralel grupta uygulandı. Değişen dosya sayısı: *
 | 15 | DELETE endpoints ApiEnvelope wrap — 16 endpoint, 13 dosya | P1 MAJOR | ✅ Düzeltildi |
 
 ### Ek Düzeltmeler (Review Sırasında Tespit Edilen)
+
 - IJobScheduler interface refactored — 5 modül ConfigureJobs güncellendi
 - Cronos 0.8.4 NuGet paketi Reporting modülüne eklendi
 - Nexora.Host.csproj'a UserSecretsId eklendi
@@ -277,23 +278,27 @@ Toplam **15 düzeltme** 5 paralel grupta uygulandı. Değişen dosya sayısı: *
 Aşağıdaki sorunlar birden fazla modülde tekrarlanıyor:
 
 #### 1. `AsNoTracking()` Eksikliği (16 handler)
+
 **Etkilenen Modüller:** Identity (10), Contacts (1), Notifications (6)
 **Etkilenmeyen:** Documents (tümü uyumlu — referans modül)
 **Öncelik:** HIGH — Performans etkisi büyük, düzeltmesi kolay
 **Paralel düzeltme:** Evet — her modül bağımsız düzeltilebilir
 
 #### 2. `console.log/error/warn` Production Kodda (9 dosya)
+
 **Etkilenen:** nexora-admin (5), nexora-portal (4)
 **Öncelik:** MEDIUM — Güvenlik riski düşük ama standart ihlali
 **Paralel düzeltme:** Evet
 
 #### 3. Mutation Hook'larda `handleApiError` Eksikliği (9 hook)
+
 **Etkilenen:** Identity modülü hook'ları (useOrganizations, useTenants, useRoles)
 **Etkilenmeyen:** Contacts, Documents, Notifications hook'ları (uyumlu)
 **Öncelik:** HIGH — Kullanıcı deneyimini doğrudan etkiler
 **Paralel düzeltme:** Evet
 
 #### 4. Bare `catch(Exception)` Module Kodda (3 dosya)
+
 **Etkilenen:** ReportExecutionJob, ContactImportJob
 **Öncelik:** MEDIUM
 **Paralel düzeltme:** Evet
@@ -376,6 +381,43 @@ Codebase genel olarak **yüksek kalitede** ve standartlara büyük ölçüde uyu
 6. **RTL Desteği** — Logical CSS properties tutarlı kullanılmış.
 7. **CQRS Pattern** — Command/Query separation, FluentValidation, Result pattern tutarlı.
 8. **Documents Modülü** — Referans kalitesinde implementasyon (0 bulgu).
+
+---
+
+## Görsel Özetler
+
+### Batch İş Akışı
+
+```mermaid
+graph LR
+    B1[Batch 1: Security + L10N + Arch] --> B2[Batch 2: Module Deep Review]
+    B2 --> B3[Batch 3: Reporting + Infra + SharedKernel]
+    B3 --> B4[Batch 4: Frontend + Tests]
+    B4 --> B5[Batch 5: Cross-Cutting]
+
+    B1 -.-> |4 paralel agent| B1
+    B2 -.-> |4 paralel agent| B2
+    B3 -.-> |3 paralel agent| B3
+    B4 -.-> |3 paralel agent| B4
+```
+
+### Bulgu Dağılımı
+
+```mermaid
+pie title Bulgu Dağılımı (121 toplam)
+    "Critical (23)" : 23
+    "Major (44)" : 44
+    "Minor (54)" : 54
+```
+
+### Düzeltme Durumu
+
+```mermaid
+pie title Düzeltme Durumu
+    "P0 Düzeltildi (7)" : 7
+    "P1 Düzeltildi (8)" : 8
+    "P2 Düzeltildi (10)" : 10
+```
 
 ---
 

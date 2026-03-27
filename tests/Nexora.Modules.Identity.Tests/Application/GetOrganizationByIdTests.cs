@@ -5,6 +5,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -30,7 +31,7 @@ public sealed class GetOrganizationByIdTests : IDisposable
         _dbContext.Organizations.Add(org);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor);
+        var handler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationByIdHandler>.Instance);
         var result = await handler.Handle(new GetOrganizationByIdQuery(org.Id.Value), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -50,7 +51,7 @@ public sealed class GetOrganizationByIdTests : IDisposable
         _dbContext.OrganizationUsers.Add(OrganizationUser.Create(user2.Id, org.Id));
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor);
+        var handler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationByIdHandler>.Instance);
         var result = await handler.Handle(new GetOrganizationByIdQuery(org.Id.Value), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -60,7 +61,7 @@ public sealed class GetOrganizationByIdTests : IDisposable
     [Fact]
     public async Task Handle_NonExistentOrg_ShouldReturnFailure()
     {
-        var handler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor);
+        var handler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationByIdHandler>.Instance);
         var result = await handler.Handle(new GetOrganizationByIdQuery(Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

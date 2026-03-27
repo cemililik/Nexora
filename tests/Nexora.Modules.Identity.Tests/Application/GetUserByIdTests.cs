@@ -5,6 +5,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -73,7 +74,7 @@ public sealed class GetUserByIdTests : IDisposable
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetCurrentUserHandler(_dbContext, _tenantAccessor);
+        var handler = new GetCurrentUserHandler(_dbContext, _tenantAccessor, NullLogger<GetCurrentUserHandler>.Instance);
         var result = await handler.Handle(new GetCurrentUserQuery("kc-sub-123"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -83,7 +84,7 @@ public sealed class GetUserByIdTests : IDisposable
     [Fact]
     public async Task Handle_GetCurrentUser_UnknownKeycloakId_ShouldReturnFailure()
     {
-        var handler = new GetCurrentUserHandler(_dbContext, _tenantAccessor);
+        var handler = new GetCurrentUserHandler(_dbContext, _tenantAccessor, NullLogger<GetCurrentUserHandler>.Instance);
         var result = await handler.Handle(new GetCurrentUserQuery("unknown-id"), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

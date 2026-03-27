@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -15,7 +16,8 @@ public sealed record GetCurrentUserQuery(string KeycloakUserId) : IQuery<UserDet
 /// <summary>Resolves the current user from Keycloak ID and returns detail with org memberships.</summary>
 public sealed class GetCurrentUserHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetCurrentUserQuery, UserDetailDto>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetCurrentUserHandler> logger) : IQueryHandler<GetCurrentUserQuery, UserDetailDto>
 {
     public async Task<Result<UserDetailDto>> Handle(
         GetCurrentUserQuery request,
@@ -28,7 +30,10 @@ public sealed class GetCurrentUserHandler(
                 cancellationToken);
 
         if (user is null)
+        {
+            logger.LogDebug("User not found for KeycloakUserId {KeycloakUserId} in tenant {TenantId}", request.KeycloakUserId, tenantId);
             return Result<UserDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
+        }
 
         var orgs = await dbContext.OrganizationUsers.AsNoTracking()
             .Where(ou => ou.UserId == user.Id)
@@ -43,6 +48,6 @@ public sealed class GetCurrentUserHandler(
             user.Phone, user.Status.ToString(), user.LastLoginAt, orgs);
 
         return Result<UserDetailDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_user_retrieved"));
+            LocalizedMessage.Of("lockey_identity_user_retrieved"));
     }
 }

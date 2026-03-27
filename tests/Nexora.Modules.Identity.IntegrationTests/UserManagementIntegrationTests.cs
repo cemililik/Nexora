@@ -43,7 +43,7 @@ public sealed class UserManagementIntegrationTests : IDisposable
 
         _platformDb = new PlatformDbContext(platformOptions);
 
-        SeedTenant(_tenantId, "Test Tenant", "test", "tenant-test");
+        TenantSeeder.SeedTenant(_platformDb, _tenantId, "Test Tenant", "test", "tenant-test");
     }
 
     [Fact]
@@ -177,15 +177,6 @@ public sealed class UserManagementIntegrationTests : IDisposable
     {
         _dbContext.Dispose();
         _platformDb.Dispose();
-    }
-
-    private void SeedTenant(TenantId tenantId, string name, string slug, string realmId)
-    {
-        var tenant = Tenant.Create(name, slug);
-        typeof(Tenant).BaseType!.BaseType!.GetProperty("Id")!.SetValue(tenant, tenantId);
-        tenant.SetRealmId(realmId);
-        _platformDb.Tenants.Add(tenant);
-        _platformDb.SaveChanges();
     }
 
     private static ITenantContextAccessor CreateTenantAccessor(TenantId tenantId, string? userId = null)

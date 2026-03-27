@@ -52,6 +52,10 @@ public static class ApiEnvelope
     /// <summary>Creates a success envelope with no data payload — used for delete/archive-style operations.</summary>
     public static ApiEnvelope<object> Success(LocalizedMessage? message = null) =>
         ApiEnvelope<object>.Success(default!, message);
+
+    /// <summary>Creates a failure envelope with no data payload — used for delete/archive-style operations.</summary>
+    public static ApiEnvelope<object> Fail(Error error, string? traceId = null) =>
+        ApiEnvelope<object>.Fail(error, traceId);
 }
 
 /// <summary>Represents a single validation error with a localization key and optional parameters.</summary>

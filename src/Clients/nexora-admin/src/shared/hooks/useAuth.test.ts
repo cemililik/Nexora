@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosHeaders } from 'axios';
 
 // Mock keycloak-js
 const mockInit = vi.fn();
@@ -94,7 +95,7 @@ describe('useAuth', () => {
   it('should fall back to token claims when /me returns 404', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue({ response: { status: 404 } });
+    mockApiGet.mockRejectedValue(new AxiosError('Not Found', '404', undefined, undefined, { status: 404, data: null, statusText: 'Not Found', headers: {}, config: { headers: new AxiosHeaders() } }));
 
     renderHook(() => useAuth());
 
@@ -119,7 +120,7 @@ describe('useAuth', () => {
   it('should clear session and redirect when /me returns 401', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue({ response: { status: 401 } });
+    mockApiGet.mockRejectedValue(new AxiosError('Unauthorized', '401', undefined, undefined, { status: 401, data: null, statusText: 'Unauthorized', headers: {}, config: { headers: new AxiosHeaders() } }));
 
     renderHook(() => useAuth());
 

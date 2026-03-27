@@ -78,12 +78,8 @@ public sealed class ReportExecutionJob(
             var extension = ReportExportService.GetFileExtension(formatStr);
             var storageKey = $"reports/{parameters.TenantId}/{execution.Id.Value}{extension}";
 
-            var bytes = new byte[exportStream.Length];
-            exportStream.Position = 0;
-            await exportStream.ReadExactlyAsync(bytes, ct);
-
             await fileStorageService.UploadObjectAsync(
-                "nexora-reports", storageKey, bytes,
+                "nexora-reports", storageKey, exportStream,
                 ReportExportService.GetContentType(formatStr), ct);
 
             execution.MarkCompleted(storageKey, rows.Count, sw.ElapsedMilliseconds);

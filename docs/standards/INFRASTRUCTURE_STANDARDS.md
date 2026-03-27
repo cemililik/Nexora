@@ -110,22 +110,28 @@ public sealed record CacheOptions
 
 ### 1.4 Cache Key Convention
 
+`DaprCacheService` now **automatically prefixes ALL cache keys with the tenant ID** via `ITenantContextAccessor`. Modules MUST NOT manually include tenant ID in their cache keys — it is enforced by infrastructure.
+
+**Module-supplied key format:**
+
 ```
-{module}:{tenant}:{entity}:{identifier}
+{module}:{entity}:{identifier}
 ```
 
-| Pattern | Örnek | Açıklama |
-|---------|-------|----------|
-| `{module}:{tenant}:{entity}:{id}` | `donations:tenant_isabet:donation:abc123` | Tek entity |
-| `{module}:{tenant}:{entity}:list:{hash}` | `crm:tenant_isabet:leads:list:a1b2c3` | Sayfalı liste (query hash) |
-| `{module}:{tenant}:config` | `subscription:tenant_isabet:config` | Modül config |
-| `identity:{tenant}:modules` | `identity:tenant_isabet:modules` | Yüklü modül listesi |
-| `identity:{tenant}:permissions:{userId}` | `identity:tenant_isabet:permissions:user1` | Kullanıcı izinleri |
+The infrastructure layer transparently prepends the tenant ID, producing the actual stored key: `{tenantId}:{module}:{entity}:{identifier}`.
+
+| Module Key (what you write) | Actual Stored Key (auto-prefixed) | Açıklama |
+|-----------------------------|-----------------------------------|----------|
+| `donations:donation:abc123` | `tenant_isabet:donations:donation:abc123` | Tek entity |
+| `crm:leads:list:a1b2c3` | `tenant_isabet:crm:leads:list:a1b2c3` | Sayfalı liste (query hash) |
+| `subscription:config` | `tenant_isabet:subscription:config` | Modül config |
+| `identity:modules` | `tenant_isabet:identity:modules` | Yüklü modül listesi |
+| `identity:permissions:user1` | `tenant_isabet:identity:permissions:user1` | Kullanıcı izinleri |
 
 ### 1.5 Modüllerde Cache Kullanımı
 
 ```csharp
-// ✅ DOĞRU — ICacheService ile
+// ✅ DOĞRU — ICacheService ile (tenant ID is auto-prefixed by infrastructure)
 public sealed class GetDonationHandler(
     ICacheService cache,
     IDonationRepository repository)
@@ -134,7 +140,8 @@ public sealed class GetDonationHandler(
     public async Task<DonationResponse?> Handle(
         GetDonationQuery query, CancellationToken ct)
     {
-        var cacheKey = $"donations:{query.TenantId}:donation:{query.DonationId}";
+        // No tenant ID needed — DaprCacheService auto-prefixes via ITenantContextAccessor
+        var cacheKey = $"donations:donation:{query.DonationId}";
 
         return await cache.GetOrSetAsync(
             cacheKey,
@@ -168,13 +175,13 @@ public sealed class UpdateDonationHandler(
         donation.UpdateAmount(cmd.NewAmount);
         await unitOfWork.CommitAsync(ct);
 
-        // Tek entity cache'ini temizle
+        // Tek entity cache'ini temizle (tenant ID auto-prefixed by infrastructure)
         await cache.RemoveAsync(
-            $"donations:{cmd.TenantId}:donation:{cmd.DonationId}", ct);
+            $"donations:donation:{cmd.DonationId}", ct);
 
         // İlgili liste cache'lerini temizle
         await cache.RemoveByPrefixAsync(
-            $"donations:{cmd.TenantId}:donation:list:", ct);
+            "donations:donation:list:", ct);
     }
 }
 ```
@@ -183,7 +190,7 @@ public sealed class UpdateDonationHandler(
 
 | Kural | Açıklama |
 |-------|----------|
-| **Tenant izolasyonu** | Cache key'de tenant ID **zorunlu**. Cross-tenant cache leak ölümcül güvenlik açığıdır |
+| **Tenant izolasyonu** | `DaprCacheService` automatically prefixes all keys with tenant ID via `ITenantContextAccessor`. Modules MUST NOT include tenant ID manually — it is enforced by infrastructure. Cross-tenant cache leak is prevented at the infrastructure layer |
 | **Write-through yok** | Cache sadece read path'te kullanılır. Write her zaman DB'ye gider |
 | **Stale data toleransı** | TTL'e güvenilir. Kritik data (permissions, modules) kısa TTL (1-2 dk) |
 | **Cache-aside pattern** | `GetOrSetAsync` kullanılır. Cache miss'te DB'den yükle, cache'e yaz |
@@ -325,6 +332,7 @@ jobs.Schedule<SendPaymentReminderJob>(
 #### Recurring (Cron — zamanlanmış)
 ```csharp
 // Her modül kendi recurring job'larını IModule.ConfigureJobs'da kaydeder
+// IJobScheduler.AddOrUpdate now accepts Expression<Func<TJob, Task>> parameter
 public sealed class DonationsModule : IModule
 {
     public void ConfigureJobs(IJobScheduler scheduler)
@@ -332,23 +340,29 @@ public sealed class DonationsModule : IModule
         // Her gün 02:00'de
         scheduler.AddOrUpdate<RecurringDonationChargeJob>(
             "donations:recurring-charge",
-            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Daily(2, 0),
-            queue: "critical");
+            job => job.RunAsync(
+                new RecurringChargeParams { TenantId = "system" },
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            JobQueues.Critical);
 
         // Her saat başı
         scheduler.AddOrUpdate<OverdueDetectionJob>(
             "donations:overdue-detection",
-            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Hourly(),
-            queue: "default");
+            job => job.RunAsync(
+                new OverdueDetectionParams { TenantId = "system" },
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            JobQueues.Default);
 
         // Her Pazartesi 09:00'da
         scheduler.AddOrUpdate<WeeklyDonationReportJob>(
             "donations:weekly-report",
-            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Weekly(DayOfWeek.Monday, 9, 0),
-            queue: "bulk");
+            job => job.RunAsync(
+                new WeeklyReportParams { TenantId = "system" },
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            JobQueues.Bulk);
     }
 }
 ```
@@ -981,7 +995,21 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ---
 
-## 5. Cross-Cutting Summary
+## 5. DomainEventChannel
+
+The `DomainEventChannel` uses **Wait** mode (not DropWrite). When the channel is full, `TryWrite` returns `false` and a warning is logged — events are not silently dropped. Consumers should process events promptly to avoid back-pressure.
+
+```csharp
+// DomainEventChannel behavior:
+// - Mode: BoundedChannelFullMode.Wait (changed from DropWrite)
+// - TryWrite returns false when channel is full
+// - Warning is logged when TryWrite fails (channel full)
+// - Callers should handle false return and implement appropriate back-pressure strategy
+```
+
+---
+
+## 6. Cross-Cutting Summary
 
 ```mermaid
 ---

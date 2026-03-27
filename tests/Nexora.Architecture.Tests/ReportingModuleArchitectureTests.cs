@@ -56,6 +56,11 @@ public sealed class ReportingModuleArchitectureTests
             "Domain layer must not depend on Api layer");
     }
 
+    // NOTE: Application_ShouldNotDependOnInfrastructure is intentionally omitted.
+    // Reporting module handlers directly reference ReportingDbContext and services
+    // in Infrastructure (e.g., SqlQueryValidator, ReportExportService). This is an
+    // accepted pattern for this module due to its query-centric nature.
+
     [Fact]
     public void Application_ShouldNotDependOnApi()
     {

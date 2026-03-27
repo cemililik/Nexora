@@ -277,7 +277,7 @@ stateDiagram-v2
 | GET | `/api/v1/contacts/contacts` | List/search contacts | `contacts.contacts.read` |
 | GET | `/api/v1/contacts/contacts/{id}` | Get contact (360-view) | `contacts.contacts.read` |
 | PUT | `/api/v1/contacts/contacts/{id}` | Update contact | `contacts.contacts.update` |
-| DELETE | `/api/v1/contacts/contacts/{id}` | Archive contact | `contacts.contacts.delete` |
+| DELETE | `/api/v1/contacts/contacts/{id}` | Archive contact (returns 200 OK with ApiEnvelope) | `contacts.contacts.delete` |
 | POST | `/api/v1/contacts/contacts/{id}/restore` | Restore archived | `contacts.contacts.delete` |
 
 ### Duplicate & Merge
@@ -292,9 +292,9 @@ stateDiagram-v2
 | GET | `/api/v1/contacts/tags` | List tags | `contacts.tags.read` |
 | POST | `/api/v1/contacts/tags` | Create tag | `contacts.tags.manage` |
 | PUT | `/api/v1/contacts/tags/{id}` | Update tag | `contacts.tags.manage` |
-| DELETE | `/api/v1/contacts/tags/{id}` | Delete tag | `contacts.tags.manage` |
+| DELETE | `/api/v1/contacts/tags/{id}` | Delete tag (returns 200 OK with ApiEnvelope) | `contacts.tags.manage` |
 | POST | `/api/v1/contacts/contacts/{id}/tags` | Add tags to contact | `contacts.contacts.update` |
-| DELETE | `/api/v1/contacts/contacts/{id}/tags/{tagId}` | Remove tag | `contacts.contacts.update` |
+| DELETE | `/api/v1/contacts/contacts/{id}/tags/{tagId}` | Remove tag (returns 200 OK with ApiEnvelope) | `contacts.contacts.update` |
 
 ### Import/Export
 | Method | Path | Description | Auth |
@@ -308,7 +308,7 @@ stateDiagram-v2
 |--------|------|-------------|------|
 | GET | `/api/v1/contacts/contacts/{id}/relationships` | List relationships | `contacts.contacts.read` |
 | POST | `/api/v1/contacts/contacts/{id}/relationships` | Add relationship | `contacts.contacts.update` |
-| DELETE | `/api/v1/contacts/relationships/{id}` | Remove relationship | `contacts.contacts.update` |
+| DELETE | `/api/v1/contacts/relationships/{id}` | Remove relationship (returns 200 OK with ApiEnvelope) | `contacts.contacts.update` |
 
 ### Consent & Compliance
 | Method | Path | Description | Auth |

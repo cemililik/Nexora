@@ -42,7 +42,7 @@ public sealed class TenantManagementIntegrationTests : IDisposable
         var tenantId = createResult.Value!.Id;
 
         // Act: query by ID
-        var queryHandler = new GetTenantByIdHandler(_platformDb);
+        var queryHandler = new GetTenantByIdHandler(_platformDb, NullLogger<GetTenantByIdHandler>.Instance);
         var queryResult = await queryHandler.Handle(
             new GetTenantByIdQuery(tenantId), CancellationToken.None);
 
@@ -80,7 +80,7 @@ public sealed class TenantManagementIntegrationTests : IDisposable
         // Assert
         activateResult.IsSuccess.Should().BeTrue();
 
-        var queryHandler = new GetTenantByIdHandler(_platformDb);
+        var queryHandler = new GetTenantByIdHandler(_platformDb, NullLogger<GetTenantByIdHandler>.Instance);
         var queryResult = await queryHandler.Handle(
             new GetTenantByIdQuery(tenantId), CancellationToken.None);
 
@@ -106,7 +106,7 @@ public sealed class TenantManagementIntegrationTests : IDisposable
         // Assert
         suspendResult.IsSuccess.Should().BeTrue();
 
-        var queryHandler = new GetTenantByIdHandler(_platformDb);
+        var queryHandler = new GetTenantByIdHandler(_platformDb, NullLogger<GetTenantByIdHandler>.Instance);
         var queryResult = await queryHandler.Handle(
             new GetTenantByIdQuery(tenantId), CancellationToken.None);
 

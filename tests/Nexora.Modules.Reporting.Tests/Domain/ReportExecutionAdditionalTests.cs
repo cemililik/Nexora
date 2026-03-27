@@ -1,7 +1,6 @@
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.Modules.Reporting.Domain.Events;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
-using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Reporting.Tests.Domain;
 

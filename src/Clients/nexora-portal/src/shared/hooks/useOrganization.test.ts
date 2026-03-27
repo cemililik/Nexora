@@ -3,10 +3,15 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode, createElement } from 'react';
 
-// Mock API
+// Mock API — simulate ApiEnvelope wrapping and unwrap like the real api.get
 const mockApiGet = vi.fn();
 vi.mock('@/shared/lib/api', () => ({
-  api: { get: (...args: unknown[]) => mockApiGet(...args) },
+  api: {
+    get: async (...args: unknown[]) => {
+      const envelope = await mockApiGet(...args);
+      return envelope.data;
+    },
+  },
 }));
 
 // Mock authStore
@@ -57,7 +62,7 @@ describe('useOrganization', () => {
       isActive: true,
       memberCount: 10,
     };
-    mockApiGet.mockResolvedValue(mockData);
+    mockApiGet.mockResolvedValue({ data: mockData });
 
     const { result } = renderHook(() => useOrganization(), {
       wrapper: createWrapper(),
@@ -98,7 +103,7 @@ describe('useOrganization', () => {
 
   it('should encode organizationId in URL', async () => {
     mockOrganizationId = 'org with spaces';
-    mockApiGet.mockResolvedValue({ id: 'org with spaces', name: 'Test' });
+    mockApiGet.mockResolvedValue({ data: { id: 'org with spaces', name: 'Test' } });
 
     renderHook(() => useOrganization(), {
       wrapper: createWrapper(),

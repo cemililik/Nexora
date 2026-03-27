@@ -47,7 +47,7 @@ public sealed class KeycloakSyncIntegrationTests : IDisposable
 
         _platformDb = new PlatformDbContext(platformOptions);
 
-        SeedTenant(_tenantId, "KC Test Tenant", "kc-test", "tenant-kc-test");
+        TenantSeeder.SeedTenant(_platformDb, _tenantId, "KC Test Tenant", "kc-test", "tenant-kc-test");
     }
 
     [Fact]
@@ -149,15 +149,6 @@ public sealed class KeycloakSyncIntegrationTests : IDisposable
     {
         _dbContext.Dispose();
         _platformDb.Dispose();
-    }
-
-    private void SeedTenant(TenantId tenantId, string name, string slug, string realmId)
-    {
-        var tenant = Tenant.Create(name, slug);
-        typeof(Tenant).BaseType!.BaseType!.GetProperty("Id")!.SetValue(tenant, tenantId);
-        tenant.SetRealmId(realmId);
-        _platformDb.Tenants.Add(tenant);
-        _platformDb.SaveChanges();
     }
 
     private static ITenantContextAccessor CreateTenantAccessor(TenantId tenantId, string? userId = null)

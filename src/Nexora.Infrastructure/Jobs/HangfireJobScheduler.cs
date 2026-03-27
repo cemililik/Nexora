@@ -6,6 +6,7 @@ namespace Nexora.Infrastructure.Jobs;
 
 /// <summary>
 /// Hangfire-backed job scheduler for recurring/scheduled jobs.
+/// Uses the static <see cref="RecurringJob"/> API with Expression overloads.
 /// </summary>
 public sealed class HangfireJobScheduler : IJobScheduler
 {

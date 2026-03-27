@@ -62,6 +62,7 @@ public sealed class ReportExportService
         }
 
         var stream = new MemoryStream();
+        var success = false;
         try
         {
             using var writer = new StreamWriter(stream, Encoding.UTF8, leaveOpen: true);
@@ -79,11 +80,13 @@ public sealed class ReportExportService
                     csv.WriteField(row.GetValueOrDefault(header)?.ToString() ?? string.Empty);
                 csv.NextRecord();
             }
+
+            success = true;
         }
-        catch
+        finally
         {
-            stream.Dispose();
-            throw;
+            if (!success)
+                stream.Dispose();
         }
 
         stream.Position = 0;

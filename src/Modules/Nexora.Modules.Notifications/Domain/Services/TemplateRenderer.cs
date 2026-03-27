@@ -12,7 +12,8 @@ public static partial class TemplateRenderer
     /// <summary>
     /// Renders a template with variable substitution and language resolution.
     /// Falls back to the template's default language if the requested language is not available.
-    /// HTML-encodes variable values only for HTML-format templates to prevent XSS.
+    /// HTML-encodes variable values in the body for HTML-format templates to prevent XSS.
+    /// Subject lines are never encoded as they are plain text.
     /// </summary>
     public static (string Subject, string Body) Render(
         NotificationTemplate template,

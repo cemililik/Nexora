@@ -163,8 +163,7 @@ Nexora.Modules.{ModuleName}/
 
 ### Cache
 - Use **only** `ICacheService` for caching — never `IDistributedCache`, `IMemoryCache`, or `DaprClient` directly
-- Cache key format: `{module}:{tenant}:{entity}:{identifier}`
-- Tenant ID in cache key is **mandatory** — cross-tenant cache leak is a critical security issue
+- Cache key format (module perspective): `{module}:{entity}:{identifier}` — tenant ID prefix is **automatically enforced** by `DaprCacheService` via `ITenantContextAccessor`. Modules do NOT include tenant ID in keys; the infrastructure layer prepends it transparently (actual stored key: `{tenantId}:{module}:{entity}:{identifier}`)
 - L1 (in-memory, 2 min) → L2 (Redis via Dapr, 15 min) → Database
 - Cache-aside pattern: `GetOrSetAsync` for reads, explicit invalidation on writes
 
@@ -174,7 +173,7 @@ Nexora.Modules.{ModuleName}/
 - Job naming: `{module}:{action-descriptor}` (e.g., `donations:recurring-charge`)
 - 4 queues: `critical` (payments), `default` (normal), `bulk` (mass ops), `maintenance` (cleanup)
 - Jobs MUST be idempotent (Hangfire retries automatically)
-- Register recurring jobs in `IModule.ConfigureJobs()`
+- Register recurring jobs in `IModule.ConfigureJobs()` — use expression pattern: `job => job.RunAsync(params, ct)`
 - Max job duration: 10 minutes. Longer tasks must be split into batches
 
 ### Secrets
@@ -215,6 +214,10 @@ Nexora.Modules.{ModuleName}/
 - Use structured logging: `logger.LogInformation("Tenant {TenantId} created", id)` — no string interpolation
 - DomainException ONLY from domain entities — handlers return `Result.Failure()` instead
 - Never use `catch(Exception)` in module code
+- DELETE endpoints return `200 OK` with `ApiEnvelope.Success(result.Message)` — not `204 NoContent`
+- Query handlers MUST use `.AsNoTracking()` for all read-only queries
+- `Entity<T>.Equals()` must be null-safe — always check for null before comparing IDs
+- `AuditableEntity.MarkAsDeleted()` MUST validate parameters (non-null deletedBy, valid timestamp)
 - **Soft Delete**: All `AuditableEntity<T>` entities use soft delete automatically:
   - `dbContext.Remove(entity)` → auto-converts to `IsDeleted=true` (never hard deletes)
   - All queries auto-filter `WHERE IsDeleted = false` via global query filter

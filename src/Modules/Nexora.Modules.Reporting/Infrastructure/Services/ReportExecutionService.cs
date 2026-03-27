@@ -14,7 +14,7 @@ namespace Nexora.Modules.Reporting.Infrastructure.Services;
 /// Executes report SQL queries against the tenant schema using Dapper.
 /// Enforces read-only transactions and query timeouts.
 /// </summary>
-public sealed class ReportExecutionService(
+public sealed partial class ReportExecutionService(
     ISqlQueryValidator sqlQueryValidator,
     IConfiguration configuration,
     ILogger<ReportExecutionService> logger) : IReportExecutionService
@@ -40,7 +40,7 @@ public sealed class ReportExecutionService(
 
         // Validate tenant ID format to prevent SQL injection
         if (string.IsNullOrWhiteSpace(tenantId) ||
-            !Regex.IsMatch(tenantId, @"^[a-zA-Z0-9_\-]+$"))
+            !TenantIdPattern().IsMatch(tenantId))
         {
             throw new ArgumentException("Invalid tenant ID format", nameof(tenantId));
         }
@@ -82,4 +82,7 @@ public sealed class ReportExecutionService(
 
         return result;
     }
+
+    [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
+    private static partial Regex TenantIdPattern();
 }

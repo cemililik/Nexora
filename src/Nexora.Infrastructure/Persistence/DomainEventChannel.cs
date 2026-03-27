@@ -10,29 +10,27 @@ namespace Nexora.Infrastructure.Persistence;
 /// Registered as a singleton so the dispatcher and background processor share the same instance.
 /// Capacity is configurable via <see cref="DomainEventChannelOptions"/>.
 /// </summary>
-public sealed class DomainEventChannel
+public sealed class DomainEventChannel(IOptions<DomainEventChannelOptions> options, ILogger<DomainEventChannel> logger)
 {
-    private readonly Channel<IDomainEvent> _channel;
-    private readonly ILogger<DomainEventChannel> _logger;
-
-    public DomainEventChannel(IOptions<DomainEventChannelOptions> options, ILogger<DomainEventChannel> logger)
-    {
-        _logger = logger;
-        var capacity = options.Value.Capacity;
-        _channel = Channel.CreateBounded<IDomainEvent>(
-            new BoundedChannelOptions(capacity)
-            {
-                SingleReader = true,
-                FullMode = BoundedChannelFullMode.Wait
-            });
-    }
+    private readonly Channel<IDomainEvent> _channel = Channel.CreateBounded<IDomainEvent>(
+        new BoundedChannelOptions(options.Value.Capacity)
+        {
+            SingleReader = true,
+            FullMode = BoundedChannelFullMode.Wait
+        });
 
     /// <summary>Attempts to write an event. Returns false when the channel is at capacity or completed.</summary>
     public bool TryWrite(IDomainEvent domainEvent)
     {
         var written = _channel.Writer.TryWrite(domainEvent);
         if (!written)
-            _logger.LogWarning("Domain event channel at capacity, event {EventType} dropped", domainEvent.GetType().Name);
+        {
+            if (_channel.Reader.Completion.IsCompleted)
+                logger.LogWarning("Domain event channel completed, event {EventType} dropped", domainEvent.GetType().Name);
+            else
+                logger.LogWarning("Domain event channel at capacity, event {EventType} dropped", domainEvent.GetType().Name);
+        }
+
         return written;
     }
 

@@ -8,9 +8,17 @@ vi.mock('next-intl', () => ({
 
 // Mock i18n navigation
 let mockPathname = '/dashboard';
+
+interface MockLinkProps {
+  children: React.ReactNode;
+  href: string;
+  'aria-current'?: string;
+  className?: string;
+}
+
 vi.mock('@/i18n/navigation', () => ({
-  Link: ({ children, href, ...props }: Record<string, unknown>) => (
-    <a href={href as string} {...props}>
+  Link: ({ children, href, ...props }: MockLinkProps) => (
+    <a href={href} {...props}>
       {children}
     </a>
   ),
@@ -43,6 +51,15 @@ vi.mock('@/shared/hooks/usePermissions', () => ({
 
 import { Sidebar } from './Sidebar';
 
+const donationsModuleFixture = {
+  name: 'donations',
+  navigation: [
+    { label: 'lockey_nav_donations', path: '/donations', icon: 'Heart' },
+  ],
+  permissions: ['donations.read'],
+  sections: [],
+};
+
 describe('Sidebar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,9 +72,8 @@ describe('Sidebar', () => {
   it('should render dashboard navigation link', () => {
     render(<Sidebar />);
 
-    const links = screen.getAllByRole('link');
-    expect(links.length).toBeGreaterThanOrEqual(1);
-    expect(links[0]).toHaveAttribute('href', '/dashboard');
+    const dashboardLink = screen.getByRole('link', { name: /lockey_nav_dashboard|dashboard/i });
+    expect(dashboardLink).toHaveAttribute('href', '/dashboard');
   });
 
   it('should set aria-current="page" on active navigation item', () => {
@@ -71,16 +87,7 @@ describe('Sidebar', () => {
 
   it('should not set aria-current on inactive navigation items', () => {
     mockPathname = '/dashboard';
-    mockActiveModules.mockReturnValue([
-      {
-        name: 'donations',
-        navigation: [
-          { label: 'lockey_nav_donations', path: '/donations', icon: 'Heart' },
-        ],
-        permissions: ['donations.read'],
-        sections: [],
-      },
-    ]);
+    mockActiveModules.mockReturnValue([donationsModuleFixture]);
 
     render(<Sidebar />);
 
@@ -89,16 +96,7 @@ describe('Sidebar', () => {
   });
 
   it('should render module navigation items when user has permission', () => {
-    mockActiveModules.mockReturnValue([
-      {
-        name: 'donations',
-        navigation: [
-          { label: 'lockey_nav_donations', path: '/donations', icon: 'Heart' },
-        ],
-        permissions: ['donations.read'],
-        sections: [],
-      },
-    ]);
+    mockActiveModules.mockReturnValue([donationsModuleFixture]);
     mockHasPermission.mockReturnValue(true);
 
     render(<Sidebar />);
@@ -107,16 +105,7 @@ describe('Sidebar', () => {
   });
 
   it('should hide module navigation when user lacks permission', () => {
-    mockActiveModules.mockReturnValue([
-      {
-        name: 'donations',
-        navigation: [
-          { label: 'lockey_nav_donations', path: '/donations', icon: 'Heart' },
-        ],
-        permissions: ['donations.read'],
-        sections: [],
-      },
-    ]);
+    mockActiveModules.mockReturnValue([donationsModuleFixture]);
     mockHasPermission.mockReturnValue(false);
 
     render(<Sidebar />);
