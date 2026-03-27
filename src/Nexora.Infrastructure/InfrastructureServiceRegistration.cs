@@ -26,6 +26,7 @@ using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Secrets;
 using Nexora.SharedKernel.Abstractions.Storage;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Nexora.Infrastructure;
 
@@ -55,7 +56,13 @@ public static class InfrastructureServiceRegistration
             cfg.RegisterServicesFromAssembly(typeof(InfrastructureServiceRegistration).Assembly));
 
         // Domain event dispatching
+        services.AddOptions<DomainEventChannelOptions>()
+            .BindConfiguration("DomainEvents")
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<DomainEventChannelOptions>, DomainEventChannelOptionsValidator>();
+        services.AddSingleton<DomainEventChannel>();
         services.AddScoped<DomainEventDispatcher>();
+        services.AddHostedService<DomainEventBackgroundProcessor>();
 
         // Caching
         services.AddMemoryCache();

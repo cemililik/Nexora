@@ -49,7 +49,8 @@ public sealed class TestReportQueryHandler(
                 : new List<string>();
 
             return Result<TestReportQueryResultDto>.Success(
-                new TestReportQueryResultDto(columns, rows, rows.Count));
+                new TestReportQueryResultDto(columns, rows, rows.Count),
+                LocalizedMessage.Of("lockey_reporting_test_query_success"));
         }
         catch (Npgsql.PostgresException ex)
         {

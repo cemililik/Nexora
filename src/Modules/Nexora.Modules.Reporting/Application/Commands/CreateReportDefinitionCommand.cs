@@ -47,11 +47,17 @@ public sealed class CreateReportDefinitionHandler(
         var orgId = Guid.Parse(tenantContextAccessor.Current.OrganizationId!);
 
         if (!sqlQueryValidator.IsValid(request.QueryText, out var sqlError))
+        {
+            logger.LogWarning("SQL validation failed for new report definition: {SqlError}", sqlError);
             return Result<ReportDefinitionDto>.Failure(LocalizedMessage.Of(sqlError!));
+        }
 
         if (!Enum.TryParse<ReportFormat>(request.DefaultFormat, true, out var format))
+        {
+            logger.LogWarning("Invalid report format {Format} for new report definition", request.DefaultFormat);
             return Result<ReportDefinitionDto>.Failure(
                 LocalizedMessage.Of("lockey_reporting_error_invalid_format"));
+        }
 
         var definition = ReportDefinition.Create(
             tenantId, orgId, request.Name, request.Description,

@@ -58,6 +58,20 @@ public sealed partial class SqlQueryValidator : ISqlQueryValidator
             return false;
         }
 
+        // Check for SELECT INTO (data export/table creation)
+        if (SelectIntoRegex().IsMatch(stripped))
+        {
+            errorMessage = "lockey_reporting_validation_query_select_into_forbidden";
+            return false;
+        }
+
+        // Check for row-locking clauses (FOR UPDATE, FOR SHARE, etc.)
+        if (ForLockingRegex().IsMatch(stripped))
+        {
+            errorMessage = "lockey_reporting_validation_query_locking_forbidden";
+            return false;
+        }
+
         return true;
     }
 
@@ -78,6 +92,12 @@ public sealed partial class SqlQueryValidator : ISqlQueryValidator
 
     [GeneratedRegex(@"\b(dblink|lo_import|lo_export|pg_read_file|pg_write_file|pg_execute_server_program)\s*\(", RegexOptions.IgnoreCase)]
     private static partial Regex ForbiddenFunctionsRegex();
+
+    [GeneratedRegex(@"\bSELECT\s+.*?\bINTO\b", RegexOptions.IgnoreCase | RegexOptions.Singleline)]
+    private static partial Regex SelectIntoRegex();
+
+    [GeneratedRegex(@"\bFOR\s+(UPDATE|NO\s+KEY\s+UPDATE|SHARE|KEY\s+SHARE)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex ForLockingRegex();
 
     [GeneratedRegex(@"/\*.*?\*/", RegexOptions.Singleline)]
     private static partial Regex BlockCommentRegex();
