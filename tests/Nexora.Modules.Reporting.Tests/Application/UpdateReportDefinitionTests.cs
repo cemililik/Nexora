@@ -84,6 +84,7 @@ public sealed class UpdateReportDefinitionTests : IDisposable
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().StartWith("lockey_reporting_validation_query_");
 
         // Verify the entity was not mutated by the failed operation
         var unchanged = await _dbContext.ReportDefinitions.FindAsync(definition.Id);
@@ -129,6 +130,7 @@ public sealed class UpdateReportDefinitionTests : IDisposable
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_reporting_error_definition_not_found");
     }
 
     private async Task<ReportDefinition> SeedDefinitionAsync()

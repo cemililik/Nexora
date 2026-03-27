@@ -38,6 +38,13 @@ public abstract class Entity<TId> : IHasDomainEvents, IEquatable<Entity<TId>> wh
         if (ReferenceEquals(this, other))
             return true;
 
+        // Compare unproxied types to support EF Core change-tracking proxies.
+        // All Nexora entities are sealed so proxies are not generated, but this
+        // guard remains safe for future compatibility.
+        if (!GetType().IsAssignableFrom(other.GetType()) &&
+            !other.GetType().IsAssignableFrom(GetType()))
+            return false;
+
         if (Id is null || other.Id is null)
             return false;
 

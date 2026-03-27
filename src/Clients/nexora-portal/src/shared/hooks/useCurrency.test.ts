@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
 // Mock next-intl
@@ -27,8 +27,12 @@ vi.mock('@/shared/lib/currency', () => ({
 import { useCurrency } from './useCurrency';
 
 describe('useCurrency', () => {
-  it('should use organization default currency', () => {
+  beforeEach(() => {
     mockLocale = 'en';
+    mockOrganization.mockReturnValue(null);
+  });
+
+  it('defaultCurrency_WithOrganizationCurrency_ReturnsOrganizationCurrency', () => {
     mockOrganization.mockReturnValue({ defaultCurrency: 'EUR' });
 
     const { result } = renderHook(() => useCurrency());
@@ -36,17 +40,13 @@ describe('useCurrency', () => {
     expect(result.current.defaultCurrency).toBe('EUR');
   });
 
-  it('should fallback to USD when no organization', () => {
-    mockLocale = 'en';
-    mockOrganization.mockReturnValue(null);
-
+  it('defaultCurrency_WithNoOrganization_FallsBackToUSD', () => {
     const { result } = renderHook(() => useCurrency());
 
     expect(result.current.defaultCurrency).toBe('USD');
   });
 
-  it('should format USD amount with English locale', () => {
-    mockLocale = 'en';
+  it('format_USDWithEnglishLocale_FormatsCorrectly', () => {
     mockOrganization.mockReturnValue({ defaultCurrency: 'USD' });
 
     const { result } = renderHook(() => useCurrency());
@@ -55,8 +55,7 @@ describe('useCurrency', () => {
     expect(formatted).toMatch(/\$\s?1[,.]234[.,]56/);
   });
 
-  it('should format with overridden currency', () => {
-    mockLocale = 'en';
+  it('format_WithOverriddenCurrency_UsesOverrideCurrency', () => {
     mockOrganization.mockReturnValue({ defaultCurrency: 'USD' });
 
     const { result } = renderHook(() => useCurrency());
@@ -65,7 +64,7 @@ describe('useCurrency', () => {
     expect(formatted).toMatch(/1[,.]500[.,]00/);
   });
 
-  it('should format TRY amount with Turkish locale', () => {
+  it('format_TRYWithTurkishLocale_FormatsCorrectly', () => {
     mockLocale = 'tr';
     mockOrganization.mockReturnValue({ defaultCurrency: 'TRY' });
 
@@ -75,8 +74,7 @@ describe('useCurrency', () => {
     expect(formatted).toMatch(/1[.,]500[.,]00/);
   });
 
-  it('should handle zero amount', () => {
-    mockLocale = 'en';
+  it('format_ZeroAmount_FormatsCorrectly', () => {
     mockOrganization.mockReturnValue({ defaultCurrency: 'USD' });
 
     const { result } = renderHook(() => useCurrency());

@@ -11,7 +11,7 @@ public sealed class ReportScheduleAdditionalTests
     private readonly ReportDefinitionId _definitionId = ReportDefinitionId.New();
 
     [Fact]
-    public void Create_ShouldGenerateUniqueIds()
+    public void Create_WhenCalled_GeneratesUniqueIds()
     {
         var schedule1 = ReportSchedule.Create(
             _tenantId, _definitionId, "0 0 * * *", ReportFormat.Csv, null);

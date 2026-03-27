@@ -110,6 +110,8 @@ public sealed class GetReportDefinitionsQueryTests : IDisposable
         result.IsSuccess.Should().BeTrue();
         result.Value!.TotalCount.Should().Be(5);
         result.Value.Items.Should().HaveCount(2);
+        result.Value.Items.Select(i => i.Name).Should().BeSubsetOf(
+            Enumerable.Range(0, 5).Select(i => $"Report {i}"));
     }
 
     [Fact]

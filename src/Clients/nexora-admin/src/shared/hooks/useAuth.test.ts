@@ -148,7 +148,7 @@ describe('useAuth', () => {
   it('should fall back to token claims when /me returns 500', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue({ response: { status: 500 } });
+    mockApiGet.mockRejectedValue(new AxiosError('Internal Server Error', '500', undefined, undefined, { status: 500, data: null, statusText: 'Internal Server Error', headers: {}, config: { headers: new AxiosHeaders() } }));
 
     renderHook(() => useAuth());
 

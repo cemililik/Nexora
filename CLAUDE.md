@@ -216,7 +216,7 @@ Nexora.Modules.{ModuleName}/
 - Never use `catch(Exception)` in module code
 - DELETE endpoints return `200 OK` with `ApiEnvelope.Success(result.Message)` — not `204 NoContent`
 - Query handlers MUST use `.AsNoTracking()` for all read-only queries
-- `Entity<T>.Equals()` must be null-safe — always check for null before comparing IDs
+- `Entity<T>.Equals()` is null-safe and type-safe — callers should rely on it (or `==`/`!=` operators) without manual null checks
 - `AuditableEntity.MarkAsDeleted()` MUST validate parameters (non-null deletedBy, valid timestamp)
 - **Soft Delete**: All `AuditableEntity<T>` entities use soft delete automatically:
   - `dbContext.Remove(entity)` → auto-converts to `IsDeleted=true` (never hard deletes)

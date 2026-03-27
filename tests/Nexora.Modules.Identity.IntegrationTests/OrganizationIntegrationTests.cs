@@ -100,6 +100,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
         var userResult = await createUserHandler.Handle(
             new CreateUserCommand("removable@example.com", "Remove", "Me", "TempPass1!"), CancellationToken.None);
 
+        userResult.IsSuccess.Should().BeTrue();
         var userId = userResult.Value!.Id;
 
         var addMemberHandler = new AddOrganizationMemberHandler(_dbContext, _tenantAccessor, NullLogger<AddOrganizationMemberHandler>.Instance);
@@ -125,6 +126,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
         var orgQueryResult = await orgQueryHandler.Handle(
             new GetOrganizationByIdQuery(orgId), CancellationToken.None);
 
+        orgQueryResult.IsSuccess.Should().BeTrue();
         orgQueryResult.Value!.MemberCount.Should().Be(0);
     }
 

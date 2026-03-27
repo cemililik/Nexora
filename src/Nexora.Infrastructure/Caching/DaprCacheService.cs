@@ -44,28 +44,28 @@ public sealed class DaprCacheService(
     }
 
     private static readonly TimeSpan CleanupInterval = TimeSpan.FromSeconds(30);
-    private static DateTimeOffset _lastCleanup = DateTimeOffset.MinValue;
+    private static long _lastCleanupTicks = DateTimeOffset.MinValue.UtcTicks;
 
     /// <summary>
-    /// Removes tracked keys that are older than <see cref="MaxKeyTtl"/>.
+    /// Removes tracked keys whose per-key expiry has passed.
     /// Throttled to run at most once per <see cref="CleanupInterval"/> to avoid
     /// scanning the entire dictionary on every write.
     /// </summary>
     private static void CleanupExpiredKeys()
     {
+        var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
+
+        var lastTicks = Interlocked.Read(ref _lastCleanupTicks);
+        if ((nowTicks - lastTicks) < CleanupInterval.Ticks)
+            return;
+
+        if (Interlocked.CompareExchange(ref _lastCleanupTicks, nowTicks, lastTicks) != lastTicks)
+            return;
+
         var now = DateTimeOffset.UtcNow;
-
-        var lastRun = _lastCleanup;
-        if (now - lastRun < CleanupInterval)
-            return;
-
-        if (Interlocked.CompareExchange(ref _lastCleanup, now, lastRun) != lastRun)
-            return;
-
-        var cutoff = now - MaxKeyTtl;
         foreach (var kvp in _trackedKeys)
         {
-            if (kvp.Value < cutoff)
+            if (kvp.Value < now)
                 _trackedKeys.TryRemove(kvp.Key, out _);
         }
     }
@@ -84,7 +84,6 @@ public sealed class DaprCacheService(
         if (state is not null)
         {
             memoryCache.Set(prefixedKey, state, TimeSpan.FromMinutes(2));
-            _trackedKeys[prefixedKey] = DateTimeOffset.UtcNow;
         }
 
         return state;
@@ -119,8 +118,8 @@ public sealed class DaprCacheService(
         // L1
         memoryCache.Set(prefixedKey, value, options.L1Ttl);
 
-        // Track key for prefix invalidation with insertion time
-        _trackedKeys[prefixedKey] = DateTimeOffset.UtcNow;
+        // Track key for prefix invalidation with its actual expiry time
+        _trackedKeys[prefixedKey] = DateTimeOffset.UtcNow + options.L2Ttl;
 
         // Periodically clean up expired tracked keys
         CleanupExpiredKeys();

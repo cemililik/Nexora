@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
@@ -25,10 +26,14 @@ public sealed class GetAuditLogsHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<GetAuditLogsHandler> logger) : IQueryHandler<GetAuditLogsQuery, PagedResult<AuditLogDto>>
 {
+    private const long SlowQueryThresholdMs = 500;
+
     public async Task<Result<PagedResult<AuditLogDto>>> Handle(
         GetAuditLogsQuery request,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
         var query = dbContext.AuditLogs.AsNoTracking()
@@ -59,6 +64,15 @@ public sealed class GetAuditLogsHandler(
                 a.Id.Value, a.UserId.Value, a.Action,
                 a.IpAddress, a.UserAgent, a.Timestamp, a.Details))
             .ToListAsync(cancellationToken);
+
+        stopwatch.Stop();
+
+        if (stopwatch.ElapsedMilliseconds > SlowQueryThresholdMs)
+        {
+            logger.LogWarning(
+                "Slow query detected: GetAuditLogs took {ElapsedMs}ms for tenant {TenantId}",
+                stopwatch.ElapsedMilliseconds, tenantId);
+        }
 
         if (items.Count == 0)
             logger.LogDebug("No audit logs found for tenant {TenantId} with given filters", tenantId);

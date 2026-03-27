@@ -114,7 +114,7 @@ public sealed record CacheOptions
 
 **Module-supplied key format:**
 
-```
+```text
 {module}:{entity}:{identifier}
 ```
 
@@ -312,11 +312,11 @@ public sealed class ConfirmDonationHandler(
 
         // Makbuz oluşturmayı background'a at
         jobs.Enqueue<GenerateReceiptJob>(
-            job => job.ExecuteAsync(cmd.DonationId, cmd.TenantId, CancellationToken.None));
+            job => job.RunAsync(new GenerateReceiptParams { TenantId = cmd.TenantId, DonationId = cmd.DonationId }, CancellationToken.None));
 
         // SMS gönderimi background'a at
         jobs.Enqueue<SendDonationSmsJob>(
-            job => job.ExecuteAsync(cmd.DonationId, cmd.TenantId, CancellationToken.None));
+            job => job.RunAsync(new SendDonationSmsParams { TenantId = cmd.TenantId, DonationId = cmd.DonationId }, CancellationToken.None));
     }
 }
 ```
@@ -325,7 +325,7 @@ public sealed class ConfirmDonationHandler(
 ```csharp
 // 30 dakika sonra çalıştır
 jobs.Schedule<SendPaymentReminderJob>(
-    job => job.ExecuteAsync(invoiceId, tenantId, CancellationToken.None),
+    job => job.RunAsync(new PaymentReminderParams { TenantId = tenantId, InvoiceId = invoiceId }, CancellationToken.None),
     TimeSpan.FromMinutes(30));
 ```
 
@@ -371,11 +371,11 @@ public sealed class DonationsModule : IModule
 ```csharp
 // Job A bittikten sonra Job B çalışsın
 var importJobId = jobs.Enqueue<ImportBankTransactionsJob>(
-    job => job.ExecuteAsync(batchId, tenantId, CancellationToken.None));
+    job => job.RunAsync(new ImportBankTransactionsParams { TenantId = tenantId, BatchId = batchId }, CancellationToken.None));
 
 jobs.ContinueJobWith<MatchDonorsJob>(
     importJobId,
-    job => job.ExecuteAsync(batchId, tenantId, CancellationToken.None));
+    job => job.RunAsync(new MatchDonorsParams { TenantId = tenantId, BatchId = batchId }, CancellationToken.None));
 ```
 
 ### 2.4 Job Base Class & Contract
@@ -384,48 +384,26 @@ Tüm job'lar `NexoraJob<TParams>` base class'ından türer:
 
 ```csharp
 // SharedKernel/Jobs/NexoraJob.cs
-public abstract class NexoraJob<TParams>
+public abstract class NexoraJob<TParams>(
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger logger) where TParams : JobParams
 {
-    private readonly ITenantContextAccessor _tenantAccessor;
-    private readonly ILogger _logger;
-
-    protected NexoraJob(
-        ITenantContextAccessor tenantAccessor,
-        ILogger logger)
+    /// Hangfire calls this — CancellationToken is substituted by Hangfire at runtime
+    public async Task RunAsync(TParams parameters, CancellationToken ct)
     {
-        _tenantAccessor = tenantAccessor;
-        _logger = logger;
-    }
+        var jobName = GetType().Name;
+        tenantContextAccessor.SetTenant(parameters.TenantId, parameters.OrganizationId);
 
-    /// Hangfire calls this
-    [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] { 30, 120, 600 })]
-    [DisableConcurrentExecution(timeoutInSeconds: 300)]
-    public async Task ExecuteAsync(TParams parameters, string tenantId, CancellationToken ct)
-    {
-        // 1. Set tenant context for this job execution
-        _tenantAccessor.SetTenant(tenantId);
-
-        using var activity = Telemetry.StartActivity($"Job:{GetType().Name}");
-        activity?.SetTag("tenant.id", tenantId);
-        activity?.SetTag("job.params", JsonSerializer.Serialize(parameters));
+        logger.LogInformation("Job {JobName} starting for tenant {TenantId}", jobName, parameters.TenantId);
 
         try
         {
-            _logger.LogInformation(
-                "Job {JobName} started for tenant {TenantId} with params {@Params}",
-                GetType().Name, tenantId, parameters);
-
-            await HandleAsync(parameters, ct);
-
-            _logger.LogInformation(
-                "Job {JobName} completed for tenant {TenantId}",
-                GetType().Name, tenantId);
+            await ExecuteAsync(parameters, ct);
+            logger.LogInformation("Job {JobName} completed for tenant {TenantId}", jobName, parameters.TenantId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Job {JobName} failed for tenant {TenantId}",
-                GetType().Name, tenantId);
+            logger.LogError(ex, "Job {JobName} failed for tenant {TenantId}", jobName, parameters.TenantId);
             throw; // Hangfire handles retry
         }
     }

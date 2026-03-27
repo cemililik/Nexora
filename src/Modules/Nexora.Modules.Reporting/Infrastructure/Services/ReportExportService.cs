@@ -22,6 +22,8 @@ public sealed class ReportExportService
         string reportName,
         string noDataLabel = "lockey_reporting_no_data")
     {
+        ArgumentException.ThrowIfNullOrEmpty(format, nameof(format));
+
         return format.ToUpperInvariant() switch
         {
             "CSV" => ExportCsv(rows),

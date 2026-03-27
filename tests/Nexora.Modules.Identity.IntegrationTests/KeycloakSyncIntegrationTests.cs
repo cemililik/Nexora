@@ -118,7 +118,7 @@ public sealed class KeycloakSyncIntegrationTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        var freshPlatformDb = new PlatformDbContext(freshPlatformOptions);
+        using var freshPlatformDb = new PlatformDbContext(freshPlatformOptions);
         var freshKeycloak = Substitute.For<IKeycloakAdminService>();
 
         freshKeycloak.CreateRealmAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -141,8 +141,6 @@ public sealed class KeycloakSyncIntegrationTests : IDisposable
 
         // Assert: the realm ID is stored on the tenant
         result.Value!.RealmId.Should().Be("tenant-new-realm-org");
-
-        freshPlatformDb.Dispose();
     }
 
     public void Dispose()

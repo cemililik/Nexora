@@ -29,7 +29,7 @@ public sealed class ReportExecutionAdditionalTests
     }
 
     [Fact]
-    public void Create_ShouldGenerateUniqueIds()
+    public void Create_WhenCalled_GeneratesUniqueIds()
     {
         var exec1 = ReportExecution.Create(
             _tenantId, _definitionId, ReportFormat.Csv, null, null);

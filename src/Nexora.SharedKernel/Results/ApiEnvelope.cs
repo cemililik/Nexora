@@ -32,7 +32,7 @@ public sealed record ApiEnvelope<T>
         Message = error.Message.Key,
         Meta = error.Message.Params.Count > 0 ? error.Message.Params : null,
         Errors = error.Details?.Select(d => new ApiValidationError(d.Message.Key, d.Message.Params)).ToList(),
-        TraceId = traceId
+        TraceId = traceId ?? Activity.Current?.TraceId.ToString()
     };
 
     /// <summary>Creates a validation failure envelope with a list of field-level errors.</summary>

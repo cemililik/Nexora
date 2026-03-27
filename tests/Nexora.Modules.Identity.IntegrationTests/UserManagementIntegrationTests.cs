@@ -75,8 +75,9 @@ public sealed class UserManagementIntegrationTests : IDisposable
     {
         // Arrange
         var handler = new CreateUserHandler(_dbContext, _platformDb, _tenantAccessor, _keycloakAdmin, NullLogger<CreateUserHandler>.Instance);
-        await handler.Handle(
+        var firstResult = await handler.Handle(
             new CreateUserCommand("dup@example.com", "First", "User", "TempPass1!"), CancellationToken.None);
+        firstResult.IsSuccess.Should().BeTrue();
 
         // Act
         var result = await handler.Handle(

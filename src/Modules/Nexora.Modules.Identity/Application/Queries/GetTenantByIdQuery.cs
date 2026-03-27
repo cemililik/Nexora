@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
@@ -17,10 +18,14 @@ public sealed class GetTenantByIdHandler(
     PlatformDbContext platformDb,
     ILogger<GetTenantByIdHandler> logger) : IQueryHandler<GetTenantByIdQuery, TenantDetailDto>
 {
+    private const long SlowQueryThresholdMs = 500;
+
     public async Task<Result<TenantDetailDto>> Handle(
         GetTenantByIdQuery request,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         var tenantId = TenantId.From(request.TenantId);
 
         var tenant = await platformDb.Tenants.AsNoTracking()
@@ -36,6 +41,15 @@ public sealed class GetTenantByIdHandler(
             .Where(tm => tm.TenantId == tenantId && tm.IsActive)
             .Select(tm => tm.ModuleName)
             .ToListAsync(cancellationToken);
+
+        stopwatch.Stop();
+
+        if (stopwatch.ElapsedMilliseconds > SlowQueryThresholdMs)
+        {
+            logger.LogWarning(
+                "Slow query detected: GetTenantById took {ElapsedMs}ms for tenant {TenantId}",
+                stopwatch.ElapsedMilliseconds, request.TenantId);
+        }
 
         var dto = new TenantDetailDto(
             tenant.Id.Value,
