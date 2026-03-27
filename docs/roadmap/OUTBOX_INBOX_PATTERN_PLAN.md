@@ -42,7 +42,7 @@ sequenceDiagram
 
 #### Senaryo A: Kafka Unavailable (Outbox Gerekli)
 
-```
+```text
 1. CreateContactHandler → DB'ye contact yazıldı ✅
 2. ContactCreatedEvent → entity'den toplandı, temizlendi
 3. ContactCreatedDomainEventHandler → DaprEventBus.PublishAsync() → Kafka down ❌
@@ -54,7 +54,7 @@ sequenceDiagram
 
 #### Senaryo B: Uygulama Crash (Outbox Gerekli)
 
-```
+```text
 1. MergeContacts → DB'ye merge yazıldı ✅
 2. ContactMergedEvent → handler çalışmaya başladı
 3. Uygulama crash (OOM, deploy, node failure)
@@ -64,7 +64,7 @@ sequenceDiagram
 
 #### Senaryo C: Kafka Consumer Rebalance (Inbox Gerekli)
 
-```
+```text
 1. Kafka'dan UserCreatedIntegrationEvent geldi
 2. Contacts modülü: otomatik contact oluşturdu, DB'ye yazdı ✅
 3. Kafka ACK göndermeden önce consumer rebalance oldu
@@ -74,7 +74,7 @@ sequenceDiagram
 
 #### Senaryo D: Handler Başarısız + Retry (Inbox Gerekli)
 
-```
+```text
 1. ConsentChangedIntegrationEvent geldi
 2. Notifications modülü: scheduled notification'ları iptal etmeye çalıştı
 3. DB timeout → handler başarısız → Kafka NACK
@@ -372,7 +372,8 @@ public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationTo
 İki olası yaklaşım değerlendirilmiştir:
 
 **A) SaveChanges İçinde Outbox Yazımı (Tam Atomik)**
-```
+
+```text
 SaveChangesAsync() {
     ConvertDeletesAndSetAuditFields()
     CollectDomainEvents → serialize → outbox_messages INSERT
@@ -385,7 +386,8 @@ SaveChangesAsync() {
 - ❌ Handler'lardaki iş mantığı (tenant context okuma, entity lookup) SaveChanges'e taşınamaz
 
 **B) Handler İçinde Outbox Yazımı (Seçilen Yaklaşım)**
-```
+
+```text
 SaveChangesAsync() → entity commit
 DispatchEventsAsync() → handler'lar çalışır
 Handler: outbox.EnqueueAsync() → outbox'a yaz (ayrı transaction)
