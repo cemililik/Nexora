@@ -19,7 +19,7 @@ describe('useDirection', () => {
     ['fa', 'rtl'],
     ['ur', 'rtl'],
     ['ar-SA', 'rtl'],
-  ])('should return %s → %s', (locale, expected) => {
+  ])('useDirection_WhenLocaleIs%s_Returns%s', (locale, expected) => {
     mockLocale = locale;
     const { result } = renderHook(() => useDirection());
     expect(result.current).toBe(expected);

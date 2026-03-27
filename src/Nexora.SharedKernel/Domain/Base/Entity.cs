@@ -38,6 +38,9 @@ public abstract class Entity<TId> : IHasDomainEvents, IEquatable<Entity<TId>> wh
         if (ReferenceEquals(this, other))
             return true;
 
+        if (GetType() != other.GetType())
+            return false;
+
         if (Id is null || other.Id is null)
             return false;
 

@@ -31,7 +31,7 @@ public sealed class GetCurrentUserHandler(
 
         if (user is null)
         {
-            logger.LogDebug("User not found for KeycloakUserId {KeycloakUserId} in tenant {TenantId}", request.KeycloakUserId, tenantId);
+            logger.LogDebug("User not found in tenant {TenantId}", tenantId);
             return Result<UserDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
         }
 

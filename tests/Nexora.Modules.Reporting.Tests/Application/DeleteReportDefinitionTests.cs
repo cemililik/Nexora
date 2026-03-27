@@ -44,6 +44,13 @@ public sealed class DeleteReportDefinitionTests : IDisposable
             new DeleteReportDefinitionCommand(definition.Id.Value), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+
+        // Verify the definition is soft-deleted
+        var deleted = await _dbContext.ReportDefinitions
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(d => d.Id == definition.Id);
+        deleted.Should().NotBeNull();
+        deleted!.IsDeleted.Should().BeTrue();
     }
 
     [Fact]

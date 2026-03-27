@@ -97,17 +97,39 @@ public sealed class MinioFileStorageService(
         var client = await GetClientAsync(ct);
         await EnsureBucketExistsAsync(client, bucketName, ct);
 
-        stream.Position = 0;
-        await client.PutObjectAsync(
-            new PutObjectArgs()
-                .WithBucket(bucketName)
-                .WithObject(objectKey)
-                .WithStreamData(stream)
-                .WithObjectSize(stream.Length)
-                .WithContentType(contentType), ct);
+        // If the stream is not seekable, buffer it into a MemoryStream
+        Stream uploadStream = stream;
+        MemoryStream? buffered = null;
+        if (!stream.CanSeek)
+        {
+            buffered = new MemoryStream();
+            await stream.CopyToAsync(buffered, ct);
+            buffered.Position = 0;
+            uploadStream = buffered;
+        }
+        else
+        {
+            uploadStream.Position = 0;
+        }
 
-        logger.LogInformation("Uploaded object {BucketName}/{ObjectKey} ({Size} bytes)",
-            bucketName, objectKey, stream.Length);
+        try
+        {
+            await client.PutObjectAsync(
+                new PutObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(objectKey)
+                    .WithStreamData(uploadStream)
+                    .WithObjectSize(uploadStream.Length)
+                    .WithContentType(contentType), ct);
+
+            logger.LogInformation("Uploaded object {BucketName}/{ObjectKey} ({Size} bytes)",
+                bucketName, objectKey, uploadStream.Length);
+        }
+        finally
+        {
+            if (buffered is not null)
+                await buffered.DisposeAsync();
+        }
     }
 
     /// <inheritdoc />

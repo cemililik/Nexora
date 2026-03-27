@@ -40,6 +40,9 @@ public static partial class TemplateRenderer
         subject = SubstituteVariables(subject, variables, htmlEncode: false);
         body = SubstituteVariables(body, variables, htmlEncode);
 
+        // Strip CR/LF from subject to prevent email header injection
+        subject = subject.Replace("\r", string.Empty).Replace("\n", string.Empty);
+
         return (subject, body);
     }
 

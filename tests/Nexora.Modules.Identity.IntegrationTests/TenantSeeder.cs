@@ -22,7 +22,12 @@ internal static class TenantSeeder
         var idProperty = typeof(Tenant).GetProperty(
             "Id", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
-        idProperty!.SetValue(tenant, tenantId);
+        if (idProperty is null)
+            throw new InvalidOperationException(
+                $"Property 'Id' not found on type '{typeof(Tenant).FullName}'. " +
+                "The entity hierarchy may have changed.");
+
+        idProperty.SetValue(tenant, tenantId);
         tenant.SetRealmId(realmId);
         platformDb.Tenants.Add(tenant);
         platformDb.SaveChanges();

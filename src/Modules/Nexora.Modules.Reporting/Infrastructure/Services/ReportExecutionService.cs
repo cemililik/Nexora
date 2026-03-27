@@ -34,16 +34,16 @@ public sealed partial class ReportExecutionService(
             throw new ValidationException([new ValidationFailure("queryText", validationError!)]);
         }
 
-        var connectionString = configuration.GetConnectionString("Default");
-        await using var connection = new NpgsqlConnection(connectionString);
-        await connection.OpenAsync(ct);
-
         // Validate tenant ID format to prevent SQL injection
         if (string.IsNullOrWhiteSpace(tenantId) ||
             !TenantIdPattern().IsMatch(tenantId))
         {
             throw new ArgumentException("Invalid tenant ID format", nameof(tenantId));
         }
+
+        var connectionString = configuration.GetConnectionString("Default");
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(ct);
 
         // Set tenant schema using quoted identifier for safety
         var schemaName = $"tenant_{tenantId}";

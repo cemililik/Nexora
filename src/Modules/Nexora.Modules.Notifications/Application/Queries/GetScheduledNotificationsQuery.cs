@@ -56,6 +56,11 @@ public sealed class GetScheduledNotificationsHandler(
                 stopwatch.ElapsedMilliseconds, tenantId);
         }
 
+        if (items.Count == 0)
+        {
+            logger.LogDebug("No scheduled notifications found for tenant {TenantId}", tenantId);
+        }
+
         var result = new PagedResult<NotificationScheduleDto>
         {
             Items = items,
