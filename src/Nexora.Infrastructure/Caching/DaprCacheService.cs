@@ -53,16 +53,16 @@ public sealed class DaprCacheService(
     /// </summary>
     private static void CleanupExpiredKeys()
     {
-        var now = DateTimeOffset.UtcNow;
-        var nowTicks = now.UtcTicks;
+        var nowTicks = DateTimeOffset.UtcNow.UtcTicks;
 
         var lastTicks = Interlocked.Read(ref _lastCleanupTicks);
-        if (now - new DateTimeOffset(lastTicks, TimeSpan.Zero) < CleanupInterval)
+        if ((nowTicks - lastTicks) < CleanupInterval.Ticks)
             return;
 
         if (Interlocked.CompareExchange(ref _lastCleanupTicks, nowTicks, lastTicks) != lastTicks)
             return;
 
+        var now = DateTimeOffset.UtcNow;
         foreach (var kvp in _trackedKeys)
         {
             if (kvp.Value < now)

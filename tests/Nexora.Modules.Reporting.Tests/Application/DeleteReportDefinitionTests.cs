@@ -45,12 +45,17 @@ public sealed class DeleteReportDefinitionTests : IDisposable
 
         result.IsSuccess.Should().BeTrue();
 
-        // Verify the definition is soft-deleted
+        // Verify the definition is soft-deleted via IgnoreQueryFilters
         var deleted = await _dbContext.ReportDefinitions
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(d => d.Id == definition.Id);
         deleted.Should().NotBeNull();
         deleted!.IsDeleted.Should().BeTrue();
+
+        // Verify default query filters exclude the soft-deleted definition
+        var visible = await _dbContext.ReportDefinitions
+            .FirstOrDefaultAsync(d => d.Id == definition.Id);
+        visible.Should().BeNull("soft-deleted definitions should be excluded by default query filters");
     }
 
     [Fact]
