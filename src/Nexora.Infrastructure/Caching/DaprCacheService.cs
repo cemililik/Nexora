@@ -11,6 +11,7 @@ namespace Nexora.Infrastructure.Caching;
 /// Two-level cache: L1 (in-memory) + L2 (Redis via Dapr State Store).
 /// Tracks keys to support prefix-based invalidation.
 /// Keys are automatically prefixed with the current tenant ID to ensure tenant isolation.
+/// Tracked keys are periodically cleaned up to prevent unbounded growth.
 /// </summary>
 public sealed class DaprCacheService(
     DaprClient daprClient,
@@ -19,7 +20,8 @@ public sealed class DaprCacheService(
     ILogger<DaprCacheService> logger) : ICacheService
 {
     private const string StateStoreName = "statestore";
-    private static readonly ConcurrentDictionary<string, byte> _trackedKeys = new();
+    private static readonly TimeSpan MaxKeyTtl = TimeSpan.FromHours(1);
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> _trackedKeys = new();
 
     /// <summary>
     /// Prefixes the cache key with the current tenant ID to ensure tenant isolation.
@@ -41,6 +43,20 @@ public sealed class DaprCacheService(
         return key;
     }
 
+    /// <summary>
+    /// Removes tracked keys that are older than <see cref="MaxKeyTtl"/>.
+    /// Called periodically during write operations to bound memory usage.
+    /// </summary>
+    private static void CleanupExpiredKeys()
+    {
+        var cutoff = DateTimeOffset.UtcNow - MaxKeyTtl;
+        foreach (var kvp in _trackedKeys)
+        {
+            if (kvp.Value < cutoff)
+                _trackedKeys.TryRemove(kvp.Key, out _);
+        }
+    }
+
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
@@ -55,7 +71,7 @@ public sealed class DaprCacheService(
         if (state is not null)
         {
             memoryCache.Set(prefixedKey, state, TimeSpan.FromMinutes(2));
-            _trackedKeys.TryAdd(prefixedKey, 0);
+            _trackedKeys[prefixedKey] = DateTimeOffset.UtcNow;
         }
 
         return state;
@@ -90,8 +106,11 @@ public sealed class DaprCacheService(
         // L1
         memoryCache.Set(prefixedKey, value, options.L1Ttl);
 
-        // Track key for prefix invalidation
-        _trackedKeys.TryAdd(prefixedKey, 0);
+        // Track key for prefix invalidation with insertion time
+        _trackedKeys[prefixedKey] = DateTimeOffset.UtcNow;
+
+        // Periodically clean up expired tracked keys
+        CleanupExpiredKeys();
 
         // L2
         var metadata = new Dictionary<string, string>
@@ -112,6 +131,11 @@ public sealed class DaprCacheService(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// This method only removes keys tracked by this process instance. Keys set by other
+    /// instances or platform-level callers (without tenant context) may not be tracked and
+    /// therefore will not be removed. For cross-instance invalidation, use Dapr pub/sub events.
+    /// </remarks>
     public async Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
     {
         var prefixedPrefix = PrefixKey(prefix);

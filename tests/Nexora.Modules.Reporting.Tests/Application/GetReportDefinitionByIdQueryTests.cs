@@ -28,12 +28,12 @@ public sealed class GetReportDefinitionByIdQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ExistingDefinition_ReturnsDefinition()
+    public async Task Handle_ExistingDefinition_ReturnsMappedDto()
     {
         var definition = ReportDefinition.Create(
             _tenantId, _orgId, "Revenue Report", "Monthly revenue",
             "finance", "financial", "SELECT SUM(amount) FROM orders",
-            null, ReportFormat.Csv);
+            "[{\"name\":\"period\"}]", ReportFormat.Csv);
         await _dbContext.ReportDefinitions.AddAsync(definition);
         await _dbContext.SaveChangesAsync();
 
@@ -45,9 +45,15 @@ public sealed class GetReportDefinitionByIdQueryTests : IDisposable
             new GetReportDefinitionByIdQuery(definition.Id.Value), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Name.Should().Be("Revenue Report");
+        result.Value!.Id.Should().Be(definition.Id.Value);
+        result.Value.Name.Should().Be("Revenue Report");
+        result.Value.Description.Should().Be("Monthly revenue");
         result.Value.Module.Should().Be("finance");
+        result.Value.Category.Should().Be("financial");
+        result.Value.QueryText.Should().Be("SELECT SUM(amount) FROM orders");
+        result.Value.Parameters.Should().Be("[{\"name\":\"period\"}]");
         result.Value.DefaultFormat.Should().Be("Csv");
+        result.Value.IsActive.Should().BeTrue();
     }
 
     [Fact]
@@ -81,33 +87,6 @@ public sealed class GetReportDefinitionByIdQueryTests : IDisposable
             new GetReportDefinitionByIdQuery(otherTenantDef.Id.Value), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Handle_ExistingDefinition_ReturnsMappedDto()
-    {
-        var definition = ReportDefinition.Create(
-            _tenantId, _orgId, "Test Report", "Description",
-            "analytics", "usage", "SELECT * FROM users",
-            "[{\"name\":\"id\"}]", ReportFormat.Excel);
-        await _dbContext.ReportDefinitions.AddAsync(definition);
-        await _dbContext.SaveChangesAsync();
-
-        var handler = new GetReportDefinitionByIdHandler(
-            _dbContext, _tenantAccessor,
-            NullLogger<GetReportDefinitionByIdHandler>.Instance);
-
-        var result = await handler.Handle(
-            new GetReportDefinitionByIdQuery(definition.Id.Value), CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value!.Id.Should().Be(definition.Id.Value);
-        result.Value.Description.Should().Be("Description");
-        result.Value.Category.Should().Be("usage");
-        result.Value.QueryText.Should().Be("SELECT * FROM users");
-        result.Value.Parameters.Should().Be("[{\"name\":\"id\"}]");
-        result.Value.DefaultFormat.Should().Be("Excel");
-        result.Value.IsActive.Should().BeTrue();
     }
 
     public void Dispose() => _dbContext.Dispose();

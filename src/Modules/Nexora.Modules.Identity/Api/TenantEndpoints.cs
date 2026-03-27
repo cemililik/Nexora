@@ -54,7 +54,7 @@ public static class TenantEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
-                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+                : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
         });
     }
 }

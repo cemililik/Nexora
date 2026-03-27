@@ -97,8 +97,8 @@ public sealed class LocalizationContractTests
                                 // - Templates with {PropertyName} placeholders (built-in validator defaults)
                                 // - "No default error message" (validators using .Must() without .WithMessage())
                                 // These are framework internals resolved at runtime, not hardcoded user-facing strings.
-                                if (errorMessage.Contains("{PropertyName}") ||
-                                    errorMessage.Contains("No default error message"))
+                                if (errorMessage.StartsWith("{PropertyName}") ||
+                                    errorMessage == "No default error message has been specified")
                                     continue;
 
                                 if (!errorMessage.StartsWith("lockey_"))

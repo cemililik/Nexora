@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -13,7 +14,8 @@ public sealed record GetTenantByIdQuery(Guid TenantId) : IQuery<TenantDetailDto>
 
 /// <summary>Returns tenant detail including installed modules, or failure if not found.</summary>
 public sealed class GetTenantByIdHandler(
-    PlatformDbContext platformDb) : IQueryHandler<GetTenantByIdQuery, TenantDetailDto>
+    PlatformDbContext platformDb,
+    ILogger<GetTenantByIdHandler> logger) : IQueryHandler<GetTenantByIdQuery, TenantDetailDto>
 {
     public async Task<Result<TenantDetailDto>> Handle(
         GetTenantByIdQuery request,
@@ -26,6 +28,7 @@ public sealed class GetTenantByIdHandler(
 
         if (tenant is null)
         {
+            logger.LogDebug("Tenant {TenantId} not found", request.TenantId);
             return Result<TenantDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_not_found"));
         }
 
@@ -45,6 +48,6 @@ public sealed class GetTenantByIdHandler(
             installedModules);
 
         return Result<TenantDetailDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_tenant_retrieved"));
+            LocalizedMessage.Of("lockey_identity_tenant_retrieved"));
     }
 }

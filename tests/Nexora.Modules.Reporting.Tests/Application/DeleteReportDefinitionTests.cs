@@ -77,6 +77,7 @@ public sealed class DeleteReportDefinitionTests : IDisposable
             new DeleteReportDefinitionCommand(otherDef.Id.Value), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_reporting_error_definition_not_found");
     }
 
     public void Dispose() => _dbContext.Dispose();

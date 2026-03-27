@@ -21,6 +21,39 @@ import type {
   ContactSource,
 } from '../types';
 
+function validateContactTypeFields(
+  contactType: ContactType,
+  data: { firstName?: string; lastName?: string; companyName?: string },
+  ctx: z.RefinementCtx,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (contactType === 'Individual') {
+    if (!data.firstName || data.firstName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['firstName'],
+        message: t('lockey_validation_required', { ns: 'validation' }),
+      });
+    }
+    if (!data.lastName || data.lastName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lastName'],
+        message: t('lockey_validation_required', { ns: 'validation' }),
+      });
+    }
+  }
+  if (contactType === 'Organization') {
+    if (!data.companyName || data.companyName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['companyName'],
+        message: t('lockey_validation_required', { ns: 'validation' }),
+      });
+    }
+  }
+}
+
 function createContactSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
   return z
     .object({
@@ -42,31 +75,7 @@ function createContactSchemaFactory(t: (key: string, options?: Record<string, un
       }),
     })
     .superRefine((data, ctx) => {
-      if (data.type === 'Individual') {
-        if (!data.firstName || data.firstName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['firstName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-        if (!data.lastName || data.lastName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['lastName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-      }
-      if (data.type === 'Organization') {
-        if (!data.companyName || data.companyName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['companyName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-      }
+      validateContactTypeFields(data.type, data, ctx, t);
     });
 }
 
@@ -93,31 +102,7 @@ function updateContactSchemaFactory(
       currency: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
     })
     .superRefine((data, ctx) => {
-      if (contactType === 'Individual') {
-        if (!data.firstName || data.firstName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['firstName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-        if (!data.lastName || data.lastName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['lastName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-      }
-      if (contactType === 'Organization') {
-        if (!data.companyName || data.companyName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['companyName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-      }
+      validateContactTypeFields(contactType, data, ctx, t);
     });
 }
 

@@ -43,7 +43,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
 
         _platformDb = new PlatformDbContext(platformOptions);
 
-        SeedTenant(_tenantId, "Test Tenant", "test", "tenant-test");
+        TenantSeeder.SeedTenant(_platformDb, _tenantId, "Test Tenant", "test", "tenant-test");
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
         memberResult.Value.IsDefaultOrg.Should().BeTrue();
 
         // Verify through query
-        var orgQueryHandler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor);
+        var orgQueryHandler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationByIdHandler>.Instance);
         var orgQueryResult = await orgQueryHandler.Handle(
             new GetOrganizationByIdQuery(orgId), CancellationToken.None);
 
@@ -93,6 +93,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
         var orgResult = await createOrgHandler.Handle(
             new CreateOrganizationCommand("Sales", "sales"), CancellationToken.None);
 
+        orgResult.IsSuccess.Should().BeTrue();
         var orgId = orgResult.Value!.Id;
 
         var createUserHandler = new CreateUserHandler(_dbContext, _platformDb, _tenantAccessor, _keycloakAdmin, NullLogger<CreateUserHandler>.Instance);
@@ -120,7 +121,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
         membership.Should().BeNull();
 
         // Verify: org member count is 0
-        var orgQueryHandler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor);
+        var orgQueryHandler = new GetOrganizationByIdHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationByIdHandler>.Instance);
         var orgQueryResult = await orgQueryHandler.Handle(
             new GetOrganizationByIdQuery(orgId), CancellationToken.None);
 
@@ -158,15 +159,6 @@ public sealed class OrganizationIntegrationTests : IDisposable
     {
         _dbContext.Dispose();
         _platformDb.Dispose();
-    }
-
-    private void SeedTenant(TenantId tenantId, string name, string slug, string realmId)
-    {
-        var tenant = Tenant.Create(name, slug);
-        typeof(Tenant).BaseType!.BaseType!.GetProperty("Id")!.SetValue(tenant, tenantId);
-        tenant.SetRealmId(realmId);
-        _platformDb.Tenants.Add(tenant);
-        _platformDb.SaveChanges();
     }
 
     private static ITenantContextAccessor CreateTenantAccessor(TenantId tenantId)

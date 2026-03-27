@@ -9,8 +9,12 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Reporting.Api;
 
+/// <summary>
+/// Minimal API endpoints for dashboard CRUD and widget data retrieval.
+/// </summary>
 public static class DashboardEndpoints
 {
+    /// <summary>Maps dashboard CRUD and widget data endpoints under <c>/dashboards</c>.</summary>
     public static void MapDashboardEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/dashboards")
@@ -56,7 +60,7 @@ public static class DashboardEndpoints
             var result = await sender.Send(new DeleteDashboardCommand(id), ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
-                : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
+                : Results.NotFound(ApiEnvelope.Fail(result.Error!));
         });
 
         group.MapGet("/{dashboardId:guid}/widgets/{widgetId:guid}/data", async (

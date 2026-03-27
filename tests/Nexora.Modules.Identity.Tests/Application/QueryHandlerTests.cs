@@ -5,6 +5,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -74,7 +75,7 @@ public sealed class GetTenantByIdQueryTests : IDisposable
         await _platformDb.TenantModules.AddAsync(module);
         await _platformDb.SaveChangesAsync();
 
-        var handler = new GetTenantByIdHandler(_platformDb);
+        var handler = new GetTenantByIdHandler(_platformDb, NullLogger<GetTenantByIdHandler>.Instance);
         var result = await handler.Handle(new GetTenantByIdQuery(tenant.Id.Value), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -85,7 +86,7 @@ public sealed class GetTenantByIdQueryTests : IDisposable
     [Fact]
     public async Task Handle_NotFound_ShouldReturnFailure()
     {
-        var handler = new GetTenantByIdHandler(_platformDb);
+        var handler = new GetTenantByIdHandler(_platformDb, NullLogger<GetTenantByIdHandler>.Instance);
         var result = await handler.Handle(new GetTenantByIdQuery(Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

@@ -17,7 +17,7 @@ public interface IHasDomainEvents
 /// <summary>
 /// Base entity with identity and domain event support.
 /// </summary>
-public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
+public abstract class Entity<TId> : IHasDomainEvents, IEquatable<Entity<TId>> where TId : notnull
 {
     public TId Id { get; protected set; } = default!;
 
@@ -30,9 +30,9 @@ public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
 
     public void ClearDomainEvents() => _domainEvents.Clear();
 
-    public override bool Equals(object? obj)
+    public bool Equals(Entity<TId>? other)
     {
-        if (obj is not Entity<TId> other)
+        if (other is null)
             return false;
 
         if (ReferenceEquals(this, other))
@@ -44,6 +44,15 @@ public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
         return Id.Equals(other.Id);
     }
 
+    public override bool Equals(object? obj) =>
+        Equals(obj as Entity<TId>);
+
     public override int GetHashCode() =>
         Id is null ? 0 : Id.GetHashCode();
+
+    public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
+        left is null ? right is null : left.Equals(right);
+
+    public static bool operator !=(Entity<TId>? left, Entity<TId>? right) =>
+        !(left == right);
 }

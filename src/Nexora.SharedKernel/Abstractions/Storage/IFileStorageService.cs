@@ -45,6 +45,19 @@ public interface IFileStorageService
         string contentType,
         CancellationToken ct = default);
 
+    /// <summary>Uploads a stream directly to storage without buffering into memory.</summary>
+    /// <param name="bucketName">Target bucket name.</param>
+    /// <param name="objectKey">Object key (path) within the bucket.</param>
+    /// <param name="stream">Readable, seekable stream to upload. Caller owns the stream.</param>
+    /// <param name="contentType">MIME type of the content.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task UploadObjectAsync(
+        string bucketName,
+        string objectKey,
+        Stream stream,
+        string contentType,
+        CancellationToken ct = default);
+
     /// <summary>Deletes an object from storage.</summary>
     /// <param name="bucketName">Bucket containing the object.</param>
     /// <param name="objectKey">Object key to delete.</param>

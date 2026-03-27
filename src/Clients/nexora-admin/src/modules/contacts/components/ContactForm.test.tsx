@@ -66,6 +66,34 @@ describe('ContactForm', () => {
       expect(button).toBeDisabled();
     });
 
+    it('should show validation error when submitting Organization with empty companyName', async () => {
+      const user = userEvent.setup();
+      const onSubmit = vi.fn();
+
+      render(
+        <ContactForm mode="create" onSubmit={onSubmit} isPending={false} />,
+      );
+
+      // Switch to Organization type
+      const trigger = screen.getByLabelText('lockey_contacts_form_type');
+      await user.click(trigger);
+      const option = await screen.findByRole('option', { name: 'lockey_contacts_type_organization' });
+      await user.click(option);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('lockey_contacts_form_company_name')).toBeInTheDocument();
+      });
+
+      // Submit without filling companyName
+      await user.click(screen.getByRole('button', { name: 'lockey_contacts_create' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('lockey_validation_required')).toBeInTheDocument();
+      });
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it('should show validation errors when submitting Individual with empty names', async () => {
       const user = userEvent.setup();
       const onSubmit = vi.fn();

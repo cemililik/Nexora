@@ -5,11 +5,7 @@ import '@/shared/lib/i18n';
 import '@/app/globals.css';
 import { initTelemetry } from '@/shared/lib/telemetry';
 
-try {
-  initTelemetry();
-} catch (err) {
-  if (import.meta.env.DEV) console.error('[Telemetry] Failed to initialize:', err);
-}
+initTelemetry();
 
 import { App } from '@/app/App';
 

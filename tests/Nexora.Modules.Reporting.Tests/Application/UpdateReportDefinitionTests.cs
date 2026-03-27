@@ -84,6 +84,11 @@ public sealed class UpdateReportDefinitionTests : IDisposable
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
+
+        // Verify the entity was not mutated by the failed operation
+        var unchanged = await _dbContext.ReportDefinitions.FindAsync(definition.Id);
+        unchanged!.Name.Should().Be("Original Report");
+        unchanged.QueryText.Should().Be("SELECT 1");
     }
 
     [Fact]

@@ -130,6 +130,25 @@ public sealed class GetReportDefinitionsQueryTests : IDisposable
         result.Value.Items[0].Name.Should().Be("My Report");
     }
 
+    [Fact]
+    public async Task Handle_DifferentOrg_DoesNotReturnOtherOrgDefinitions()
+    {
+        // Seed a definition belonging to a different org within the same tenant
+        var otherOrgDef = ReportDefinition.Create(
+            _tenantId, Guid.NewGuid(), "Other Org Report", null,
+            "mod", null, "SELECT 1", null, ReportFormat.Csv);
+        await _dbContext.ReportDefinitions.AddAsync(otherOrgDef);
+
+        await SeedDefinitionsAsync("My Org Report", "mod", null);
+        var handler = new GetReportDefinitionsHandler(_dbContext, _tenantAccessor);
+
+        var result = await handler.Handle(new GetReportDefinitionsQuery(), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.TotalCount.Should().Be(1);
+        result.Value.Items[0].Name.Should().Be("My Org Report");
+    }
+
     private async Task SeedDefinitionsAsync(string name, string module, string? category)
     {
         var definition = ReportDefinition.Create(

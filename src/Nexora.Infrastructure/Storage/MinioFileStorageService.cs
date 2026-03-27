@@ -78,20 +78,31 @@ public sealed class MinioFileStorageService(
         string contentType,
         CancellationToken ct = default)
     {
+        using var stream = new MemoryStream(data);
+        await UploadObjectAsync(bucketName, objectKey, stream, contentType, ct);
+    }
+
+    /// <inheritdoc />
+    public async Task UploadObjectAsync(
+        string bucketName,
+        string objectKey,
+        Stream stream,
+        string contentType,
+        CancellationToken ct = default)
+    {
         var client = await GetClientAsync(ct);
         await EnsureBucketExistsAsync(client, bucketName, ct);
 
-        using var stream = new MemoryStream(data);
         await client.PutObjectAsync(
             new PutObjectArgs()
                 .WithBucket(bucketName)
                 .WithObject(objectKey)
                 .WithStreamData(stream)
-                .WithObjectSize(data.Length)
+                .WithObjectSize(stream.Length)
                 .WithContentType(contentType), ct);
 
         logger.LogInformation("Uploaded object {BucketName}/{ObjectKey} ({Size} bytes)",
-            bucketName, objectKey, data.Length);
+            bucketName, objectKey, stream.Length);
     }
 
     /// <inheritdoc />

@@ -102,6 +102,9 @@ public sealed class ApiEnvelopeTests
     [Fact]
     public void Success_WithoutActiveTrace_ShouldHaveNullTraceId()
     {
+        // Explicitly clear any ambient Activity to prevent leaks from other tests
+        Activity.Current = null;
+
         var envelope = ApiEnvelope<string>.Success("data");
 
         envelope.TraceId.Should().BeNull();

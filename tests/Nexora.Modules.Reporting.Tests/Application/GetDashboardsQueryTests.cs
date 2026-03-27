@@ -69,8 +69,10 @@ public sealed class GetDashboardsQueryTests : IDisposable
     [Fact]
     public async Task Handle_DifferentTenant_DoesNotReturnOtherTenantDashboards()
     {
+        // Vary only tenant ID to isolate the dimension under test (tenant isolation).
+        // Keep the same org ID to ensure the filter is on tenant, not org.
         var otherDashboard = Dashboard.Create(
-            Guid.NewGuid(), Guid.NewGuid(), "Other Tenant Dashboard", null);
+            Guid.NewGuid(), _orgId, "Other Tenant Dashboard", null);
         await _dbContext.Dashboards.AddAsync(otherDashboard);
 
         await SeedDashboardAsync("My Dashboard");
