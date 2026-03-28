@@ -29,6 +29,7 @@ import { useCurrency } from './useCurrency';
 describe('useCurrency', () => {
   beforeEach(() => {
     mockLocale = 'en';
+    mockOrganization.mockReset();
     mockOrganization.mockReturnValue(null);
   });
 

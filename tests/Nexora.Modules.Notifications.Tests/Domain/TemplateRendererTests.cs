@@ -110,7 +110,7 @@ public sealed class TemplateRendererTests
         };
 
         // Act
-        var result = TemplateRenderer.RenderInline(content, variables);
+        var result = TemplateRenderer.RenderInline(content, variables, htmlEncode: false);
 
         // Assert
         result.Should().Be("Hello Jane, your order ORD-001 is ready.");
@@ -123,7 +123,7 @@ public sealed class TemplateRendererTests
         var content = "No variables here.";
 
         // Act
-        var result = TemplateRenderer.RenderInline(content, new());
+        var result = TemplateRenderer.RenderInline(content, new(), htmlEncode: false);
 
         // Assert
         result.Should().Be("No variables here.");
