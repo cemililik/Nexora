@@ -42,7 +42,12 @@ public abstract class Entity<TId> : IHasDomainEvents, IEquatable<Entity<TId>> wh
         if (GetType() != other.GetType())
             return false;
 
+        // Treat null or default IDs as transient — transient entities are never equal
         if (Id is null || other.Id is null)
+            return false;
+
+        if (EqualityComparer<TId>.Default.Equals(Id, default!) ||
+            EqualityComparer<TId>.Default.Equals(other.Id, default!))
             return false;
 
         return Id.Equals(other.Id);
@@ -52,7 +57,9 @@ public abstract class Entity<TId> : IHasDomainEvents, IEquatable<Entity<TId>> wh
         Equals(obj as Entity<TId>);
 
     public override int GetHashCode() =>
-        Id is null ? 0 : Id.GetHashCode();
+        Id is null || EqualityComparer<TId>.Default.Equals(Id, default!)
+            ? 0
+            : Id.GetHashCode();
 
     public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
         left is null ? right is null : left.Equals(right);

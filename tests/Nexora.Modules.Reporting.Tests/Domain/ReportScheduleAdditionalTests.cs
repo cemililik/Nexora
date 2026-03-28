@@ -51,7 +51,7 @@ public sealed class ReportScheduleAdditionalTests
     }
 
     [Fact]
-    public void Activate_AfterDeactivation_ShouldRaiseCorrectState()
+    public void Activate_WhenPreviouslyDeactivated_ShouldSetStateToActive()
     {
         var schedule = ReportSchedule.Create(
             _tenantId, _definitionId, "0 0 * * *", ReportFormat.Csv, null);

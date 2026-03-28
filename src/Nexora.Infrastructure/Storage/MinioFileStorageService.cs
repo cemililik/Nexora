@@ -94,6 +94,10 @@ public sealed class MinioFileStorageService(
         string contentType,
         CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(stream);
+        if (!stream.CanRead)
+            throw new ArgumentException("Stream must be readable.", nameof(stream));
+
         var client = await GetClientAsync(ct);
         await EnsureBucketExistsAsync(client, bucketName, ct);
 

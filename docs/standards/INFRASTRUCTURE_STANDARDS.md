@@ -415,18 +415,24 @@ public abstract class NexoraJob<TParams>(
 ```
 
 ```csharp
+// Job parametreleri JobParams'tan türemeli
+public sealed record GenerateReceiptParams : JobParams
+{
+    public required DonationId DonationId { get; init; }
+}
+
 // Modülde kullanım
 public sealed class GenerateReceiptJob(
     ITenantContextAccessor tenantAccessor,
     IDonationRepository repository,
     IDocumentService documents,
     ILogger<GenerateReceiptJob> logger)
-    : NexoraJob<DonationId>(tenantAccessor, logger)
+    : NexoraJob<GenerateReceiptParams>(tenantAccessor, logger)
 {
-    protected override async Task ExecuteAsync(DonationId donationId, CancellationToken ct)
+    protected override async Task ExecuteAsync(GenerateReceiptParams parameters, CancellationToken ct)
     {
-        var donation = await repository.GetByIdAsync(donationId, ct)
-            ?? throw new InvalidOperationException($"Donation {donationId} not found");
+        var donation = await repository.GetByIdAsync(parameters.DonationId, ct)
+            ?? throw new InvalidOperationException($"Donation {parameters.DonationId} not found");
 
         var receipt = await documents.GenerateFromTemplateAsync(
             "donation-receipt", donation, ct);

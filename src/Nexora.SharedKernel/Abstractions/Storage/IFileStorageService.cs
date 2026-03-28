@@ -45,10 +45,16 @@ public interface IFileStorageService
         string contentType,
         CancellationToken ct = default);
 
-    /// <summary>Uploads a stream to storage. Implementation resets Position to 0 and requires a seekable stream; non-seekable streams are auto-buffered into memory (max 100 MB — exceeding this throws <see cref="InvalidOperationException"/>).</summary>
+    /// <summary>
+    /// Uploads a readable stream to storage. Accepts both seekable and non-seekable streams.
+    /// For seekable streams, Position is reset to 0 before upload.
+    /// For non-seekable streams, content is auto-buffered into memory up to 100 MB;
+    /// exceeding this limit throws <see cref="InvalidOperationException"/>.
+    /// Callers should provide seekable streams for large uploads.
+    /// </summary>
     /// <param name="bucketName">Target bucket name.</param>
     /// <param name="objectKey">Object key (path) within the bucket.</param>
-    /// <param name="stream">Readable stream to upload. Non-seekable streams are automatically buffered. Caller owns the stream.</param>
+    /// <param name="stream">Readable stream to upload. Caller owns the stream.</param>
     /// <param name="contentType">MIME type of the content.</param>
     /// <param name="ct">Cancellation token.</param>
     Task UploadObjectAsync(

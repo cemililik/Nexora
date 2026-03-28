@@ -47,7 +47,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task CreateOrganization_ThenAddMember_ShouldAssociate()
+    public async Task CreateOrganization_WhenMemberAdded_ShouldAssociateMember()
     {
         // Arrange: create an organization
         var createOrgHandler = new CreateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<CreateOrganizationHandler>.Instance);
@@ -86,7 +86,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task RemoveMember_ShouldDisassociate()
+    public async Task RemoveMember_WhenMemberExists_ShouldDisassociate()
     {
         // Arrange: create org and user, then add membership
         var createOrgHandler = new CreateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<CreateOrganizationHandler>.Instance);
@@ -132,7 +132,7 @@ public sealed class OrganizationIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task DeleteOrganization_ShouldSoftDelete()
+    public async Task DeleteOrganization_WhenOrganizationExists_ShouldSoftDelete()
     {
         // Arrange: create an organization
         var createOrgHandler = new CreateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<CreateOrganizationHandler>.Instance);
