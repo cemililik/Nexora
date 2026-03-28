@@ -47,6 +47,13 @@ public static partial class TemplateRenderer
     }
 
     /// <summary>
+    /// Renders an inline subject with variable substitution and CR/LF stripping (header injection prevention).
+    /// </summary>
+    public static string RenderInlineSubject(string subject, Dictionary<string, string> variables) =>
+        SubstituteVariables(subject, variables, htmlEncode: false)
+            .Replace("\r", string.Empty).Replace("\n", string.Empty);
+
+    /// <summary>
     /// Renders inline content (no template) with variable substitution.
     /// </summary>
     /// <param name="content">The content with <c>{{variable}}</c> placeholders.</param>

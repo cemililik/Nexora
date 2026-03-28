@@ -35,7 +35,7 @@ public sealed class ReportScheduleAdditionalTests
     }
 
     [Fact]
-    public void RecordExecution_MultipleExecutions_ShouldTrackLatest()
+    public void RecordExecution_WhenCalledMultipleTimes_StoresValuesFromLastCall()
     {
         var schedule = ReportSchedule.Create(
             _tenantId, _definitionId, "0 0 * * *", ReportFormat.Csv, null);

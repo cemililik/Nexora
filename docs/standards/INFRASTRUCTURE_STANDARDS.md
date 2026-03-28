@@ -982,14 +982,22 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ## 5. DomainEventChannel
 
-The `DomainEventChannel` uses **Wait** mode (not DropWrite). When the channel is full, `TryWrite` returns `false` and a warning is logged — events are not silently dropped. Consumers should process events promptly to avoid back-pressure.
+The `DomainEventChannel` uses `BoundedChannelFullMode.Wait`. In **Wait** mode, `WriteAsync` blocks the caller until space is available, but `TryWrite` (which the dispatcher uses) **never blocks** — it returns `false` immediately when the channel is full. When `TryWrite` returns `false`, the event is **not enqueued** and a warning is logged. The distinction matters:
+
+- **`WriteAsync`** (blocking) — waits for capacity. Used by async producers that can afford to wait.
+- **`TryWrite`** (non-blocking) — returns `false` immediately when full. Used by the dispatcher to avoid deadlocks in sync `SaveChanges` paths.
+
+When `TryWrite` fails, the warning log distinguishes "channel completed" (shutdown) from "at capacity" (back-pressure). Events are **not** silently lost — observability is guaranteed.
+
+**Important**: The channel does **not** retry failed `TryWrite` attempts. Callers that require guaranteed delivery must implement their own retry or back-pressure mechanism. The channel capacity (10,000) is sized to handle normal load without drops.
 
 ```csharp
 // DomainEventChannel behavior:
-// - Mode: BoundedChannelFullMode.Wait (changed from DropWrite)
-// - TryWrite returns false when channel is full
-// - Warning is logged when TryWrite fails (channel full)
-// - Callers should handle false return and implement appropriate back-pressure strategy
+// - Mode: BoundedChannelFullMode.Wait
+// - Dispatcher uses TryWrite (non-blocking) to avoid sync deadlocks
+// - TryWrite returns false when full → event not enqueued + warning logged
+// - WriteAsync would block, but is not used by the dispatcher
+// - Callers needing guaranteed delivery must implement retries externally
 ```
 
 ---

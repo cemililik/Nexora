@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Reporting.Application.DTOs;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure.Services;
@@ -17,7 +18,7 @@ public sealed record GetDashboardWidgetDataQuery(
 
 public sealed class GetDashboardWidgetDataHandler(
     ReportingDbContext dbContext,
-    ReportExecutionService executionService,
+    IReportExecutionService executionService,
     ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetDashboardWidgetDataQuery, WidgetDataDto>
 {
     public async Task<Result<WidgetDataDto>> Handle(GetDashboardWidgetDataQuery request, CancellationToken ct)

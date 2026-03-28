@@ -45,7 +45,7 @@ flowchart TB
     Identity["Identity\nModule"]
     Contacts["Contact\nModule"]
     CRM["CRM\nModule"]
-    Donations["Donation\nModule"]
+    Fundraising["Fundraising\nModule"]
     Finance["Finance\nModule"]
     Projects["Project\nModule"]
     More["...\nModules"]
@@ -61,10 +61,10 @@ flowchart TB
     Gateway --> Portal & Admin & BFF
     Gateway -- "JWT validation" --> Keycloak
     Portal & Admin & BFF --> Dapr
-    Dapr --> Identity & Contacts & CRM & Donations & Finance & Projects & More
-    Identity & Contacts & CRM & Donations & Finance & Projects & More --> PG & Redis & Kafka
+    Dapr --> Identity & Contacts & CRM & Fundraising & Finance & Projects & More
+    Identity & Contacts & CRM & Fundraising & Finance & Projects & More --> PG & Redis & Kafka
     Dapr -- "secrets" --> Vault
-    Identity & Contacts & CRM & Donations & Finance & Projects & More -- "files" --> MinIO
+    Identity & Contacts & CRM & Fundraising & Finance & Projects & More -- "files" --> MinIO
 
     style Gateway fill:#e74c3c,color:#fff
     style Dapr fill:#9b59b6,color:#fff
@@ -124,7 +124,7 @@ flowchart TB
 | Technology | Role | Why |
 |-----------|------|-----|
 | **Twilio / Netgsm** | SMS gateway | International + Turkey SMS support |
-| **WhatsApp Business API** | WhatsApp messaging | Direct from CRM/Donation modules |
+| **WhatsApp Business API** | WhatsApp messaging | Direct from CRM/Fundraising modules |
 | **SendGrid / Mailgun** | Email delivery | Transactional + bulk email |
 | **Stripe** | Payment processing | Global payments, recurring, multi-currency |
 | **iyzico / Param** | Local payment (TR) | Turkish market payment support |

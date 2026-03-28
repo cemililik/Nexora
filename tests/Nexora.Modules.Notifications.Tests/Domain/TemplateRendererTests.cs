@@ -129,6 +129,37 @@ public sealed class TemplateRendererTests
         result.Should().Be("No variables here.");
     }
 
+    [Fact]
+    public void Render_HtmlFormat_ShouldHtmlEncodeBodyVariables()
+    {
+        // Arrange
+        var template = CreateTemplate("Hello", "Name: {{name}}");
+        var variables = new Dictionary<string, string> { ["name"] = "<script>alert('xss')</script>" };
+
+        // Act
+        var (_, body) = TemplateRenderer.Render(template, variables);
+
+        // Assert
+        body.Should().Contain("&lt;script&gt;");
+        body.Should().NotContain("<script>");
+    }
+
+    [Fact]
+    public void Render_ShouldStripCrLfFromSubject()
+    {
+        // Arrange
+        var template = CreateTemplate("Hello\r\nWorld", "Body text");
+        var variables = new Dictionary<string, string>();
+
+        // Act
+        var (subject, _) = TemplateRenderer.Render(template, variables);
+
+        // Assert
+        subject.Should().Be("HelloWorld");
+        subject.Should().NotContain("\r");
+        subject.Should().NotContain("\n");
+    }
+
     private static NotificationTemplate CreateTemplate(string subject, string body)
     {
         return NotificationTemplate.Create(
