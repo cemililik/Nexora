@@ -330,6 +330,7 @@ jobs.Schedule<SendPaymentReminderJob>(
 ```
 
 #### Recurring (Cron — zamanlanmış)
+
 ```csharp
 // Her modül kendi recurring job'larını IModule.ConfigureJobs'da kaydeder
 // IJobScheduler.AddOrUpdate now accepts Expression<Func<TJob, Task>> parameter
@@ -409,7 +410,7 @@ public abstract class NexoraJob<TParams>(
     }
 
     /// Module implements this
-    protected abstract Task HandleAsync(TParams parameters, CancellationToken ct);
+    protected abstract Task ExecuteAsync(TParams parameters, CancellationToken ct);
 }
 ```
 
@@ -422,7 +423,7 @@ public sealed class GenerateReceiptJob(
     ILogger<GenerateReceiptJob> logger)
     : NexoraJob<DonationId>(tenantAccessor, logger)
 {
-    protected override async Task HandleAsync(DonationId donationId, CancellationToken ct)
+    protected override async Task ExecuteAsync(DonationId donationId, CancellationToken ct)
     {
         var donation = await repository.GetByIdAsync(donationId, ct)
             ?? throw new InvalidOperationException($"Donation {donationId} not found");

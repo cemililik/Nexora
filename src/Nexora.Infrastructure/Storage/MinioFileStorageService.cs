@@ -99,17 +99,23 @@ public sealed class MinioFileStorageService(
 
         // Non-seekable streams must be buffered; enforce a size limit to prevent OOM
         const long maxBufferSize = 100 * 1024 * 1024; // 100 MB
+        const int chunkSize = 81_920; // 80 KB chunks
         Stream uploadStream = stream;
         MemoryStream? buffered = null;
         if (!stream.CanSeek)
         {
             buffered = new MemoryStream();
-            await stream.CopyToAsync(buffered, ct);
-            if (buffered.Length > maxBufferSize)
+            var buffer = new byte[chunkSize];
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, chunkSize), ct)) > 0)
             {
-                await buffered.DisposeAsync();
-                throw new InvalidOperationException(
-                    $"Non-seekable stream exceeds maximum buffer size of {maxBufferSize / (1024 * 1024)} MB. Use a seekable stream for large uploads.");
+                await buffered.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                if (buffered.Length > maxBufferSize)
+                {
+                    await buffered.DisposeAsync();
+                    throw new InvalidOperationException(
+                        $"Non-seekable stream exceeds maximum buffer size of {maxBufferSize / (1024 * 1024)} MB. Use a seekable stream for large uploads.");
+                }
             }
             buffered.Position = 0;
             uploadStream = buffered;

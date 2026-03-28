@@ -165,7 +165,8 @@ public sealed class UserManagementIntegrationTests : IDisposable
 
         // Act: delete the user
         var deleteHandler = new DeleteUserHandler(_dbContext, _platformDb, deleteAccessor, _keycloakAdmin, NullLogger<DeleteUserHandler>.Instance);
-        await deleteHandler.Handle(new DeleteUserCommand(userId), CancellationToken.None);
+        var deleteResult = await deleteHandler.Handle(new DeleteUserCommand(userId), CancellationToken.None);
+        deleteResult.IsSuccess.Should().BeTrue();
 
         // Assert: query by ID should fail (user not found)
         var queryHandler = new GetUserByIdHandler(_dbContext, _tenantAccessor);

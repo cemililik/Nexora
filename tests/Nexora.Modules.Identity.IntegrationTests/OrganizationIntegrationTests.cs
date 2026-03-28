@@ -104,8 +104,9 @@ public sealed class OrganizationIntegrationTests : IDisposable
         var userId = userResult.Value!.Id;
 
         var addMemberHandler = new AddOrganizationMemberHandler(_dbContext, _tenantAccessor, NullLogger<AddOrganizationMemberHandler>.Instance);
-        await addMemberHandler.Handle(
+        var addResult = await addMemberHandler.Handle(
             new AddOrganizationMemberCommand(orgId, userId), CancellationToken.None);
+        addResult.IsSuccess.Should().BeTrue();
 
         // Act: remove the member
         var removeHandler = new RemoveOrganizationMemberHandler(_dbContext, _tenantAccessor, NullLogger<RemoveOrganizationMemberHandler>.Instance);

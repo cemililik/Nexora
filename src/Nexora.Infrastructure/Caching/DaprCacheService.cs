@@ -20,7 +20,6 @@ public sealed class DaprCacheService(
     ILogger<DaprCacheService> logger) : ICacheService
 {
     private const string StateStoreName = "statestore";
-    private static readonly TimeSpan MaxKeyTtl = TimeSpan.FromHours(1);
     private static readonly ConcurrentDictionary<string, DateTimeOffset> _trackedKeys = new();
 
     /// <summary>

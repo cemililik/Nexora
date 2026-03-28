@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
@@ -24,6 +25,7 @@ public sealed class GetCurrentUserHandler(
         CancellationToken cancellationToken)
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
+        var sw = Stopwatch.StartNew();
 
         var user = await dbContext.Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.KeycloakUserId == request.KeycloakUserId && u.TenantId == tenantId,
@@ -42,6 +44,10 @@ public sealed class GetCurrentUserHandler(
                 o => o.Id,
                 (ou, o) => new UserOrganizationDto(o.Id.Value, o.Name, ou.IsDefaultOrg))
             .ToListAsync(cancellationToken);
+
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+            logger.LogWarning("GetCurrentUser query took {ElapsedMs}ms for tenant {TenantId}", sw.ElapsedMilliseconds, tenantId);
 
         var dto = new UserDetailDto(
             user.Id.Value, user.Email, user.FirstName, user.LastName,

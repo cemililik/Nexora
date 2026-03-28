@@ -22,7 +22,7 @@ public sealed class ReportScheduleAdditionalTests
     }
 
     [Fact]
-    public void Update_ShouldChangeCronAndFormat()
+    public void Update_WhenValidValues_UpdatesCronAndFormat()
     {
         var schedule = ReportSchedule.Create(
             _tenantId, _definitionId, "0 0 * * *", ReportFormat.Csv, null);

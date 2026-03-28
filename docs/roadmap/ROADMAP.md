@@ -305,6 +305,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] "Test Query" button (POST /test-query endpoint, execute SQL with LIMIT 10, show preview table in form)
 
 #### Code Review Fixes (Phase 1 completion)
+
 - [x] All 121 code review findings resolved across entire Phase 1 codebase
 - [x] New test projects: `Nexora.Api.ContractTests`, `Nexora.Modules.Identity.IntegrationTests`
 - [x] Test coverage: +46 test files, ~289 new tests added

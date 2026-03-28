@@ -40,7 +40,7 @@ public sealed record ApiEnvelope<T>
     {
         Message = "lockey_validation_failed",
         Errors = errors,
-        TraceId = traceId
+        TraceId = traceId ?? Activity.Current?.TraceId.ToString()
     };
 }
 

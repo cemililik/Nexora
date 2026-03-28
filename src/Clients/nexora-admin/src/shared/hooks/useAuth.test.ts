@@ -60,6 +60,16 @@ vi.mock('@/shared/lib/stores/authStore', () => ({
 import { setAuthToken } from '@/shared/lib/api';
 import { useAuth } from './useAuth';
 
+function createAxiosError(status: number, statusText: string): AxiosError {
+  return new AxiosError(statusText, String(status), undefined, undefined, {
+    status,
+    data: null,
+    statusText,
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  });
+}
+
 describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -95,7 +105,7 @@ describe('useAuth', () => {
   it('should fall back to token claims when /me returns 404', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue(new AxiosError('Not Found', '404', undefined, undefined, { status: 404, data: null, statusText: 'Not Found', headers: {}, config: { headers: new AxiosHeaders() } }));
+    mockApiGet.mockRejectedValue(createAxiosError(404, 'Not Found'));
 
     renderHook(() => useAuth());
 
@@ -120,7 +130,7 @@ describe('useAuth', () => {
   it('should clear session and redirect when /me returns 401', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue(new AxiosError('Unauthorized', '401', undefined, undefined, { status: 401, data: null, statusText: 'Unauthorized', headers: {}, config: { headers: new AxiosHeaders() } }));
+    mockApiGet.mockRejectedValue(createAxiosError(401, 'Unauthorized'));
 
     renderHook(() => useAuth());
 
@@ -148,7 +158,7 @@ describe('useAuth', () => {
   it('should fall back to token claims when /me returns 500', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue(new AxiosError('Internal Server Error', '500', undefined, undefined, { status: 500, data: null, statusText: 'Internal Server Error', headers: {}, config: { headers: new AxiosHeaders() } }));
+    mockApiGet.mockRejectedValue(createAxiosError(500, 'Internal Server Error'));
 
     renderHook(() => useAuth());
 
