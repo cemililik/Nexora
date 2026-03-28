@@ -340,6 +340,7 @@ Phase 2 introduces financial modules (Finance) and heavy cross-module event flow
 - [ ] **Inbox Pattern (Idempotent Consumer)** — EventId-based dedup in integration event handlers. Prevents duplication during Kafka consumer rebalance and retries. 4 integration event handlers protected with inbox guard.
 - [ ] **Outbox/Inbox Monitoring** — Grafana dashboard panel (queue depth, processing latency, duplicate hit rate)
 - [ ] **Cleanup Jobs** — OutboxCleanupJob (7 days), InboxCleanupJob (30 days)
+- [ ] **Cache Cross-Instance Invalidation** — `DaprCacheService.RemoveByPrefixAsync` currently only removes keys tracked in-process via `_trackedKeys`; L2 (Redis) entries on other instances remain stale. Implement Dapr pub/sub invalidation: publish prefix-invalidation event from `RemoveByPrefixAsync`, subscribe in all instances to remove matching keys from local `memoryCache` and `_trackedKeys`. Required before horizontal scaling in production.
 
 ### 1.5.2 Portal UI Extension Points
 
