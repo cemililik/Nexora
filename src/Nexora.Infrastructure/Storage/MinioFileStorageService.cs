@@ -84,8 +84,9 @@ public sealed class MinioFileStorageService(
 
     /// <inheritdoc />
     /// <remarks>
-    /// The stream must be seekable. Position is reset to 0 before upload to ensure
-    /// all content is uploaded regardless of the caller's stream position.
+    /// Accepts both seekable and non-seekable streams. For seekable streams, Position
+    /// is reset to 0 before upload. Non-seekable streams are buffered into memory
+    /// (up to 100 MB; exceeding throws <see cref="InvalidOperationException"/>).
     /// </remarks>
     public async Task UploadObjectAsync(
         string bucketName,

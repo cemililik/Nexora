@@ -18,29 +18,28 @@ flowchart TB
         Portal["Portal\nFramework"]
     end
 
-    subgraph Phase2["NGO & Foundation (Phase 2)"]
+    subgraph Phase2["Phase 2 — Core Business"]
         CRM["CRM"]
-        Donations["Donations &\nFundraising"]
-        Sponsorship["Sponsorship\nManagement"]
-        Events["Event\nManagement"]
-        Kumbara["Collection Box\n(Kumbara)"]
-        Kumanya["Aid Package\n(Kumanya)"]
-    end
-
-    subgraph Phase3["Education & CMS (Phase 3)"]
-        Education["Education\nManagement"]
+        Finance["Finance"]
         Subscription["Subscription\n& Billing"]
-        CMS["Website &\nCMS"]
-        Surveys["Survey &\nFeedback"]
+        Projects["Project\nManagement"]
     end
 
-    subgraph Phase4["Operations (Phase 4)"]
-        Accounting["Accounting\n& Finance"]
+    subgraph Phase3["Phase 3 — Growth"]
+        CMS["Website &\nCMS"]
+        Events["Event\nManagement"]
+        Surveys["Survey &\nFeedback"]
         HR["HR &\nPayroll"]
+        Inventory["Inventory &\nAssets"]
+    end
+
+    subgraph Phase4["Phase 4 — Advanced & Verticals"]
+        Accounting["Accounting"]
         POS["Point of\nSale"]
         Fleet["Fleet\nManagement"]
-        Inventory["Inventory &\nAssets"]
-        Projects["Project\nManagement"]
+        Fundraising["Fundraising\n(Vertical: NGO)"]
+        Sponsorship["Sponsorship &\nPrograms\n(Vertical: NGO)"]
+        Education["Education\nManagement\n(Vertical: Education)"]
     end
 
     %% Core internal dependencies
@@ -54,44 +53,43 @@ flowchart TB
     %% Phase 2 required dependencies
     CRM --> Contacts
     CRM --> Notifications
-    Donations --> Contacts
-    Donations --> Notifications
-    Donations --> Documents
-    Sponsorship --> Contacts
-    Sponsorship --> Donations
-    Sponsorship --> Notifications
-    Events --> Contacts
-    Events --> Notifications
-    Kumbara --> Contacts
-    Kumbara --> Notifications
-    Kumanya --> Contacts
-    Kumanya --> Notifications
-
-    %% Phase 3 required dependencies
-    Education --> CRM
-    Education --> Contacts
-    Education --> Documents
-    Education --> Notifications
+    Finance --> Contacts
+    Finance --> Notifications
     Subscription --> Contacts
     Subscription --> Notifications
+    Projects --> Contacts
+    Projects --> Notifications
+
+    %% Phase 3 required dependencies
     CMS --> Notifications
+    Events --> Contacts
+    Events --> Notifications
     Surveys --> Contacts
     Surveys --> Notifications
-
-    %% Phase 4 required dependencies
-    Accounting --> Contacts
     HR --> Contacts
     HR --> Notifications
     HR --> Documents
+    Inventory --> Contacts
+    Inventory --> Notifications
+
+    %% Phase 4 required dependencies
+    Accounting --> Contacts
+    Accounting --> Finance
     POS --> Contacts
     POS --> Notifications
     Fleet --> Contacts
     Fleet --> Notifications
     Fleet --> Documents
-    Inventory --> Contacts
-    Inventory --> Notifications
-    Projects --> Contacts
-    Projects --> Notifications
+    Fundraising --> Contacts
+    Fundraising --> Notifications
+    Fundraising --> Documents
+    Sponsorship --> Contacts
+    Sponsorship --> Fundraising
+    Sponsorship --> Notifications
+    Education --> CRM
+    Education --> Contacts
+    Education --> Documents
+    Education --> Notifications
 
     %% Styling
     style Identity fill:#e74c3c,color:#fff
@@ -102,23 +100,22 @@ flowchart TB
     style Portal fill:#e74c3c,color:#fff
 
     style CRM fill:#3498db,color:#fff
-    style Donations fill:#3498db,color:#fff
-    style Sponsorship fill:#3498db,color:#fff
-    style Events fill:#3498db,color:#fff
-    style Kumbara fill:#3498db,color:#fff
-    style Kumanya fill:#3498db,color:#fff
+    style Finance fill:#3498db,color:#fff
+    style Subscription fill:#3498db,color:#fff
+    style Projects fill:#3498db,color:#fff
 
-    style Education fill:#27ae60,color:#fff
-    style Subscription fill:#27ae60,color:#fff
     style CMS fill:#27ae60,color:#fff
+    style Events fill:#27ae60,color:#fff
     style Surveys fill:#27ae60,color:#fff
+    style HR fill:#27ae60,color:#fff
+    style Inventory fill:#27ae60,color:#fff
 
     style Accounting fill:#f39c12,color:#fff
-    style HR fill:#f39c12,color:#fff
     style POS fill:#f39c12,color:#fff
     style Fleet fill:#f39c12,color:#fff
-    style Inventory fill:#f39c12,color:#fff
-    style Projects fill:#f39c12,color:#fff
+    style Fundraising fill:#f39c12,color:#fff
+    style Sponsorship fill:#f39c12,color:#fff
+    style Education fill:#f39c12,color:#fff
 ```
 
 > **Note**: All business modules implicitly depend on **Identity** for authentication, tenant resolution, and RBAC. These arrows are omitted from the diagram to reduce clutter. Only non-Identity required dependencies are shown as solid arrows.
@@ -136,66 +133,72 @@ flowchart TB
         Documents["Documents"]
         Reporting["Reporting"]
         Portal["Portal"]
-    end
-
-    subgraph Phase2["Phase 2"]
-        CRM["CRM"]
-        Donations["Donations"]
-        Events["Events"]
-    end
-
-    subgraph Phase3["Phase 3"]
-        Education["Education"]
-        Subscription["Subscription"]
-        CMS["CMS"]
         Contacts2["Contacts"]
     end
 
-    subgraph Phase4["Phase 4"]
-        Accounting["Accounting"]
-        HR["HR"]
-        POS["POS"]
-        Inventory["Inventory"]
+    subgraph Phase2["Phase 2 — Core Business"]
+        CRM["CRM"]
+        Finance["Finance"]
+        Subscription["Subscription"]
         Projects["Projects"]
     end
 
-    %% Optional dependencies (dashed)
-    Events -.->|"flyers, galleries"| Documents
-    Events -.->|"follow-up workflows"| CRM
-    Events -.->|"pledge tracking"| Donations
+    subgraph Phase3["Phase 3 — Growth"]
+        CMS["CMS"]
+        Events["Events"]
+        HR["HR"]
+        Inventory["Inventory"]
+    end
 
-    Education -.->|"tuition billing"| Subscription
+    subgraph Phase4["Phase 4 — Advanced & Verticals"]
+        Accounting["Accounting"]
+        POS["POS"]
+        Fundraising["Fundraising"]
+        Sponsorship["Sponsorship"]
+        Education["Education"]
+    end
 
+    %% Phase 2 optional dependencies
     Subscription -.->|"dashboards"| Reporting
     Subscription -.->|"invoice attachments"| Documents
-
-    CMS -.->|"form → contact"| Contacts2
-    CMS -.->|"form → lead"| CRM
-    CMS -.->|"donation page"| Donations
-    CMS -.->|"public pages"| Portal
-
-    Accounting -.->|"payroll journals"| HR
-    Accounting -.->|"receipt storage"| Documents
-
-    POS -.->|"stock deduction"| Inventory
-    POS -.->|"sales journals"| Accounting
-
-    Inventory -.->|"asset documents"| Documents
-
+    Finance -.->|"financial reports"| Documents
+    Finance -.->|"dashboards"| Reporting
     Projects -.->|"contract storage"| Documents
     Projects -.->|"cost journals"| Accounting
 
-    style Events fill:#3498db,color:#fff
+    %% Phase 3 optional dependencies
+    Events -.->|"flyers, galleries"| Documents
+    Events -.->|"follow-up workflows"| CRM
+    Events -.->|"pledge tracking"| Fundraising
+    CMS -.->|"form → contact"| Contacts2
+    CMS -.->|"form → lead"| CRM
+    CMS -.->|"donation page"| Fundraising
+    CMS -.->|"public pages"| Portal
+    Inventory -.->|"asset documents"| Documents
+
+    %% Phase 4 optional dependencies
+    Accounting -.->|"payroll journals"| HR
+    Accounting -.->|"receipt storage"| Documents
+    Accounting -.->|"alerts"| Notifications
+    POS -.->|"stock deduction"| Inventory
+    POS -.->|"sales journals"| Accounting
+    Fundraising -.->|"lead tracking"| CRM
+    Sponsorship -.->|"contract storage"| Documents
+    Education -.->|"tuition billing"| Subscription
+
     style CRM fill:#3498db,color:#fff
-    style Donations fill:#3498db,color:#fff
-    style Education fill:#27ae60,color:#fff
-    style Subscription fill:#27ae60,color:#fff
+    style Finance fill:#3498db,color:#fff
+    style Subscription fill:#3498db,color:#fff
+    style Projects fill:#3498db,color:#fff
     style CMS fill:#27ae60,color:#fff
+    style Events fill:#27ae60,color:#fff
+    style HR fill:#27ae60,color:#fff
+    style Inventory fill:#27ae60,color:#fff
     style Accounting fill:#f39c12,color:#fff
-    style HR fill:#f39c12,color:#fff
     style POS fill:#f39c12,color:#fff
-    style Inventory fill:#f39c12,color:#fff
-    style Projects fill:#f39c12,color:#fff
+    style Fundraising fill:#f39c12,color:#fff
+    style Sponsorship fill:#f39c12,color:#fff
+    style Education fill:#f39c12,color:#fff
 ```
 
 ## Dependency Rules
@@ -218,44 +221,46 @@ flowchart TB
 | Reporting Engine | Core | identity | — |
 | Portal Framework | Core | identity | — |
 | CRM | Phase 2 | contacts, notifications | — |
-| Donations & Fundraising | Phase 2 | contacts, notifications, documents | — |
-| Sponsorship | Phase 2 | contacts, donations, notifications | — |
-| Event Management | Phase 2 | contacts, notifications | documents, crm, donations |
-| Collection Box (Kumbara) | Phase 2 | contacts, notifications | — |
-| Aid Package (Kumanya) | Phase 2 | contacts, notifications | — |
-| Education Management | Phase 3 | crm, contacts, documents, notifications | subscription |
-| Subscription & Billing | Phase 3 | contacts, notifications | reporting, documents |
-| Website & CMS | Phase 3 | notifications | contacts, crm, donations, portal |
+| Finance | Phase 2 | contacts, notifications | documents, reporting |
+| Subscription & Billing | Phase 2 | contacts, notifications | reporting, documents |
+| Project Management | Phase 2 | contacts, notifications | documents, accounting |
+| Website & CMS | Phase 3 | notifications | contacts, crm, fundraising, portal |
+| Event Management | Phase 3 | contacts, notifications | documents, crm, fundraising |
 | Surveys & Feedback | Phase 3 | contacts, notifications | — |
-| Accounting & Finance | Phase 4 | contacts | hr, documents, notifications |
-| HR & Payroll | Phase 4 | contacts, notifications, documents | — |
+| HR & Payroll | Phase 3 | contacts, notifications, documents | — |
+| Inventory & Assets | Phase 3 | contacts, notifications | documents |
+| Accounting | Phase 4 | contacts, finance | hr, documents, notifications |
 | Point of Sale | Phase 4 | contacts, notifications | inventory, accounting |
 | Fleet Management | Phase 4 | contacts, notifications, documents | — |
-| Inventory & Assets | Phase 4 | contacts, notifications | documents |
-| Project Management | Phase 4 | contacts, notifications | documents, accounting |
+| Fundraising | Phase 4 | contacts, notifications, documents | crm |
+| Sponsorship & Programs | Phase 4 | contacts, fundraising, notifications | documents |
+| Education Management | Phase 4 | crm, contacts, documents, notifications | subscription |
 
 ## Install Order (Minimum Viable)
 
+For a General SMB:
+```
+Identity → Contacts → Notifications → Documents → CRM → Finance → Projects → Subscription
+```
+
+For a Growing SMB:
+```
+... → Events → HR → Inventory → CMS → Surveys
+```
+
 For an NGO:
 ```
-Identity → Contacts → Notifications → Documents → CRM → Donations → Sponsorship → Events
+... → CRM → Finance → Fundraising → Sponsorship → Events
 ```
 
 For a School:
 ```
-Identity → Contacts → Notifications → Documents → CRM → Education → Subscription
+... → CRM → Finance → Education → Subscription
 ```
 
-For a Multi-Entity (NGO + School):
+For Full Operations:
 ```
-Identity → Contacts → Notifications → Documents → CRM → Donations → Sponsorship → Events → Education → Subscription
-```
-
-For Operations Add-on:
-```
-... → Accounting → HR → Fleet
-... → Accounting → POS → Inventory
-... → Accounting → Projects
+... → Accounting → POS → Fleet
 ```
 
 ## Uninstall Protection
@@ -268,7 +273,7 @@ title: Uninstall Dependency Check
 ---
 flowchart LR
     Request["Uninstall: Contacts"] --> Check{"Any module\nrequires Contacts?"}
-    Check -->|"Yes: CRM, Donations,\nHR, Events, ..."| Blocked["❌ Blocked\nlockey_error_cannot_uninstall_has_dependents"]
+    Check -->|"Yes: CRM, Finance,\nHR, Events, ..."| Blocked["❌ Blocked\nlockey_error_cannot_uninstall_has_dependents"]
     Check -->|"No dependents\ninstalled"| Proceed["✅ Proceed\nwith uninstall"]
 
     style Blocked fill:#e74c3c,color:#fff

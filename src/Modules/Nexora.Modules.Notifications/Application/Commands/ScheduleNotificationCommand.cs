@@ -92,8 +92,10 @@ public sealed class ScheduleNotificationHandler(
         }
         else
         {
-            subject = request.Subject!;
-            body = TemplateRenderer.RenderInline(request.Body!, request.Variables ?? new(), htmlEncode: false);
+            var vars = request.Variables ?? new();
+            subject = TemplateRenderer.RenderInline(request.Subject!, vars, htmlEncode: false)
+                .Replace("\r", string.Empty).Replace("\n", string.Empty);
+            body = TemplateRenderer.RenderInline(request.Body!, vars, htmlEncode: false);
         }
 
         var notification = Notification.Create(

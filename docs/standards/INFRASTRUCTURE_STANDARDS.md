@@ -982,14 +982,16 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ## 5. DomainEventChannel
 
-The `DomainEventChannel` uses **Wait** mode (not DropWrite). When the channel is full, `TryWrite` returns `false` and a warning is logged — events are not silently dropped. Consumers should process events promptly to avoid back-pressure.
+The `DomainEventChannel` uses **Wait** mode (`BoundedChannelFullMode.Wait`). When the bounded channel is full, `TryWrite` returns `false` and the event is **dropped** (not retried by the channel). A warning is logged distinguishing between "channel completed" (shutdown) and "channel at capacity" (back-pressure). Events are **not** silently discarded — the warning log ensures observability.
+
+**Important**: The channel does **not** retry dropped events. Callers that require guaranteed delivery must implement their own retry or back-pressure mechanism. For most domain events, the transient drop is acceptable because the channel capacity (10,000) is rarely reached under normal load.
 
 ```csharp
 // DomainEventChannel behavior:
-// - Mode: BoundedChannelFullMode.Wait (changed from DropWrite)
-// - TryWrite returns false when channel is full
-// - Warning is logged when TryWrite fails (channel full)
-// - Callers should handle false return and implement appropriate back-pressure strategy
+// - Mode: BoundedChannelFullMode.Wait
+// - TryWrite returns false when channel is full → event dropped + warning logged
+// - Distinguishes: channel completed (shutdown) vs at capacity (back-pressure)
+// - Callers needing guaranteed delivery must implement retries externally
 ```
 
 ---
