@@ -93,8 +93,7 @@ public sealed class SendNotificationHandler(
         else
         {
             var vars = request.Variables ?? new();
-            subject = TemplateRenderer.RenderInline(request.Subject!, vars, htmlEncode: false)
-                .Replace("\r", string.Empty).Replace("\n", string.Empty);
+            subject = TemplateRenderer.RenderInlineSubject(request.Subject!, vars);
             body = TemplateRenderer.RenderInline(request.Body!, vars, htmlEncode: false);
         }
 

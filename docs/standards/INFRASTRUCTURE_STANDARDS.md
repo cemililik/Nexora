@@ -982,15 +982,21 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ## 5. DomainEventChannel
 
-The `DomainEventChannel` uses **Wait** mode (`BoundedChannelFullMode.Wait`). When the bounded channel is full, `TryWrite` returns `false` and the event is **dropped** (not retried by the channel). A warning is logged distinguishing between "channel completed" (shutdown) and "channel at capacity" (back-pressure). Events are **not** silently discarded — the warning log ensures observability.
+The `DomainEventChannel` uses `BoundedChannelFullMode.Wait`. In **Wait** mode, `WriteAsync` blocks the caller until space is available, but `TryWrite` (which the dispatcher uses) **never blocks** — it returns `false` immediately when the channel is full. When `TryWrite` returns `false`, the event is **not enqueued** and a warning is logged. The distinction matters:
 
-**Important**: The channel does **not** retry dropped events. Callers that require guaranteed delivery must implement their own retry or back-pressure mechanism. For most domain events, the transient drop is acceptable because the channel capacity (10,000) is rarely reached under normal load.
+- **`WriteAsync`** (blocking) — waits for capacity. Used by async producers that can afford to wait.
+- **`TryWrite`** (non-blocking) — returns `false` immediately when full. Used by the dispatcher to avoid deadlocks in sync `SaveChanges` paths.
+
+When `TryWrite` fails, the warning log distinguishes "channel completed" (shutdown) from "at capacity" (back-pressure). Events are **not** silently lost — observability is guaranteed.
+
+**Important**: The channel does **not** retry failed `TryWrite` attempts. Callers that require guaranteed delivery must implement their own retry or back-pressure mechanism. The channel capacity (10,000) is sized to handle normal load without drops.
 
 ```csharp
 // DomainEventChannel behavior:
 // - Mode: BoundedChannelFullMode.Wait
-// - TryWrite returns false when channel is full → event dropped + warning logged
-// - Distinguishes: channel completed (shutdown) vs at capacity (back-pressure)
+// - Dispatcher uses TryWrite (non-blocking) to avoid sync deadlocks
+// - TryWrite returns false when full → event not enqueued + warning logged
+// - WriteAsync would block, but is not used by the dispatcher
 // - Callers needing guaranteed delivery must implement retries externally
 ```
 
