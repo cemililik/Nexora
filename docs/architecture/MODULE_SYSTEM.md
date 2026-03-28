@@ -16,7 +16,7 @@ Every module implements the `IModule` interface:
 ```csharp
 public interface IModule
 {
-    /// Unique module identifier (e.g., "donations", "crm", "education")
+    /// Unique module identifier (e.g., "fundraising", "crm", "education")
     string Name { get; }
 
     /// Human-readable display name
@@ -38,6 +38,7 @@ public interface IModule
     void ConfigureEventHandlers(IEventBusBuilder builder);
 
     /// Register background jobs (Hangfire)
+    /// AddOrUpdate accepts Expression<Func<TJob, Task>> to specify the job method
     void ConfigureJobs(IJobScheduler scheduler);
 
     /// Run when module is installed for a tenant (create tables, seed data)
@@ -54,13 +55,13 @@ public interface IModule
 }
 ```
 
-### Example: Donations Module Registration
+### Example: Fundraising Module Registration
 
 ```csharp
-public sealed class DonationsModule : IModule
+public sealed class FundraisingModule : IModule
 {
-    public string Name => "donations";
-    public string DisplayName => "Donations & Fundraising";
+    public string Name => "fundraising";
+    public string DisplayName => "Fundraising";
     public string Version => "1.0.0";
     public IReadOnlyList<string> Dependencies => ["identity", "contacts", "notifications"];
 
@@ -68,20 +69,21 @@ public sealed class DonationsModule : IModule
     {
         services.AddScoped<IDonationRepository, DonationRepository>();
         services.AddScoped<IPaymentGateway, StripePaymentGateway>();
-        services.AddScoped<DonationsDbContext>();
+        services.AddScoped<FundraisingDbContext>();
         // MediatR handlers auto-discovered from this assembly
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DonationsModule).Assembly));
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(FundraisingModule).Assembly));
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/api/v1/donations")
+        var group = endpoints.MapGroup("/api/v1/fundraising")
             .RequireAuthorization()
-            .WithTags("Donations");
+            .WithTags("Fundraising");
 
         group.MapDonationEndpoints();
         group.MapCampaignEndpoints();
         group.MapRecurringEndpoints();
+        group.MapCollectionPointEndpoints();
         group.MapBankImportEndpoints();
     }
 
@@ -89,6 +91,15 @@ public sealed class DonationsModule : IModule
     {
         builder.Subscribe<ContactMergedEvent, DonationContactMergeHandler>();
         builder.Subscribe<OrganizationCreatedEvent, SeedDonationCategoriesHandler>();
+    }
+
+    public void ConfigureJobs(IJobScheduler scheduler)
+    {
+        scheduler.AddOrUpdate<RecurringChargeJob>(
+            "fundraising:recurring-charge",
+            "0 3 * * *",
+            job => job.RunAsync(new RecurringChargeParams(), CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            "critical");
     }
 
     public async Task OnInstallAsync(TenantContext tenant, CancellationToken ct)
@@ -206,13 +217,13 @@ sequenceDiagram
     participant Cache as Redis Cache
     participant Endpoint as Module Endpoint
 
-    Client->>APISIX: GET /api/v1/donations/donations
+    Client->>APISIX: GET /api/v1/fundraising/donations
     APISIX->>MW: Forward (JWT validated)
     MW->>MW: Resolve tenant from JWT
     MW->>ModMW: Next middleware
 
-    ModMW->>ModMW: Extract module name from route ("donations")
-    ModMW->>Cache: Is "donations" installed for tenant?
+    ModMW->>ModMW: Extract module name from route ("fundraising")
+    ModMW->>Cache: Is "fundraising" installed for tenant?
 
     alt Module installed
         Cache-->>ModMW: Yes, active
@@ -240,10 +251,11 @@ CREATE TABLE contacts_contacts (...);
 CREATE TABLE contacts_tags (...);
 CREATE TABLE contacts_addresses (...);
 
--- Donations module tables (only exist if module installed)
-CREATE TABLE donations_donations (...);
-CREATE TABLE donations_categories (...);
-CREATE TABLE donations_recurring_plans (...);
+-- Fundraising module tables (only exist if module installed)
+CREATE TABLE fundraising_donations (...);
+CREATE TABLE fundraising_categories (...);
+CREATE TABLE fundraising_recurring_plans (...);
+CREATE TABLE fundraising_collection_points (...);
 
 -- CRM module tables (only exist if module installed)
 CREATE TABLE crm_leads (...);
@@ -290,11 +302,11 @@ public class DonationsDbContext : DbContext
         // Prefix all tables
         foreach (var entity in builder.Model.GetEntityTypes())
         {
-            entity.SetTableName($"donations_{entity.GetTableName()}");
+            entity.SetTableName($"fundraising_{entity.GetTableName()}");
         }
 
         // Apply module-specific configurations
-        builder.ApplyConfigurationsFromAssembly(typeof(DonationsDbContext).Assembly);
+        builder.ApplyConfigurationsFromAssembly(typeof(FundraisingDbContext).Assembly);
     }
 }
 ```
@@ -366,10 +378,10 @@ public interface IContactActivityContributor
     Task<object?> GetSummaryAsync(Guid contactId, CancellationToken ct);
 }
 
-// Donations module registers its contributor
+// Fundraising module registers its contributor
 public sealed class DonationActivityContributor : IContactActivityContributor
 {
-    public string ModuleName => "donations";
+    public string ModuleName => "fundraising";
 
     public async Task<object?> GetSummaryAsync(Guid contactId, CancellationToken ct)
     {
@@ -387,7 +399,7 @@ public sealed class Contact360ViewHandler(
     IEnumerable<IContactActivityContributor> contributors)
 {
     // Only installed modules will have registered contributors
-    // If Donations is not installed, no DonationActivityContributor in DI
+    // If Fundraising is not installed, no DonationActivityContributor in DI
 }
 ```
 
@@ -399,22 +411,24 @@ Modules register their UI routes and navigation items dynamically:
 
 ```typescript
 // Each module exposes a manifest
-export const donationsModule: ModuleManifest = {
-  name: 'donations',
-  displayName: 'Donations & Fundraising',
+export const fundraisingModule: ModuleManifest = {
+  name: 'fundraising',
+  displayName: 'Fundraising',
   icon: 'Heart',
   routes: [
-    { path: '/donations', component: lazy(() => import('./pages/DonationList')) },
-    { path: '/donations/:id', component: lazy(() => import('./pages/DonationDetail')) },
-    { path: '/donations/campaigns', component: lazy(() => import('./pages/Campaigns')) },
+    { path: '/fundraising', component: lazy(() => import('./pages/DonationList')) },
+    { path: '/fundraising/:id', component: lazy(() => import('./pages/DonationDetail')) },
+    { path: '/fundraising/campaigns', component: lazy(() => import('./pages/Campaigns')) },
+    { path: '/fundraising/collection-points', component: lazy(() => import('./pages/CollectionPoints')) },
     // ...
   ],
   navigation: [
-    { label: 'lockey_nav_donations', path: '/donations', icon: 'Heart' },
-    { label: 'lockey_nav_campaigns', path: '/donations/campaigns', icon: 'Target' },
-    { label: 'lockey_nav_recurring', path: '/donations/recurring', icon: 'Repeat' },
+    { label: 'lockey_nav_donations', path: '/fundraising', icon: 'Heart' },
+    { label: 'lockey_nav_campaigns', path: '/fundraising/campaigns', icon: 'Target' },
+    { label: 'lockey_nav_recurring', path: '/fundraising/recurring', icon: 'Repeat' },
+    { label: 'lockey_nav_collection_points', path: '/fundraising/collection-points', icon: 'Box' },
   ],
-  permissions: ['donations.donations.read'], // required to see in nav
+  permissions: ['fundraising.donations.read'], // required to see in nav
 };
 ```
 
@@ -463,7 +477,7 @@ const DonorDashboard: React.FC = () => {
 
   return (
     <DashboardLayout>
-      {hasModule('donations') && <DonationHistory />}
+      {hasModule('fundraising') && <DonationHistory />}
       {hasModule('sponsorship') && <MySponsorships />}
       {hasModule('education') && <MyChildren />}
     </DashboardLayout>
@@ -488,7 +502,7 @@ const DonorDashboard: React.FC = () => {
 ```json
 POST /api/v1/identity/modules/install
 {
-  "moduleName": "donations",
+  "moduleName": "fundraising",
   "organizationIds": ["org-1", "org-2"]  // which orgs get default roles
 }
 ```
@@ -498,7 +512,7 @@ POST /api/v1/identity/modules/install
 ```json
 {
   "data": {
-    "moduleName": "donations",
+    "moduleName": "fundraising",
     "status": "installed",
     "version": "1.0.0",
     "installedAt": "2026-03-19T10:00:00Z",
@@ -519,10 +533,10 @@ flowchart TB
     Request["Install: Sponsorship"] --> Resolve["Resolve Dependencies"]
     Resolve --> Check{"All deps\ninstalled?"}
     Check -->|Yes| Install["Install Sponsorship"]
-    Check -->|No| Missing["Missing:\n- donations (not installed)"]
+    Check -->|No| Missing["Missing:\n- fundraising (not installed)"]
     Missing --> Auto{"Auto-install\ndependencies?"}
-    Auto -->|Yes| Chain["Install chain:\n1. donations\n2. sponsorship"]
-    Auto -->|No| Error["Error:\nlockey_error_missing_dependencies\n{deps: ['donations']}"]
+    Auto -->|Yes| Chain["Install chain:\n1. fundraising\n2. sponsorship"]
+    Auto -->|No| Error["Error:\nlockey_error_missing_dependencies\n{deps: ['fundraising']}"]
 
     style Request fill:#3498db,color:#fff
     style Error fill:#e74c3c,color:#fff
@@ -539,43 +553,70 @@ flowchart TB
 
 The following table lists all Nexora modules, their phases, and dependency profiles:
 
-| # | Module | Name (ID) | Phase | Required Dependencies | Optional Dependencies | Core? |
-|---|--------|-----------|-------|----------------------|----------------------|-------|
-| 1 | Identity & Access | `identity` | Core | — | — | Yes |
-| 2 | Contact Management | `contacts` | Core | identity | — | Yes |
-| 3 | Notification Engine | `notifications` | Core | identity, contacts | — | Yes |
-| 4 | Document Management | `documents` | Core | identity | — | No |
-| 5 | Reporting Engine | `reporting` | Core | identity | contacts, notifications, documents | No |
-| 6 | Portal Framework | `portal` | Core | identity | — | No |
-| 7 | CRM | `crm` | Phase 2 | contacts, notifications | — | No |
-| 8 | Donations & Fundraising | `donations` | Phase 2 | contacts, notifications, documents | — | No |
-| 9 | Sponsorship | `sponsorship` | Phase 2 | contacts, donations, notifications | — | No |
-| 10 | Event Management | `events` | Phase 2 | contacts, notifications | documents, crm, donations | No |
-| 11 | Collection Box (Kumbara) | `kumbara` | Phase 2 | contacts, notifications | — | No |
-| 12 | Aid Package (Kumanya) | `kumanya` | Phase 2 | contacts, notifications | — | No |
-| 13 | Education Management | `education` | Phase 3 | crm, contacts, documents, notifications | subscription | No |
-| 14 | Subscription & Billing | `subscription` | Phase 3 | contacts, notifications | reporting, documents | No |
-| 15 | Website & CMS | `cms` | Phase 3 | notifications | contacts, crm, donations, portal | No |
-| 16 | Surveys & Feedback | `surveys` | Phase 3 | contacts, notifications | — | No |
-| 17 | Accounting & Finance | `accounting` | Phase 4 | contacts | hr, documents, notifications | No |
-| 18 | HR & Payroll | `hr` | Phase 4 | contacts, notifications, documents | — | No |
-| 19 | Point of Sale | `pos` | Phase 4 | contacts, notifications | inventory, accounting | No |
-| 20 | Fleet Management | `fleet` | Phase 4 | contacts, notifications, documents | — | No |
-| 21 | Inventory & Assets | `inventory` | Phase 4 | contacts, notifications | documents | No |
-| 22 | Project Management | `projects` | Phase 4 | contacts, notifications | documents, accounting | No |
+| # | Module | Name (ID) | Phase | Tier | Required Dependencies | Optional Dependencies | Core? |
+|---|--------|-----------|-------|------|----------------------|----------------------|-------|
+| 1 | Identity & Access | `identity` | Core | Platform | — | — | Yes |
+| 2 | Contact Management | `contacts` | Core | Platform | identity | — | Yes |
+| 3 | Notification Engine | `notifications` | Core | Platform | identity, contacts | — | Yes |
+| 4 | Document Management | `documents` | Core | Platform | identity | — | No |
+| 5 | Reporting Engine | `reporting` | Core | Platform | identity | contacts, notifications, documents | No |
+| 6 | Portal Framework | `portal` | Core | Platform | identity | — | No |
+| 7 | CRM | `crm` | Phase 2 | Business | contacts, notifications | — | No |
+| 8 | Finance | `finance` | Phase 2 | Business | contacts, notifications | documents, reporting | No |
+| 9 | Subscription & Billing | `subscription` | Phase 2 | Business | contacts, notifications | reporting, documents | No |
+| 10 | Project Management | `projects` | Phase 2 | Business | contacts, notifications | documents, finance | No |
+| 11 | Website & CMS | `cms` | Phase 3 | Business | notifications | contacts, crm, fundraising, portal | No |
+| 12 | Event Management | `events` | Phase 3 | Business | contacts, notifications | documents, crm, fundraising | No |
+| 13 | Surveys & Feedback | `surveys` | Phase 3 | Business | contacts, notifications | — | No |
+| 14 | HR & Payroll | `hr` | Phase 3 | Business | contacts, notifications, documents | — | No |
+| 15 | Inventory & Assets | `inventory` | Phase 3 | Business | contacts, notifications | documents | No |
+| 16 | Accounting & Finance | `accounting` | Phase 4 | Advanced | contacts, finance | hr, documents, notifications | No |
+| 17 | Point of Sale | `pos` | Phase 4 | Advanced | contacts, notifications | inventory, accounting | No |
+| 18 | Fleet Management | `fleet` | Phase 4 | Advanced | contacts, notifications, documents | — | No |
+| 19 | Fundraising | `fundraising` | Phase 4 | Vertical: NGO | contacts, notifications, documents | crm, finance | No |
+| 20 | Sponsorship & Programs | `sponsorship` | Phase 4 | Vertical: NGO | contacts, fundraising, notifications | documents | No |
+| 21 | Education Management | `education` | Phase 4 | Vertical: Education | crm, contacts, documents, notifications | subscription | No |
+
+> **Module Tiers:**
+> - **Platform** — Always available, forms the foundation for every installation
+> - **Business** — Generic modules every SMB needs (CRM, Finance, Projects, HR, etc.)
+> - **Advanced** — Full-featured modules for complex operational needs
+> - **Vertical** — Industry-specific solutions (NGO, Education, future: Healthcare, Legal, etc.)
+>
+> **Change Log (2026-03-28):**
+> - **Removed:** `kumbara` (Collection Box) — absorbed into `fundraising` as "Collection Points" feature
+> - **Removed:** `kumanya` (Aid Package) — absorbed into `sponsorship` as "Aid Distribution" feature
+> - **Renamed:** `donations` → `fundraising` (more generic, includes campaigns, collection points, crowdfunding)
+> - **Expanded:** `sponsorship` → "Sponsorship & Programs" (includes program management, aid distribution)
+> - **Added:** `finance` (income/expense tracking, bank accounts — foundation for `accounting`)
+> - **Restructured phases:** Core Business modules (Phase 2) first, then Growth (Phase 3), then Advanced + Verticals (Phase 4)
+> - **Added Tier system:** Platform / Business / Advanced / Vertical classification
 
 > **Note**: All modules implicitly depend on `identity` for authentication, tenant resolution, and RBAC. This is not listed as a separate dependency since Identity is the foundational module that must always be present.
 
 #### Module Specifications
-| Module | Spec |
-|--------|------|
-| Identity & Access | [SPEC.md](../modules/identity/SPEC.md) |
-| Contact Management | [SPEC.md](../modules/contacts/SPEC.md) |
-| Notification Engine | [SPEC.md](../modules/notifications/SPEC.md) |
-| Document Management | [SPEC.md](../modules/documents/SPEC.md) |
-| Reporting Engine | [SPEC.md](../modules/reporting/SPEC.md) |
-| CRM | [SPEC.md](../modules/crm/SPEC.md) |
-| Donations & Fundraising | [SPEC.md](../modules/donations/SPEC.md) |
+| Module | Spec | Status |
+|--------|------|--------|
+| Identity & Access | [SPEC.md](../modules/identity/SPEC.md) | Complete |
+| Contact Management | [SPEC.md](../modules/contacts/SPEC.md) | Complete |
+| Notification Engine | [SPEC.md](../modules/notifications/SPEC.md) | Complete |
+| Document Management | [SPEC.md](../modules/documents/SPEC.md) | Complete |
+| Reporting Engine | [SPEC.md](../modules/reporting/SPEC.md) | Complete |
+| CRM | [SPEC.md](../modules/crm/SPEC.md) | Draft |
+| Fundraising | [SPEC.md](../modules/donations/SPEC.md) | Draft (path retained as `donations/`) |
+| Sponsorship & Programs | [SPEC.md](../modules/sponsorship/SPEC.md) | Draft |
+| Event Management | [SPEC.md](../modules/events/SPEC.md) | Draft |
+| Education Management | [SPEC.md](../modules/education/SPEC.md) | Draft |
+| Subscription & Billing | [SPEC.md](../modules/subscription/SPEC.md) | Draft |
+| Website & CMS | [SPEC.md](../modules/cms/SPEC.md) | Draft |
+| Surveys & Feedback | [SPEC.md](../modules/surveys/SPEC.md) | Draft |
+| Finance | — | Not yet created |
+| Accounting & Finance | [SPEC.md](../modules/accounting/SPEC.md) | Draft |
+| HR & Payroll | [SPEC.md](../modules/hr/SPEC.md) | Draft |
+| Point of Sale | [SPEC.md](../modules/pos/SPEC.md) | Draft |
+| Fleet Management | [SPEC.md](../modules/fleet/SPEC.md) | Draft |
+| Inventory & Assets | [SPEC.md](../modules/inventory/SPEC.md) | Draft |
+| Project Management | [SPEC.md](../modules/projects/SPEC.md) | Draft |
 
 ### Module Classification
 

@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <PropertyGroup>
+    <UserSecretsId>nexora-host-dev</UserSecretsId>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Nexora.SharedKernel\Nexora.SharedKernel.csproj" />
     <ProjectReference Include="..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />

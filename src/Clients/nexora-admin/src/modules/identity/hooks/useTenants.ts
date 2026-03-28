@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import type {
   TenantDto,
@@ -42,6 +43,7 @@ export function useTenant(id: string) {
 export function useCreateTenant() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: CreateTenantRequest) =>
@@ -50,12 +52,15 @@ export function useCreateTenant() {
       void queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       toast.success(t('lockey_identity_tenant_created'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateTenantStatus(tenantId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+
+  const { handleApiError } = useApiError();
 
   const mutate = useMutation({
     mutationFn: (data: UpdateTenantStatusRequest) =>
@@ -67,6 +72,7 @@ export function useUpdateTenantStatus(tenantId: string) {
       void queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       toast.success(t('lockey_identity_tenant_status_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 
   const activate = useCallback(

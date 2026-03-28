@@ -88,8 +88,9 @@ public sealed class SendBulkNotificationHandler(
         }
         else
         {
-            subject = request.Subject!;
-            body = TemplateRenderer.RenderInline(request.Body!, request.Variables ?? new());
+            var vars = request.Variables ?? new();
+            subject = TemplateRenderer.RenderInlineSubject(request.Subject!, vars);
+            body = TemplateRenderer.RenderInline(request.Body!, vars, htmlEncode: false);
         }
 
         var notification = Notification.Create(

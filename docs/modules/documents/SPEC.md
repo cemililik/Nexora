@@ -181,7 +181,7 @@ stateDiagram-v2
 | GET | `/api/v1/documents/documents` | List/search documents | `documents.documents.read` |
 | GET | `/api/v1/documents/documents/{id}` | Get metadata | `documents.documents.read` |
 | GET | `/api/v1/documents/documents/{id}/download` | Download file | `documents.documents.read` |
-| DELETE | `/api/v1/documents/documents/{id}` | Archive | `documents.documents.delete` |
+| DELETE | `/api/v1/documents/documents/{id}` | Archive (returns 200 OK with ApiEnvelope) | `documents.documents.delete` |
 | GET | `/api/v1/documents/folders` | List folders | `documents.folders.read` |
 | POST | `/api/v1/documents/folders` | Create folder | `documents.folders.manage` |
 | POST | `/api/v1/documents/signatures` | Create sign request | `documents.signatures.create` |

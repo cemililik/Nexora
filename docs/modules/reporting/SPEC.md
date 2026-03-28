@@ -143,7 +143,7 @@ C4Component
 
     Container_Boundary(reporting, "Reporting Module") {
         Component(defMgmt, "ReportDefinition Management", "Application Service", "CRUD operations for report definitions with SQL validation")
-        Component(execEngine, "Report Execution Engine", "Application Service", "Executes SQL queries, exports results to CSV/Excel/PDF/JSON, uploads to storage")
+        Component(execEngine, "Report Execution Engine", "Application Service", "Executes SQL queries, exports results as Stream to CSV/Excel/PDF/JSON via ReportExportService, uploads to storage")
         Component(scheduler, "Report Scheduling", "Application Service", "Cron-based scheduling via Hangfire, dispatches executions for due schedules")
         Component(dashMgmt, "Dashboard Management", "Application Service", "CRUD for dashboards and widget-based layout with live data")
         Component(sqlValidator, "SQL Query Validator", "Domain Service", "Validates SQL safety: SELECT/WITH only, blocks DML/DDL, prevents injection")
@@ -228,7 +228,7 @@ All endpoints require authorization. Responses wrapped in `ApiEnvelope<T>`.
 | `GET` | `/{id}` | Get single definition |
 | `POST` | `/` | Create definition (SQL validated by SqlQueryValidator) |
 | `PUT` | `/{id}` | Update definition (SQL validated) |
-| `DELETE` | `/{id}` | Delete definition |
+| `DELETE` | `/{id}` | Delete definition (returns 200 OK with ApiEnvelope) |
 | `POST` | `/test-query` | Test SQL with LIMIT 10, return preview results |
 
 ### Report Executions (`/api/v1/reporting/executions`)
@@ -248,7 +248,7 @@ All endpoints require authorization. Responses wrapped in `ApiEnvelope<T>`.
 | `GET` | `/` | List schedules (filterable by definitionId) |
 | `POST` | `/` | Create schedule |
 | `PUT` | `/{id}` | Update schedule (cron, format, recipients) |
-| `DELETE` | `/{id}` | Delete schedule |
+| `DELETE` | `/{id}` | Delete schedule (returns 200 OK with ApiEnvelope) |
 
 ### Dashboards (`/api/v1/reporting/dashboards`)
 
@@ -258,7 +258,7 @@ All endpoints require authorization. Responses wrapped in `ApiEnvelope<T>`.
 | `GET` | `/{id}` | Get single dashboard |
 | `POST` | `/` | Create dashboard |
 | `PUT` | `/{id}` | Update dashboard (name, widgets, isDefault) |
-| `DELETE` | `/{id}` | Delete dashboard |
+| `DELETE` | `/{id}` | Delete dashboard (returns 200 OK with ApiEnvelope) |
 | `GET` | `/{dashboardId}/widgets/{widgetId}/data` | Execute widget's SQL and return data |
 
 ## Sequence Diagrams
@@ -337,7 +337,7 @@ Report queries are validated and sandboxed at multiple levels:
 | Job | Schedule | Queue | Description |
 |-----|----------|-------|-------------|
 | `ReportExecutionJob` | On-demand (Hangfire enqueue) | `default` | Executes SQL, exports, uploads to MinIO |
-| `ScheduledReportDispatcherJob` | Every 15 minutes | `default` | Finds due schedules, creates executions |
+| `ScheduledReportDispatcherJob` | Every 15 minutes | `default` | Finds due schedules using Cronos for cron expression parsing, creates executions |
 
 ## Storage
 
@@ -399,6 +399,8 @@ Report queries are validated and sandboxed at multiple levels:
 | `reporting.dashboard.manage` | Create, update, delete dashboards |
 
 ## Export Formats
+
+`ReportExportService` returns a `Stream` for all formats (not `byte[]`), enabling efficient streaming to storage and HTTP responses without buffering entire files in memory.
 
 | Format | Library | Content-Type |
 |--------|---------|-------------|

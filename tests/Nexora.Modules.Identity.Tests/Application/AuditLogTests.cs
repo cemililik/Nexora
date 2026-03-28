@@ -60,7 +60,7 @@ public sealed class AuditLogTests : IDisposable
     {
         await SeedLogs(5);
 
-        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor, NullLogger<GetAuditLogsHandler>.Instance);
         var result = await handler.Handle(new GetAuditLogsQuery(Page: 1, PageSize: 3), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -76,7 +76,7 @@ public sealed class AuditLogTests : IDisposable
         _dbContext.AuditLogs.Add(AuditLog.Create(otherUserId, _tenantId, "login"));
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor, NullLogger<GetAuditLogsHandler>.Instance);
         var result = await handler.Handle(
             new GetAuditLogsQuery(UserId: _userId.Value), CancellationToken.None);
 
@@ -92,7 +92,7 @@ public sealed class AuditLogTests : IDisposable
         _dbContext.AuditLogs.Add(AuditLog.Create(_userId, _tenantId, "login"));
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor, NullLogger<GetAuditLogsHandler>.Instance);
         var result = await handler.Handle(
             new GetAuditLogsQuery(Action: "login"), CancellationToken.None);
 
@@ -109,7 +109,7 @@ public sealed class AuditLogTests : IDisposable
         _dbContext.AuditLogs.Add(AuditLog.Create(_userId, _tenantId, "second"));
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetAuditLogsHandler(_dbContext, _tenantAccessor, NullLogger<GetAuditLogsHandler>.Instance);
         var result = await handler.Handle(new GetAuditLogsQuery(), CancellationToken.None);
 
         result.Value!.Items[0].Action.Should().Be("second");

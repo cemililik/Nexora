@@ -41,7 +41,7 @@ public static class ModuleEndpoints
         {
             var result = await sender.Send(new ActivateModuleCommand(tenantId, moduleName), ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
 
@@ -49,7 +49,7 @@ public static class ModuleEndpoints
         {
             var result = await sender.Send(new DeactivateModuleCommand(tenantId, moduleName), ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
 
@@ -58,7 +58,7 @@ public static class ModuleEndpoints
             var result = await sender.Send(new UninstallModuleCommand(tenantId, moduleName), ct);
 
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return result.Error!.Message.Key switch
             {

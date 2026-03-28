@@ -26,7 +26,7 @@ public sealed class GetNotificationByIdHandler(
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
         var notificationId = NotificationId.From(request.Id);
 
-        var notification = await dbContext.Notifications
+        var notification = await dbContext.Notifications.AsNoTracking()
             .Include(n => n.Recipients)
             .FirstOrDefaultAsync(n => n.Id == notificationId && n.TenantId == tenantId, cancellationToken);
 

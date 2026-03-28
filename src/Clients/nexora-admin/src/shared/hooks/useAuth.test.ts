@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosHeaders } from 'axios';
 
 // Mock keycloak-js
 const mockInit = vi.fn();
@@ -59,6 +60,16 @@ vi.mock('@/shared/lib/stores/authStore', () => ({
 import { setAuthToken } from '@/shared/lib/api';
 import { useAuth } from './useAuth';
 
+function createAxiosError(status: number, statusText: string): AxiosError {
+  return new AxiosError(statusText, String(status), undefined, undefined, {
+    status,
+    data: null,
+    statusText,
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  });
+}
+
 describe('useAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -94,7 +105,7 @@ describe('useAuth', () => {
   it('should fall back to token claims when /me returns 404', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue({ response: { status: 404 } });
+    mockApiGet.mockRejectedValue(createAxiosError(404, 'Not Found'));
 
     renderHook(() => useAuth());
 
@@ -119,7 +130,7 @@ describe('useAuth', () => {
   it('should clear session and redirect when /me returns 401', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue({ response: { status: 401 } });
+    mockApiGet.mockRejectedValue(createAxiosError(401, 'Unauthorized'));
 
     renderHook(() => useAuth());
 
@@ -147,7 +158,7 @@ describe('useAuth', () => {
   it('should fall back to token claims when /me returns 500', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
-    mockApiGet.mockRejectedValue({ response: { status: 500 } });
+    mockApiGet.mockRejectedValue(createAxiosError(500, 'Internal Server Error'));
 
     renderHook(() => useAuth());
 

@@ -49,7 +49,7 @@ public static class ReportScheduleEndpoints
         {
             var result = await sender.Send(new DeleteReportScheduleCommand(id), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
     }

@@ -9,41 +9,47 @@ gantt
     axisFormat %b %Y
 
     section Phase 0 - Foundation
-    Repo & CI/CD setup           :p0a, 2026-04-01, 2w
-    Docker Compose (all infra)   :p0b, after p0a, 2w
-    Multi-tenant infrastructure  :p0c, after p0b, 3w
-    Keycloak & APISIX setup      :p0d, after p0b, 2w
-    SharedKernel & Module loader :p0e, after p0c, 2w
-    Observability stack          :p0f, after p0d, 1w
+    Repo & CI/CD setup           :done, p0a, 2026-04-01, 2w
+    Docker Compose (all infra)   :done, p0b, after p0a, 2w
+    Multi-tenant infrastructure  :done, p0c, after p0b, 3w
+    Keycloak & APISIX setup      :done, p0d, after p0b, 2w
+    SharedKernel & Module loader :done, p0e, after p0c, 2w
+    Observability stack          :done, p0f, after p0d, 1w
 
     section Phase 1 - Core Platform
-    Identity module              :p1a, after p0e, 4w
-    Contact module               :p1b, after p1a, 3w
-    Notification Engine          :p1c, after p1b, 3w
-    Document Management          :p1d, after p1b, 3w
-    Reporting Engine             :p1e, after p1c, 2w
-    Portal Framework (Next.js)   :p1f, after p1d, 2w
+    Identity module              :done, p1a, after p0e, 4w
+    Contact module               :done, p1b, after p1a, 3w
+    Notification Engine          :done, p1c, after p1b, 3w
+    Document Management          :done, p1d, after p1b, 3w
+    Reporting Engine             :done, p1e, after p1c, 2w
+    Portal Framework (Next.js)   :done, p1f, after p1d, 2w
 
-    section Phase 2 - NGO/Foundation
-    CRM module                   :p2a, after p1b, 4w
-    Donations module             :p2b, after p2a, 5w
-    Sponsorship module           :p2c, after p2b, 4w
-    Event Management             :p2d, after p2a, 3w
-    Kumbara & Kumanya            :p2e, after p2b, 2w
+    section Phase 1.5 - Bridge
+    Transactional Outbox/Inbox   :p15a, after p1e, 3w
+    Portal UI Extension Points   :p15b, after p1f, 3w
+    Localization (US + TR)       :p15c, after p1e, 3w
+    Demo Data Framework          :p15d, after p15a, 2w
 
-    section Phase 3 - Education & CMS
-    Education module             :p3a, after p2a, 4w
-    Subscription & Billing       :p3b, after p3a, 3w
-    Website & CMS                :p3c, after p1f, 4w
-    Surveys & Feedback           :p3d, after p3a, 2w
+    section Phase 2 - Core Business
+    CRM module                   :crit, p2a, after p15d, 4w
+    Finance module               :crit, p2b, after p2a, 3w
+    Subscription & Billing       :p2c, after p2b, 3w
+    Project Management           :p2d, after p2a, 4w
 
-    section Phase 4 - Operations
-    Accounting & Finance         :p4a, after p2b, 5w
-    HR & Payroll                 :p4b, after p4a, 3w
-    Point of Sale                :p4c, after p4a, 3w
-    Fleet Management             :p4d, after p4b, 2w
-    Inventory & Assets           :p4e, after p4c, 2w
-    Project Management           :p4f, after p4a, 3w
+    section Phase 3 - Growth
+    Website & CMS                :p3a, after p15b, 5w
+    Events module                :p3b, after p2a, 3w
+    Surveys & Feedback           :p3c, after p3b, 2w
+    HR & Payroll                 :p3d, after p2b, 4w
+    Inventory & Assets           :p3e, after p2b, 3w
+
+    section Phase 4 - Advanced & Verticals
+    Accounting                   :p4a, after p2b, 5w
+    Point of Sale                :p4b, after p3e, 3w
+    Fleet Management             :p4c, after p3d, 3w
+    Fundraising (STK)            :crit, p4d, after p2b, 5w
+    Sponsorship & Programs (STK) :crit, p4e, after p4d, 5w
+    Education (Eğitim)           :p4f, after p2a, 4w
 ```
 
 ### Module Dependency Diagram
@@ -304,6 +310,13 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] SQL syntax highlighting in query editor (CodeMirror with PostgreSQL dialect, create & edit forms)
 - [x] "Test Query" button (POST /test-query endpoint, execute SQL with LIMIT 10, show preview table in form)
 
+#### Code Review Fixes (Phase 1 completion)
+
+- [x] All 121 code review findings resolved across entire Phase 1 codebase
+- [x] New test projects: `Nexora.Api.ContractTests`, `Nexora.Modules.Identity.IntegrationTests`
+- [x] Test coverage: +46 test files, ~289 new tests added
+- [x] Key improvements: cache tenant isolation (DaprCacheService auto-prefixes tenant ID via ITenantContextAccessor), HangfireJobScheduler refactor (expression-based `job => job.RunAsync(params, ct)` pattern), ApiEnvelope TraceId on all responses (included when `Activity` is active, omitted otherwise), `.AsNoTracking()` on all query handlers, Entity Equals null safety, AuditableEntity.MarkAsDeleted parameter validation, DELETE endpoints return 200 OK with message
+
 #### Deferred Enhancements (moved to later phases — prioritize based on production feedback)
 - [ ] Table/column autocomplete in SQL editor (fetch tenant schema metadata, suggest in editor)
 - [ ] Visual query builder — Metabase-style UI (select table → pick columns → add filters → group by)
@@ -314,96 +327,126 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 ---
 
-## Phase 2: NGO & Foundation Modules
-> **Goal**: Complete solution for non-profit/foundation organizations
+## Phase 1.5: Bridge
+> **Goal**: Critical infrastructure and tooling needed before business modules
 
-### 2.0 Infrastructure Hardening (Pre-Phase 2)
+### 1.5.1 Transactional Outbox/Inbox (Infrastructure Hardening)
 
 **Plan**: [OUTBOX_INBOX_PATTERN_PLAN.md](OUTBOX_INBOX_PATTERN_PLAN.md)
 
-Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı (CRM) geleceği için event güvenilirlik altyapısı Phase 2 öncesinde tamamlanmalıdır.
+Phase 2 introduces financial modules (Finance) and heavy cross-module event flows (CRM). Event reliability infrastructure must be completed before Phase 2.
 
-- [ ] **Transactional Outbox Pattern** — Domain event → integration event publish'i DB transaction'ı ile atomik hale getirme. Event kaybını önleme (Kafka down, uygulama crash senaryoları). 12 domain event handler'ın outbox'a geçirilmesi. OutboxProcessor BackgroundService (polling-based).
-- [ ] **Inbox Pattern (Idempotent Consumer)** — Integration event handler'larda EventId bazlı dedup mekanizması. Kafka consumer rebalance ve retry senaryolarında duplikasyonu önleme. 4 integration event handler'ın inbox guard'ı ile korunması.
-- [ ] **Outbox/Inbox Monitoring** — Grafana dashboard paneli (queue depth, processing latency, duplicate hit rate)
-- [ ] **Cleanup Jobs** — OutboxCleanupJob (7 gün), InboxCleanupJob (30 gün)
+- [ ] **Transactional Outbox Pattern** — Domain event → integration event publish atomically with DB transaction. Prevents event loss (Kafka down, app crash). Migrate 12 domain event handlers to outbox. OutboxProcessor BackgroundService (polling-based).
+- [ ] **Inbox Pattern (Idempotent Consumer)** — EventId-based dedup in integration event handlers. Prevents duplication during Kafka consumer rebalance and retries. 4 integration event handlers protected with inbox guard.
+- [ ] **Outbox/Inbox Monitoring** — Grafana dashboard panel (queue depth, processing latency, duplicate hit rate)
+- [ ] **Cleanup Jobs** — OutboxCleanupJob (7 days), InboxCleanupJob (30 days)
+- [ ] **Cache Cross-Instance Invalidation** — `DaprCacheService.RemoveByPrefixAsync` currently only removes keys tracked in-process via `_trackedKeys`; L2 (Redis) entries on other instances remain stale. Implement Dapr pub/sub invalidation: publish prefix-invalidation event from `RemoveByPrefixAsync`, subscribe in all instances to remove matching keys from local `memoryCache` and `_trackedKeys`. Required before horizontal scaling in production.
 
-### 2.1 CRM Module
-**Spec**: [modules/crm/SPEC.md](../modules/crm/SPEC.md)
-- [ ] Lead management (create, assign, qualify)
-- [ ] Pipeline / Funnel (customizable stages per organization)
-- [ ] Activities (calls, meetings, tasks linked to leads)
-- [ ] Lead sources tracking (web form, referral, event)
-- [ ] Contact segmentation (tags, filters, saved segments)
-- [ ] Email marketing integration
-- [ ] SMS marketing integration
-- [ ] Campaign management
-- [ ] Call center integration (click-to-call)
-- [ ] Mobile-optimized views (field staff)
-- [ ] CRM analytics & reports
+### 1.5.2 Portal UI Extension Points
 
-### 2.2 Donation & Fundraising Module
-**Spec**: [modules/donations/SPEC.md](../modules/donations/SPEC.md)
-- [ ] Donation categories (Zakat, Orphan Fund, General, etc.)
-- [ ] One-time donations (online payment)
-- [ ] Recurring donations (standing orders, card-on-file)
-- [ ] Donation cart (multiple items in one transaction)
-- [ ] Stripe integration (international)
-- [ ] iyzico/Param integration (Turkey)
-- [ ] Multi-currency support (TL, USD, EUR with conversion)
-- [ ] Automatic receipt generation
-- [ ] Donor matching (auto-match bank transfers to donors)
-- [ ] Donor portal (history, receipts, active subscriptions)
-- [ ] Donation on behalf of others
-- [ ] Guest donations (no account required)
-- [ ] Bank transaction import & reconciliation
-- [ ] Donation video linking (send video SMS to donor)
-- [ ] Zakat calculator (web widget)
-- [ ] Public donation page builder
-- [ ] Campaign/fund tracking (% funded, goal progress)
-- [ ] Donation reports (monthly, daily, YoY comparison, top campaigns)
+Modules need to register portal-facing pages, widgets, and navigation items dynamically. This mechanism must be in place before Phase 2 modules ship their portal UIs.
 
-### 2.3 Sponsorship Module
-**Spec**: [modules/sponsorship/SPEC.md](../modules/sponsorship/SPEC.md)
-- [ ] Sponsorship programs (student, orphan, classroom, construction)
-- [ ] Sponsor-beneficiary matching
-- [ ] Installment plans (monthly payments)
-- [ ] Payment tracking & reminders
-- [ ] Progress updates to sponsors (photos, reports, videos)
-- [ ] Sponsor portal (view beneficiary, track payments, watch videos)
-- [ ] Integration with donation module (auto-link payments)
-- [ ] Sponsorship reports
+- [ ] Module extension point registry (modules register tabs, widgets, navigation items to other modules' UIs)
+- [ ] Portal page registration system (modules declare their portal routes via manifest)
+- [ ] Portal navigation builder (aggregates navigation from all installed modules)
+- [ ] Cross-module UI contribution (e.g., Finance adds "Payment History" tab to Contact 360° view)
 
-### 2.4 Event Management Module
-**Spec**: [modules/events/SPEC.md](../modules/events/SPEC.md)
-- [ ] Event creation (Iftar, Sahur, Qurban, Fundraiser Dinners, Bazaars)
-- [ ] Event categories and templates (seasonal reuse)
-- [ ] Event registration and ticketing
-- [ ] QR-based check-in and attendance tracking
-- [ ] Venue and speaker management
-- [ ] Sponsor history tracking ("who sponsored what, when")
-- [ ] Annual organizational calendar (religious dates, holidays, fundraising events)
-- [ ] Calendar sync (Outlook, Google Calendar, iCal)
-- [ ] Event-based reporting
-- [ ] Public event pages (portal integration)
+### 1.5.3 Localization (US + TR)
 
-### 2.5 Collection Box (Kumbara) Management
-- [ ] Box registration (location, region, address)
-- [ ] Collection tracking (amounts, dates)
-- [ ] Region/area management
-- [ ] Collection route planning
-- [ ] Collection reports
+- [ ] US locale support (USD currency, US date format, US tax receipt template)
+- [ ] TR locale support (TL currency, TR date format, Turkish bağış makbuzu)
+- [ ] Locale-aware number/currency/date formatting in both admin and portal
+- [ ] Translation coverage audit for all existing modules (en + tr files)
 
-### 2.6 Aid Package (Kumanya) Distribution
-- [ ] Package donation management
-- [ ] Distribution tracking
-- [ ] Beneficiary management
-- [ ] Distribution reports
+### 1.5.4 Demo Data Framework
+
+- [ ] `SeedDemoData()` method in `IModule` interface
+- [ ] Demo tenant provisioning command (`nexora demo:load`)
+- [ ] Pre-built demo scenarios: General business (CRM, Finance, Projects) + NGO vertical (Fundraising, Sponsorship)
+- [ ] Admin UI "Create Demo Environment" button
+- [ ] Demo data cleanup command
 
 ---
 
-## Phase 3: Education & CMS Modules
-> **Goal**: Complete solution for educational institutions + multi-site CMS
+## Phase 2: Core Business Modules
+> **Goal**: Essential modules that every small and medium-sized business needs, regardless of industry. A restaurant, consultancy, NGO, or school can all start using Nexora from this phase.
+
+### 2.1 CRM Module
+**Spec**: [modules/crm/SPEC.md](../modules/crm/SPEC.md)
+
+Generic CRM with configurable pipeline templates. Works for sales, donor management, enrollment tracking, or any lead-to-conversion process.
+
+- [ ] Lead management (create, assign, qualify)
+- [ ] Pipeline / Funnel (customizable stages per organization)
+- [ ] **Pipeline templates** (pre-built: General Sales, Donor Pipeline, Enrollment Pipeline, Volunteer Pipeline, Real Estate, Consulting)
+- [ ] Activities (calls, meetings, tasks linked to leads)
+- [ ] Lead sources tracking (web form, referral, event, import)
+- [ ] Contact segmentation (tags, filters, saved segments)
+- [ ] Email marketing integration (via Notifications module)
+- [ ] SMS marketing integration (via Notifications module)
+- [ ] Campaign management (campaigns with goals, tracking, attribution)
+- [ ] Call center integration (click-to-call)
+- [ ] Mobile-optimized views (field staff)
+- [ ] CRM analytics & reports
+- [ ] **Portal**: Public lead capture forms
+
+### 2.2 Finance Module
+**Spec**: TBD
+
+Financial tracking for every business — income, expenses, bank accounts, budgets. Standalone for small businesses, prerequisite for full Accounting module.
+
+- [ ] Income tracking (payments, invoices, manual entries — categorized)
+- [ ] Expense tracking (receipts, photo upload, approval workflow)
+- [ ] Bank account management (add accounts, track balances)
+- [ ] Bank transaction import (CSV, OFX)
+- [ ] Basic bank reconciliation (match transactions to records)
+- [ ] Budget management (set budgets per category, track actuals vs. planned)
+- [ ] Multi-currency support (exchange rates, conversion)
+- [ ] Financial reports (income vs. expense, cash flow, budget variance)
+- [ ] Auto-record from other modules (Subscription payments, Fundraising donations, POS sales)
+- [ ] **3rd party integration**: QuickBooks Online / Xero sync (bi-directional)
+- [ ] **Portal**: Financial summary for stakeholders
+
+### 2.3 Subscription & Billing Module
+**Spec**: [modules/subscription/SPEC.md](../modules/subscription/SPEC.md)
+
+Recurring payments for any business model — SaaS subscriptions, membership dues, tuition fees, service retainers.
+
+- [ ] Subscription plans (configurable: service fees, memberships, tuition, retainers)
+- [ ] Billing cycles (monthly, quarterly, annual, semester, custom)
+- [ ] Automatic invoice generation on schedule
+- [ ] Payment processing (Stripe, iyzico integration)
+- [ ] Payment reminders (email, SMS — escalation tiers)
+- [ ] Overdue tracking & late fee management
+- [ ] Discount / scholarship / coupon management
+- [ ] Multi-currency billing
+- [ ] Proration and plan changes
+- [ ] Revenue recognition reports
+- [ ] **Portal**: Payment portal (view invoices, make payments, download receipts)
+
+### 2.4 Project Management Module
+**Spec**: [modules/projects/SPEC.md](../modules/projects/SPEC.md)
+
+Task and project tracking for internal teams — works for any industry.
+
+- [ ] Project creation with milestones
+- [ ] Task management (Kanban board with WIP limits)
+- [ ] Task comments and attachments
+- [ ] Time tracking (per task, per member)
+- [ ] Project team / member management
+- [ ] Project budgeting and cost tracking
+- [ ] Cost center tracking (materials, labor, subcontractors)
+- [ ] Meeting notes with action item conversion to tasks
+- [ ] Subcontractor contract management (Documents/Sign integration)
+- [ ] Labels and filtering
+- [ ] Project dashboard and Gantt views
+- [ ] Finance/Accounting integration (cost journal entries)
+- [ ] **Portal**: Project stakeholder view (progress, milestones, documents)
+
+---
+
+## Phase 3: Growth Modules
+> **Goal**: Modules that growing businesses need as they scale — website, events, hiring, inventory, feedback.
 
 ### 3.1 Website & CMS Module
 **Spec**: [modules/cms/SPEC.md](../modules/cms/SPEC.md)
@@ -411,7 +454,7 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 - [ ] Page builder (block-based visual editor)
 - [ ] Blog / News with editorial workflow
 - [ ] SEO management (meta tags, sitemaps, structured data, Core Web Vitals)
-- [ ] Form builder (contact, enrollment, volunteer forms → CRM integration)
+- [ ] Form builder (contact, application, volunteer forms → CRM integration)
 - [ ] Theme engine (white-label per org)
 - [ ] Media library (images, videos, documents)
 - [ ] Navigation/menu management
@@ -419,36 +462,25 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 - [ ] Multi-language content (i18n per page)
 - [ ] Mobile responsive (Next.js 16 SSR/ISR)
 - [ ] Live chat / WhatsApp integration
+- [ ] **Portal**: Self-service website management per organization
 
-### 3.2 Education Management Module
-**Spec**: [modules/education/SPEC.md](../modules/education/SPEC.md)
-- [ ] Academic year & term management
-- [ ] Grade levels, classrooms, student records
-- [ ] Enrollment pipeline (Application → Tour → Interview → Evaluation → Accepted → Enrolled)
-- [ ] Guardian/parent linking to students
-- [ ] Appointment system (school tours, parent-teacher meetings)
-- [ ] Staff availability calendar
-- [ ] Academic calendar (exams, holidays, special events)
-- [ ] Accreditation tracking (fire drills, inspections, audits)
-- [ ] Summer camp management
-- [ ] Student document collection (via Documents/Sign)
-- [ ] Waitlist management
+### 3.2 Event Management Module
+**Spec**: [modules/events/SPEC.md](../modules/events/SPEC.md)
 
-### 3.3 Subscription & Billing Module
-**Spec**: [modules/subscription/SPEC.md](../modules/subscription/SPEC.md)
-- [ ] Subscription plans (tuition, recurring service fees)
-- [ ] Billing cycles (monthly, quarterly, annual, semester)
-- [ ] Automatic invoice generation on schedule
-- [ ] Payment processing (Stripe, iyzico integration)
-- [ ] Payment reminders (email, SMS — escalation tiers)
-- [ ] Overdue tracking & late fee management
-- [ ] Scholarship / discount management
-- [ ] Payment portal for parents/clients
-- [ ] Multi-currency billing
-- [ ] Proration and plan changes
-- [ ] Revenue recognition reports
+Generic event management — conferences, workshops, fundraiser dinners, product launches, seasonal events.
 
-### 3.4 Surveys & Feedback Module
+- [ ] Event creation (generic: conferences, dinners, bazaars, fundraisers, workshops)
+- [ ] Event categories and templates (seasonal reuse)
+- [ ] Event registration and ticketing
+- [ ] QR-based check-in and attendance tracking
+- [ ] Venue and speaker management
+- [ ] Sponsor history tracking ("who sponsored what, when")
+- [ ] Annual organizational calendar (configurable special dates, holidays, recurring events)
+- [ ] Calendar sync (Outlook, Google Calendar, iCal)
+- [ ] Event-based reporting
+- [ ] **Portal**: Public event pages, registration forms, event calendar
+
+### 3.3 Surveys & Feedback Module
 **Spec**: [modules/surveys/SPEC.md](../modules/surveys/SPEC.md)
 - [ ] Survey builder (multiple question types: single/multi choice, rating, NPS, matrix, open text)
 - [ ] Survey sections and branching logic
@@ -460,26 +492,7 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 - [ ] Scheduled/recurring surveys
 - [ ] Export results (PDF, Excel)
 
----
-
-## Phase 4: Operations & Back-Office Modules
-> **Goal**: Complete the platform with operational modules
-
-### 4.1 Accounting & Finance Module
-**Spec**: [modules/accounting/SPEC.md](../modules/accounting/SPEC.md)
-- [ ] Chart of accounts (per organization, customizable)
-- [ ] Double-entry journal entries
-- [ ] Fiscal years and periods
-- [ ] Bank account management & transaction import
-- [ ] Bank reconciliation (auto-matching)
-- [ ] Expense management (photo upload, multi-level approval workflow)
-- [ ] Budget management & variance tracking
-- [ ] Multi-currency accounting with exchange rates
-- [ ] Tax rate management
-- [ ] Consolidated reports (cross-organization P&L, balance sheet)
-- [ ] Integration with Donations, Subscription, POS for auto-journaling
-
-### 4.2 HR & Payroll Module
+### 3.4 HR & Payroll Module
 **Spec**: [modules/hr/SPEC.md](../modules/hr/SPEC.md)
 - [ ] Employee records (personal info, emergency contacts, bank details)
 - [ ] Department & position management
@@ -489,36 +502,10 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 - [ ] Attendance tracking
 - [ ] Shift scheduling and assignment
 - [ ] Personnel document management
-- [ ] Employee self-service portal
+- [ ] **Portal**: Employee self-service (view payslips, request leave, update personal info)
+- [ ] **3rd party integration**: Gusto / ADP / BambooHR sync
 
-### 4.3 Point of Sale (POS) Module
-**Spec**: [modules/pos/SPEC.md](../modules/pos/SPEC.md)
-- [ ] Touch-friendly sales screen (tablet/phone optimized)
-- [ ] Terminal and session management
-- [ ] Product catalog with categories and price lists
-- [ ] Cash and card payment support
-- [ ] Receipt generation and printing
-- [ ] Cash movement tracking (float, in/out)
-- [ ] End-of-day cash reconciliation
-- [ ] Event-specific POS sessions (bazaar, fundraiser)
-- [ ] Offline capability (IndexedDB sync)
-- [ ] Inventory integration (auto stock deduction)
-- [ ] Accounting integration (auto journal entries)
-
-### 4.4 Fleet Management Module
-**Spec**: [modules/fleet/SPEC.md](../modules/fleet/SPEC.md)
-- [ ] Vehicle records (plate, model, VIN, registration details)
-- [ ] Vehicle assignment tracking (who has which vehicle)
-- [ ] Insurance policy tracking (expiry alerts, renewal workflow)
-- [ ] Maintenance scheduling (km-based and time-based)
-- [ ] Maintenance record keeping
-- [ ] Fuel consumption logging (with anomaly detection)
-- [ ] Vehicle inspection tracking
-- [ ] Vehicle document management
-- [ ] Cost tracking per vehicle (fuel, maintenance, insurance, tolls)
-- [ ] Fleet dashboard and reports
-
-### 4.5 Inventory & Asset Management Module
+### 3.5 Inventory & Asset Management Module
 **Spec**: [modules/inventory/SPEC.md](../modules/inventory/SPEC.md)
 - [ ] Warehouse management (per organization)
 - [ ] Location hierarchy within warehouses
@@ -531,20 +518,130 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 - [ ] Supplier management
 - [ ] Stock reports and dashboards
 
-### 4.6 Project Management Module
-**Spec**: [modules/projects/SPEC.md](../modules/projects/SPEC.md)
-- [ ] Project creation with milestones
-- [ ] Task management (Kanban board with WIP limits)
-- [ ] Task comments and attachments
-- [ ] Time tracking (per task, per member)
-- [ ] Project team / member management
-- [ ] Project budgeting and cost tracking
-- [ ] Construction cost center tracking (materials, labor, subcontractors)
-- [ ] Meeting notes with action item conversion to tasks
-- [ ] Subcontractor contract management (Documents/Sign integration)
-- [ ] Labels and filtering
-- [ ] Project dashboard and Gantt views
-- [ ] Accounting integration (cost journal entries)
+---
+
+## Phase 4: Advanced Operations & Vertical Modules
+> **Goal**: Advanced operational modules + industry-specific vertical solutions. Each module is built to production quality.
+>
+> **Module tiers**: This phase contains two types of modules:
+> - **Advanced Operations** — Full-featured modules for complex business needs (Accounting, POS, Fleet)
+> - **Vertical Modules** — Industry-specific solutions that differentiate Nexora (Fundraising, Sponsorship, Education)
+>
+> **Integration note**: Optional third-party integrations available for organizations already using external tools.
+
+### Advanced Operations
+
+#### 4.1 Accounting & Finance Module
+**Spec**: [modules/accounting/SPEC.md](../modules/accounting/SPEC.md)
+
+Extends Finance module with full double-entry accounting for organizations that need it.
+- [ ] Chart of accounts (per organization, customizable)
+- [ ] Double-entry journal entries
+- [ ] Fiscal years and periods
+- [ ] Bank account management & transaction import
+- [ ] Bank reconciliation (auto-matching)
+- [ ] Expense management (photo upload, multi-level approval workflow)
+- [ ] Budget management & variance tracking
+- [ ] Multi-currency accounting with exchange rates
+- [ ] Tax rate management
+- [ ] Consolidated reports (cross-organization P&L, balance sheet)
+- [ ] Integration with Fundraising, Subscription, POS for auto-journaling
+- [ ] **3rd party integration**: QuickBooks Online / Xero advanced sync
+
+#### 4.2 Point of Sale (POS) Module
+**Spec**: [modules/pos/SPEC.md](../modules/pos/SPEC.md)
+- [ ] Touch-friendly sales screen (tablet/phone optimized)
+- [ ] Terminal and session management
+- [ ] Product catalog with categories and price lists
+- [ ] Cash and card payment support
+- [ ] Receipt generation and printing
+- [ ] Cash movement tracking (float, in/out)
+- [ ] End-of-day cash reconciliation
+- [ ] Event-specific POS sessions (bazaar, fundraiser, pop-up shop)
+- [ ] Offline capability (IndexedDB sync)
+- [ ] Inventory integration (auto stock deduction)
+- [ ] Accounting integration (auto journal entries)
+- [ ] **3rd party integration**: Square POS sync
+
+#### 4.3 Fleet Management Module
+**Spec**: [modules/fleet/SPEC.md](../modules/fleet/SPEC.md)
+- [ ] Vehicle records (plate, model, VIN, registration details)
+- [ ] Vehicle assignment tracking (who has which vehicle)
+- [ ] Insurance policy tracking (expiry alerts, renewal workflow)
+- [ ] Maintenance scheduling (km-based and time-based)
+- [ ] Maintenance record keeping
+- [ ] Fuel consumption logging (with anomaly detection)
+- [ ] Vehicle inspection tracking
+- [ ] Vehicle document management
+- [ ] Cost tracking per vehicle (fuel, maintenance, insurance, tolls)
+- [ ] Fleet dashboard and reports
+
+### Vertical: Non-Profit / Foundation
+
+#### 4.4 Fundraising Module
+**Spec**: [modules/donations/SPEC.md](../modules/donations/SPEC.md)
+
+> **Note**: Module ID is `fundraising`. Spec directory retained at `donations/` for backward compatibility. Collection Box (Kumbara) management absorbed as "Collection Points" feature.
+
+Purpose-built donation and fundraising management for non-profit organizations.
+
+- [ ] Donation categories (configurable per organization — e.g., Zakat, Orphan Fund, General)
+- [ ] One-time donations (online payment)
+- [ ] Recurring donations (standing orders, card-on-file)
+- [ ] Donation cart (multiple items in one transaction)
+- [ ] Stripe integration (international)
+- [ ] iyzico/Param integration (Turkey)
+- [ ] Multi-currency support (configurable currencies with conversion)
+- [ ] Automatic receipt generation (locale-aware templates)
+- [ ] Donor matching (auto-match bank transfers to donors)
+- [ ] Donation on behalf of others
+- [ ] Guest donations (no account required)
+- [ ] Bank transaction import & reconciliation
+- [ ] Donation video/media linking (send video SMS/email to donor)
+- [ ] Zakat calculator (embeddable web widget)
+- [ ] Public donation page builder (embeddable forms)
+- [ ] **Campaign/Crowdfunding** — Campaign creation with funding goals, progress tracking (% funded), public campaign pages, multi-currency campaign support
+- [ ] **Collection Points** (formerly Kumbara) — Physical collection point registration (location, region, address), collection tracking (amounts, dates, collector), region/area management, collection route planning, collection reports
+- [ ] Donation reports (monthly, daily, YoY comparison, top campaigns, collection point performance)
+- [ ] Finance integration (auto-record donations as income)
+- [ ] **Portal**: Donor dashboard (history, receipts, active subscriptions, donation videos)
+
+#### 4.5 Sponsorship & Programs Module
+**Spec**: [modules/sponsorship/SPEC.md](../modules/sponsorship/SPEC.md)
+
+> **Note**: Aid Package (Kumanya) distribution absorbed as "Programs & Aid Distribution" feature.
+
+Sponsor-beneficiary matching, installment tracking, and aid distribution for non-profit organizations.
+
+- [ ] **Program management** — Define program types (student sponsorship, orphan care, classroom building, construction project, aid distribution)
+- [ ] Sponsor-beneficiary matching (manual and rule-based)
+- [ ] Installment plans (monthly, quarterly, custom payment schedules)
+- [ ] Payment tracking & reminders (integration with Fundraising module)
+- [ ] Progress updates to sponsors (photos, reports, videos)
+- [ ] **Programs & Aid Distribution** (formerly Kumanya) — Aid package definition (contents, cost), distribution campaign creation, beneficiary registration and eligibility tracking, distribution tracking (who received what, when, where), distribution reports
+- [ ] Integration with Fundraising module (auto-link donations to sponsorships/programs)
+- [ ] Sponsorship & program reports (active sponsorships, payment status, distribution coverage)
+- [ ] **Portal**: Sponsor dashboard (view beneficiary, track payments, watch progress videos, installment management)
+
+### Vertical: Education
+
+#### 4.6 Education Management Module
+**Spec**: [modules/education/SPEC.md](../modules/education/SPEC.md)
+
+Complete enrollment and academic management for schools, academies, and educational institutions.
+
+- [ ] Academic year & term management
+- [ ] Grade levels, classrooms, student records
+- [ ] Enrollment pipeline (Application → Tour → Interview → Evaluation → Accepted → Enrolled)
+- [ ] Guardian/parent linking to students
+- [ ] Appointment system (school tours, parent-teacher meetings)
+- [ ] Staff availability calendar
+- [ ] Academic calendar (exams, holidays, special events)
+- [ ] Accreditation tracking (fire drills, inspections, audits)
+- [ ] Summer camp management
+- [ ] Student document collection (via Documents/Sign)
+- [ ] Waitlist management
+- [ ] **Portal**: Parent/guardian portal (enrollment application, document upload, student info, appointment booking)
 
 ---
 
@@ -556,7 +653,10 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 - [ ] Accessibility (WCAG 2.1 AA)
 - [ ] Documentation (user guides, API docs, developer docs)
 - [ ] Automated testing (unit, integration, e2e)
-- [ ] Remove Infrastructure dependency from Contacts unit tests — replace `TestTenantAccessor` with lightweight fake *(CODE TODO: `TestTenantAccessor.cs:4` — issue not yet created)*
+- [ ] Portal UI paired with each module release (donor, sponsor, parent, employee portals)
+- [ ] Localization expansion (additional locales based on customer demand)
+- [ ] 3rd party integration connectors (per module, as needed)
+- [ ] Remove Infrastructure dependency from Contacts unit tests — replace `TestTenantAccessor` with lightweight fake
 - [ ] Mobile app (React Native — Phase 3+)
 - [ ] Marketplace (3rd party module publishing — Phase 4+)
 
@@ -564,24 +664,68 @@ Phase 2'de finansal modüller (Donations) ve yoğun cross-module event akışı 
 
 ## Module Summary Matrix
 
-| Module | Phase | Dependencies (Required) | Dependencies (Optional) | Key Integration Points |
-|--------|-------|------------------------|------------------------|----------------------|
-| Identity & Access | Core | — | — | Keycloak, APISIX (JWT validation) |
-| Contact Management | Core | identity | — | 360-view contributors |
-| Notification Engine | Core | identity, contacts | — | All modules (event-driven) |
-| Document Management | Core | identity | contacts | MinIO, Sign |
-| Reporting Engine | Core | identity | contacts, notifications, documents | Dapper SQL, MinIO, Recharts |
-| CRM | Phase 2 | contacts, notifications | — | Web forms, Events |
-| Donations | Phase 2 | contacts, notifications, documents | — | Stripe, iyzico, Bank import |
-| Sponsorship | Phase 2 | contacts, donations, notifications | — | Donor portal |
-| Events | Phase 2 | identity, contacts, notifications | documents, crm, donations | Calendar sync, QR check-in |
-| Education | Phase 3 | crm, contacts, documents, notifications | subscription | Enrollment pipeline |
-| Subscription | Phase 3 | identity, contacts, notifications | — | Stripe, iyzico |
-| Website & CMS | Phase 3 | identity, notifications | contacts, crm, donations | Next.js 16 SSR |
-| Surveys | Phase 3 | identity, contacts, notifications | — | Distribution channels |
-| Accounting | Phase 4 | identity, contacts | hr, documents, notifications | Donations, Subscription, POS |
-| HR & Payroll | Phase 4 | identity, contacts, notifications, documents | accounting | Contract Sign |
-| Point of Sale | Phase 4 | identity, contacts, notifications | inventory, accounting | Offline sync |
-| Fleet | Phase 4 | identity, contacts, notifications, documents | — | Maintenance alerts |
-| Inventory | Phase 4 | identity, contacts, notifications | documents | POS, barcode scan |
-| Projects | Phase 4 | identity, contacts, notifications | documents, accounting | Cost tracking |
+| Module | Phase | Tier | Dependencies (Required) | Key Integration Points | Portal UI |
+|--------|-------|------|------------------------|----------------------|-----------|
+| Identity & Access | Core | Platform | — | Keycloak, APISIX | — |
+| Contact Management | Core | Platform | identity | 360-view contributors | — |
+| Notification Engine | Core | Platform | identity, contacts | All modules (event-driven) | — |
+| Document Management | Core | Platform | identity | MinIO, Sign | — |
+| Reporting Engine | Core | Platform | identity | Dapper SQL, Recharts | — |
+| Portal Framework | Core | Platform | identity | Next.js 16, Keycloak OIDC | — |
+| CRM | Phase 2 | Business | contacts, notifications | Web forms, pipeline templates | Lead capture forms |
+| Finance | Phase 2 | Business | contacts, notifications | QuickBooks/Xero sync | Financial summary |
+| Subscription & Billing | Phase 2 | Business | contacts, notifications | Stripe, iyzico | Payment portal |
+| Project Management | Phase 2 | Business | contacts, notifications | Gantt, cost tracking | Stakeholder view |
+| Website & CMS | Phase 3 | Business | notifications | Next.js 16 SSR/ISR | Site management |
+| Events | Phase 3 | Business | contacts, notifications | Calendar sync, QR | Event registration |
+| Surveys | Phase 3 | Business | contacts, notifications | Distribution channels | Survey responses |
+| HR & Payroll | Phase 3 | Business | contacts, notifications, documents | Gusto/ADP sync | Employee self-service |
+| Inventory & Assets | Phase 3 | Business | contacts, notifications | POS, barcode scan | — |
+| Accounting | Phase 4 | Advanced | contacts, finance | QuickBooks/Xero | — |
+| Point of Sale | Phase 4 | Advanced | contacts, notifications | Square sync, offline | — |
+| Fleet | Phase 4 | Advanced | contacts, notifications, documents | Maintenance alerts | — |
+| **Fundraising** | Phase 4 | Vertical: NGO | contacts, notifications, documents | Stripe, iyzico, collection points | Donor dashboard |
+| **Sponsorship & Programs** | Phase 4 | Vertical: NGO | contacts, fundraising, notifications | Aid distribution | Sponsor dashboard |
+| **Education** | Phase 4 | Vertical: Education | crm, contacts, documents, notifications | Enrollment pipeline | Parent portal |
+
+### Module Tiers
+
+```mermaid
+graph TD
+    subgraph "Platform (Phase 0-1) — Always Available"
+        P["Identity, Contacts, Notifications,\nDocuments, Reporting, Portal"]
+    end
+
+    subgraph "Business (Phase 2-3) — Every SMB"
+        B["CRM, Finance, Subscription, Projects,\nCMS, Events, Surveys, HR, Inventory"]
+    end
+
+    subgraph "Advanced (Phase 4) — Complex Operations"
+        A["Accounting, POS, Fleet"]
+    end
+
+    subgraph "Vertical (Phase 4) — Industry-Specific"
+        V1["NGO: Fundraising,\nSponsorship & Programs"]
+        V2["Education: Education\nManagement"]
+        V3["Future: Healthcare,\nLegal, Real Estate..."]
+    end
+
+    P --> B --> A
+    B --> V1
+    B --> V2
+    B --> V3
+
+    style P fill:#2D8C8C,color:#fff
+    style B fill:#4A90D9,color:#fff
+    style A fill:#7B68AE,color:#fff
+    style V1 fill:#5BA55B,color:#fff
+    style V2 fill:#E8A838,color:#fff
+    style V3 fill:#999,color:#fff
+```
+
+> **Design Philosophy:**
+> - **Platform** modules are always available — they form the foundation for every Nexora installation
+> - **Business** modules serve any SMB — a restaurant, consultancy, or NGO can all use CRM + Finance + Projects
+> - **Advanced** modules add specialized operational capabilities for businesses with complex needs
+> - **Vertical** modules provide industry-specific solutions — this is where Nexora differentiates from generic ERPs like Odoo
+> - Verticals are built **on top of** business modules, not instead of them. An NGO uses CRM + Finance + Fundraising + Sponsorship together

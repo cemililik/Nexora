@@ -21,6 +21,39 @@ import type {
   ContactSource,
 } from '../types';
 
+function validateContactTypeFields(
+  contactType: ContactType,
+  data: { firstName?: string; lastName?: string; companyName?: string },
+  ctx: z.RefinementCtx,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  if (contactType === 'Individual') {
+    if (!data.firstName || data.firstName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['firstName'],
+        message: t('lockey_validation_required', { ns: 'validation' }),
+      });
+    }
+    if (!data.lastName || data.lastName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['lastName'],
+        message: t('lockey_validation_required', { ns: 'validation' }),
+      });
+    }
+  }
+  if (contactType === 'Organization') {
+    if (!data.companyName || data.companyName.trim().length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['companyName'],
+        message: t('lockey_validation_required', { ns: 'validation' }),
+      });
+    }
+  }
+}
+
 function createContactSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
   return z
     .object({
@@ -42,52 +75,35 @@ function createContactSchemaFactory(t: (key: string, options?: Record<string, un
       }),
     })
     .superRefine((data, ctx) => {
-      if (data.type === 'Individual') {
-        if (!data.firstName || data.firstName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['firstName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-        if (!data.lastName || data.lastName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['lastName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-      }
-      if (data.type === 'Organization') {
-        if (!data.companyName || data.companyName.trim().length === 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['companyName'],
-            message: t('lockey_validation_required', { ns: 'validation' }),
-          });
-        }
-      }
+      validateContactTypeFields(data.type, data, ctx, t);
     });
 }
 
-function updateContactSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
-  return z.object({
-    title: z.string().optional(),
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
-    companyName: z.string().optional(),
-    email: z
-      .string()
-      .email({ message: t('lockey_validation_email_invalid', { ns: 'validation' }) })
-      .optional()
-      .or(z.literal('')),
-    phone: z.string().optional(),
-    mobile: z.string().optional(),
-    website: z.string().optional(),
-    taxId: z.string().optional(),
-    language: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
-    currency: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
-  });
+function updateContactSchemaFactory(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  contactType: ContactType,
+) {
+  return z
+    .object({
+      title: z.string().optional(),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      companyName: z.string().optional(),
+      email: z
+        .string()
+        .email({ message: t('lockey_validation_email_invalid', { ns: 'validation' }) })
+        .optional()
+        .or(z.literal('')),
+      phone: z.string().optional(),
+      mobile: z.string().optional(),
+      website: z.string().optional(),
+      taxId: z.string().optional(),
+      language: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+      currency: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+    })
+    .superRefine((data, ctx) => {
+      validateContactTypeFields(contactType, data, ctx, t);
+    });
 }
 
 const contactTypes: ContactType[] = ['Individual', 'Organization'];
@@ -101,6 +117,7 @@ interface CreateContactFormProps {
 
 interface EditContactFormProps {
   mode: 'edit';
+  contactType: ContactType;
   defaultValues: UpdateContactRequest;
   onSubmit: (data: UpdateContactRequest) => void;
   isPending: boolean;
@@ -115,6 +132,7 @@ export function ContactForm(props: ContactFormProps) {
 
   return (
     <EditForm
+      contactType={props.contactType}
       defaultValues={props.defaultValues}
       onSubmit={props.onSubmit}
       isPending={props.isPending}
@@ -285,16 +303,18 @@ function CreateForm({
 }
 
 function EditForm({
+  contactType,
   defaultValues,
   onSubmit,
   isPending,
 }: {
+  contactType: ContactType;
   defaultValues: UpdateContactRequest;
   onSubmit: (data: UpdateContactRequest) => void;
   isPending: boolean;
 }) {
   const { t } = useTranslation('contacts');
-  const schema = useMemo(() => updateContactSchemaFactory(t), [t]);
+  const schema = useMemo(() => updateContactSchemaFactory(t, contactType), [t, contactType]);
   const form = useForm<UpdateContactRequest>({
     resolver: zodResolver(schema),
     defaultValues,
@@ -315,12 +335,22 @@ function EditForm({
             {t('lockey_contacts_form_first_name')}
           </label>
           <Input id="editFirstName" {...form.register('firstName')} />
+          {form.formState.errors.firstName && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.firstName.message}
+            </p>
+          )}
         </div>
         <div className="space-y-2">
           <label htmlFor="editLastName" className="text-sm font-medium">
             {t('lockey_contacts_form_last_name')}
           </label>
           <Input id="editLastName" {...form.register('lastName')} />
+          {form.formState.errors.lastName && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.lastName.message}
+            </p>
+          )}
         </div>
       </div>
 
@@ -329,6 +359,11 @@ function EditForm({
           {t('lockey_contacts_form_company_name')}
         </label>
         <Input id="editCompanyName" {...form.register('companyName')} />
+        {form.formState.errors.companyName && (
+          <p className="text-sm text-destructive">
+            {form.formState.errors.companyName.message}
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { useApiError } from '@/shared/hooks/useApiError';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import { userKeys } from './useUsers';
 import type {
@@ -48,6 +49,7 @@ export function useOrganization(id: string) {
 export function useCreateOrganization() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: CreateOrganizationRequest) =>
@@ -56,12 +58,14 @@ export function useCreateOrganization() {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_org_created'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useUpdateOrganization(id: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: UpdateOrganizationRequest) =>
@@ -73,12 +77,14 @@ export function useUpdateOrganization(id: string) {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_org_updated'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
 export function useDeleteOrganization() {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (id: string) =>
@@ -87,6 +93,7 @@ export function useDeleteOrganization() {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_org_deleted'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
@@ -108,6 +115,7 @@ export function useOrganizationMembers(
 export function useAddMember(orgId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: AddMemberRequest) =>
@@ -119,6 +127,7 @@ export function useAddMember(orgId: string) {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_member_added'));
     },
+    onError: (err) => handleApiError(err),
   });
 }
 
@@ -128,6 +137,7 @@ export function useAddUserToOrganization(
 ) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (orgId: string) =>
@@ -141,13 +151,20 @@ export function useAddUserToOrganization(
       toast.success(t('lockey_identity_member_added'));
       options?.onSuccess?.();
     },
-    onError: options?.onError,
+    onError: (err) => {
+      if (options?.onError) {
+        options.onError(err);
+      } else {
+        handleApiError(err);
+      }
+    },
   });
 }
 
 export function useRemoveMember(orgId: string) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (userId: string) =>
@@ -158,5 +175,6 @@ export function useRemoveMember(orgId: string) {
       void queryClient.invalidateQueries({ queryKey: orgKeys.all });
       toast.success(t('lockey_identity_member_removed'));
     },
+    onError: (err) => handleApiError(err),
   });
 }

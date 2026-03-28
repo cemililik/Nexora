@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -15,22 +17,27 @@ public sealed record GetCurrentUserQuery(string KeycloakUserId) : IQuery<UserDet
 /// <summary>Resolves the current user from Keycloak ID and returns detail with org memberships.</summary>
 public sealed class GetCurrentUserHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetCurrentUserQuery, UserDetailDto>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetCurrentUserHandler> logger) : IQueryHandler<GetCurrentUserQuery, UserDetailDto>
 {
     public async Task<Result<UserDetailDto>> Handle(
         GetCurrentUserQuery request,
         CancellationToken cancellationToken)
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
+        var sw = Stopwatch.StartNew();
 
-        var user = await dbContext.Users
+        var user = await dbContext.Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.KeycloakUserId == request.KeycloakUserId && u.TenantId == tenantId,
                 cancellationToken);
 
         if (user is null)
-            return Result<UserDetailDto>.Failure("lockey_identity_error_user_not_found");
+        {
+            logger.LogDebug("User not found in tenant {TenantId}", tenantId);
+            return Result<UserDetailDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
+        }
 
-        var orgs = await dbContext.OrganizationUsers
+        var orgs = await dbContext.OrganizationUsers.AsNoTracking()
             .Where(ou => ou.UserId == user.Id)
             .Join(dbContext.Organizations,
                 ou => ou.OrganizationId,
@@ -38,11 +45,15 @@ public sealed class GetCurrentUserHandler(
                 (ou, o) => new UserOrganizationDto(o.Id.Value, o.Name, ou.IsDefaultOrg))
             .ToListAsync(cancellationToken);
 
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+            logger.LogWarning("GetCurrentUser query took {ElapsedMs}ms for tenant {TenantId}", sw.ElapsedMilliseconds, tenantId);
+
         var dto = new UserDetailDto(
             user.Id.Value, user.Email, user.FirstName, user.LastName,
             user.Phone, user.Status.ToString(), user.LastLoginAt, orgs);
 
         return Result<UserDetailDto>.Success(dto,
-            new LocalizedMessage("lockey_identity_user_retrieved"));
+            LocalizedMessage.Of("lockey_identity_user_retrieved"));
     }
 }

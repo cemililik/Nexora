@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 
+import axios from 'axios';
 import { api, setAuthToken } from '@/shared/lib/api';
 import { createKeycloak, parseTokenClaims } from '@/shared/lib/auth';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
@@ -61,10 +62,10 @@ export function useAuth() {
         try {
           userInfo = await api.get<UserInfo>('/identity/users/me');
         } catch (err: unknown) {
-          const status = (err as { response?: { status?: number } })?.response?.status;
+          const status = axios.isAxiosError(err) ? err.response?.status : undefined;
           if (status === 401 || status === 403) {
             // Token rejected by backend — force re-login
-            console.error('[useAuth] /me returned', status, '— redirecting to login');
+            if (import.meta.env.DEV) console.error('[useAuth] /me returned', status, '— redirecting to login');
             setAuthToken(null);
             clearSession();
             setIsInitializing(false);
@@ -72,7 +73,7 @@ export function useAuth() {
             return;
           }
           // 404 (tenant not provisioned), network errors, 5xx — fall back to token claims
-          console.warn('[useAuth] /me failed, falling back to token claims', err);
+          if (import.meta.env.DEV) console.warn('[useAuth] /me failed, falling back to token claims', err);
         }
 
         setSession({

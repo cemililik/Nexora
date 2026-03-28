@@ -34,6 +34,9 @@ public abstract class AuditableEntity<TId> : Entity<TId>, ISoftDeletable where T
     /// <summary>Marks entity as soft-deleted. Prefer using dbContext.Remove() which does this automatically.</summary>
     public void MarkAsDeleted(DateTimeOffset at, string? by)
     {
+        if (at == default)
+            throw new ArgumentException("Deletion timestamp must be provided.", nameof(at));
+
         IsDeleted = true;
         DeletedAt = at;
         DeletedBy = by;

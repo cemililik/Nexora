@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.RegularExpressions;
 using Nexora.Modules.Notifications.Domain.Entities;
 
@@ -11,6 +12,8 @@ public static partial class TemplateRenderer
     /// <summary>
     /// Renders a template with variable substitution and language resolution.
     /// Falls back to the template's default language if the requested language is not available.
+    /// HTML-encodes variable values in the body for HTML-format templates to prevent XSS.
+    /// Subject lines are never encoded as they are plain text.
     /// </summary>
     public static (string Subject, string Body) Render(
         NotificationTemplate template,
@@ -32,19 +35,34 @@ public static partial class TemplateRenderer
             }
         }
 
-        subject = SubstituteVariables(subject, variables);
-        body = SubstituteVariables(body, variables);
+        var htmlEncode = template.Format == ValueObjects.TemplateFormat.Html;
+
+        subject = SubstituteVariables(subject, variables, htmlEncode: false);
+        body = SubstituteVariables(body, variables, htmlEncode);
+
+        // Strip CR/LF from subject to prevent email header injection
+        subject = subject.Replace("\r", string.Empty).Replace("\n", string.Empty);
 
         return (subject, body);
     }
 
     /// <summary>
+    /// Renders an inline subject with variable substitution and CR/LF stripping (header injection prevention).
+    /// </summary>
+    public static string RenderInlineSubject(string subject, Dictionary<string, string> variables) =>
+        SubstituteVariables(subject, variables, htmlEncode: false)
+            .Replace("\r", string.Empty).Replace("\n", string.Empty);
+
+    /// <summary>
     /// Renders inline content (no template) with variable substitution.
     /// </summary>
-    public static string RenderInline(string content, Dictionary<string, string> variables) =>
-        SubstituteVariables(content, variables);
+    /// <param name="content">The content with <c>{{variable}}</c> placeholders.</param>
+    /// <param name="variables">Variable name to value mappings.</param>
+    /// <param name="htmlEncode">Whether to HTML-encode variable values before substitution.</param>
+    public static string RenderInline(string content, Dictionary<string, string> variables, bool htmlEncode) =>
+        SubstituteVariables(content, variables, htmlEncode);
 
-    private static string SubstituteVariables(string content, Dictionary<string, string> variables)
+    private static string SubstituteVariables(string content, Dictionary<string, string> variables, bool htmlEncode)
     {
         if (variables.Count == 0)
             return content;
@@ -52,7 +70,10 @@ public static partial class TemplateRenderer
         return VariablePattern().Replace(content, match =>
         {
             var key = match.Groups[1].Value;
-            return variables.TryGetValue(key, out var value) ? value : match.Value;
+            if (!variables.TryGetValue(key, out var value))
+                return match.Value;
+
+            return htmlEncode ? WebUtility.HtmlEncode(value) : value;
         });
     }
 

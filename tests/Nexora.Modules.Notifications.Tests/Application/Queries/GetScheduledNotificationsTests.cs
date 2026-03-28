@@ -5,6 +5,7 @@ using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Nexora.Modules.Notifications.Tests.Application.Queries;
 
@@ -30,7 +31,7 @@ public sealed class GetScheduledNotificationsTests : IDisposable
         // Arrange
         await SeedSchedule(DateTime.UtcNow.AddDays(1));
         await SeedSchedule(DateTime.UtcNow.AddDays(2));
-        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor, NullLogger<GetScheduledNotificationsHandler>.Instance);
         var query = new GetScheduledNotificationsQuery();
 
         // Act
@@ -51,7 +52,7 @@ public sealed class GetScheduledNotificationsTests : IDisposable
         schedule2.Cancel();
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor, NullLogger<GetScheduledNotificationsHandler>.Instance);
         var query = new GetScheduledNotificationsQuery();
 
         // Act
@@ -76,7 +77,7 @@ public sealed class GetScheduledNotificationsTests : IDisposable
         await _dbContext.NotificationSchedules.AddAsync(schedule);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor, NullLogger<GetScheduledNotificationsHandler>.Instance);
         var query = new GetScheduledNotificationsQuery();
 
         // Act
@@ -94,7 +95,7 @@ public sealed class GetScheduledNotificationsTests : IDisposable
         await SeedSchedule(DateTime.UtcNow.AddDays(3));
         await SeedSchedule(DateTime.UtcNow.AddDays(1));
         await SeedSchedule(DateTime.UtcNow.AddDays(2));
-        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor);
+        var handler = new GetScheduledNotificationsHandler(_dbContext, _tenantAccessor, NullLogger<GetScheduledNotificationsHandler>.Instance);
         var query = new GetScheduledNotificationsQuery();
 
         // Act

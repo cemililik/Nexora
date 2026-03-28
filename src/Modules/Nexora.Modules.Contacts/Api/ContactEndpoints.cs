@@ -63,7 +63,7 @@ public static class ContactEndpoints
         {
             var result = await sender.Send(new ArchiveContactCommand(id), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return result.Error!.Message.Key switch
             {

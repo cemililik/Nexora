@@ -80,8 +80,12 @@ public abstract class AuditableEntity<TId> : Entity<TId>, ISoftDeletable
     internal void SetUpdated(DateTimeOffset at, string? by) { ... }
 
     /// <summary>Marks entity as soft-deleted.</summary>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="at"/> is default.</exception>
     public void MarkAsDeleted(DateTimeOffset at, string? by)
     {
+        if (at == default)
+            throw new ArgumentException("Timestamp cannot be default.", nameof(at));
+
         IsDeleted = true;
         DeletedAt = at;
         DeletedBy = by;

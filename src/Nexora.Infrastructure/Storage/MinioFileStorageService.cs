@@ -78,20 +78,76 @@ public sealed class MinioFileStorageService(
         string contentType,
         CancellationToken ct = default)
     {
+        using var stream = new MemoryStream(data);
+        await UploadObjectAsync(bucketName, objectKey, stream, contentType, ct);
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// Accepts both seekable and non-seekable streams. For seekable streams, Position
+    /// is reset to 0 before upload. Non-seekable streams are buffered into memory
+    /// (up to 100 MB; exceeding throws <see cref="InvalidOperationException"/>).
+    /// </remarks>
+    public async Task UploadObjectAsync(
+        string bucketName,
+        string objectKey,
+        Stream stream,
+        string contentType,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(stream);
+        if (!stream.CanRead)
+            throw new ArgumentException("Stream must be readable.", nameof(stream));
+
         var client = await GetClientAsync(ct);
         await EnsureBucketExistsAsync(client, bucketName, ct);
 
-        using var stream = new MemoryStream(data);
-        await client.PutObjectAsync(
-            new PutObjectArgs()
-                .WithBucket(bucketName)
-                .WithObject(objectKey)
-                .WithStreamData(stream)
-                .WithObjectSize(data.Length)
-                .WithContentType(contentType), ct);
+        // Non-seekable streams must be buffered; enforce a size limit to prevent OOM
+        const long maxBufferSize = 100 * 1024 * 1024; // 100 MB
+        const int chunkSize = 81_920; // 80 KB chunks
+        Stream uploadStream = stream;
+        MemoryStream? buffered = null;
+        if (!stream.CanSeek)
+        {
+            buffered = new MemoryStream();
+            var buffer = new byte[chunkSize];
+            int bytesRead;
+            while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(0, chunkSize), ct)) > 0)
+            {
+                await buffered.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+                if (buffered.Length > maxBufferSize)
+                {
+                    await buffered.DisposeAsync();
+                    throw new InvalidOperationException(
+                        $"Non-seekable stream exceeds maximum buffer size of {maxBufferSize / (1024 * 1024)} MB. Use a seekable stream for large uploads.");
+                }
+            }
+            buffered.Position = 0;
+            uploadStream = buffered;
+        }
+        else
+        {
+            uploadStream.Position = 0;
+        }
 
-        logger.LogInformation("Uploaded object {BucketName}/{ObjectKey} ({Size} bytes)",
-            bucketName, objectKey, data.Length);
+        try
+        {
+            await client.PutObjectAsync(
+                new PutObjectArgs()
+                    .WithBucket(bucketName)
+                    .WithObject(objectKey)
+                    .WithStreamData(uploadStream)
+                    .WithObjectSize(uploadStream.Length)
+                    .WithContentType(contentType), ct);
+
+            logger.LogInformation("Uploaded object {BucketName}/{ObjectKey} ({Size} bytes)",
+                bucketName, objectKey, uploadStream.Length);
+        }
+        finally
+        {
+            if (buffered is not null)
+                await buffered.DisposeAsync();
+        }
     }
 
     /// <inheritdoc />

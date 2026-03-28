@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Localization;
+using Nexora.SharedKernel.Results;
 
 namespace Nexora.Infrastructure.MultiTenancy;
 
@@ -40,7 +42,9 @@ public sealed class TenantMiddleware(RequestDelegate next)
         {
             // Authenticated user without tenant claim — reject
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            await context.Response.WriteAsJsonAsync(new { message = "lockey_error_tenant_context_missing" });
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(
+                ApiEnvelope<object>.Fail(new Error(LocalizedMessage.Of("lockey_error_tenant_context_missing"))));
             return;
         }
 

@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Notifications.Application.DTOs;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.Modules.Notifications.Infrastructure;
@@ -17,16 +19,21 @@ public sealed record GetScheduledNotificationsQuery(
 /// <summary>Returns pending scheduled notifications for the current tenant.</summary>
 public sealed class GetScheduledNotificationsHandler(
     NotificationsDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetScheduledNotificationsQuery, PagedResult<NotificationScheduleDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetScheduledNotificationsHandler> logger) : IQueryHandler<GetScheduledNotificationsQuery, PagedResult<NotificationScheduleDto>>
 {
+    private const long SlowQueryThresholdMs = 500;
+
     public async Task<Result<PagedResult<NotificationScheduleDto>>> Handle(
         GetScheduledNotificationsQuery request,
         CancellationToken cancellationToken)
     {
+        var stopwatch = Stopwatch.StartNew();
+
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = from s in dbContext.NotificationSchedules
-                    join n in dbContext.Notifications on s.NotificationId equals n.Id
+        var query = from s in dbContext.NotificationSchedules.AsNoTracking()
+                    join n in dbContext.Notifications.AsNoTracking() on s.NotificationId equals n.Id
                     where n.TenantId == tenantId && s.Status == ScheduleStatus.Pending
                     orderby s.ScheduledAt
                     select new NotificationScheduleDto(
@@ -39,6 +46,20 @@ public sealed class GetScheduledNotificationsHandler(
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync(cancellationToken);
+
+        stopwatch.Stop();
+
+        if (stopwatch.ElapsedMilliseconds > SlowQueryThresholdMs)
+        {
+            logger.LogWarning(
+                "Slow query detected: GetScheduledNotifications took {ElapsedMs}ms for tenant {TenantId}",
+                stopwatch.ElapsedMilliseconds, tenantId);
+        }
+
+        if (items.Count == 0)
+        {
+            logger.LogDebug("No scheduled notifications found for tenant {TenantId}", tenantId);
+        }
 
         var result = new PagedResult<NotificationScheduleDto>
         {

@@ -59,7 +59,7 @@ public static class ReportDefinitionEndpoints
         {
             var result = await sender.Send(new DeleteReportDefinitionCommand(id), ct);
             return result.IsSuccess
-                ? Results.NoContent()
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         });
 

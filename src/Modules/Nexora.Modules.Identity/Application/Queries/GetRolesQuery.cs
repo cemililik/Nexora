@@ -23,13 +23,13 @@ public sealed class GetRolesHandler(
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
-        var roles = await dbContext.Roles
+        var roles = await dbContext.Roles.AsNoTracking()
             .Where(r => r.TenantId == tenantId)
             .Include(r => r.Permissions)
             .OrderBy(r => r.Name)
             .ToListAsync(cancellationToken);
 
-        var allPermissions = await dbContext.Permissions.ToListAsync(cancellationToken);
+        var allPermissions = await dbContext.Permissions.AsNoTracking().ToListAsync(cancellationToken);
         var permissionMap = allPermissions.ToDictionary(p => p.Id, p => p.Key);
 
         var dtos = roles.Select(r => new RoleDto(

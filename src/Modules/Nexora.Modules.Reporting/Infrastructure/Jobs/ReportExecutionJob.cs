@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
+using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -19,7 +20,7 @@ public sealed record ReportExecutionJobParams : JobParams
 public sealed class ReportExecutionJob(
     ITenantContextAccessor tenantContextAccessor,
     ReportingDbContext dbContext,
-    ReportExecutionService executionService,
+    IReportExecutionService executionService,
     ReportExportService exportService,
     IFileStorageService fileStorageService,
     ILogger<ReportExecutionJob> logger)
@@ -72,14 +73,14 @@ public sealed class ReportExecutionJob(
 
             // Export to format
             var formatStr = execution.Format.ToString();
-            var bytes = exportService.Export(rows, formatStr, definition.Name);
+            using var exportStream = exportService.Export(rows, formatStr, definition.Name);
 
             // Upload to MinIO
             var extension = ReportExportService.GetFileExtension(formatStr);
             var storageKey = $"reports/{parameters.TenantId}/{execution.Id.Value}{extension}";
 
             await fileStorageService.UploadObjectAsync(
-                "nexora-reports", storageKey, bytes,
+                "nexora-reports", storageKey, exportStream,
                 ReportExportService.GetContentType(formatStr), ct);
 
             execution.MarkCompleted(storageKey, rows.Count, sw.ElapsedMilliseconds);

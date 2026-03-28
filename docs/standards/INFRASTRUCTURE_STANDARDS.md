@@ -110,22 +110,28 @@ public sealed record CacheOptions
 
 ### 1.4 Cache Key Convention
 
-```
-{module}:{tenant}:{entity}:{identifier}
+`DaprCacheService` now **automatically prefixes ALL cache keys with the tenant ID** via `ITenantContextAccessor`. Modules MUST NOT manually include tenant ID in their cache keys — it is enforced by infrastructure.
+
+**Module-supplied key format:**
+
+```text
+{module}:{entity}:{identifier}
 ```
 
-| Pattern | Örnek | Açıklama |
-|---------|-------|----------|
-| `{module}:{tenant}:{entity}:{id}` | `donations:tenant_isabet:donation:abc123` | Tek entity |
-| `{module}:{tenant}:{entity}:list:{hash}` | `crm:tenant_isabet:leads:list:a1b2c3` | Sayfalı liste (query hash) |
-| `{module}:{tenant}:config` | `subscription:tenant_isabet:config` | Modül config |
-| `identity:{tenant}:modules` | `identity:tenant_isabet:modules` | Yüklü modül listesi |
-| `identity:{tenant}:permissions:{userId}` | `identity:tenant_isabet:permissions:user1` | Kullanıcı izinleri |
+The infrastructure layer transparently prepends the tenant ID, producing the actual stored key: `{tenantId}:{module}:{entity}:{identifier}`.
+
+| Module Key (what you write) | Actual Stored Key (auto-prefixed) | Açıklama |
+|-----------------------------|-----------------------------------|----------|
+| `donations:donation:abc123` | `tenant_isabet:donations:donation:abc123` | Tek entity |
+| `crm:leads:list:a1b2c3` | `tenant_isabet:crm:leads:list:a1b2c3` | Sayfalı liste (query hash) |
+| `subscription:config` | `tenant_isabet:subscription:config` | Modül config |
+| `identity:modules` | `tenant_isabet:identity:modules` | Yüklü modül listesi |
+| `identity:permissions:user1` | `tenant_isabet:identity:permissions:user1` | Kullanıcı izinleri |
 
 ### 1.5 Modüllerde Cache Kullanımı
 
 ```csharp
-// ✅ DOĞRU — ICacheService ile
+// ✅ DOĞRU — ICacheService ile (tenant ID is auto-prefixed by infrastructure)
 public sealed class GetDonationHandler(
     ICacheService cache,
     IDonationRepository repository)
@@ -134,7 +140,8 @@ public sealed class GetDonationHandler(
     public async Task<DonationResponse?> Handle(
         GetDonationQuery query, CancellationToken ct)
     {
-        var cacheKey = $"donations:{query.TenantId}:donation:{query.DonationId}";
+        // No tenant ID needed — DaprCacheService auto-prefixes via ITenantContextAccessor
+        var cacheKey = $"donations:donation:{query.DonationId}";
 
         return await cache.GetOrSetAsync(
             cacheKey,
@@ -168,13 +175,13 @@ public sealed class UpdateDonationHandler(
         donation.UpdateAmount(cmd.NewAmount);
         await unitOfWork.CommitAsync(ct);
 
-        // Tek entity cache'ini temizle
+        // Tek entity cache'ini temizle (tenant ID auto-prefixed by infrastructure)
         await cache.RemoveAsync(
-            $"donations:{cmd.TenantId}:donation:{cmd.DonationId}", ct);
+            $"donations:donation:{cmd.DonationId}", ct);
 
         // İlgili liste cache'lerini temizle
         await cache.RemoveByPrefixAsync(
-            $"donations:{cmd.TenantId}:donation:list:", ct);
+            "donations:donation:list:", ct);
     }
 }
 ```
@@ -183,7 +190,7 @@ public sealed class UpdateDonationHandler(
 
 | Kural | Açıklama |
 |-------|----------|
-| **Tenant izolasyonu** | Cache key'de tenant ID **zorunlu**. Cross-tenant cache leak ölümcül güvenlik açığıdır |
+| **Tenant izolasyonu** | `DaprCacheService` automatically prefixes all keys with tenant ID via `ITenantContextAccessor`. Modules MUST NOT include tenant ID manually — it is enforced by infrastructure. Cross-tenant cache leak is prevented at the infrastructure layer |
 | **Write-through yok** | Cache sadece read path'te kullanılır. Write her zaman DB'ye gider |
 | **Stale data toleransı** | TTL'e güvenilir. Kritik data (permissions, modules) kısa TTL (1-2 dk) |
 | **Cache-aside pattern** | `GetOrSetAsync` kullanılır. Cache miss'te DB'den yükle, cache'e yaz |
@@ -305,11 +312,11 @@ public sealed class ConfirmDonationHandler(
 
         // Makbuz oluşturmayı background'a at
         jobs.Enqueue<GenerateReceiptJob>(
-            job => job.ExecuteAsync(cmd.DonationId, cmd.TenantId, CancellationToken.None));
+            job => job.RunAsync(new GenerateReceiptParams { TenantId = cmd.TenantId, DonationId = cmd.DonationId }, CancellationToken.None));
 
         // SMS gönderimi background'a at
         jobs.Enqueue<SendDonationSmsJob>(
-            job => job.ExecuteAsync(cmd.DonationId, cmd.TenantId, CancellationToken.None));
+            job => job.RunAsync(new SendDonationSmsParams { TenantId = cmd.TenantId, DonationId = cmd.DonationId }, CancellationToken.None));
     }
 }
 ```
@@ -318,13 +325,15 @@ public sealed class ConfirmDonationHandler(
 ```csharp
 // 30 dakika sonra çalıştır
 jobs.Schedule<SendPaymentReminderJob>(
-    job => job.ExecuteAsync(invoiceId, tenantId, CancellationToken.None),
+    job => job.RunAsync(new PaymentReminderParams { TenantId = tenantId, InvoiceId = invoiceId }, CancellationToken.None),
     TimeSpan.FromMinutes(30));
 ```
 
 #### Recurring (Cron — zamanlanmış)
+
 ```csharp
 // Her modül kendi recurring job'larını IModule.ConfigureJobs'da kaydeder
+// IJobScheduler.AddOrUpdate now accepts Expression<Func<TJob, Task>> parameter
 public sealed class DonationsModule : IModule
 {
     public void ConfigureJobs(IJobScheduler scheduler)
@@ -332,23 +341,29 @@ public sealed class DonationsModule : IModule
         // Her gün 02:00'de
         scheduler.AddOrUpdate<RecurringDonationChargeJob>(
             "donations:recurring-charge",
-            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Daily(2, 0),
-            queue: "critical");
+            job => job.RunAsync(
+                new RecurringChargeParams { TenantId = "system" },
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            JobQueues.Critical);
 
         // Her saat başı
         scheduler.AddOrUpdate<OverdueDetectionJob>(
             "donations:overdue-detection",
-            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Hourly(),
-            queue: "default");
+            job => job.RunAsync(
+                new OverdueDetectionParams { TenantId = "system" },
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            JobQueues.Default);
 
         // Her Pazartesi 09:00'da
         scheduler.AddOrUpdate<WeeklyDonationReportJob>(
             "donations:weekly-report",
-            job => job.ExecuteAsync(CancellationToken.None),
             Cron.Weekly(DayOfWeek.Monday, 9, 0),
-            queue: "bulk");
+            job => job.RunAsync(
+                new WeeklyReportParams { TenantId = "system" },
+                CancellationToken.None), // Expression tree — Hangfire substitutes its own token at runtime
+            JobQueues.Bulk);
     }
 }
 ```
@@ -357,11 +372,11 @@ public sealed class DonationsModule : IModule
 ```csharp
 // Job A bittikten sonra Job B çalışsın
 var importJobId = jobs.Enqueue<ImportBankTransactionsJob>(
-    job => job.ExecuteAsync(batchId, tenantId, CancellationToken.None));
+    job => job.RunAsync(new ImportBankTransactionsParams { TenantId = tenantId, BatchId = batchId }, CancellationToken.None));
 
 jobs.ContinueJobWith<MatchDonorsJob>(
     importJobId,
-    job => job.ExecuteAsync(batchId, tenantId, CancellationToken.None));
+    job => job.RunAsync(new MatchDonorsParams { TenantId = tenantId, BatchId = batchId }, CancellationToken.None));
 ```
 
 ### 2.4 Job Base Class & Contract
@@ -370,70 +385,54 @@ Tüm job'lar `NexoraJob<TParams>` base class'ından türer:
 
 ```csharp
 // SharedKernel/Jobs/NexoraJob.cs
-public abstract class NexoraJob<TParams>
+public abstract class NexoraJob<TParams>(
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger logger) where TParams : JobParams
 {
-    private readonly ITenantContextAccessor _tenantAccessor;
-    private readonly ILogger _logger;
-
-    protected NexoraJob(
-        ITenantContextAccessor tenantAccessor,
-        ILogger logger)
+    /// Hangfire calls this — CancellationToken is substituted by Hangfire at runtime
+    public async Task RunAsync(TParams parameters, CancellationToken ct)
     {
-        _tenantAccessor = tenantAccessor;
-        _logger = logger;
-    }
+        var jobName = GetType().Name;
+        tenantContextAccessor.SetTenant(parameters.TenantId, parameters.OrganizationId);
 
-    /// Hangfire calls this
-    [AutomaticRetry(Attempts = 3, DelaysInSeconds = new[] { 30, 120, 600 })]
-    [DisableConcurrentExecution(timeoutInSeconds: 300)]
-    public async Task ExecuteAsync(TParams parameters, string tenantId, CancellationToken ct)
-    {
-        // 1. Set tenant context for this job execution
-        _tenantAccessor.SetTenant(tenantId);
-
-        using var activity = Telemetry.StartActivity($"Job:{GetType().Name}");
-        activity?.SetTag("tenant.id", tenantId);
-        activity?.SetTag("job.params", JsonSerializer.Serialize(parameters));
+        logger.LogInformation("Job {JobName} starting for tenant {TenantId}", jobName, parameters.TenantId);
 
         try
         {
-            _logger.LogInformation(
-                "Job {JobName} started for tenant {TenantId} with params {@Params}",
-                GetType().Name, tenantId, parameters);
-
-            await HandleAsync(parameters, ct);
-
-            _logger.LogInformation(
-                "Job {JobName} completed for tenant {TenantId}",
-                GetType().Name, tenantId);
+            await ExecuteAsync(parameters, ct);
+            logger.LogInformation("Job {JobName} completed for tenant {TenantId}", jobName, parameters.TenantId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Job {JobName} failed for tenant {TenantId}",
-                GetType().Name, tenantId);
+            logger.LogError(ex, "Job {JobName} failed for tenant {TenantId}", jobName, parameters.TenantId);
             throw; // Hangfire handles retry
         }
     }
 
     /// Module implements this
-    protected abstract Task HandleAsync(TParams parameters, CancellationToken ct);
+    protected abstract Task ExecuteAsync(TParams parameters, CancellationToken ct);
 }
 ```
 
 ```csharp
+// Job parametreleri JobParams'tan türemeli
+public sealed record GenerateReceiptParams : JobParams
+{
+    public required DonationId DonationId { get; init; }
+}
+
 // Modülde kullanım
 public sealed class GenerateReceiptJob(
     ITenantContextAccessor tenantAccessor,
     IDonationRepository repository,
     IDocumentService documents,
     ILogger<GenerateReceiptJob> logger)
-    : NexoraJob<DonationId>(tenantAccessor, logger)
+    : NexoraJob<GenerateReceiptParams>(tenantAccessor, logger)
 {
-    protected override async Task HandleAsync(DonationId donationId, CancellationToken ct)
+    protected override async Task ExecuteAsync(GenerateReceiptParams parameters, CancellationToken ct)
     {
-        var donation = await repository.GetByIdAsync(donationId, ct)
-            ?? throw new InvalidOperationException($"Donation {donationId} not found");
+        var donation = await repository.GetByIdAsync(parameters.DonationId, ct)
+            ?? throw new InvalidOperationException($"Donation {parameters.DonationId} not found");
 
         var receipt = await documents.GenerateFromTemplateAsync(
             "donation-receipt", donation, ct);
@@ -981,7 +980,29 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ---
 
-## 5. Cross-Cutting Summary
+## 5. DomainEventChannel
+
+The `DomainEventChannel` uses `BoundedChannelFullMode.Wait`. In **Wait** mode, `WriteAsync` blocks the caller until space is available, but `TryWrite` (which the dispatcher uses) **never blocks** — it returns `false` immediately when the channel is full. When `TryWrite` returns `false`, the event is **not enqueued** and a warning is logged. The distinction matters:
+
+- **`WriteAsync`** (blocking) — waits for capacity. Used by async producers that can afford to wait.
+- **`TryWrite`** (non-blocking) — returns `false` immediately when full. Used by the dispatcher to avoid deadlocks in sync `SaveChanges` paths.
+
+When `TryWrite` fails, the warning log distinguishes "channel completed" (shutdown) from "at capacity" (back-pressure). Events are **not** silently lost — observability is guaranteed.
+
+**Important**: The channel does **not** retry failed `TryWrite` attempts. Callers that require guaranteed delivery must implement their own retry or back-pressure mechanism. The channel capacity (10,000) is sized to handle normal load without drops.
+
+```csharp
+// DomainEventChannel behavior:
+// - Mode: BoundedChannelFullMode.Wait
+// - Dispatcher uses TryWrite (non-blocking) to avoid sync deadlocks
+// - TryWrite returns false when full → event not enqueued + warning logged
+// - WriteAsync would block, but is not used by the dispatcher
+// - Callers needing guaranteed delivery must implement retries externally
+```
+
+---
+
+## 6. Cross-Cutting Summary
 
 ```mermaid
 ---

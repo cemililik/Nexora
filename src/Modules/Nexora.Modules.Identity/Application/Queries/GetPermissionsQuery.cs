@@ -18,7 +18,7 @@ public sealed class GetPermissionsHandler(
         GetPermissionsQuery request,
         CancellationToken cancellationToken)
     {
-        var query = dbContext.Permissions.AsQueryable();
+        var query = dbContext.Permissions.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrEmpty(request.Module))
             query = query.Where(p => p.Module == request.Module);

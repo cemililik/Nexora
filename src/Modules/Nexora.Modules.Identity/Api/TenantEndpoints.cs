@@ -53,8 +53,8 @@ public static class TenantEndpoints
             var command = new UpdateTenantStatusCommand(id, request.Action);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
-                ? Results.Ok(ApiEnvelope<object>.Success(null!, result.Message))
-                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
         });
     }
 }

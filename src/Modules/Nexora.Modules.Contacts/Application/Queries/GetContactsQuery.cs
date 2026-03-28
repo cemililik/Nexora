@@ -32,7 +32,7 @@ public sealed class GetContactsHandler(
         _ = logger; // Required by observability standards for future slow-query logging
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
 
-        var query = dbContext.Contacts
+        var query = dbContext.Contacts.AsNoTracking()
             .Where(c => c.TenantId == tenantId)
             .AsQueryable();
 

@@ -26,7 +26,7 @@ public sealed class GetNotificationTemplateByIdHandler(
         var tenantId = Guid.Parse(tenantContextAccessor.Current.TenantId);
         var templateId = NotificationTemplateId.From(request.Id);
 
-        var template = await dbContext.NotificationTemplates
+        var template = await dbContext.NotificationTemplates.AsNoTracking()
             .Include(t => t.Translations)
             .FirstOrDefaultAsync(t => t.Id == templateId && t.TenantId == tenantId, cancellationToken);
 

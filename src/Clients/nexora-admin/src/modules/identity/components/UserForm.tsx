@@ -79,46 +79,48 @@ function CreateForm({
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="email" className="text-sm font-medium">
-          {t('lockey_identity_form_email')}
-        </label>
-        <Input id="email" type="email" {...form.register('email')} />
-        {form.formState.errors.email && (
-          <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
+      <fieldset disabled={isPending} className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="firstName" className="text-sm font-medium">
-            {t('lockey_identity_form_first_name')}
+          <label htmlFor="email" className="text-sm font-medium">
+            {t('lockey_identity_form_email')}
           </label>
-          <Input id="firstName" {...form.register('firstName')} />
-          {form.formState.errors.firstName && (
-            <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
+          <Input id="email" type="email" {...form.register('email')} />
+          {form.formState.errors.email && (
+            <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
           )}
         </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="firstName" className="text-sm font-medium">
+              {t('lockey_identity_form_first_name')}
+            </label>
+            <Input id="firstName" {...form.register('firstName')} />
+            {form.formState.errors.firstName && (
+              <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="lastName" className="text-sm font-medium">
+              {t('lockey_identity_form_last_name')}
+            </label>
+            <Input id="lastName" {...form.register('lastName')} />
+            {form.formState.errors.lastName && (
+              <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-2">
-          <label htmlFor="lastName" className="text-sm font-medium">
-            {t('lockey_identity_form_last_name')}
+          <label htmlFor="temporaryPassword" className="text-sm font-medium">
+            {t('lockey_identity_form_password')}
           </label>
-          <Input id="lastName" {...form.register('lastName')} />
-          {form.formState.errors.lastName && (
-            <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
+          <Input id="temporaryPassword" type="password" autoComplete="new-password" {...form.register('temporaryPassword')} />
+          {form.formState.errors.temporaryPassword && (
+            <p className="text-sm text-destructive">{form.formState.errors.temporaryPassword.message}</p>
           )}
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="temporaryPassword" className="text-sm font-medium">
-          {t('lockey_identity_form_password')}
-        </label>
-        <Input id="temporaryPassword" type="password" autoComplete="new-password" {...form.register('temporaryPassword')} />
-        {form.formState.errors.temporaryPassword && (
-          <p className="text-sm text-destructive">{form.formState.errors.temporaryPassword.message}</p>
-        )}
-      </div>
+      </fieldset>
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isPending}>
@@ -146,33 +148,35 @@ function EditForm({
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <label htmlFor="editFirstName" className="text-sm font-medium">
-            {t('lockey_identity_form_first_name')}
-          </label>
-          <Input id="editFirstName" {...form.register('firstName')} />
-          {form.formState.errors.firstName && (
-            <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
-          )}
+      <fieldset disabled={isPending} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="editFirstName" className="text-sm font-medium">
+              {t('lockey_identity_form_first_name')}
+            </label>
+            <Input id="editFirstName" {...form.register('firstName')} />
+            {form.formState.errors.firstName && (
+              <p className="text-sm text-destructive">{form.formState.errors.firstName.message}</p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="editLastName" className="text-sm font-medium">
+              {t('lockey_identity_form_last_name')}
+            </label>
+            <Input id="editLastName" {...form.register('lastName')} />
+            {form.formState.errors.lastName && (
+              <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
+            )}
+          </div>
         </div>
-        <div className="space-y-2">
-          <label htmlFor="editLastName" className="text-sm font-medium">
-            {t('lockey_identity_form_last_name')}
-          </label>
-          <Input id="editLastName" {...form.register('lastName')} />
-          {form.formState.errors.lastName && (
-            <p className="text-sm text-destructive">{form.formState.errors.lastName.message}</p>
-          )}
-        </div>
-      </div>
 
-      <div className="space-y-2">
-        <label htmlFor="editPhone" className="text-sm font-medium">
-          {t('lockey_identity_form_phone')}
-        </label>
-        <Input id="editPhone" {...form.register('phone')} />
-      </div>
+        <div className="space-y-2">
+          <label htmlFor="editPhone" className="text-sm font-medium">
+            {t('lockey_identity_form_phone')}
+          </label>
+          <Input id="editPhone" {...form.register('phone')} />
+        </div>
+      </fieldset>
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isPending}>

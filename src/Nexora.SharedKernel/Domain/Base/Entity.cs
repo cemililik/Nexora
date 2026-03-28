@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.SharedKernel.Domain.Base;
@@ -17,7 +18,7 @@ public interface IHasDomainEvents
 /// <summary>
 /// Base entity with identity and domain event support.
 /// </summary>
-public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
+public abstract class Entity<TId> : IHasDomainEvents, IEquatable<Entity<TId>> where TId : notnull
 {
     public TId Id { get; protected set; } = default!;
 
@@ -30,8 +31,37 @@ public abstract class Entity<TId> : IHasDomainEvents where TId : notnull
 
     public void ClearDomainEvents() => _domainEvents.Clear();
 
-    public override bool Equals(object? obj) =>
-        obj is Entity<TId> other && Id.Equals(other.Id);
+    public bool Equals(Entity<TId>? other)
+    {
+        if (other is null)
+            return false;
 
-    public override int GetHashCode() => Id.GetHashCode();
+        if (ReferenceEquals(this, other))
+            return true;
+
+        // Strict type equality — all Nexora entities are sealed and proxies are not expected.
+        if (GetType() != other.GetType())
+            return false;
+
+        // Treat default IDs as transient — transient entities are never equal
+        if (EqualityComparer<TId>.Default.Equals(Id, default!) ||
+            EqualityComparer<TId>.Default.Equals(other.Id, default!))
+            return false;
+
+        return Id.Equals(other.Id);
+    }
+
+    public override bool Equals(object? obj) =>
+        Equals(obj as Entity<TId>);
+
+    public override int GetHashCode() =>
+        EqualityComparer<TId>.Default.Equals(Id, default!)
+            ? RuntimeHelpers.GetHashCode(this)
+            : Id.GetHashCode();
+
+    public static bool operator ==(Entity<TId>? left, Entity<TId>? right) =>
+        left is null ? right is null : left.Equals(right);
+
+    public static bool operator !=(Entity<TId>? left, Entity<TId>? right) =>
+        !(left == right);
 }

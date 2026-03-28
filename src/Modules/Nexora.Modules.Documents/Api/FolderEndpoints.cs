@@ -58,7 +58,7 @@ public static class FolderEndpoints
         {
             var result = await sender.Send(new DeleteFolderCommand(id), ct);
             if (result.IsSuccess)
-                return Results.NoContent();
+                return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return result.Error!.Message.Key switch
             {

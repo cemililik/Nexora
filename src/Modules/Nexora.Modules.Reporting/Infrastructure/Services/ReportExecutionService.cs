@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.RegularExpressions;
 using Dapper;
 using FluentValidation;
 using FluentValidation.Results;
@@ -13,7 +14,7 @@ namespace Nexora.Modules.Reporting.Infrastructure.Services;
 /// Executes report SQL queries against the tenant schema using Dapper.
 /// Enforces read-only transactions and query timeouts.
 /// </summary>
-public sealed class ReportExecutionService(
+public sealed partial class ReportExecutionService(
     ISqlQueryValidator sqlQueryValidator,
     IConfiguration configuration,
     ILogger<ReportExecutionService> logger) : IReportExecutionService
@@ -33,16 +34,22 @@ public sealed class ReportExecutionService(
             throw new ValidationException([new ValidationFailure("queryText", validationError!)]);
         }
 
+        // Validate tenant ID format to prevent SQL injection
+        if (string.IsNullOrWhiteSpace(tenantId) ||
+            !TenantIdPattern().IsMatch(tenantId))
+        {
+            throw new ArgumentException("Invalid tenant ID format", nameof(tenantId));
+        }
+
         var connectionString = configuration.GetConnectionString("Default");
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(ct);
 
-        // Set tenant schema
+        // Read-only transaction with schema scoped via SET LOCAL
         var schemaName = $"tenant_{tenantId}";
-        await connection.ExecuteAsync($"SET search_path TO '{schemaName}'");
-
-        // Read-only transaction with timeout
+        var quotedSchema = $"\"{schemaName.Replace("\"", "\"\"")}\"";
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+        await connection.ExecuteAsync($"SET LOCAL search_path TO {quotedSchema}", transaction: transaction);
         await connection.ExecuteAsync("SET TRANSACTION READ ONLY", transaction: transaction);
 
         var dynamicParams = new DynamicParameters();
@@ -73,4 +80,7 @@ public sealed class ReportExecutionService(
 
         return result;
     }
+
+    [GeneratedRegex(@"^[a-zA-Z0-9_\-]+$")]
+    private static partial Regex TenantIdPattern();
 }

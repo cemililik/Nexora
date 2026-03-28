@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexora.SharedKernel.Domain.Events;
 
@@ -9,23 +10,29 @@ namespace Nexora.Infrastructure.Persistence;
 /// Registered as a singleton so the dispatcher and background processor share the same instance.
 /// Capacity is configurable via <see cref="DomainEventChannelOptions"/>.
 /// </summary>
-public sealed class DomainEventChannel
+public sealed class DomainEventChannel(IOptions<DomainEventChannelOptions> options, ILogger<DomainEventChannel> logger)
 {
-    private readonly Channel<IDomainEvent> _channel;
+    private readonly Channel<IDomainEvent> _channel = Channel.CreateBounded<IDomainEvent>(
+        new BoundedChannelOptions(options.Value.Capacity)
+        {
+            SingleReader = true,
+            FullMode = BoundedChannelFullMode.Wait
+        });
 
-    public DomainEventChannel(IOptions<DomainEventChannelOptions> options)
+    /// <summary>Attempts to write an event. Returns false when the channel is at capacity or completed.</summary>
+    public bool TryWrite(IDomainEvent domainEvent)
     {
-        var capacity = options.Value.Capacity;
-        _channel = Channel.CreateBounded<IDomainEvent>(
-            new BoundedChannelOptions(capacity)
-            {
-                SingleReader = true,
-                FullMode = BoundedChannelFullMode.DropWrite
-            });
-    }
+        var written = _channel.Writer.TryWrite(domainEvent);
+        if (!written)
+        {
+            if (_channel.Reader.Completion.IsCompleted)
+                logger.LogWarning("Domain event channel completed, event {EventType} dropped", domainEvent.GetType().Name);
+            else
+                logger.LogWarning("Domain event channel at capacity, event {EventType} dropped", domainEvent.GetType().Name);
+        }
 
-    /// <summary>Attempts to write an event. Returns false only if the channel writer is completed (e.g. shutdown). When at capacity, DropWrite mode silently drops the incoming event and returns true.</summary>
-    public bool TryWrite(IDomainEvent domainEvent) => _channel.Writer.TryWrite(domainEvent);
+        return written;
+    }
 
     /// <summary>Reads all events asynchronously. Completes when the channel is closed or cancelled.</summary>
     public IAsyncEnumerable<IDomainEvent> ReadAllAsync(CancellationToken ct) =>
