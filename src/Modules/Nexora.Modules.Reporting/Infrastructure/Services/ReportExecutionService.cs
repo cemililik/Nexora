@@ -45,13 +45,11 @@ public sealed partial class ReportExecutionService(
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(ct);
 
-        // Set tenant schema using quoted identifier for safety
+        // Read-only transaction with schema scoped via SET LOCAL
         var schemaName = $"tenant_{tenantId}";
         var quotedSchema = $"\"{schemaName.Replace("\"", "\"\"")}\"";
-        await connection.ExecuteAsync($"SET search_path TO {quotedSchema}");
-
-        // Read-only transaction with timeout
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.ReadCommitted, ct);
+        await connection.ExecuteAsync($"SET LOCAL search_path TO {quotedSchema}", transaction: transaction);
         await connection.ExecuteAsync("SET TRANSACTION READ ONLY", transaction: transaction);
 
         var dynamicParams = new DynamicParameters();

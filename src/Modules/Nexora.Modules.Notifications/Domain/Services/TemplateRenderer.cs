@@ -52,10 +52,10 @@ public static partial class TemplateRenderer
     /// <param name="content">The content with <c>{{variable}}</c> placeholders.</param>
     /// <param name="variables">Variable name to value mappings.</param>
     /// <param name="htmlEncode">Whether to HTML-encode variable values before substitution.</param>
-    public static string RenderInline(string content, Dictionary<string, string> variables, bool htmlEncode = true) =>
+    public static string RenderInline(string content, Dictionary<string, string> variables, bool htmlEncode = false) =>
         SubstituteVariables(content, variables, htmlEncode);
 
-    private static string SubstituteVariables(string content, Dictionary<string, string> variables, bool htmlEncode = true)
+    private static string SubstituteVariables(string content, Dictionary<string, string> variables, bool htmlEncode = false)
     {
         if (variables.Count == 0)
             return content;

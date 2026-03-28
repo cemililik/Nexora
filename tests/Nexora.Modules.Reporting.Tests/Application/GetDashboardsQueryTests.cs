@@ -76,6 +76,7 @@ public sealed class GetDashboardsQueryTests : IDisposable
         var otherDashboard = Dashboard.Create(
             Guid.NewGuid(), _orgId, "Other Tenant Dashboard", null);
         await _dbContext.Dashboards.AddAsync(otherDashboard);
+        await _dbContext.SaveChangesAsync();
 
         await SeedDashboardAsync("My Dashboard");
         var handler = new GetDashboardsHandler(_dbContext, _tenantAccessor);

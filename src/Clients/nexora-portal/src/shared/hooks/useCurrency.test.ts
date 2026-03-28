@@ -62,6 +62,7 @@ describe('useCurrency', () => {
 
     const formatted = result.current.format(1500, 'EUR');
     expect(formatted).toMatch(/1[,.]500[.,]00/);
+    expect(formatted).toMatch(/€|EUR/);
   });
 
   it('format_TRYWithTurkishLocale_FormatsCorrectly', () => {
@@ -72,6 +73,7 @@ describe('useCurrency', () => {
 
     const formatted = result.current.format(1500);
     expect(formatted).toMatch(/1[.,]500[.,]00/);
+    expect(formatted).toMatch(/₺|TRY/);
   });
 
   it('format_ZeroAmount_FormatsCorrectly', () => {

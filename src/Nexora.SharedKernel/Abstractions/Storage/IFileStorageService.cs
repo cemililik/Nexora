@@ -45,7 +45,7 @@ public interface IFileStorageService
         string contentType,
         CancellationToken ct = default);
 
-    /// <summary>Uploads a stream to storage. Implementation resets Position to 0 and requires a seekable stream; non-seekable streams are auto-buffered into memory.</summary>
+    /// <summary>Uploads a stream to storage. Implementation resets Position to 0 and requires a seekable stream; non-seekable streams are auto-buffered into memory (max 100 MB — exceeding this throws <see cref="InvalidOperationException"/>).</summary>
     /// <param name="bucketName">Target bucket name.</param>
     /// <param name="objectKey">Object key (path) within the bucket.</param>
     /// <param name="stream">Readable stream to upload. Non-seekable streams are automatically buffered. Caller owns the stream.</param>

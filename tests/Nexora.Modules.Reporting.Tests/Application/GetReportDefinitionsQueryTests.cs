@@ -110,8 +110,10 @@ public sealed class GetReportDefinitionsQueryTests : IDisposable
         result.IsSuccess.Should().BeTrue();
         result.Value!.TotalCount.Should().Be(5);
         result.Value.Items.Should().HaveCount(2);
-        result.Value.Items.Select(i => i.Name).Should().BeSubsetOf(
-            Enumerable.Range(0, 5).Select(i => $"Report {i}"));
+        var allNames = Enumerable.Range(0, 5).Select(i => $"Report {i}").ToList();
+        result.Value.Items.Select(i => i.Name).Should()
+            .HaveCount(2)
+            .And.BeSubsetOf(allNames, "page items should come from the seeded definitions");
     }
 
     [Fact]
@@ -121,6 +123,7 @@ public sealed class GetReportDefinitionsQueryTests : IDisposable
             Guid.NewGuid(), Guid.NewGuid(), "Other Tenant Report", null,
             "mod", null, "SELECT 1", null, ReportFormat.Csv);
         await _dbContext.ReportDefinitions.AddAsync(otherTenantDef);
+        await _dbContext.SaveChangesAsync();
 
         await SeedDefinitionsAsync("My Report", "mod", null);
         var handler = new GetReportDefinitionsHandler(_dbContext, _tenantAccessor);
