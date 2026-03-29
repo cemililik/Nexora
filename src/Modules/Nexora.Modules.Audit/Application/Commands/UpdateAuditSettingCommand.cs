@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
+using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -78,10 +79,9 @@ public sealed class UpdateAuditSettingHandler(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Invalidate cache for this setting (both defaultEnabled variants)
-        await cacheService.RemoveAsync(
-            $"audit:config:{tenantId}:{request.Module}:{request.Operation}:1", cancellationToken);
-        await cacheService.RemoveAsync(
-            $"audit:config:{tenantId}:{request.Module}:{request.Operation}:0", cancellationToken);
+        var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, request.Module, request.Operation);
+        await cacheService.RemoveAsync(enabledKey, cancellationToken);
+        await cacheService.RemoveAsync(disabledKey, cancellationToken);
 
         var dto = new AuditSettingDto(
             existing.Id.Value, existing.Module, existing.Operation,

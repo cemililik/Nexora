@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
+using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -62,10 +63,9 @@ public sealed class BulkUpdateAuditSettingsHandler(
         // Invalidate cache for each updated setting (both defaultEnabled variants)
         foreach (var item in request.Settings)
         {
-            await cacheService.RemoveAsync(
-                $"audit:config:{tenantId}:{item.Module}:{item.Operation}:1", cancellationToken);
-            await cacheService.RemoveAsync(
-                $"audit:config:{tenantId}:{item.Module}:{item.Operation}:0", cancellationToken);
+            var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, item.Module, item.Operation);
+            await cacheService.RemoveAsync(enabledKey, cancellationToken);
+            await cacheService.RemoveAsync(disabledKey, cancellationToken);
         }
 
         logger.LogInformation(

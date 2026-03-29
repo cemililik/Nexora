@@ -26,7 +26,7 @@ public sealed class AuditConfigService(
     public async Task<bool> IsEnabledAsync(string module, string operation, CancellationToken ct, bool defaultEnabled = true)
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
-        var cacheKey = $"audit:config:{tenantId}:{module}:{operation}:{(defaultEnabled ? "1" : "0")}";
+        var cacheKey = AuditCacheKeys.ConfigKey(tenantId, module, operation, defaultEnabled);
 
         // Cache a string value ("1"/"0") to avoid value-type serialization issues with bool
         var cached = await cacheService.GetOrSetAsync(
