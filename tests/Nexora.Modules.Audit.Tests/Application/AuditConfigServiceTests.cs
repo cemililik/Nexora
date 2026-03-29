@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
@@ -211,7 +212,8 @@ public sealed class AuditConfigServiceTests : IDisposable
     private AuditConfigService CreateService()
     {
         var tenantAccessor = CreateTenantAccessor(_tenantId);
-        return new AuditConfigService(_dbContext, _cacheService, tenantAccessor);
+        return new AuditConfigService(_dbContext, _cacheService, tenantAccessor,
+            NullLogger<AuditConfigService>.Instance);
     }
 
     private static ITenantContextAccessor CreateTenantAccessor(string tenantId)

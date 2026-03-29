@@ -51,6 +51,17 @@ public sealed class HttpAuditContext(
         httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].FirstOrDefault();
 
     /// <inheritdoc />
-    public string? CorrelationId =>
-        httpContextAccessor.HttpContext?.TraceIdentifier;
+    public string? CorrelationId
+    {
+        get
+        {
+            var context = httpContextAccessor.HttpContext;
+            if (context is null) return null;
+
+            var correlationHeader = context.Request.Headers["X-Correlation-Id"].FirstOrDefault();
+            return !string.IsNullOrWhiteSpace(correlationHeader)
+                ? correlationHeader
+                : context.TraceIdentifier;
+        }
+    }
 }

@@ -116,7 +116,10 @@ export function DataTable<T>({
                   onChange={(e) => onPageSizeChange(Number(e.target.value))}
                   className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                 >
-                  {(pageSizeOptions ?? [20, 50, 100]).map((size) => (
+                  {(() => {
+                  const options = pageSizeOptions ?? [20, 50, 100];
+                  return options.includes(pageSize) ? options : [...options, pageSize].sort((a, b) => a - b);
+                })().map((size) => (
                     <option key={size} value={size}>
                       {size}
                     </option>

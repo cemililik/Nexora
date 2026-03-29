@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
@@ -31,7 +32,7 @@ public static class UserEndpoints
                 : Results.BadRequest(ApiEnvelope<PagedResult<UserDto>>.Fail(result.Error!));
         });
 
-        group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, CancellationToken ct) =>
+        group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, ILogger<IdentityDbContext> logger, CancellationToken ct) =>
         {
             var keycloakUserId = httpContext.User.FindFirstValue("sub");
             if (string.IsNullOrEmpty(keycloakUserId))
@@ -41,10 +42,17 @@ public static class UserEndpoints
             if (result.IsSuccess)
             {
                 // SAFE: ExecuteUpdateAsync filters by strongly-typed UserId — no tenant isolation bypass risk.
-                // Awaited to avoid connection pool corruption.
-                await dbContext.Users
-                    .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
-                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);
+                // Failure-tolerant: LastLoginAt update must never affect the /me response.
+                try
+                {
+                    await dbContext.Users
+                        .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
+                        .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to update LastLoginAt for user {UserId}", result.Value!.Id);
+                }
             }
 
             return result.IsSuccess

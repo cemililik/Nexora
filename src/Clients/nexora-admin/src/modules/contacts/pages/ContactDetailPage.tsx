@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, useWatch, Controller } from 'react-hook-form';
@@ -474,6 +474,7 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
                           variant="ghost"
                           size="icon"
                           title={t('lockey_contacts_address_edit')}
+                          aria-label={t('lockey_contacts_address_edit')}
                           onClick={() => openEditDialog(addr)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -485,6 +486,7 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
                           variant="ghost"
                           size="icon"
                           title={t('lockey_contacts_address_delete')}
+                          aria-label={t('lockey_contacts_address_delete')}
                           onClick={() => setDeleteTarget(addr)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -524,7 +526,7 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_address_form_type')}</label>
+              <label htmlFor="address-type" className="text-sm font-medium">{t('lockey_contacts_address_form_type')}</label>
               <Controller
                 name="type"
                 control={control}
@@ -548,37 +550,37 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_address_form_street1')}</label>
-              <Input {...register('street1')} className="mt-1" />
+              <label htmlFor="address-street1" className="text-sm font-medium">{t('lockey_contacts_address_form_street1')}</label>
+              <Input id="address-street1" {...register('street1')} className="mt-1" />
               {errors.street1 && (
                 <p className="text-xs text-destructive mt-1">{errors.street1.message}</p>
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_address_form_street2')}</label>
-              <Input {...register('street2')} className="mt-1" />
+              <label htmlFor="address-street2" className="text-sm font-medium">{t('lockey_contacts_address_form_street2')}</label>
+              <Input id="address-street2" {...register('street2')} className="mt-1" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">{t('lockey_contacts_address_form_city')}</label>
-                <Input {...register('city')} className="mt-1" />
+                <label htmlFor="address-city" className="text-sm font-medium">{t('lockey_contacts_address_form_city')}</label>
+                <Input id="address-city" {...register('city')} className="mt-1" />
                 {errors.city && (
                   <p className="text-xs text-destructive mt-1">{errors.city.message}</p>
                 )}
               </div>
               <div>
-                <label className="text-sm font-medium">{t('lockey_contacts_address_form_state')}</label>
-                <Input {...register('state')} className="mt-1" />
+                <label htmlFor="address-state" className="text-sm font-medium">{t('lockey_contacts_address_form_state')}</label>
+                <Input id="address-state" {...register('state')} className="mt-1" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium">{t('lockey_contacts_address_form_postal_code')}</label>
-                <Input {...register('postalCode')} className="mt-1" />
+                <label htmlFor="address-postalCode" className="text-sm font-medium">{t('lockey_contacts_address_form_postal_code')}</label>
+                <Input id="address-postalCode" {...register('postalCode')} className="mt-1" />
               </div>
               <div>
-                <label className="text-sm font-medium">{t('lockey_contacts_address_form_country_code')}</label>
-                <Input {...register('countryCode')} className="mt-1" />
+                <label htmlFor="address-countryCode" className="text-sm font-medium">{t('lockey_contacts_address_form_country_code')}</label>
+                <Input id="address-countryCode" {...register('countryCode')} className="mt-1" />
                 {errors.countryCode && (
                   <p className="text-xs text-destructive mt-1">{errors.countryCode.message}</p>
                 )}
@@ -756,9 +758,25 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const canDelete = hasPermission('contacts.relationship.delete');
   const [showForm, setShowForm] = useState(false);
   const [contactSearch, setContactSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState<{ id: string; displayName: string } | null>(null);
   const [showContactSearch, setShowContactSearch] = useState(false);
   const contactSearchRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleContactSearchChange = useCallback((value: string) => {
+    setContactSearch(value);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -774,7 +792,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const { data: searchResults } = useContacts({
     page: 1,
     pageSize: 20,
-    search: contactSearch || undefined,
+    search: debouncedSearch || undefined,
   });
 
   const relationshipSchema = useMemo(() => createRelationshipSchema(t), [t]);
@@ -862,7 +880,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
                         placeholder={t('lockey_contacts_relationship_search_contacts')}
                         value={contactSearch}
                         onChange={(e) => {
-                          setContactSearch(e.target.value);
+                          handleContactSearchChange(e.target.value);
                           setShowContactSearch(true);
                         }}
                         onFocus={() => setShowContactSearch(true)}

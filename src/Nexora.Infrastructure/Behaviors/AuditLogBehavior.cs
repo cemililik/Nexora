@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Abstractions.Audit;
@@ -82,13 +83,18 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
                 : DetermineOutcome(response);
 
             string? entityType = null;
+            OperationType? explicitOperationType = null;
             if (request is IAuditable auditable)
+            {
                 entityType = auditable.AuditEntityType;
+                explicitOperationType = auditable.AuditOperationType;
+            }
 
             var tenantId = tenantContextAccessor.Current.TenantId;
-            var operationType = requestKind == RequestKind.Query
-                ? OperationType.Read
-                : OperationType.Action;
+            var operationType = explicitOperationType
+                ?? (requestKind == RequestKind.Query
+                    ? OperationType.Read
+                    : DeriveOperationType(operation));
 
             var entry = new AuditEntry(
                 Id: Guid.NewGuid(),
@@ -119,9 +125,9 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
             logger.LogError(ex, "AUDIT SAVE FAILED for {Module}.{Operation}: {ErrorMessage}", module, operation, ex.Message);
         }
 
-        // Re-throw the handler exception so the pipeline continues normally
+        // Re-throw the handler exception preserving the original stack trace
         if (handlerFailed)
-            throw handlerException!;
+            ExceptionDispatchInfo.Capture(handlerException!).Throw();
 
         return response;
     }
@@ -206,6 +212,20 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
             return (result.IsSuccess, result.Error?.Message.Key);
 
         return (true, null);
+    }
+
+    /// <summary>Derives the operation type from the operation name prefix for commands.</summary>
+    private static OperationType DeriveOperationType(string operation)
+    {
+        if (operation.StartsWith("Create", StringComparison.Ordinal))
+            return OperationType.Create;
+        if (operation.StartsWith("Update", StringComparison.Ordinal))
+            return OperationType.Update;
+        if (operation.StartsWith("Delete", StringComparison.Ordinal) ||
+            operation.StartsWith("Remove", StringComparison.Ordinal))
+            return OperationType.Delete;
+
+        return OperationType.Action;
     }
 
     /// <summary>Classifies MediatR requests into commands, queries, or other types.</summary>

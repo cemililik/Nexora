@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -14,7 +15,8 @@ namespace Nexora.Modules.Audit.Application.Services;
 public sealed class AuditConfigService(
     AuditDbContext dbContext,
     ICacheService cacheService,
-    ITenantContextAccessor tenantContextAccessor) : IAuditConfigService
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<AuditConfigService> logger) : IAuditConfigService
 {
     private static readonly CacheOptions CacheTtl = new()
     {
@@ -40,6 +42,8 @@ public sealed class AuditConfigService(
 
     private async Task<bool> ResolveFromDatabase(string tenantId, string module, string operation, bool defaultEnabled, CancellationToken ct)
     {
+        logger.LogDebug("Audit config cache miss for {TenantId}:{Module}.{Operation}, resolving from database", tenantId, module, operation);
+
         // 1. Check operation-level setting
         var operationSetting = await dbContext.AuditSettings.AsNoTracking()
             .FirstOrDefaultAsync(s =>

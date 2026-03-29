@@ -489,5 +489,3 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# Code review reports (AI-generated, not tracked)
-docs/code-reviews/

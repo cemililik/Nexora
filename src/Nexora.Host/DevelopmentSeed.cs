@@ -57,11 +57,11 @@ public static class DevelopmentSeed
             await EnsureModuleTablesAsync<ReportingDbContext>(app.Services, connectionString, "reporting_report_definitions");
             await EnsureModuleTablesAsync<AuditDbContext>(app.Services, connectionString, "audit_entries");
 
-            // Step 5: Seed permissions, roles, organization, tenant record
-            await SeedIdentityDataAsync(app.Services, connectionString);
-
-            // Step 6: Apply incremental schema changes (new columns added after initial table creation)
+            // Step 5: Apply incremental schema changes (new columns added after initial table creation)
             await ApplySchemaUpdatesAsync(connectionString);
+
+            // Step 6: Seed permissions, roles, organization, tenant record
+            await SeedIdentityDataAsync(app.Services, connectionString);
 
             // Step 7: Register all modules for the dev tenant
             await EnsureTenantModulesAsync(connectionString);

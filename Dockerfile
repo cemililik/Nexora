@@ -26,6 +26,7 @@ COPY tests/Nexora.Modules.Reporting.Tests/Nexora.Modules.Reporting.Tests.csproj 
 COPY tests/Nexora.Architecture.Tests/Nexora.Architecture.Tests.csproj tests/Nexora.Architecture.Tests/
 COPY tests/Nexora.Api.ContractTests/Nexora.Api.ContractTests.csproj tests/Nexora.Api.ContractTests/
 COPY tests/Nexora.Modules.Identity.IntegrationTests/Nexora.Modules.Identity.IntegrationTests.csproj tests/Nexora.Modules.Identity.IntegrationTests/
+COPY tests/Nexora.Modules.Audit.Tests/Nexora.Modules.Audit.Tests.csproj tests/Nexora.Modules.Audit.Tests/
 
 RUN dotnet restore
 
