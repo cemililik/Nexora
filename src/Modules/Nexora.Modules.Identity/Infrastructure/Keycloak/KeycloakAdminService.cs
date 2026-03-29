@@ -97,8 +97,7 @@ public sealed class KeycloakAdminService(
         getUserResponse.EnsureSuccessStatusCode();
 
         var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
-            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed",
-                new() { ["userId"] = keycloakUserId, ["realm"] = realm });
+            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed");
 
         var updatedUser = user with
         {
@@ -136,8 +135,7 @@ public sealed class KeycloakAdminService(
         getUserResponse.EnsureSuccessStatusCode();
 
         var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
-            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed",
-                new() { ["userId"] = keycloakUserId, ["realm"] = realm });
+            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed");
 
         var updatedUser = user with { Enabled = enabled };
 

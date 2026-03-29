@@ -2,10 +2,13 @@ import i18n from '@/shared/lib/i18n';
 
 /**
  * Formats a date string as relative time:
- * - Same day: "X hours ago" / "X minutes ago" / "Just now"
+ * - Future date: localized absolute date string
+ * - Less than 1 minute ago: "Just now"
+ * - Less than 1 hour ago: "X minutes ago"
+ * - Less than 24 hours ago: "X hours ago"
  * - Within last 30 days: "X days ago"
- * - Older: localized date string
- * - null/undefined: returns fallback text
+ * - Older than 30 days: localized absolute date string
+ * - null/undefined/invalid: returns fallback text (default: "-")
  */
 export function formatRelativeTime(
   dateStr: string | null | undefined,

@@ -828,6 +828,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
     setValue('relatedContactId', contact.id);
     setShowContactSearch(false);
     setContactSearch('');
+    setDebouncedSearch('');
   };
 
   const onSubmit = (data: RelationshipFormValues) => {
@@ -839,6 +840,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
           reset();
           setSelectedContact(null);
           setShowForm(false);
+          setDebouncedSearch('');
         },
         onError: (err) => handleApiError(err),
       },
@@ -850,7 +852,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t('lockey_contacts_tab_relationships')}</CardTitle>
         {canCreate && (
-          <Button type="button" size="sm" onClick={() => { clearPendingDebounce(); setShowForm(!showForm); setSelectedContact(null); setContactSearch(''); }}>
+          <Button type="button" size="sm" onClick={() => { clearPendingDebounce(); setShowForm(!showForm); setSelectedContact(null); setContactSearch(''); setDebouncedSearch(''); }}>
             {showForm
               ? t('lockey_common_cancel', { ns: 'common' })
               : t('lockey_contacts_relationship_add')}

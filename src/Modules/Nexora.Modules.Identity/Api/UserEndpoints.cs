@@ -36,7 +36,8 @@ public static class UserEndpoints
         .Produces<ApiEnvelope<PagedResult<UserDto>>>(StatusCodes.Status200OK)
         .Produces<ApiEnvelope<PagedResult<UserDto>>>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
-        .Produces(StatusCodes.Status403Forbidden);
+        .Produces(StatusCodes.Status403Forbidden)
+        .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, ILogger<IdentityDbContext> logger, CancellationToken ct) =>
         {
@@ -62,6 +63,10 @@ public static class UserEndpoints
                 catch (OperationCanceledException)
                 {
                     throw;
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    logger.LogWarning(ex, "Concurrency conflict updating LastLoginAt for user {UserId}", result.Value!.Id);
                 }
                 catch (DbUpdateException ex)
                 {

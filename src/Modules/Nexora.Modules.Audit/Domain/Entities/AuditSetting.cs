@@ -30,8 +30,8 @@ public sealed class AuditSetting : AuditableEntity<AuditSettingId>
         {
             Id = AuditSettingId.New(),
             TenantId = tenantId,
-            Module = module,
-            Operation = operation,
+            Module = module.Trim().ToLowerInvariant(),
+            Operation = operation.Trim().ToLowerInvariant(),
             IsEnabled = isEnabled,
             RetentionDays = retentionDays
         };

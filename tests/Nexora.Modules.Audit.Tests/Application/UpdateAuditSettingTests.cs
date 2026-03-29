@@ -42,8 +42,8 @@ public sealed class UpdateAuditSettingTests : IDisposable
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Module.Should().Be("Contacts");
-        result.Value.Operation.Should().Be("CreateContact");
+        result.Value!.Module.Should().Be("contacts");
+        result.Value.Operation.Should().Be("createcontact");
         result.Value.IsEnabled.Should().BeTrue();
         result.Value.RetentionDays.Should().Be(90);
         result.Value.Id.Should().NotBeEmpty();
@@ -64,8 +64,8 @@ public sealed class UpdateAuditSettingTests : IDisposable
         count.Should().Be(1);
 
         var persisted = await _dbContext.AuditSettings.FirstAsync();
-        persisted.Module.Should().Be("CRM");
-        persisted.Operation.Should().Be("UpdateLead");
+        persisted.Module.Should().Be("crm");
+        persisted.Operation.Should().Be("updatelead");
         persisted.IsEnabled.Should().BeFalse();
         persisted.RetentionDays.Should().Be(30);
         persisted.TenantId.Should().Be(_tenantId);
@@ -108,10 +108,10 @@ public sealed class UpdateAuditSettingTests : IDisposable
             CancellationToken.None);
 
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:Contacts:{_tenantId}:config:CreateContact:1",
+            $"audit:contacts:{_tenantId}:config:createcontact:1",
             Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:Contacts:{_tenantId}:config:CreateContact:0",
+            $"audit:contacts:{_tenantId}:config:createcontact:0",
             Arg.Any<CancellationToken>());
     }
 

@@ -87,12 +87,14 @@ export function DataTable<T>({
                   className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? (e: React.MouseEvent<HTMLTableRowElement>) => {
-                    if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
+                    const el = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR);
+                    if (el && el !== e.currentTarget) return;
                     onRowClick(row);
                   } : undefined}
                   onKeyDown={onRowClick ? (e: React.KeyboardEvent<HTMLTableRowElement>) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
+                    const el = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR);
+                    if (el && el !== e.currentTarget) return;
                     if (e.key === ' ') e.preventDefault();
                     onRowClick(row);
                   } : undefined}

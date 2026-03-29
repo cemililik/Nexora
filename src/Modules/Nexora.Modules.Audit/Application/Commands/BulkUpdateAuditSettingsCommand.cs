@@ -66,10 +66,6 @@ public sealed class BulkUpdateAuditSettingsHandler(
         var results = new List<AuditSettingDto>();
 
         // Batch load all existing settings for this tenant to avoid N+1 queries
-        var requestedKeys = request.Settings
-            .Select(s => $"{s.Module}:{s.Operation}")
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         var existingSettings = await dbContext.AuditSettings
             .Where(s => s.TenantId == tenantId)
             .ToListAsync(cancellationToken);
@@ -79,7 +75,9 @@ public sealed class BulkUpdateAuditSettingsHandler(
 
         foreach (var item in request.Settings)
         {
-            var key = $"{item.Module}:{item.Operation}";
+            var module = item.Module.Trim().ToLowerInvariant();
+            var operation = item.Operation.Trim().ToLowerInvariant();
+            var key = $"{module}:{operation}";
 
             if (existingLookup.TryGetValue(key, out var existing))
             {
@@ -101,7 +99,8 @@ public sealed class BulkUpdateAuditSettingsHandler(
         // Invalidate cache for each updated setting (both defaultEnabled variants)
         foreach (var item in request.Settings)
         {
-            var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, item.Module, item.Operation);
+            var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(
+                tenantId, item.Module.Trim().ToLowerInvariant(), item.Operation.Trim().ToLowerInvariant());
             await cacheService.RemoveAsync(enabledKey, cancellationToken);
             await cacheService.RemoveAsync(disabledKey, cancellationToken);
         }

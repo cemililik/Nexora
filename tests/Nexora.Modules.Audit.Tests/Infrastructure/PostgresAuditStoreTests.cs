@@ -12,8 +12,7 @@ namespace Nexora.Modules.Audit.Tests.Infrastructure;
 
 public sealed class PostgresAuditStoreTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:17-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
         .Build();
 
     private AuditDbContext _dbContext = null!;
@@ -91,6 +90,9 @@ public sealed class PostgresAuditStoreTests : IAsyncLifetime
         persisted.AfterState.Should().Be("{\"name\":\"John\"}");
         persisted.Changes.Should().Be("{\"name\":[null,\"John\"]}");
         persisted.Metadata.Should().Be("{\"source\":\"api\"}");
+        // PostgreSQL/Npgsql truncates sub-millisecond DateTimeOffset precision by default.
+        // Adding HasColumnType("timestamp(6) with time zone") to AuditEntryConfiguration would
+        // preserve microsecond precision. The 500ms tolerance accounts for this plus CI variance.
         persisted.Timestamp.Should().BeCloseTo(timestamp, TimeSpan.FromMilliseconds(500));
     }
 
