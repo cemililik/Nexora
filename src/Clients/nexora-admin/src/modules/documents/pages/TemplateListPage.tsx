@@ -9,6 +9,7 @@ import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import {
   Select,
   SelectContent,
@@ -22,7 +23,7 @@ import type { DocumentTemplateDto, TemplateCategory } from '../types';
 const CATEGORIES: TemplateCategory[] = ['Contract', 'Receipt', 'Letter', 'Report'];
 
 export default function TemplateListPage() {
-  const { t, i18n } = useTranslation('documents');
+  const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
@@ -84,7 +85,7 @@ export default function TemplateListPage() {
     {
       key: 'createdAt',
       header: t('lockey_documents_templates_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
     {
       key: 'actions',

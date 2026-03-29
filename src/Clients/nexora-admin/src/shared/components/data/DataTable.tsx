@@ -21,6 +21,7 @@ interface DataTableProps<T> {
   isLoading?: boolean;
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
+  onRowClick?: (row: T) => void;
 }
 
 /** Generic data table with pagination and loading state. */
@@ -34,6 +35,7 @@ export function DataTable<T>({
   isLoading = false,
   emptyMessage,
   keyExtractor = (_row, index) => index,
+  onRowClick,
 }: DataTableProps<T>) {
   const { t } = useTranslation();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -71,7 +73,11 @@ export function DataTable<T>({
             </thead>
             <tbody>
               {data.map((row, index) => (
-                <tr key={keyExtractor(row, index)} className="border-b last:border-0">
+                <tr
+                  key={keyExtractor(row, index)}
+                  className={`border-b last:border-0${onRowClick ? ' cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
                   {columns.map((col) => (
                     <td key={col.key} className={col.className ?? 'px-4 py-3'}>
                       {col.render(row)}

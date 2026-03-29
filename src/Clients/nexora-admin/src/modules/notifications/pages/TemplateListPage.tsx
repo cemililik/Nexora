@@ -8,6 +8,7 @@ import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import { CHANNELS, CHANNEL_KEY_MAP } from '../constants';
 import type { NotificationTemplateDto, NotificationChannel } from '../types';
 
 export default function TemplateListPage() {
-  const { t, i18n } = useTranslation('notifications');
+  const { t } = useTranslation('notifications');
   const navigate = useNavigate();
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
@@ -91,7 +92,7 @@ export default function TemplateListPage() {
     {
       key: 'createdAt',
       header: t('lockey_notifications_templates_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
     ...(canManage ? [{
       key: 'actions' as const,

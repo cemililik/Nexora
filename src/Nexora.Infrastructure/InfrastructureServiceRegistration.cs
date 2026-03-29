@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Audit;
 using Nexora.Infrastructure.Behaviors;
 using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Caching;
@@ -16,6 +17,7 @@ using Nexora.Infrastructure.Messaging;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Infrastructure.Secrets;
 using Nexora.Infrastructure.Storage;
+using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.Configuration;
 using Nexora.SharedKernel.Abstractions.Messaging;
@@ -49,6 +51,7 @@ public static class InfrastructureServiceRegistration
             var logger = sp.GetRequiredService<ILogger<TenantSchemaManager>>();
             return new TenantSchemaManager(connStr, migrations, logger);
         });
+        services.AddScoped<IActiveTenantProvider, PlatformTenantProvider>();
 
         // MediatR — register core services so IPublisher is available for DomainEventDispatcher.
         // Each module adds its own handlers via AddMediatR(cfg => cfg.RegisterServicesFromAssembly(...)).
@@ -122,9 +125,14 @@ public static class InfrastructureServiceRegistration
             });
         }
 
+        // Audit context (requires IHttpContextAccessor)
+        services.AddHttpContextAccessor();
+        services.AddScoped<IAuditContext, HttpAuditContext>();
+
         // MediatR behaviors
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(AuditLogBehavior<,>));
 
         // FluentValidation — deferred registration.
         // Validators are registered after module assemblies are loaded by AddNexoraModules().

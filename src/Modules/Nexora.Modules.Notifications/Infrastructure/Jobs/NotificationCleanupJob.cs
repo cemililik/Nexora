@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
@@ -18,32 +19,36 @@ public sealed record NotificationCleanupJobParams : JobParams
 /// Deletes notifications older than the configured retention period.
 /// </summary>
 public sealed class NotificationCleanupJob(
-    ITenantContextAccessor tenantContextAccessor,
-    NotificationsDbContext dbContext,
-    ILogger<NotificationCleanupJob> logger) : NexoraJob<NotificationCleanupJobParams>(tenantContextAccessor, logger)
+    IActiveTenantProvider tenantProvider,
+    IServiceScopeFactory scopeFactory,
+    ILogger<NotificationCleanupJob> logger) : PlatformJob<NotificationCleanupJobParams>(tenantProvider, scopeFactory, logger)
 {
-    protected override async Task ExecuteAsync(NotificationCleanupJobParams parameters, CancellationToken ct)
+    protected override string? GetRequiredModule() => "notifications";
+
+    protected override async Task ExecuteForTenantAsync(
+        NotificationCleanupJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(parameters.TenantId);
+        var dbContext = scopedServices.GetRequiredService<NotificationsDbContext>();
+
         var cutoffDate = DateTime.UtcNow.AddDays(-parameters.RetentionDays);
 
         var oldNotifications = await dbContext.Notifications
-            .Where(n => n.TenantId == tenantId &&
-                        n.QueuedAt < cutoffDate &&
+            .Where(n => n.QueuedAt < cutoffDate &&
                         n.Status != NotificationStatus.Sending)
             .ToListAsync(ct);
 
         if (oldNotifications.Count == 0)
         {
-            logger.LogInformation("No notifications older than {RetentionDays} days found for tenant {TenantId}",
-                parameters.RetentionDays, tenantId);
+            logger.LogInformation("No notifications older than {RetentionDays} days found",
+                parameters.RetentionDays);
             return;
         }
 
         dbContext.Notifications.RemoveRange(oldNotifications);
         await dbContext.SaveChangesAsync(ct);
 
-        logger.LogInformation("Cleaned up {Count} old notifications (older than {RetentionDays} days) for tenant {TenantId}",
-            oldNotifications.Count, parameters.RetentionDays, tenantId);
+        logger.LogInformation("Cleaned up {Count} old notifications (older than {RetentionDays} days)",
+            oldNotifications.Count, parameters.RetentionDays);
     }
 }

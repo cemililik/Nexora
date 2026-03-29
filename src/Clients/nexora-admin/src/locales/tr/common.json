@@ -55,5 +55,10 @@
   "lockey_common_module_contacts": "Kişiler",
   "lockey_common_module_documents": "Belgeler",
   "lockey_common_module_notifications": "Bildirimler",
-  "lockey_common_module_reporting": "Raporlama"
+  "lockey_common_module_reporting": "Raporlama",
+  "lockey_common_module_audit": "Denetim",
+  "lockey_common_just_now": "Az önce",
+  "lockey_common_minutes_ago": "{{count}} dk önce",
+  "lockey_common_hours_ago": "{{count}} saat önce",
+  "lockey_common_days_ago": "{{count}} gün önce"
 }

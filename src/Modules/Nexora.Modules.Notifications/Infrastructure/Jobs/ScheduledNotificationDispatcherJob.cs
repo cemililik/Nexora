@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
@@ -14,25 +15,27 @@ public sealed record ScheduledNotificationDispatcherJobParams : JobParams;
 /// Marks schedules as dispatched and transitions notifications to Sending status for pickup by delivery jobs.
 /// </summary>
 public sealed class ScheduledNotificationDispatcherJob(
-    ITenantContextAccessor tenantContextAccessor,
-    NotificationsDbContext dbContext,
-    ILogger<ScheduledNotificationDispatcherJob> logger) : NexoraJob<ScheduledNotificationDispatcherJobParams>(tenantContextAccessor, logger)
+    IActiveTenantProvider tenantProvider,
+    IServiceScopeFactory scopeFactory,
+    ILogger<ScheduledNotificationDispatcherJob> logger) : PlatformJob<ScheduledNotificationDispatcherJobParams>(tenantProvider, scopeFactory, logger)
 {
-    protected override async Task ExecuteAsync(ScheduledNotificationDispatcherJobParams parameters, CancellationToken ct)
+    protected override string? GetRequiredModule() => "notifications";
+
+    protected override async Task ExecuteForTenantAsync(
+        ScheduledNotificationDispatcherJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(parameters.TenantId);
+        var dbContext = scopedServices.GetRequiredService<NotificationsDbContext>();
 
         var dueSchedules = await (from s in dbContext.NotificationSchedules
-                                  join n in dbContext.Notifications on s.NotificationId equals n.Id
-                                  where n.TenantId == tenantId
-                                        && s.Status == ScheduleStatus.Pending
+                                  where s.Status == ScheduleStatus.Pending
                                         && s.ScheduledAt <= DateTime.UtcNow
                                   select s)
             .ToListAsync(ct);
 
         if (dueSchedules.Count == 0)
         {
-            logger.LogDebug("No pending scheduled notifications due for tenant {TenantId}", tenantId);
+            logger.LogDebug("No pending scheduled notifications due");
             return;
         }
 
@@ -58,7 +61,6 @@ public sealed class ScheduledNotificationDispatcherJob(
 
         await dbContext.SaveChangesAsync(ct);
 
-        logger.LogInformation("Dispatched {Count} scheduled notifications for tenant {TenantId}",
-            dispatchedCount, tenantId);
+        logger.LogInformation("Dispatched {Count} scheduled notifications", dispatchedCount);
     }
 }

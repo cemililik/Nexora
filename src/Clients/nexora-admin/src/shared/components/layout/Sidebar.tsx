@@ -25,11 +25,14 @@ import {
   PenTool,
   FileBarChart,
   FileCode,
+  FileSearch,
+  Settings,
 } from 'lucide-react';
 
 import { cn } from '@/shared/lib/utils';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useModules } from '@/shared/hooks/useModules';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import type { AdminModuleManifest, AdminNavigationItem } from '@/shared/types/module';
 
 const iconMap: Record<string, LucideIcon> = {
@@ -54,6 +57,8 @@ const iconMap: Record<string, LucideIcon> = {
   PenTool,
   FileBarChart,
   FileCode,
+  FileSearch,
+  Settings,
 };
 
 /** Module display name keys for sidebar group headers. */
@@ -63,6 +68,7 @@ const moduleDisplayNames: Record<string, string> = {
   documents: 'lockey_common_module_documents',
   notifications: 'lockey_common_module_notifications',
   reporting: 'lockey_common_module_reporting',
+  audit: 'lockey_common_module_audit',
 };
 
 /** Module icon used for group header. */
@@ -72,6 +78,7 @@ const moduleIcons: Record<string, LucideIcon> = {
   documents: FileText,
   notifications: Bell,
   reporting: FileBarChart,
+  audit: FileSearch,
 };
 
 function NavItem({
@@ -144,6 +151,40 @@ function NavItem({
   );
 }
 
+/**
+ * Recursively filters navigation items based on user permissions.
+ * Items without a `permission` field are always visible.
+ * Items with a `permission` string require that single permission.
+ * Items with a `permission` string[] require ANY of those permissions.
+ * Children are filtered recursively; parent items with no remaining children are excluded.
+ */
+function filterNavItems(
+  items: AdminNavigationItem[],
+  hasPermission: (p: string) => boolean,
+  hasAnyPermission: (p: string[]) => boolean,
+): AdminNavigationItem[] {
+  return items.reduce<AdminNavigationItem[]>((acc, item) => {
+    // Check item-level permission
+    if (item.permission) {
+      const allowed = Array.isArray(item.permission)
+        ? hasAnyPermission(item.permission)
+        : hasPermission(item.permission);
+      if (!allowed) return acc;
+    }
+
+    // Recursively filter children
+    if (item.children?.length) {
+      const filteredChildren = filterNavItems(item.children, hasPermission, hasAnyPermission);
+      if (filteredChildren.length === 0) return acc;
+      acc.push({ ...item, children: filteredChildren });
+    } else {
+      acc.push(item);
+    }
+
+    return acc;
+  }, []);
+}
+
 function ModuleGroup({
   module,
   collapsed,
@@ -155,18 +196,33 @@ function ModuleGroup({
 }) {
   const { t } = useTranslation('common');
   const location = useLocation();
+  const { hasPermission, hasAnyPermission } = usePermissions();
+
+  // Filter individual nav items by permission
+  const visibleNavItems = filterNavItems(module.navigation, hasPermission, hasAnyPermission);
+
+  // Module-level permission gate: if the manifest declares top-level permissions,
+  // the user must have at least one of them to see the module at all.
+  const moduleHidden =
+    (module.permissions.length > 0 && !hasAnyPermission(module.permissions)) ||
+    visibleNavItems.length === 0;
+
   const [open, setOpen] = useState(() =>
-    module.navigation.some((item) => location.pathname.startsWith(item.path)),
+    visibleNavItems.some((item) => location.pathname.startsWith(item.path)),
   );
 
   const GroupIcon = moduleIcons[module.name];
   const displayName = moduleDisplayNames[module.name] ?? module.name;
 
+  if (moduleHidden) {
+    return null;
+  }
+
   if (collapsed) {
-    // When collapsed, show only icons for first nav item per module
+    // When collapsed, show only icons for nav items the user can access
     return (
       <div className="space-y-0.5">
-        {module.navigation.map((item) => (
+        {visibleNavItems.map((item) => (
           <NavItem key={item.path} item={item} collapsed namespaces={namespaces} />
         ))}
       </div>
@@ -188,7 +244,7 @@ function ModuleGroup({
       </button>
       {open && (
         <div className="space-y-0.5 pb-1">
-          {module.navigation.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavItem key={item.path} item={item} collapsed={false} namespaces={namespaces} />
           ))}
         </div>

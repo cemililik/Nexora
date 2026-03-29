@@ -7,6 +7,7 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure;
+using Nexora.Modules.Audit.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Npgsql;
@@ -54,6 +55,7 @@ public static class DevelopmentSeed
             await EnsureModuleTablesAsync<DocumentsDbContext>(app.Services, connectionString, "documents_documents");
             await EnsureModuleTablesAsync<NotificationsDbContext>(app.Services, connectionString, "notifications_templates");
             await EnsureModuleTablesAsync<ReportingDbContext>(app.Services, connectionString, "reporting_report_definitions");
+            await EnsureModuleTablesAsync<AuditDbContext>(app.Services, connectionString, "audit_entries");
 
             // Step 5: Seed permissions, roles, organization, tenant record
             await SeedIdentityDataAsync(app.Services, connectionString);
@@ -399,7 +401,7 @@ public static class DevelopmentSeed
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
 
-        var moduleNames = new[] { "identity", "contacts", "documents", "notifications", "reporting" };
+        var moduleNames = new[] { "identity", "contacts", "documents", "notifications", "reporting", "audit" };
 
         foreach (var moduleName in moduleNames)
         {
@@ -506,5 +508,10 @@ public static class DevelopmentSeed
         Permission.Create("reporting", "schedule", "manage", "lockey_reporting_permission_schedule_manage"),
         Permission.Create("reporting", "dashboard", "read", "lockey_reporting_permission_dashboard_read"),
         Permission.Create("reporting", "dashboard", "manage", "lockey_reporting_permission_dashboard_manage"),
+        // Audit
+        Permission.Create("audit", "logs", "read", "lockey_audit_permission_logs_read"),
+        Permission.Create("audit", "logs", "export", "lockey_audit_permission_logs_export"),
+        Permission.Create("audit", "settings", "read", "lockey_audit_permission_settings_read"),
+        Permission.Create("audit", "settings", "manage", "lockey_audit_permission_settings_manage"),
     ];
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
@@ -14,20 +15,24 @@ public sealed record SignatureExpiryJobParams : JobParams;
 /// Runs daily. Marks expired requests and their pending recipients as expired.
 /// </summary>
 public sealed class SignatureExpiryJob(
-    ITenantContextAccessor tenantContextAccessor,
-    DocumentsDbContext dbContext,
-    ILogger<SignatureExpiryJob> logger) : NexoraJob<SignatureExpiryJobParams>(tenantContextAccessor, logger)
+    IActiveTenantProvider tenantProvider,
+    IServiceScopeFactory scopeFactory,
+    ILogger<SignatureExpiryJob> logger) : PlatformJob<SignatureExpiryJobParams>(tenantProvider, scopeFactory, logger)
 {
+    protected override string? GetRequiredModule() => "documents";
+
     /// <inheritdoc />
-    protected override async Task ExecuteAsync(SignatureExpiryJobParams parameters, CancellationToken ct)
+    protected override async Task ExecuteForTenantAsync(
+        SignatureExpiryJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(parameters.TenantId);
+        var dbContext = scopedServices.GetRequiredService<DocumentsDbContext>();
+
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         var expiredRequests = await dbContext.SignatureRequests
             .Include(s => s.Recipients)
-            .Where(s => s.TenantId == tenantId
-                && s.ExpiresAt != null
+            .Where(s => s.ExpiresAt != null
                 && s.ExpiresAt <= today
                 && s.Status != SignatureRequestStatus.Completed
                 && s.Status != SignatureRequestStatus.Cancelled
@@ -44,8 +49,6 @@ public sealed class SignatureExpiryJob(
 
         await dbContext.SaveChangesAsync(ct);
 
-        logger.LogInformation(
-            "Expired {Count} signature requests in tenant {TenantId}",
-            expiredRequests.Count, tenantId);
+        logger.LogInformation("Expired {Count} signature requests", expiredRequests.Count);
     }
 }

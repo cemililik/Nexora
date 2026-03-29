@@ -7,6 +7,7 @@ import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import { CHANNELS, CHANNEL_KEY_MAP, NOTIFICATION_STATUSES, STATUS_KEY_MAP } from
 import type { NotificationDto, NotificationChannel, NotificationStatus } from '../types';
 
 export default function NotificationListPage() {
-  const { t, i18n } = useTranslation('notifications');
+  const { t } = useTranslation('notifications');
   const navigate = useNavigate();
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
@@ -90,7 +91,7 @@ export default function NotificationListPage() {
     {
       key: 'queuedAt',
       header: t('lockey_notifications_col_queued_at'),
-      render: (row) => new Date(row.queuedAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.queuedAt),
     },
     {
       key: 'actions',

@@ -1,12 +1,13 @@
 import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { SearchInput } from '@/shared/components/data/SearchInput';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import { useContacts } from '../hooks/useContacts';
 import { ContactStatusBadge, ContactTypeBadge } from '../components/ContactStatusBadge';
 import type { ContactDto, ContactStatus, ContactType } from '../types';
@@ -15,7 +16,8 @@ const VALID_STATUSES: ContactStatus[] = ['Active', 'Archived', 'Merged'];
 const VALID_TYPES: ContactType[] = ['Individual', 'Organization'];
 
 export default function ContactListPage() {
-  const { t, i18n } = useTranslation('contacts');
+  const { t } = useTranslation('contacts');
+  const navigate = useNavigate();
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -88,12 +90,7 @@ export default function ContactListPage() {
       key: 'displayName',
       header: t('lockey_contacts_col_display_name'),
       render: (row) => (
-        <Link
-          to={`/contacts/contacts/${row.id}`}
-          className="font-medium text-primary hover:underline"
-        >
-          {row.displayName}
-        </Link>
+        <span className="font-medium">{row.displayName}</span>
       ),
     },
     {
@@ -119,7 +116,7 @@ export default function ContactListPage() {
     {
       key: 'createdAt',
       header: t('lockey_contacts_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
   ];
 
@@ -177,6 +174,7 @@ export default function ContactListPage() {
         isLoading={isPending}
         emptyMessage={t('lockey_contacts_empty_contacts')}
         keyExtractor={(row) => row.id}
+        onRowClick={(row) => navigate(`/contacts/contacts/${row.id}`)}
       />
     </div>
   );

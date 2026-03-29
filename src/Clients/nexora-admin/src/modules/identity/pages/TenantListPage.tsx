@@ -1,17 +1,19 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import { useTenants } from '../hooks/useTenants';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
 import type { TenantDto } from '../types';
 
 export default function TenantListPage() {
-  const { t, i18n } = useTranslation('identity');
+  const { t } = useTranslation('identity');
+  const navigate = useNavigate();
   const { page, pageSize, setPage } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data, isPending, isError, error } = useTenants({ page, pageSize });
@@ -28,12 +30,7 @@ export default function TenantListPage() {
       key: 'name',
       header: t('lockey_identity_col_tenant_name'),
       render: (row) => (
-        <Link
-          to={`/identity/tenants/${row.id}`}
-          className="font-medium text-primary hover:underline"
-        >
-          {row.name}
-        </Link>
+        <span className="font-medium">{row.name}</span>
       ),
     },
     { key: 'slug', header: t('lockey_identity_col_slug'), render: (row) => row.slug },
@@ -45,7 +42,7 @@ export default function TenantListPage() {
     {
       key: 'createdAt',
       header: t('lockey_identity_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
   ];
 
@@ -86,6 +83,8 @@ export default function TenantListPage() {
         onPageChange={setPage}
         isLoading={isPending}
         emptyMessage={t('lockey_identity_empty_tenants')}
+        keyExtractor={(row) => row.id}
+        onRowClick={(row) => navigate(`/identity/tenants/${row.id}`)}
       />
     </div>
   );

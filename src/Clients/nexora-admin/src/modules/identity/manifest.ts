@@ -56,10 +56,6 @@ export const identityManifest: AdminModuleManifest = {
       path: 'tenants/:id',
       component: lazy(() => import('./pages/TenantDetailPage')),
     },
-    {
-      path: 'audit-logs',
-      component: lazy(() => import('./pages/AuditLogPage')),
-    },
   ],
   navigation: [
     {
@@ -81,11 +77,6 @@ export const identityManifest: AdminModuleManifest = {
       label: 'lockey_identity_nav_tenants',
       path: '/identity/tenants',
       icon: 'Server',
-    },
-    {
-      label: 'lockey_identity_nav_audit_logs',
-      path: '/identity/audit-logs',
-      icon: 'FileText',
     },
   ],
   permissions: [

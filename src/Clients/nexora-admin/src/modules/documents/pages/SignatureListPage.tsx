@@ -7,6 +7,7 @@ import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import {
   Select,
   SelectContent,
@@ -79,7 +80,7 @@ export default function SignatureListPage() {
     {
       key: 'createdAt',
       header: t('lockey_documents_signatures_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
     {
       key: 'actions',

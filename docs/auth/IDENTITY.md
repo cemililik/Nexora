@@ -115,6 +115,20 @@ flowchart TB
 }
 ```
 
+### Permission Resolution (Frontend)
+The frontend resolves permissions from two sources with backend priority:
+
+1. **`GET /api/v1/identity/users/me`** — returns `permissions` array loaded from DB (OrganizationUser → UserRole → RolePermission → Permission)
+2. **JWT `permissions` claim** — fallback if `/me` fails
+
+```
+Frontend useAuth → api.get('/identity/users/me') → response.permissions
+                 ↓ fallback
+                 JWT claims.permissions (Keycloak user attribute)
+```
+
+This ensures newly added permissions (e.g., audit module) are immediately available after role assignment, without requiring Keycloak token refresh or re-login.
+
 ## 3. Multi-Tenancy Identity Model
 
 ```mermaid
@@ -276,20 +290,48 @@ Some actions don't require authentication:
 - CORS configuration per tenant domain
 
 ### Audit Logging
-Every authenticated action is logged:
-```json
-{
-  "timestamp": "2026-03-19T10:30:00Z",
-  "tenant_id": "isabet-group",
-  "org_id": "ikf",
-  "user_id": "user-uuid",
-  "action": "donation.create",
-  "resource": "donation:don-123",
-  "ip": "1.2.3.4",
-  "user_agent": "...",
-  "result": "success"
-}
-```
+Audit logging is handled by the standalone **Audit module** (`Nexora.Modules.Audit`). It captures all command executions across all modules via the `AuditLogBehavior` MediatR pipeline behavior.
+
+**How it works:**
+- `AuditLogBehavior` intercepts all `ICommand` / `ICommand<T>` requests
+- Checks `IAuditConfigService` to determine if the operation is enabled for the tenant
+- After handler execution, builds an `AuditEntry` with rich context and persists via `IAuditStore`
+- Audit failures never block business operations
+
+**Configurable per tenant:**
+- Admins with `audit.settings.manage` permission can enable/disable auditing per module and per operation
+- Operations are auto-discovered from all registered modules' command types
+- Auth events (Login, Logout, PasswordChange, TokenRefresh) are also configurable
+
+**Audit entry fields:**
+| Field | Description |
+|-------|-------------|
+| Module | Source module (e.g., identity, contacts) |
+| Operation | Command name (e.g., CreateUser, DeleteContact) |
+| OperationType | Create, Update, Delete, or Action |
+| UserId / UserEmail | Who performed the action |
+| IpAddress | Client IP (via X-Forwarded-For or RemoteIpAddress) |
+| UserAgent | Browser/client info |
+| CorrelationId | Request trace correlation |
+| IsSuccess | Whether the operation succeeded |
+| ErrorKey | Localization key if failed |
+| EntityType / EntityId | Affected entity |
+| BeforeState / AfterState | Entity snapshots (Phase 2) |
+| Changes | Field-level diff (Phase 2) |
+
+**Permission model:**
+| Permission | Description |
+|------------|-------------|
+| `audit.logs.read` | View audit log entries |
+| `audit.logs.export` | Export audit logs |
+| `audit.settings.read` | View audit configuration |
+| `audit.settings.manage` | Enable/disable auditing per module/operation |
+
+**Frontend:** Standalone sidebar section "Audit Logs" with log list, detail view, and settings page.
+
+**Storage:** PostgreSQL JSONB in tenant schema (`audit_entries`, `audit_settings`). Future: table partitioning for retention management.
+
+See full spec: [`docs/modules/audit/SPEC.md`](../modules/audit/SPEC.md)
 
 ### Secrets Management (Vault)
 - DB connection strings

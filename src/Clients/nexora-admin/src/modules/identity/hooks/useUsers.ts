@@ -16,20 +16,29 @@ import type {
   RoleDto,
 } from '../types';
 
+export interface UserFilterParams extends PaginationParams {
+  organizationId?: string;
+  roleId?: string;
+  search?: string;
+}
+
 export const userKeys = {
   all: ['identity', 'users'] as const,
-  list: (params: PaginationParams) =>
+  list: (params: UserFilterParams) =>
     [...userKeys.all, 'list', params] as const,
   detail: (id: string) => [...userKeys.all, 'detail', id] as const,
 };
 
-export function useUsers(params: PaginationParams) {
+export function useUsers(params: UserFilterParams) {
   return useQuery({
     queryKey: userKeys.list(params),
     queryFn: () =>
       api.get<PagedResult<UserDto>>('/identity/users', {
         page: params.page,
         pageSize: params.pageSize,
+        ...(params.organizationId ? { organizationId: params.organizationId } : {}),
+        ...(params.roleId ? { roleId: params.roleId } : {}),
+        ...(params.search ? { search: params.search } : {}),
       }),
   });
 }

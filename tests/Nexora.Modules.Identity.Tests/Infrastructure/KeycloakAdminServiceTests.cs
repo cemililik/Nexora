@@ -130,7 +130,8 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task DisableUserAsync_Success_SendsEnabledFalse()
     {
-        var handler = CreateHandler(HttpStatusCode.NoContent);
+        // SetUserEnabledAsync now does GET user → PUT user; provide a user body for the GET response
+        var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", enabled = true });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 
@@ -145,7 +146,7 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task EnableUserAsync_Success_SendsEnabledTrue()
     {
-        var handler = CreateHandler(HttpStatusCode.NoContent);
+        var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", enabled = false });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 

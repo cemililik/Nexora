@@ -3,9 +3,11 @@ using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
+using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -20,22 +22,30 @@ public static class UserEndpoints
         var group = endpoints.MapGroup("/users")
             .RequireAuthorization();
 
-        group.MapGet("/", async (int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+        group.MapGet("/", async (int? page, int? pageSize, Guid? organizationId, Guid? roleId, string? search, ISender sender, CancellationToken ct) =>
         {
-            var query = new GetUsersQuery(page ?? 1, pageSize ?? 20);
+            var query = new GetUsersQuery(page ?? 1, pageSize ?? 20, organizationId, roleId, search);
             var result = await sender.Send(query, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<PagedResult<UserDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<PagedResult<UserDto>>.Fail(result.Error!));
         });
 
-        group.MapGet("/me", async (HttpContext httpContext, ISender sender, CancellationToken ct) =>
+        group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, CancellationToken ct) =>
         {
             var keycloakUserId = httpContext.User.FindFirstValue("sub");
             if (string.IsNullOrEmpty(keycloakUserId))
                 return Results.Unauthorized();
 
             var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
+            if (result.IsSuccess)
+            {
+                // Update last login timestamp (awaited to avoid connection pool corruption)
+                await dbContext.Users
+                    .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);
+            }
+
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<UserDetailDto>.Success(result.Value!))
                 : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));

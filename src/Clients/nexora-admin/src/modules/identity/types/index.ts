@@ -53,6 +53,7 @@ export interface RoleDto {
   isSystemRole: boolean;
   isActive: boolean;
   permissions: string[];
+  createdAt: string;
 }
 
 /** Request body for POST /identity/roles. */
@@ -84,6 +85,16 @@ export interface RoleDetailDto {
 export interface AssignRolesRequest {
   organizationId: string;
   roleIds: string[];
+}
+
+/** User assigned to a role from GET /identity/roles/:id/users. */
+export interface RoleUserDto {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  organizationId: string;
+  organizationName: string;
 }
 
 // ─── Permissions ────────────────────────────────────────────

@@ -281,7 +281,8 @@ cat > /tmp/user-attrs.json << 'USEREOF'
       "reporting.definition.read","reporting.definition.manage",
       "reporting.execution.run","reporting.execution.read",
       "reporting.schedule.manage",
-      "reporting.dashboard.read","reporting.dashboard.manage"
+      "reporting.dashboard.read","reporting.dashboard.manage",
+      "audit.logs.read","audit.logs.export","audit.settings.read","audit.settings.manage"
     ]
   }
 }

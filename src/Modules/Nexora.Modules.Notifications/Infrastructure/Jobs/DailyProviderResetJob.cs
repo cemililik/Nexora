@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -13,16 +14,20 @@ public sealed record DailyProviderResetJobParams : JobParams;
 /// Runs once a day at midnight UTC.
 /// </summary>
 public sealed class DailyProviderResetJob(
-    ITenantContextAccessor tenantContextAccessor,
-    NotificationsDbContext dbContext,
-    ILogger<DailyProviderResetJob> logger) : NexoraJob<DailyProviderResetJobParams>(tenantContextAccessor, logger)
+    IActiveTenantProvider tenantProvider,
+    IServiceScopeFactory scopeFactory,
+    ILogger<DailyProviderResetJob> logger) : PlatformJob<DailyProviderResetJobParams>(tenantProvider, scopeFactory, logger)
 {
-    protected override async Task ExecuteAsync(DailyProviderResetJobParams parameters, CancellationToken ct)
+    protected override string? GetRequiredModule() => "notifications";
+
+    protected override async Task ExecuteForTenantAsync(
+        DailyProviderResetJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(parameters.TenantId);
+        var dbContext = scopedServices.GetRequiredService<NotificationsDbContext>();
 
         var providers = await dbContext.NotificationProviders
-            .Where(p => p.TenantId == tenantId && p.SentToday > 0)
+            .Where(p => p.SentToday > 0)
             .ToListAsync(ct);
 
         foreach (var provider in providers)
@@ -33,8 +38,7 @@ public sealed class DailyProviderResetJob(
         if (providers.Count > 0)
         {
             await dbContext.SaveChangesAsync(ct);
-            logger.LogInformation("Daily counter reset for {Count} providers in tenant {TenantId}",
-                providers.Count, tenantId);
+            logger.LogInformation("Daily counter reset for {Count} providers", providers.Count);
         }
     }
 }

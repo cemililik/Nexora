@@ -41,7 +41,8 @@ public sealed class GetRolesHandler(
             r.Permissions
                 .Select(rp => permissionMap.GetValueOrDefault(rp.PermissionId, ""))
                 .Where(k => !string.IsNullOrEmpty(k))
-                .ToList()
+                .ToList(),
+            r.CreatedAt
         )).ToList();
 
         return Result<List<RoleDto>>.Success(dtos,
