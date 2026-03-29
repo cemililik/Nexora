@@ -18,6 +18,10 @@ public sealed class AuditSetting : AuditableEntity<AuditSettingId>
 
     private AuditSetting() { }
 
+    /// <summary>Normalizes module and operation keys to lowercase trimmed form.</summary>
+    public static (string Module, string Operation) NormalizeKey(string module, string operation)
+        => (module.Trim().ToLowerInvariant(), operation.Trim().ToLowerInvariant());
+
     /// <summary>Creates a new audit setting for the given tenant, module, and operation.</summary>
     public static AuditSetting Create(
         string tenantId,
@@ -26,12 +30,13 @@ public sealed class AuditSetting : AuditableEntity<AuditSettingId>
         bool isEnabled,
         int retentionDays)
     {
+        var (normalizedModule, normalizedOperation) = NormalizeKey(module, operation);
         return new AuditSetting
         {
             Id = AuditSettingId.New(),
             TenantId = tenantId,
-            Module = module.Trim().ToLowerInvariant(),
-            Operation = operation.Trim().ToLowerInvariant(),
+            Module = normalizedModule,
+            Operation = normalizedOperation,
             IsEnabled = isEnabled,
             RetentionDays = retentionDays
         };

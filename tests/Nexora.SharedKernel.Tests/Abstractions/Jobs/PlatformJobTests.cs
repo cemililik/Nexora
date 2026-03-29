@@ -169,7 +169,7 @@ public sealed class PlatformJobTests
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
 
-        // Assert — verify specific log calls for starting, per-tenant error, and finish summary
+        // Assert — verify log calls by content, not position, for resilience to ordering changes
         var logCalls = _logger.ReceivedCalls()
             .Where(c => c.GetMethodInfo().Name == "Log")
             .Select(c => new
@@ -179,20 +179,21 @@ public sealed class PlatformJobTests
             })
             .ToList();
 
-        logCalls.Should().HaveCountGreaterThanOrEqualTo(4); // starting + processing count + error + finished
-        logCalls[0].Level.Should().Be(LogLevel.Information);
-        logCalls[0].Message.Should().Contain("starting");
-        logCalls[1].Level.Should().Be(LogLevel.Information);
-        logCalls[1].Message.Should().Contain("2 tenants");
+        logCalls.Should().HaveCountGreaterThanOrEqualTo(4);
 
-        // The error log for the failing tenant
-        logCalls.Should().Contain(l => l.Level == LogLevel.Error && l.Message.Contains("tenant-bad"));
+        logCalls.Should().ContainSingle(l =>
+            l.Level == LogLevel.Information && l.Message.Contains("starting"));
 
-        // The finish log with success/failure counts
-        var finishLog = logCalls.Last();
-        finishLog.Level.Should().Be(LogLevel.Information);
-        finishLog.Message.Should().Contain("1 succeeded");
-        finishLog.Message.Should().Contain("1 failed");
+        logCalls.Should().Contain(l =>
+            l.Level == LogLevel.Information && l.Message.Contains("processing") && l.Message.Contains("2 tenants"));
+
+        logCalls.Should().Contain(l =>
+            l.Level == LogLevel.Error && l.Message.Contains("tenant-bad"));
+
+        logCalls.Should().ContainSingle(l =>
+            l.Level == LogLevel.Information &&
+            l.Message.Contains("1 succeeded") &&
+            l.Message.Contains("1 failed"));
     }
 
     [Fact]

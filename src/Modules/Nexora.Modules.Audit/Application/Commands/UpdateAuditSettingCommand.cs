@@ -50,8 +50,7 @@ public sealed class UpdateAuditSettingHandler(
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
         var userId = tenantContextAccessor.Current.UserId ?? "system";
-        var module = request.Module.Trim().ToLowerInvariant();
-        var operation = request.Operation.Trim().ToLowerInvariant();
+        var (module, operation) = AuditSetting.NormalizeKey(request.Module, request.Operation);
 
         var existing = await dbContext.AuditSettings
             .FirstOrDefaultAsync(s =>
