@@ -49,5 +49,6 @@
   "lockey_audit_settings_unsaved_changes": "{{count}} unsaved change(s)",
   "lockey_audit_settings_no_changes": "No unsaved changes",
   "lockey_audit_settings_save": "Save Changes",
-  "lockey_audit_settings_saving": "Saving..."
+  "lockey_audit_settings_saving": "Saving...",
+  "lockey_audit_handler_exception": "An unexpected error occurred"
 }

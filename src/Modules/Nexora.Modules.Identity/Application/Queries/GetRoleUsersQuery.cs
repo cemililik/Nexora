@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
@@ -71,12 +72,21 @@ public sealed class GetRoleUsersHandler(
                 o.Name,
                 ur.AssignedAt));
 
+        var sw = Stopwatch.StartNew();
+
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync(ct);
+
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+        {
+            logger.LogWarning("Slow query detected: {QueryName} took {ElapsedMs}ms (RoleId={RoleId}, Page={Page}, PageSize={PageSize})",
+                nameof(GetRoleUsersQuery), sw.ElapsedMilliseconds, request.RoleId, request.Page, request.PageSize);
+        }
 
         return Result<PagedResult<RoleUserDto>>.Success(new PagedResult<RoleUserDto>
         {

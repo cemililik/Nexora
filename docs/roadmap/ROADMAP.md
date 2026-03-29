@@ -381,12 +381,12 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 
 ### 1.5.7 Tenant Permission Isolation
 
-Platform-level vs tenant-level permission separation. Required before multi-tenant production deployment.
+Platform-level vs tenant-level permission separation is required before multi-tenant production deployment.
 
 **Analysis required:**
 - Platform-scope permissions (`platform.tenants.*`, `platform.modules.*`) — accessible only to Nexora staff (SaaS) or hidden (on-prem)
 - Tenant-scope permissions (`identity.users.*`, `contacts.*` etc.) — accessible to tenant admins
-- Current `identity.tenants.*` permissions incorrectly exposed to all roles — must be isolated to Platform Admin scope
+- Current `identity.tenants.*` permissions are incorrectly exposed to all roles — must be isolated to Platform Admin scope
 - On-prem model: single tenant, no tenant management UI visible
 - SaaS model: Nexora staff manage tenants, customers never see tenant screens
 

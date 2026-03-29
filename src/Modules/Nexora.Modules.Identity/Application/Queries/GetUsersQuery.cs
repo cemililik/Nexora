@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -21,7 +23,8 @@ public sealed record GetUsersQuery(
 /// <summary>Returns a paginated list of users filtered by tenant context.</summary>
 public sealed class GetUsersHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetUsersQuery, PagedResult<UserDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetUsersHandler> logger) : IQueryHandler<GetUsersQuery, PagedResult<UserDto>>
 {
     public async Task<Result<PagedResult<UserDto>>> Handle(
         GetUsersQuery request,
@@ -62,6 +65,8 @@ public sealed class GetUsersHandler(
         var orderedQuery = query
             .OrderBy(u => u.LastName).ThenBy(u => u.FirstName);
 
+        var sw = Stopwatch.StartNew();
+
         var totalCount = await orderedQuery.CountAsync(cancellationToken);
 
         var items = await orderedQuery
@@ -76,6 +81,13 @@ public sealed class GetUsersHandler(
                 u.Status.ToString(),
                 u.LastLoginAt))
             .ToListAsync(cancellationToken);
+
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+        {
+            logger.LogWarning("Slow query detected: {QueryName} took {ElapsedMs}ms (Page={Page}, PageSize={PageSize})",
+                nameof(GetUsersQuery), sw.ElapsedMilliseconds, request.Page, request.PageSize);
+        }
 
         return Result<PagedResult<UserDto>>.Success(new PagedResult<UserDto>
         {

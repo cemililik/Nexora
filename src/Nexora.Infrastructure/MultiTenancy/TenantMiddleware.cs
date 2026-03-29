@@ -12,6 +12,7 @@ namespace Nexora.Infrastructure.MultiTenancy;
 /// </summary>
 public sealed class TenantMiddleware(RequestDelegate next)
 {
+    // Hardcoded for simplicity — move to configuration if list grows
     private static readonly HashSet<string> _publicPaths =
     [
         "/health",

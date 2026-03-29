@@ -40,7 +40,8 @@ public static class UserEndpoints
             var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
             if (result.IsSuccess)
             {
-                // Update last login timestamp (awaited to avoid connection pool corruption)
+                // SAFE: ExecuteUpdateAsync filters by strongly-typed UserId — no tenant isolation bypass risk.
+                // Awaited to avoid connection pool corruption.
                 await dbContext.Users
                     .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
                     .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);

@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { cn } from '@/shared/lib/utils';
 
 export interface ColumnDef<T> {
   key: string;
@@ -19,6 +20,7 @@ interface DataTableProps<T> {
   pageSize: number;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
+  pageSizeOptions?: number[];
   isLoading?: boolean;
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
@@ -34,12 +36,14 @@ export function DataTable<T>({
   pageSize,
   onPageChange,
   onPageSizeChange,
+  pageSizeOptions,
   isLoading = false,
   emptyMessage,
   keyExtractor = (_row, index) => index,
   onRowClick,
 }: DataTableProps<T>) {
   const { t } = useTranslation();
+  const pageSizeSelectId = useId();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   if (isLoading) {
@@ -77,7 +81,7 @@ export function DataTable<T>({
               {data.map((row, index) => (
                 <tr
                   key={keyExtractor(row, index)}
-                  className={`border-b last:border-0${onRowClick ? ' cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                  className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
                   onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
                   {columns.map((col) => (
@@ -103,16 +107,16 @@ export function DataTable<T>({
             </span>
             {onPageSizeChange && (
               <div className="flex items-center gap-2">
-                <label htmlFor="dt-page-size" className="text-sm text-muted-foreground">
+                <label htmlFor={pageSizeSelectId} className="text-sm text-muted-foreground">
                   {t('lockey_common_items_per_page')}
                 </label>
                 <select
-                  id="dt-page-size"
+                  id={pageSizeSelectId}
                   value={pageSize}
                   onChange={(e) => onPageSizeChange(Number(e.target.value))}
                   className="rounded-md border border-input bg-background px-2 py-1 text-sm"
                 >
-                  {[20, 50, 100].map((size) => (
+                  {(pageSizeOptions ?? [20, 50, 100]).map((size) => (
                     <option key={size} value={size}>
                       {size}
                     </option>

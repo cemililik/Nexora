@@ -78,7 +78,7 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         try
         {
             var (isSuccess, errorKey) = handlerFailed
-                ? (false, handlerException?.GetType().Name)
+                ? (false, (string?)"lockey_audit_handler_exception")
                 : DetermineOutcome(response);
 
             string? entityType = null;
@@ -202,35 +202,8 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
     /// <summary>Determines success/failure and error key from the response.</summary>
     private static (bool IsSuccess, string? ErrorKey) DetermineOutcome(TResponse response)
     {
-        if (response is null)
-            return (true, null);
-
-        // Handle Result (non-generic)
-        if (response is Result result)
+        if (response is IOperationResult result)
             return (result.IsSuccess, result.Error?.Message.Key);
-
-        // Handle Result<T>
-        var responseType = response.GetType();
-        if (responseType.IsGenericType &&
-            responseType.GetGenericTypeDefinition() == typeof(Result<>))
-        {
-            var isSuccessProp = responseType.GetProperty(nameof(Result.IsSuccess));
-            var errorProp = responseType.GetProperty(nameof(Result.Error));
-
-            if (isSuccessProp is not null)
-            {
-                var isSuccess = (bool)isSuccessProp.GetValue(response)!;
-                string? errorKey = null;
-
-                if (!isSuccess && errorProp is not null)
-                {
-                    var error = errorProp.GetValue(response) as Error;
-                    errorKey = error?.Message.Key;
-                }
-
-                return (isSuccess, errorKey);
-            }
-        }
 
         return (true, null);
     }

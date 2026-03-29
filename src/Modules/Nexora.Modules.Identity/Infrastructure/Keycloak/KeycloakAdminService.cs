@@ -139,19 +139,16 @@ public sealed class KeycloakAdminService(
             keycloakUserId, enabled, realm);
     }
 
+    /// <summary>
+    /// Acquires a valid admin token, refreshing if expired. All access is serialized
+    /// through the lock to prevent race conditions on token refresh and header mutation.
+    /// </summary>
     private async Task EnsureAuthenticatedAsync(CancellationToken ct)
     {
-        if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
-        {
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _cachedToken);
-            return;
-        }
-
         await _tokenLock.WaitAsync(ct);
         try
         {
-            // Double-check after acquiring lock — another thread may have refreshed
+            // Check inside lock — another thread may have refreshed while we waited
             if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
             {
                 httpClient.DefaultRequestHeaders.Authorization =

@@ -92,6 +92,7 @@ flowchart TB
 - Clean data export/import per tenant
 
 ### Client Configuration
+
 | Client | Type | Grant | Use |
 |--------|------|-------|-----|
 | nexora-admin | Public | Authorization Code + PKCE | Admin SPA login |
@@ -121,7 +122,7 @@ The frontend resolves permissions from two sources with backend priority:
 1. **`GET /api/v1/identity/users/me`** — returns `permissions` array loaded from DB (OrganizationUser → UserRole → RolePermission → Permission)
 2. **JWT `permissions` claim** — fallback if `/me` fails
 
-```
+```text
 Frontend useAuth → api.get('/identity/users/me') → response.permissions
                  ↓ fallback
                  JWT claims.permissions (Keycloak user attribute)
@@ -207,6 +208,7 @@ Roles are **tenant-defined** (not hardcoded). Default roles are seeded but can b
 ```
 
 ### Built-in System Roles (Non-deletable)
+
 | Role | Scope | Description |
 |------|-------|-------------|
 | Platform Admin | Platform | Manages tenants, modules, system config |
@@ -304,6 +306,7 @@ Audit logging is handled by the standalone **Audit module** (`Nexora.Modules.Aud
 - Auth events (Login, Logout, PasswordChange, TokenRefresh) are also configurable
 
 **Audit entry fields:**
+
 | Field | Description |
 |-------|-------------|
 | Module | Source module (e.g., identity, contacts) |
@@ -320,6 +323,7 @@ Audit logging is handled by the standalone **Audit module** (`Nexora.Modules.Aud
 | Changes | Field-level diff (Phase 2) |
 
 **Permission model:**
+
 | Permission | Description |
 |------------|-------------|
 | `audit.logs.read` | View audit log entries |
