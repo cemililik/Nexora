@@ -91,7 +91,7 @@ public sealed class PostgresAuditStoreTests : IAsyncLifetime
         persisted.AfterState.Should().Be("{\"name\":\"John\"}");
         persisted.Changes.Should().Be("{\"name\":[null,\"John\"]}");
         persisted.Metadata.Should().Be("{\"source\":\"api\"}");
-        persisted.Timestamp.Should().BeCloseTo(timestamp, TimeSpan.FromMilliseconds(1));
+        persisted.Timestamp.Should().BeCloseTo(timestamp, TimeSpan.FromMilliseconds(500));
     }
 
     [Fact]

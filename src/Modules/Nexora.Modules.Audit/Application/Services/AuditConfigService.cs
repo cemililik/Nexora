@@ -47,13 +47,17 @@ public sealed class AuditConfigService(
     {
         logger.LogDebug("Audit config cache miss for {TenantId}:{Module}.{Operation}, resolving from database", tenantId, module, operation);
 
-        // Single query fetching all applicable settings (operation, module-wildcard, global-wildcard).
-        // Precedence is applied in-memory via ordering: exact match > module wildcard > global wildcard.
+        // Single query fetching the three valid setting levels:
+        //   1. Exact module + exact operation
+        //   2. Exact module + wildcard operation (module-level)
+        //   3. Wildcard module + wildcard operation (global)
+        // Note: Module="*" + Operation=exact is invalid and excluded.
         var settings = await dbContext.AuditSettings.AsNoTracking()
             .Where(s =>
                 s.TenantId == tenantId &&
                 (s.Module == module || s.Module == "*") &&
-                (s.Operation == operation || s.Operation == "*"))
+                (s.Operation == operation || s.Operation == "*") &&
+                !(s.Module == "*" && s.Operation != "*"))
             .ToListAsync(ct);
 
         var best = settings

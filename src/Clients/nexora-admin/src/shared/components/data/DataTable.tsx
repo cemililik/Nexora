@@ -1,4 +1,4 @@
-import { useId, type MouseEvent, type KeyboardEvent, type ReactNode } from 'react';
+import React, { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
@@ -85,13 +85,12 @@ export function DataTable<T>({
                 <tr
                   key={keyExtractor(row, index)}
                   className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
-                  role={onRowClick ? 'button' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
-                  onClick={onRowClick ? (e: MouseEvent<HTMLTableRowElement>) => {
+                  onClick={onRowClick ? (e: React.MouseEvent<HTMLTableRowElement>) => {
                     if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
                     onRowClick(row);
                   } : undefined}
-                  onKeyDown={onRowClick ? (e: KeyboardEvent<HTMLTableRowElement>) => {
+                  onKeyDown={onRowClick ? (e: React.KeyboardEvent<HTMLTableRowElement>) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
                     if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
                     if (e.key === ' ') e.preventDefault();

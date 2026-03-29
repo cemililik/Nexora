@@ -76,7 +76,8 @@ public sealed class KeycloakAdminService(
         // Keycloak returns the user ID in the Location header
         var locationHeader = response.Headers.Location?.ToString();
         var keycloakUserId = locationHeader?.Split('/').Last()
-            ?? throw new InvalidOperationException("Keycloak did not return a user ID in the Location header.");
+            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
+                new() { ["realm"] = realm });
 
         logger.LogInformation("Created Keycloak user {Username} in realm {Realm} with ID {KeycloakUserId}",
             username, realm, keycloakUserId);
@@ -96,8 +97,8 @@ public sealed class KeycloakAdminService(
         getUserResponse.EnsureSuccessStatusCode();
 
         var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
-            ?? throw new InvalidOperationException(
-                $"lockey_identity_keycloak_deserialize_failed [UserId={keycloakUserId}, Realm={realm}]");
+            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed",
+                new() { ["userId"] = keycloakUserId, ["realm"] = realm });
 
         var updatedUser = user with
         {
@@ -135,8 +136,8 @@ public sealed class KeycloakAdminService(
         getUserResponse.EnsureSuccessStatusCode();
 
         var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
-            ?? throw new InvalidOperationException(
-                $"lockey_identity_keycloak_deserialize_failed [UserId={keycloakUserId}, Realm={realm}]");
+            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed",
+                new() { ["userId"] = keycloakUserId, ["realm"] = realm });
 
         var updatedUser = user with { Enabled = enabled };
 
@@ -182,7 +183,7 @@ public sealed class KeycloakAdminService(
             response.EnsureSuccessStatusCode();
 
             var token = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
-                ?? throw new InvalidOperationException("Failed to deserialize Keycloak token response.");
+                ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_token_deserialize_failed");
 
             _cachedToken = token.AccessToken;
             // Expire 30 seconds early to avoid edge cases
