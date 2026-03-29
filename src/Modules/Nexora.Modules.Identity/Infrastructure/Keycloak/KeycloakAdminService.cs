@@ -140,24 +140,16 @@ public sealed class KeycloakAdminService(
     }
 
     /// <summary>
-    /// Acquires a valid admin token, refreshing if expired. Uses double-checked locking:
-    /// fast path (no lock) for cached token reuse, lock only for token refresh.
-    /// Header mutation is always inside the lock to avoid concurrent modification.
+    /// Acquires a valid admin token, refreshing if expired.
+    /// All header mutation is serialized through the lock to prevent concurrent modification
+    /// of <see cref="HttpClient.DefaultRequestHeaders"/>.
     /// </summary>
     private async Task EnsureAuthenticatedAsync(CancellationToken ct)
     {
-        // Fast path: token is valid — reuse without lock (read-only check on volatile fields)
-        if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
-        {
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _cachedToken);
-            return;
-        }
-
         await _tokenLock.WaitAsync(ct);
         try
         {
-            // Double-check inside lock — another thread may have refreshed while we waited
+            // Token still valid — just ensure header is set and return
             if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
             {
                 httpClient.DefaultRequestHeaders.Authorization =
