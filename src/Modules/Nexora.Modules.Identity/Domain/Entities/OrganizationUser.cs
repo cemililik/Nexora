@@ -9,6 +9,7 @@ public sealed class OrganizationUser : Entity<OrganizationUserId>
     public UserId UserId { get; private set; }
     public OrganizationId OrganizationId { get; private set; }
     public bool IsDefaultOrg { get; private set; }
+    public DateTimeOffset JoinedAt { get; private set; }
 
     private readonly List<UserRole> _userRoles = [];
     public IReadOnlyList<UserRole> UserRoles => _userRoles.AsReadOnly();
@@ -23,7 +24,8 @@ public sealed class OrganizationUser : Entity<OrganizationUserId>
             Id = OrganizationUserId.New(),
             UserId = userId,
             OrganizationId = organizationId,
-            IsDefaultOrg = isDefault
+            IsDefaultOrg = isDefault,
+            JoinedAt = DateTimeOffset.UtcNow
         };
     }
 

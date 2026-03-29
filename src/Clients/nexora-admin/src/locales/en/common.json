@@ -55,5 +55,11 @@
   "lockey_common_module_contacts": "Contacts",
   "lockey_common_module_documents": "Documents",
   "lockey_common_module_notifications": "Notifications",
-  "lockey_common_module_reporting": "Reporting"
+  "lockey_common_module_reporting": "Reporting",
+  "lockey_common_module_audit": "Audit",
+  "lockey_common_just_now": "Just now",
+  "lockey_common_minutes_ago": "{{count}} min ago",
+  "lockey_common_hours_ago": "{{count}}h ago",
+  "lockey_common_days_ago": "{{count}}d ago",
+  "lockey_common_items_per_page": "Items per page"
 }

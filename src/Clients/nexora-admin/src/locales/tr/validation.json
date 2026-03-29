@@ -4,5 +4,6 @@
   "lockey_validation_min_length": "{{field}} en az {{min}} karakter olmalıdır.",
   "lockey_validation_max_length": "{{field}} en fazla {{max}} karakter olmalıdır.",
   "lockey_validation_failed": "Lütfen aşağıdaki hataları düzeltin.",
-  "lockey_validation_invalid_json": "Geçersiz JSON formatı"
+  "lockey_validation_invalid_json": "Geçersiz JSON formatı",
+  "lockey_validation_password_min": "Şifre en az {{min}} karakter olmalıdır."
 }

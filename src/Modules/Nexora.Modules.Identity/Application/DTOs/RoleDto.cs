@@ -9,4 +9,5 @@ public sealed record RoleDto(
     string? Description,
     bool IsSystemRole,
     bool IsActive,
-    List<string> Permissions);
+    List<string> Permissions,
+    DateTimeOffset CreatedAt);

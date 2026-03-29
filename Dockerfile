@@ -13,6 +13,7 @@ COPY src/Modules/Nexora.Modules.Contacts/Nexora.Modules.Contacts.csproj src/Modu
 COPY src/Modules/Nexora.Modules.Documents/Nexora.Modules.Documents.csproj src/Modules/Nexora.Modules.Documents/
 COPY src/Modules/Nexora.Modules.Notifications/Nexora.Modules.Notifications.csproj src/Modules/Nexora.Modules.Notifications/
 COPY src/Modules/Nexora.Modules.Reporting/Nexora.Modules.Reporting.csproj src/Modules/Nexora.Modules.Reporting/
+COPY src/Modules/Nexora.Modules.Audit/Nexora.Modules.Audit.csproj src/Modules/Nexora.Modules.Audit/
 
 # Copy test projects too (needed for sln restore)
 COPY tests/Nexora.SharedKernel.Tests/Nexora.SharedKernel.Tests.csproj tests/Nexora.SharedKernel.Tests/

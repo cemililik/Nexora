@@ -45,13 +45,23 @@ public sealed class GetCurrentUserHandler(
                 (ou, o) => new UserOrganizationDto(o.Id.Value, o.Name, ou.IsDefaultOrg))
             .ToListAsync(cancellationToken);
 
+        // Load user permissions: OrganizationUser → UserRole → RolePermission → Permission
+        var permissions = await dbContext.OrganizationUsers.AsNoTracking()
+            .Where(ou => ou.UserId == user.Id)
+            .Join(dbContext.UserRoles, ou => ou.Id, ur => ur.OrganizationUserId, (_, ur) => ur.RoleId)
+            .Join(dbContext.RolePermissions, roleId => roleId, rp => rp.RoleId, (_, rp) => rp.PermissionId)
+            .Join(dbContext.Permissions, permId => permId, p => p.Id,
+                (_, p) => p.Module + "." + p.Resource + "." + p.Action)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
         sw.Stop();
         if (sw.ElapsedMilliseconds > 500)
             logger.LogWarning("GetCurrentUser query took {ElapsedMs}ms for tenant {TenantId}", sw.ElapsedMilliseconds, tenantId);
 
         var dto = new UserDetailDto(
             user.Id.Value, user.Email, user.FirstName, user.LastName,
-            user.Phone, user.Status.ToString(), user.LastLoginAt, orgs);
+            user.Phone, user.Status.ToString(), user.LastLoginAt, orgs, permissions);
 
         return Result<UserDetailDto>.Success(dto,
             LocalizedMessage.Of("lockey_identity_user_retrieved"));

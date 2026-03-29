@@ -111,7 +111,7 @@ public sealed class UpdateRoleHandler(
             .ToList();
 
         return Result<RoleDto>.Success(
-            new RoleDto(role.Id.Value, role.Name, role.Description, role.IsSystemRole, role.IsActive, permKeys),
+            new RoleDto(role.Id.Value, role.Name, role.Description, role.IsSystemRole, role.IsActive, permKeys, role.CreatedAt),
             LocalizedMessage.Of("lockey_identity_toast_role_updated"));
     }
 }

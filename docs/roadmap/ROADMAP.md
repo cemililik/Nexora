@@ -29,6 +29,7 @@ gantt
     Portal UI Extension Points   :p15b, after p1f, 3w
     Localization (US + TR)       :p15c, after p1e, 3w
     Demo Data Framework          :p15d, after p15a, 2w
+    Tenant Permission Isolation  :p15e, after p15c, 2w
 
     section Phase 2 - Core Business
     CRM module                   :crit, p2a, after p15d, 4w
@@ -365,6 +366,37 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 - [ ] Pre-built demo scenarios: General business (CRM, Finance, Projects) + NGO vertical (Fundraising, Sponsorship)
 - [ ] Admin UI "Create Demo Environment" button
 - [ ] Demo data cleanup command
+
+### 1.5.5 Audit Module Enhancements
+
+- [ ] **Entity Change Tracking (Before/After State)** — AuditLogBehavior Phase 2: capture entity state before and after command execution using EF Core ChangeTracker. Populate `BeforeState`, `AfterState`, and `Changes` JSONB fields in audit entries. Required for compliance audit trails.
+- [ ] **Auth Event Auditing** — Capture Login, Logout, PasswordChange, TokenRefresh events. Requires either Keycloak Event Listener (webhook → backend endpoint → audit entry) or frontend post-login/logout audit API call.
+- [ ] **Audit Log Retention & Partitioning** — PostgreSQL table partitioning by month on `audit_entries.timestamp`. Monthly partition creation job + weekly cleanup job. Configurable retention per module via audit settings.
+
+### 1.5.6 Contact Module Enhancements
+
+- [ ] **User ↔ Contact Linking** — Optional `ContactId?` FK on User entity. Admin can link a user to an existing contact for 360° view. Not automatic — system users (API, bot) should not create contacts. To be designed alongside CRM module (Phase 2) where "Staff" contact type will be introduced.
+- [ ] **Contact Import Field Mapping** — CSV/Excel import wizard: (1) file upload → preview first 5 rows, (2) user maps each column to a Contact field via dropdowns, (3) validation → import. Current implementation assumes fixed column order.
+- [ ] **Contact Export Improvements** — Export with custom field selection, date range filter, format options (CSV, Excel, vCard).
+
+### 1.5.7 Tenant Permission Isolation
+
+Platform-level vs tenant-level permission separation. Required before multi-tenant production deployment.
+
+**Analysis required:**
+- Platform-scope permissions (`platform.tenants.*`, `platform.modules.*`) — accessible only to Nexora staff (SaaS) or hidden (on-prem)
+- Tenant-scope permissions (`identity.users.*`, `contacts.*` etc.) — accessible to tenant admins
+- Current `identity.tenants.*` permissions incorrectly exposed to all roles — must be isolated to Platform Admin scope
+- On-prem model: single tenant, no tenant management UI visible
+- SaaS model: Nexora staff manage tenants, customers never see tenant screens
+
+**Implementation items:**
+- [ ] Separate Platform Admin role from tenant-scoped roles
+- [ ] Permission tier system: platform-scope vs tenant-scope
+- [ ] Sidebar visibility: hide tenant management for non-platform users
+- [ ] On-prem vs SaaS deployment flag in configuration
+- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants
+- [ ] License-based limits (max users, max organizations per tenant)
 
 ---
 

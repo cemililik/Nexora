@@ -19,7 +19,8 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { useTenant, useUpdateTenantStatus } from '../hooks/useTenants';
-import { useTenantModules, useInstallModule, useActivateModule, useDeactivateModule, useUninstallModule } from '../hooks/useModuleManagement';
+import { useTenantModules, useInstallModule, useActivateModule, useDeactivateModule, useUninstallModule, useRegisteredModules } from '../hooks/useModuleManagement';
+import type { RegisteredModuleDto } from '../hooks/useModuleManagement';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
 
 export default function TenantDetailPage() {
@@ -32,6 +33,7 @@ export default function TenantDetailPage() {
   const { data: tenant, isPending } = useTenant(id);
   const updateStatus = useUpdateTenantStatus(id);
   const { data: modules } = useTenantModules(id);
+  const { data: registeredModules } = useRegisteredModules();
   const installModule = useInstallModule(id);
   const activateModule = useActivateModule(id);
   const deactivateModule = useDeactivateModule(id);
@@ -249,6 +251,7 @@ export default function TenantDetailPage() {
         open={installOpen}
         onOpenChange={setInstallOpen}
         installedModules={modules?.map((m) => m.moduleName) ?? []}
+        registeredModules={registeredModules ?? []}
         onInstall={(moduleName) => {
           installModule.mutate(moduleName, {
             onSuccess: () => setInstallOpen(false),
@@ -263,27 +266,24 @@ export default function TenantDetailPage() {
   );
 }
 
-const AVAILABLE_MODULES = [
-  'identity', 'contacts', 'documents', 'notifications', 'reporting',
-  'crm', 'donations', 'sponsorship', 'events',
-] as const;
-
 function InstallModuleDialog({
   open,
   onOpenChange,
   installedModules,
+  registeredModules,
   onInstall,
   isPending,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   installedModules: string[];
+  registeredModules: RegisteredModuleDto[];
   onInstall: (moduleName: string) => void;
   isPending: boolean;
 }) {
   const { t } = useTranslation('identity');
   const activeModules = new Set(installedModules);
-  const available = AVAILABLE_MODULES.filter((m) => !activeModules.has(m));
+  const available = registeredModules.filter((m) => !activeModules.has(m.name));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -298,15 +298,18 @@ function InstallModuleDialog({
               {t('lockey_identity_all_modules_installed')}
             </p>
           ) : (
-            available.map((moduleName) => (
+            available.map((mod) => (
               <button
-                key={moduleName}
+                key={mod.name}
                 type="button"
                 disabled={isPending}
-                onClick={() => onInstall(moduleName)}
-                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors capitalize"
+                onClick={() => onInstall(mod.name)}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent transition-colors"
               >
-                {t('lockey_common_module_' + moduleName, { ns: 'common', defaultValue: moduleName })}
+                <span className="font-medium capitalize">
+                  {t('lockey_common_module_' + mod.name, { ns: 'common', defaultValue: mod.name })}
+                </span>
+                <span className="text-xs text-muted-foreground">v{mod.version}</span>
               </button>
             ))
           )}

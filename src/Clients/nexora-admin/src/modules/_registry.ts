@@ -4,6 +4,7 @@ import { contactsManifest } from '@/modules/contacts/manifest';
 import { documentsManifest } from '@/modules/documents/manifest';
 import { notificationsManifest } from '@/modules/notifications/manifest';
 import { reportingManifest } from '@/modules/reporting/manifest';
+import { auditManifest } from '@/modules/audit/manifest';
 
 /**
  * Admin Module Registry
@@ -24,4 +25,5 @@ export const allAdminModules: AdminModuleManifest[] = [
   documentsManifest,
   notificationsManifest,
   reportingManifest,
+  auditManifest,
 ];

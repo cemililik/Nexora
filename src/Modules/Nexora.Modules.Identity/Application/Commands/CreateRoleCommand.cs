@@ -80,7 +80,8 @@ public sealed class CreateRoleHandler(
             role.Description,
             role.IsSystemRole,
             role.IsActive,
-            permissionKeys);
+            permissionKeys,
+            role.CreatedAt);
 
         logger.LogInformation("Role {RoleId} created for tenant {TenantId}", role.Id, tenantId);
 

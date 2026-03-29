@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,12 +8,7 @@ import { z } from 'zod';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/shared/components/ui/card';
+import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import {
   Dialog,
   DialogContent,
@@ -21,10 +17,11 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
-import { Link } from 'react-router';
+import { formatRelativeTime } from '@/shared/lib/date';
 import { useRoles, useCreateRole } from '../hooks/useRoles';
 import { PermissionSelector } from '../components/PermissionSelector';
 import type { RoleDto } from '../types';
@@ -38,6 +35,8 @@ function createRoleSchemaFactory(t: (key: string, options?: Record<string, unkno
 
 export default function RoleListPage() {
   const { t } = useTranslation('identity');
+  const navigate = useNavigate();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
@@ -71,6 +70,39 @@ export default function RoleListPage() {
     });
   });
 
+  const columns: ColumnDef<RoleDto>[] = [
+    {
+      key: 'name',
+      header: t('lockey_identity_col_role_name'),
+      render: (row) => <span className="font-medium">{row.name}</span>,
+    },
+    {
+      key: 'description',
+      header: t('lockey_identity_col_description'),
+      render: (row) =>
+        row.description?.startsWith('lockey_') ? t(row.description) : (row.description ?? '—'),
+    },
+    {
+      key: 'isSystemRole',
+      header: t('lockey_identity_col_system_role'),
+      render: (row) => (
+        <Badge variant={row.isSystemRole ? 'secondary' : 'outline'}>
+          {row.isSystemRole ? t('lockey_identity_yes') : t('lockey_identity_no')}
+        </Badge>
+      ),
+    },
+    {
+      key: 'permissionsCount',
+      header: t('lockey_identity_col_permissions_count'),
+      render: (row) => row.permissions.length,
+    },
+    {
+      key: 'createdAt',
+      header: t('lockey_identity_col_created_at'),
+      render: (row) => formatRelativeTime(row.createdAt),
+    },
+  ];
+
   if (isError) {
     return (
       <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-8">
@@ -103,34 +135,19 @@ export default function RoleListPage() {
         )}
       </div>
 
-      {!roles?.length ? (
-        <p className="text-sm text-muted-foreground">{t('lockey_identity_empty_roles')}</p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {roles.map((role: RoleDto) => (
-            <Link key={role.id} to={`/identity/roles/${role.id}`}>
-              <Card className="transition-colors hover:border-primary cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    {role.name}
-                    {role.isSystemRole && (
-                      <Badge variant="secondary">{t('lockey_identity_col_system_role')}</Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    {role.description?.startsWith('lockey_') ? t(role.description) : (role.description ?? '—')}
-                  </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {t('lockey_identity_col_permissions_count')}: {role.permissions.length}
-                  </p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={roles ?? []}
+        totalCount={roles?.length ?? 0}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        isLoading={isPending}
+        emptyMessage={t('lockey_identity_empty_roles')}
+        keyExtractor={(row) => row.id}
+        onRowClick={(row) => navigate(`/identity/roles/${row.id}`)}
+      />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

@@ -52,7 +52,8 @@ public sealed class GetOrganizationMembersHandler(
                 x.u.Email,
                 x.u.FirstName,
                 x.u.LastName,
-                x.ou.IsDefaultOrg))
+                x.ou.IsDefaultOrg,
+                x.ou.JoinedAt))
             .ToListAsync(cancellationToken);
 
         var result = new PagedResult<OrganizationMemberDto>

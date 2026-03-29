@@ -92,18 +92,16 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
-function unwrapEnvelope<T>(data: ApiEnvelope<T>, url: string): T {
-  if (data.data == null) {
-    throw new Error(`[api] Response envelope missing 'data' field for: ${url}`);
-  }
-  return data.data;
+function unwrapEnvelope<T>(data: ApiEnvelope<T>): T {
+  // data.data can be null for void responses (PUT/DELETE with no body)
+  return data.data as T;
 }
 
 /** Typed API helpers that unwrap ApiEnvelope automatically. */
 export const api = {
   async get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
     const response = await apiClient.get<ApiEnvelope<T>>(url, { params });
-    return unwrapEnvelope(response.data, url);
+    return unwrapEnvelope(response.data);
   },
 
   async post<T>(
@@ -112,17 +110,17 @@ export const api = {
     config?: AxiosRequestConfig,
   ): Promise<T> {
     const response = await apiClient.post<ApiEnvelope<T>>(url, data, config);
-    return unwrapEnvelope(response.data, url);
+    return unwrapEnvelope(response.data);
   },
 
   async put<T>(url: string, data?: unknown): Promise<T> {
     const response = await apiClient.put<ApiEnvelope<T>>(url, data);
-    return unwrapEnvelope(response.data, url);
+    return unwrapEnvelope(response.data);
   },
 
   async patch<T>(url: string, data?: unknown): Promise<T> {
     const response = await apiClient.patch<ApiEnvelope<T>>(url, data);
-    return unwrapEnvelope(response.data, url);
+    return unwrapEnvelope(response.data);
   },
 
   async delete<T = void>(url: string): Promise<T> {

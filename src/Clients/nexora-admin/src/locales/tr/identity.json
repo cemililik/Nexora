@@ -42,6 +42,7 @@
   "lockey_identity_col_module_name": "Modül",
   "lockey_identity_col_installed_at": "Yükleme Tarihi",
   "lockey_identity_col_installed_by": "Yükleyen",
+  "lockey_identity_col_joined_at": "Katılım",
 
   "lockey_identity_status_active": "Aktif",
   "lockey_identity_status_inactive": "Pasif",
@@ -129,6 +130,7 @@
   "lockey_identity_permissions": "İzinler",
   "lockey_identity_details": "Detaylar",
   "lockey_identity_assigned_users": "Atanmış Kullanıcılar",
+  "lockey_identity_col_assigned": "Atandı",
   "lockey_identity_users_with_role": "kullanıcı bu role sahip",
   "lockey_identity_no_roles": "Atanmış rol yok",
   "lockey_identity_system_role": "Sistem",
@@ -177,6 +179,9 @@
   "lockey_identity_module_installed": "Modül başarıyla yüklendi.",
   "lockey_identity_module_uninstalled": "Modül kaldırıldı.",
 
+  "lockey_identity_filter_all_organizations": "Tüm Organizasyonlar",
+  "lockey_identity_filter_all_roles": "Tüm Roller",
+
   "lockey_identity_empty_users": "Kullanıcı bulunamadı.",
   "lockey_identity_empty_roles": "Rol bulunamadı.",
   "lockey_identity_empty_orgs": "Organizasyon bulunamadı.",
@@ -224,5 +229,15 @@
   "lockey_identity_permission_modules_read": "Modülleri görüntüle",
   "lockey_identity_permission_modules_manage": "Modülleri yönet",
 
-  "lockey_identity_no_permissions": "Atanmış izin yok"
+  "lockey_identity_no_permissions": "Atanmış izin yok",
+
+  "lockey_identity_role_users_title": "Role sahip kullanıcılar: {{roleName}}",
+  "lockey_identity_role_add_user": "Kullanıcı Ekle",
+  "lockey_identity_role_remove_user": "Kullanıcıyı Çıkar",
+  "lockey_identity_role_no_users": "Bu role atanmış kullanıcı yok.",
+  "lockey_identity_confirm_remove_user_from_role": "{{userName}} kullanıcısını bu rolden çıkarmak istediğinize emin misiniz?",
+  "lockey_identity_toast_user_added_to_role": "Kullanıcı role eklendi.",
+  "lockey_identity_toast_user_removed_from_role": "Kullanıcı rolden çıkarıldı.",
+  "lockey_identity_error_user_not_in_role": "Kullanıcı bu role sahip değil.",
+  "lockey_identity_error_user_already_has_role": "Kullanıcı zaten bu role sahip."
 }

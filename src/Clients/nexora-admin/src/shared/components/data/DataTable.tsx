@@ -18,9 +18,11 @@ interface DataTableProps<T> {
   page: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  onPageSizeChange?: (size: number) => void;
   isLoading?: boolean;
   emptyMessage?: string;
   keyExtractor?: (row: T, index: number) => string | number;
+  onRowClick?: (row: T) => void;
 }
 
 /** Generic data table with pagination and loading state. */
@@ -31,9 +33,11 @@ export function DataTable<T>({
   page,
   pageSize,
   onPageChange,
+  onPageSizeChange,
   isLoading = false,
   emptyMessage,
   keyExtractor = (_row, index) => index,
+  onRowClick,
 }: DataTableProps<T>) {
   const { t } = useTranslation();
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -71,7 +75,11 @@ export function DataTable<T>({
             </thead>
             <tbody>
               {data.map((row, index) => (
-                <tr key={keyExtractor(row, index)} className="border-b last:border-0">
+                <tr
+                  key={keyExtractor(row, index)}
+                  className={`border-b last:border-0${onRowClick ? ' cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
                   {columns.map((col) => (
                     <td key={col.key} className={col.className ?? 'px-4 py-3'}>
                       {col.render(row)}
@@ -86,12 +94,33 @@ export function DataTable<T>({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {t('lockey_common_page_of', {
-              page: String(page),
-              totalPages: String(totalPages),
-            })}
-          </span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              {t('lockey_common_page_of', {
+                page: String(page),
+                totalPages: String(totalPages),
+              })}
+            </span>
+            {onPageSizeChange && (
+              <div className="flex items-center gap-2">
+                <label htmlFor="dt-page-size" className="text-sm text-muted-foreground">
+                  {t('lockey_common_items_per_page')}
+                </label>
+                <select
+                  id="dt-page-size"
+                  value={pageSize}
+                  onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+                >
+                  {[20, 50, 100].map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button
               type="button"

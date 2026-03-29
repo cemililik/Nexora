@@ -8,6 +8,7 @@ import { SearchInput } from '@/shared/components/data/SearchInput';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import {
   Select,
   SelectContent,
@@ -30,9 +31,9 @@ const STATUS_KEY_MAP: Record<DocumentStatus, string> = {
 };
 
 export default function DocumentListPage() {
-  const { t, i18n } = useTranslation('documents');
+  const { t } = useTranslation('documents');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
 
@@ -101,7 +102,7 @@ export default function DocumentListPage() {
     {
       key: 'createdAt',
       header: t('lockey_documents_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
     {
       key: 'actions',
@@ -166,6 +167,7 @@ export default function DocumentListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_documents_empty_documents')}
         keyExtractor={(row) => row.id}

@@ -6,9 +6,25 @@ import { api } from '@/shared/lib/api';
 import { useApiError } from '@/shared/hooks/useApiError';
 import type { TenantModuleDto } from '@/shared/types/module';
 
+export interface RegisteredModuleDto {
+  name: string;
+  displayName: string;
+  version: string;
+  dependencies: string[];
+}
+
 export const moduleKeys = {
   all: (tenantId: string) => ['identity', 'modules', tenantId] as const,
+  registered: ['identity', 'modules', 'registered'] as const,
 };
+
+export function useRegisteredModules() {
+  return useQuery({
+    queryKey: moduleKeys.registered,
+    queryFn: () => api.get<RegisteredModuleDto[]>('/identity/modules/registered'),
+    staleTime: 10 * 60 * 1000, // 10 min — module list rarely changes
+  });
+}
 
 export function useTenantModules(tenantId: string) {
   return useQuery({

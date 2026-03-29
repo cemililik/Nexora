@@ -42,6 +42,7 @@
   "lockey_identity_col_module_name": "Module",
   "lockey_identity_col_installed_at": "Installed",
   "lockey_identity_col_installed_by": "Installed By",
+  "lockey_identity_col_joined_at": "Joined",
 
   "lockey_identity_status_active": "Active",
   "lockey_identity_status_inactive": "Inactive",
@@ -129,6 +130,7 @@
   "lockey_identity_permissions": "Permissions",
   "lockey_identity_details": "Details",
   "lockey_identity_assigned_users": "Assigned Users",
+  "lockey_identity_col_assigned": "Assigned",
   "lockey_identity_users_with_role": "users have this role",
   "lockey_identity_no_roles": "No roles assigned",
   "lockey_identity_system_role": "System",
@@ -177,6 +179,9 @@
   "lockey_identity_module_installed": "Module installed successfully.",
   "lockey_identity_module_uninstalled": "Module uninstalled.",
 
+  "lockey_identity_filter_all_organizations": "All Organizations",
+  "lockey_identity_filter_all_roles": "All Roles",
+
   "lockey_identity_empty_users": "No users found.",
   "lockey_identity_empty_roles": "No roles found.",
   "lockey_identity_empty_orgs": "No organizations found.",
@@ -224,5 +229,15 @@
   "lockey_identity_permission_modules_read": "View modules",
   "lockey_identity_permission_modules_manage": "Manage modules",
 
-  "lockey_identity_no_permissions": "No permissions assigned"
+  "lockey_identity_no_permissions": "No permissions assigned",
+
+  "lockey_identity_role_users_title": "Users with role: {{roleName}}",
+  "lockey_identity_role_add_user": "Add User",
+  "lockey_identity_role_remove_user": "Remove User",
+  "lockey_identity_role_no_users": "No users assigned to this role.",
+  "lockey_identity_confirm_remove_user_from_role": "Are you sure you want to remove {{userName}} from this role?",
+  "lockey_identity_toast_user_added_to_role": "User added to role.",
+  "lockey_identity_toast_user_removed_from_role": "User removed from role.",
+  "lockey_identity_error_user_not_in_role": "User does not have this role.",
+  "lockey_identity_error_user_already_has_role": "User already has this role."
 }

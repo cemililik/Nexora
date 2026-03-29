@@ -65,7 +65,8 @@ public sealed class GetUserRolesHandler(
             r.Permissions
                 .Select(rp => permMap.GetValueOrDefault(rp.PermissionId, ""))
                 .Where(k => k.Length > 0)
-                .ToList()
+                .ToList(),
+            r.CreatedAt
         )).ToList();
 
         return Result<List<RoleDto>>.Success(dtos, LocalizedMessage.Of("lockey_identity_user_roles_retrieved"));

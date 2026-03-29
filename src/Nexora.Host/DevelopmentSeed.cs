@@ -7,6 +7,7 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure;
+using Nexora.Modules.Audit.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Npgsql;
@@ -54,11 +55,15 @@ public static class DevelopmentSeed
             await EnsureModuleTablesAsync<DocumentsDbContext>(app.Services, connectionString, "documents_documents");
             await EnsureModuleTablesAsync<NotificationsDbContext>(app.Services, connectionString, "notifications_templates");
             await EnsureModuleTablesAsync<ReportingDbContext>(app.Services, connectionString, "reporting_report_definitions");
+            await EnsureModuleTablesAsync<AuditDbContext>(app.Services, connectionString, "audit_entries");
 
             // Step 5: Seed permissions, roles, organization, tenant record
             await SeedIdentityDataAsync(app.Services, connectionString);
 
-            // Step 6: Register all modules for the dev tenant
+            // Step 6: Apply incremental schema changes (new columns added after initial table creation)
+            await ApplySchemaUpdatesAsync(connectionString);
+
+            // Step 7: Register all modules for the dev tenant
             await EnsureTenantModulesAsync(connectionString);
 
             Log.Information("[DevSeed] Development tenant provisioning complete");
@@ -394,12 +399,46 @@ public static class DevelopmentSeed
         Log.Information("[DevSeed] {Module} tables created in tenant schema", typeof(TContext).Name);
     }
 
+    /// <summary>
+    /// Applies incremental schema changes for columns added after initial table creation.
+    /// Uses IF NOT EXISTS to be idempotent — safe to run on every startup.
+    /// </summary>
+    private static async Task ApplySchemaUpdatesAsync(string connectionString)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+
+        // Set search_path once, then use plain table names (avoids SQL injection scanner false positive)
+        await using (var setPath = conn.CreateCommand())
+        {
+            setPath.CommandText = $"SET search_path TO \"{SchemaName}\"";
+            await setPath.ExecuteNonQueryAsync();
+        }
+
+        var alterStatements = new[]
+        {
+            // OrganizationUser.JoinedAt — added for member join date tracking
+            "ALTER TABLE identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
+            // UserRole.AssignedAt — added for role assignment date tracking
+            "ALTER TABLE identity_user_roles ADD COLUMN IF NOT EXISTS \"AssignedAt\" timestamptz DEFAULT now()",
+        };
+
+        foreach (var sql in alterStatements)
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        Log.Information("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);
+    }
+
     private static async Task EnsureTenantModulesAsync(string connectionString)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
 
-        var moduleNames = new[] { "identity", "contacts", "documents", "notifications", "reporting" };
+        var moduleNames = new[] { "identity", "contacts", "documents", "notifications", "reporting", "audit" };
 
         foreach (var moduleName in moduleNames)
         {
@@ -506,5 +545,10 @@ public static class DevelopmentSeed
         Permission.Create("reporting", "schedule", "manage", "lockey_reporting_permission_schedule_manage"),
         Permission.Create("reporting", "dashboard", "read", "lockey_reporting_permission_dashboard_read"),
         Permission.Create("reporting", "dashboard", "manage", "lockey_reporting_permission_dashboard_manage"),
+        // Audit
+        Permission.Create("audit", "logs", "read", "lockey_audit_permission_logs_read"),
+        Permission.Create("audit", "logs", "export", "lockey_audit_permission_logs_export"),
+        Permission.Create("audit", "settings", "read", "lockey_audit_permission_settings_read"),
+        Permission.Create("audit", "settings", "manage", "lockey_audit_permission_settings_manage"),
     ];
 }
