@@ -202,7 +202,7 @@ public sealed class AuditConfigServiceTests : IDisposable
         var service = CreateService();
 
         // DeleteContact has no operation-level setting, should fall back to module-level
-        var result = await service.IsEnabledAsync("contacts", "DeleteContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "DeleteContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
