@@ -18,10 +18,16 @@ export function EntityDiffViewer({ changes }: EntityDiffViewerProps) {
     if (!changes) return [];
     try {
       const parsed: unknown = JSON.parse(changes);
-      if (Array.isArray(parsed)) {
-        return parsed as ChangeEntry[];
-      }
-      return [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (item): item is ChangeEntry =>
+          item !== null &&
+          typeof item === 'object' &&
+          'field' in item &&
+          typeof item.field === 'string' &&
+          'old' in item &&
+          'new' in item,
+      );
     } catch {
       return [];
     }

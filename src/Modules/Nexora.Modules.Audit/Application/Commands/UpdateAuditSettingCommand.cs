@@ -77,9 +77,11 @@ public sealed class UpdateAuditSettingHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Invalidate cache for this setting
-        var cacheKey = $"audit:settings:{tenantId}:{request.Module}:{request.Operation}";
-        await cacheService.RemoveAsync(cacheKey, cancellationToken);
+        // Invalidate cache for this setting (both defaultEnabled variants)
+        await cacheService.RemoveAsync(
+            $"audit:config:{tenantId}:{request.Module}:{request.Operation}:1", cancellationToken);
+        await cacheService.RemoveAsync(
+            $"audit:config:{tenantId}:{request.Module}:{request.Operation}:0", cancellationToken);
 
         var dto = new AuditSettingDto(
             existing.Id.Value, existing.Module, existing.Operation,

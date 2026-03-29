@@ -121,7 +121,7 @@ public sealed class GetUsersQueryTests : IDisposable
             User.Create(_tenantId, "kc-2", "b@test.com", "Bob", "Jones"));
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetUsersHandler(_dbContext, _tenantAccessor);
+        var handler = new GetUsersHandler(_dbContext, _tenantAccessor, NullLogger<GetUsersHandler>.Instance);
         var result = await handler.Handle(new GetUsersQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -139,7 +139,7 @@ public sealed class GetUsersQueryTests : IDisposable
             User.Create(_tenantId, "kc-1", "mine@test.com", "My", "User"));
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetUsersHandler(_dbContext, _tenantAccessor);
+        var handler = new GetUsersHandler(_dbContext, _tenantAccessor, NullLogger<GetUsersHandler>.Instance);
         var result = await handler.Handle(new GetUsersQuery(), CancellationToken.None);
 
         result.Value!.Items.Should().ContainSingle();

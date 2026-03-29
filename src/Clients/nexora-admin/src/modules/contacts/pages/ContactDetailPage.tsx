@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useForm, useWatch, Controller } from 'react-hook-form';
@@ -758,6 +758,18 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const [contactSearch, setContactSearch] = useState('');
   const [selectedContact, setSelectedContact] = useState<{ id: string; displayName: string } | null>(null);
   const [showContactSearch, setShowContactSearch] = useState(false);
+  const contactSearchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (contactSearchRef.current && !contactSearchRef.current.contains(event.target as Node)) {
+        setShowContactSearch(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const { data: searchResults } = useContacts({
     page: 1,
@@ -843,7 +855,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
                     </button>
                   </div>
                 ) : (
-                  <>
+                  <div ref={contactSearchRef}>
                     <div className="relative">
                       <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -882,7 +894,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
                         )}
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
               {errors.relatedContactId && (

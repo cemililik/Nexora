@@ -1,6 +1,6 @@
 # Audit Log Module — Technical Specification
 
-> **Status**: Planned (Phase 1.5)
+> **Status**: Implemented (2026-03-29)
 > **Module Name**: `audit`
 > **Tier**: Core/Platform (always installed)
 > **Dependencies**: `identity`
@@ -22,7 +22,7 @@ Comprehensive, configurable audit logging system for all Nexora modules. Capture
 ### 2.1 C4 Component Diagram
 
 ```mermaid
-graph TB
+flowchart TD
     subgraph Platform["Nexora Platform"]
         AB[AuditLogBehavior<br/>MediatR Pipeline]
         AC[IAuditContext<br/>Scoped Service]

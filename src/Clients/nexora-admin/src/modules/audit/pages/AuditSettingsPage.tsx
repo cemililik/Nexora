@@ -9,6 +9,7 @@ import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { RequirePermission } from '@/shared/components/guards/RequirePermission';
 import { cn } from '@/shared/lib/utils';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useAuditSettings, useBulkUpdateAuditSettings } from '../hooks/useAuditSettings';
 import { useAuditableOperations } from '../hooks/useAuditableOperations';
 import { AuditOperationTypeBadge } from '../components/AuditOperationTypeBadge';
@@ -192,6 +193,8 @@ const DEFAULT_RETENTION_DAYS = 90;
 export default function AuditSettingsPage() {
   const { t } = useTranslation('audit');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
+  const { hasPermission } = usePermissions();
+  const canManage = hasPermission('audit.settings.manage');
 
   const { data: auditableModules, isPending: isLoadingOperations } = useAuditableOperations();
   const { data: settings, isPending: isLoadingSettings } = useAuditSettings();
@@ -379,7 +382,7 @@ export default function AuditSettingsPage() {
   if (isLoadingOperations || isLoadingSettings) return <LoadingSkeleton lines={6} />;
 
   return (
-    <RequirePermission required={['audit.settings.manage']}>
+    <RequirePermission required={['audit.settings.read']}>
       <div className="space-y-4 pb-20">
         {/* Page Header */}
         <div>
@@ -418,7 +421,7 @@ export default function AuditSettingsPage() {
             onExpandToggle={() => handleExpandToggle(moduleName)}
             onToggle={handleToggle}
             onModuleToggle={handleModuleToggle}
-            isPending={bulkUpdate.isPending}
+            isPending={bulkUpdate.isPending || !canManage}
           />
         ))}
       </div>
@@ -434,7 +437,7 @@ export default function AuditSettingsPage() {
           <Button
             type="button"
             onClick={handleSave}
-            disabled={bulkUpdate.isPending || changeCount === 0}
+            disabled={bulkUpdate.isPending || changeCount === 0 || !canManage}
           >
             {bulkUpdate.isPending
               ? t('lockey_audit_settings_saving')

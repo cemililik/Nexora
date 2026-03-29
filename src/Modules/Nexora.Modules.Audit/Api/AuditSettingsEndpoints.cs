@@ -7,6 +7,7 @@ using Nexora.Modules.Audit.Application.Commands;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Application.Queries;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Audit.Api;
@@ -44,9 +45,9 @@ public static class AuditSettingsEndpoints
                 : Results.BadRequest(ApiEnvelope<List<AuditSettingDto>>.Fail(result.Error!));
         });
 
-        group.MapGet("/operations", () =>
+        group.MapGet("/operations", (IReadOnlyList<IModule> modules) =>
         {
-            var operations = DiscoverAuditableOperations();
+            var operations = DiscoverAuditableOperations(modules);
             return Results.Ok(ApiEnvelope<List<AuditableModuleDto>>.Success(operations));
         });
     }
@@ -55,10 +56,11 @@ public static class AuditSettingsEndpoints
     /// Scans all loaded assemblies for types implementing ICommand, ICommand&lt;T&gt;, or IQuery&lt;T&gt;
     /// and groups them by module. Also includes hardcoded auth events.
     /// </summary>
-    private static List<AuditableModuleDto> DiscoverAuditableOperations()
+    private static List<AuditableModuleDto> DiscoverAuditableOperations(IReadOnlyList<IModule> modules)
     {
-        var moduleTypes = AppDomain.CurrentDomain.GetAssemblies()
-            .Where(a => a.FullName?.StartsWith("Nexora.Modules.", StringComparison.Ordinal) == true)
+        var moduleTypes = modules
+            .Select(m => m.GetType().Assembly)
+            .Distinct()
             .SelectMany(a =>
             {
                 try { return a.GetTypes(); }

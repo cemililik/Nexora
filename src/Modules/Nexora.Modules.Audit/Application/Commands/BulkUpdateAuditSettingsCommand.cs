@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
+using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -21,6 +22,7 @@ public sealed record BulkUpdateAuditSettingsCommand(
 public sealed class BulkUpdateAuditSettingsHandler(
     AuditDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
+    ICacheService cacheService,
     ILogger<BulkUpdateAuditSettingsHandler> logger) : ICommandHandler<BulkUpdateAuditSettingsCommand, List<AuditSettingDto>>
 {
     public async Task<Result<List<AuditSettingDto>>> Handle(
@@ -56,6 +58,15 @@ public sealed class BulkUpdateAuditSettingsHandler(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Invalidate cache for each updated setting (both defaultEnabled variants)
+        foreach (var item in request.Settings)
+        {
+            await cacheService.RemoveAsync(
+                $"audit:config:{tenantId}:{item.Module}:{item.Operation}:1", cancellationToken);
+            await cacheService.RemoveAsync(
+                $"audit:config:{tenantId}:{item.Module}:{item.Operation}:0", cancellationToken);
+        }
 
         logger.LogInformation(
             "Bulk updated {Count} audit settings for tenant {TenantId}",

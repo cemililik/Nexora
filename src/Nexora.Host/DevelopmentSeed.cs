@@ -403,6 +403,11 @@ public static class DevelopmentSeed
     /// Applies incremental schema changes for columns added after initial table creation.
     /// Uses IF NOT EXISTS to be idempotent — safe to run on every startup.
     /// </summary>
+    /// <remarks>
+    /// Development-only: incremental schema changes applied via ALTER TABLE for rapid iteration.
+    /// In production, these changes MUST be managed via EF Core migrations.
+    /// See: docs/standards/INFRASTRUCTURE_STANDARDS.md for migration guidelines.
+    /// </remarks>
     private static async Task ApplySchemaUpdatesAsync(string connectionString)
     {
         await using var conn = new NpgsqlConnection(connectionString);

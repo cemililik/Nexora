@@ -36,7 +36,9 @@ public sealed class DaprCacheService(
         }
         catch (InvalidOperationException)
         {
-            // No tenant context set — platform-level operation, no prefix needed
+            // SAFE: ITenantContextAccessor.Current throws InvalidOperationException only when
+            // no tenant context is set (platform-level operation). No other code path in the
+            // property getter produces this exception, so this catch cannot mask unrelated errors.
         }
 
         return key;

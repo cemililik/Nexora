@@ -23,6 +23,7 @@ public sealed class HttpAuditContext(
     }
 
     /// <inheritdoc />
+    // Full email stored in audit entries for compliance audit trail (not logged to Serilog)
     public string? UserEmail =>
         httpContextAccessor.HttpContext?.User.FindFirstValue("email");
 
