@@ -60,7 +60,10 @@ public static class DevelopmentSeed
             // Step 5: Seed permissions, roles, organization, tenant record
             await SeedIdentityDataAsync(app.Services, connectionString);
 
-            // Step 6: Register all modules for the dev tenant
+            // Step 6: Apply incremental schema changes (new columns added after initial table creation)
+            await ApplySchemaUpdatesAsync(connectionString);
+
+            // Step 7: Register all modules for the dev tenant
             await EnsureTenantModulesAsync(connectionString);
 
             Log.Information("[DevSeed] Development tenant provisioning complete");
@@ -394,6 +397,33 @@ public static class DevelopmentSeed
         await creator.CreateTablesAsync();
 
         Log.Information("[DevSeed] {Module} tables created in tenant schema", typeof(TContext).Name);
+    }
+
+    /// <summary>
+    /// Applies incremental schema changes for columns added after initial table creation.
+    /// Uses IF NOT EXISTS to be idempotent — safe to run on every startup.
+    /// </summary>
+    private static async Task ApplySchemaUpdatesAsync(string connectionString)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+
+        var alterStatements = new[]
+        {
+            // OrganizationUser.JoinedAt — added for member join date tracking
+            $"ALTER TABLE \"{SchemaName}\".identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
+            // UserRole.AssignedAt — added for role assignment date tracking
+            $"ALTER TABLE \"{SchemaName}\".identity_user_roles ADD COLUMN IF NOT EXISTS \"AssignedAt\" timestamptz DEFAULT now()",
+        };
+
+        foreach (var sql in alterStatements)
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        Log.Information("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);
     }
 
     private static async Task EnsureTenantModulesAsync(string connectionString)

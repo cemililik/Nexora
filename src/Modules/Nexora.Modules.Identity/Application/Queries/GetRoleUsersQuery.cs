@@ -24,7 +24,8 @@ public sealed record RoleUserDto(
     string FirstName,
     string LastName,
     Guid OrganizationId,
-    string OrganizationName);
+    string OrganizationName,
+    DateTimeOffset AssignedAt);
 
 /// <summary>Handles retrieving users assigned to a specific role.</summary>
 public sealed class GetRoleUsersHandler(
@@ -67,7 +68,8 @@ public sealed class GetRoleUsersHandler(
                 u.FirstName,
                 u.LastName,
                 o.Id.Value,
-                o.Name));
+                o.Name,
+                ur.AssignedAt));
 
         var totalCount = await query.CountAsync(ct);
 

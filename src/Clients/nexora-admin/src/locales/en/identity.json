@@ -130,6 +130,7 @@
   "lockey_identity_permissions": "Permissions",
   "lockey_identity_details": "Details",
   "lockey_identity_assigned_users": "Assigned Users",
+  "lockey_identity_col_assigned": "Assigned",
   "lockey_identity_users_with_role": "users have this role",
   "lockey_identity_no_roles": "No roles assigned",
   "lockey_identity_system_role": "System",

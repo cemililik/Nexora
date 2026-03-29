@@ -95,6 +95,7 @@ export interface RoleUserDto {
   lastName: string;
   organizationId: string;
   organizationName: string;
+  assignedAt: string;
 }
 
 // ─── Permissions ────────────────────────────────────────────

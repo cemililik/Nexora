@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
+import { formatRelativeTime } from '@/shared/lib/date';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useRole, useUpdateRole, useDeleteRole, useRoleUsers, useAddUserToRole, useRemoveUserFromRole } from '../hooks/useRoles';
@@ -309,6 +310,9 @@ function RoleUsersDialog({
                       {user.firstName} {user.lastName}
                     </p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('lockey_identity_col_assigned')}: {formatRelativeTime(user.assignedAt)}
+                    </p>
                   </div>
                   {hasPermission('identity.roles.update') && (
                     <Button

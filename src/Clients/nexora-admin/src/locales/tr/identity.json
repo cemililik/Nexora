@@ -130,6 +130,7 @@
   "lockey_identity_permissions": "İzinler",
   "lockey_identity_details": "Detaylar",
   "lockey_identity_assigned_users": "Atanmış Kullanıcılar",
+  "lockey_identity_col_assigned": "Atandı",
   "lockey_identity_users_with_role": "kullanıcı bu role sahip",
   "lockey_identity_no_roles": "Atanmış rol yok",
   "lockey_identity_system_role": "Sistem",

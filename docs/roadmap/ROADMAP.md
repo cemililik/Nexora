@@ -367,7 +367,19 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 - [ ] Admin UI "Create Demo Environment" button
 - [ ] Demo data cleanup command
 
-### 1.5.5 Tenant Permission Isolation
+### 1.5.5 Audit Module Enhancements
+
+- [ ] **Entity Change Tracking (Before/After State)** — AuditLogBehavior Phase 2: capture entity state before and after command execution using EF Core ChangeTracker. Populate `BeforeState`, `AfterState`, and `Changes` JSONB fields in audit entries. Required for compliance audit trails.
+- [ ] **Auth Event Auditing** — Capture Login, Logout, PasswordChange, TokenRefresh events. Requires either Keycloak Event Listener (webhook → backend endpoint → audit entry) or frontend post-login/logout audit API call.
+- [ ] **Audit Log Retention & Partitioning** — PostgreSQL table partitioning by month on `audit_entries.timestamp`. Monthly partition creation job + weekly cleanup job. Configurable retention per module via audit settings.
+
+### 1.5.6 Contact Module Enhancements
+
+- [ ] **User ↔ Contact Linking** — Optional `ContactId?` FK on User entity. Admin can link a user to an existing contact for 360° view. Not automatic — system users (API, bot) should not create contacts. To be designed alongside CRM module (Phase 2) where "Staff" contact type will be introduced.
+- [ ] **Contact Import Field Mapping** — CSV/Excel import wizard: (1) file upload → preview first 5 rows, (2) user maps each column to a Contact field via dropdowns, (3) validation → import. Current implementation assumes fixed column order.
+- [ ] **Contact Export Improvements** — Export with custom field selection, date range filter, format options (CSV, Excel, vCard).
+
+### 1.5.7 Tenant Permission Isolation
 
 Platform-level vs tenant-level permission separation. Required before multi-tenant production deployment.
 
