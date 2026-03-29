@@ -764,19 +764,24 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const contactSearchRef = useRef<HTMLDivElement>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const clearPendingDebounce = useCallback(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+  }, []);
+
   const handleContactSearchChange = useCallback((value: string) => {
     setContactSearch(value);
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    clearPendingDebounce();
     debounceTimerRef.current = setTimeout(() => {
       setDebouncedSearch(value);
     }, 300);
-  }, []);
+  }, [clearPendingDebounce]);
 
   useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
+    return () => { clearPendingDebounce(); };
+  }, [clearPendingDebounce]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -817,11 +822,21 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
     return items.filter((c) => c.id !== contactId);
   }, [searchResults, contactId]);
 
+  const handleToggleForm = useCallback(() => {
+    clearPendingDebounce();
+    setShowForm((prev) => !prev);
+    setSelectedContact(null);
+    setContactSearch('');
+    setDebouncedSearch('');
+  }, [clearPendingDebounce]);
+
   const handleSelectContact = (contact: { id: string; displayName: string }) => {
+    clearPendingDebounce();
     setSelectedContact(contact);
     setValue('relatedContactId', contact.id);
     setShowContactSearch(false);
     setContactSearch('');
+    setDebouncedSearch('');
   };
 
   const onSubmit = (data: RelationshipFormValues) => {
@@ -829,9 +844,11 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
       { relatedContactId: data.relatedContactId, type: data.type as RelationshipType },
       {
         onSuccess: () => {
+          clearPendingDebounce();
           reset();
           setSelectedContact(null);
           setShowForm(false);
+          setDebouncedSearch('');
         },
         onError: (err) => handleApiError(err),
       },
@@ -843,7 +860,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t('lockey_contacts_tab_relationships')}</CardTitle>
         {canCreate && (
-          <Button type="button" size="sm" onClick={() => { setShowForm(!showForm); setSelectedContact(null); setContactSearch(''); }}>
+          <Button type="button" size="sm" onClick={handleToggleForm}>
             {showForm
               ? t('lockey_common_cancel', { ns: 'common' })
               : t('lockey_contacts_relationship_add')}
@@ -855,7 +872,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
           <form onSubmit={handleSubmit(onSubmit)} className="mb-4 flex flex-wrap items-end gap-3 rounded-md border p-3">
             <input type="hidden" {...register('relatedContactId')} />
             <div className="w-full sm:w-auto sm:min-w-[240px]">
-              <label className="text-sm font-medium">{t('lockey_contacts_relationship_related_contact')}</label>
+              <label htmlFor="relatedContactSearch" className="text-sm font-medium">{t('lockey_contacts_relationship_related_contact')}</label>
               <div className="relative mt-1">
                 {selectedContact ? (
                   <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
@@ -874,20 +891,19 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
                     </button>
                   </div>
                 ) : (
-                  <div ref={contactSearchRef}>
-                    <div className="relative">
-                      <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder={t('lockey_contacts_relationship_search_contacts')}
-                        value={contactSearch}
-                        onChange={(e) => {
-                          handleContactSearchChange(e.target.value);
-                          setShowContactSearch(true);
-                        }}
-                        onFocus={() => setShowContactSearch(true)}
-                        className="ps-9"
-                      />
-                    </div>
+                  <div ref={contactSearchRef} className="relative">
+                    <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="relatedContactSearch"
+                      placeholder={t('lockey_contacts_relationship_search_contacts')}
+                      value={contactSearch}
+                      onChange={(e) => {
+                        handleContactSearchChange(e.target.value);
+                        setShowContactSearch(true);
+                      }}
+                      onFocus={() => setShowContactSearch(true)}
+                      className="ps-9"
+                    />
                     {showContactSearch && (
                       <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
                         {filteredContacts.length === 0 ? (

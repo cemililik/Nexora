@@ -169,12 +169,31 @@ public sealed class PlatformJobTests
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
 
-        // Assert — verify logging calls were made (starting, processing count, finished)
-        _logger.ReceivedCalls().Should().NotBeEmpty();
+        // Assert — verify log calls by content, not position, for resilience to ordering changes
+        var logCalls = _logger.ReceivedCalls()
+            .Where(c => c.GetMethodInfo().Name == "Log")
+            .Select(c => new
+            {
+                Level = (LogLevel)c.GetArguments()[0]!,
+                Message = c.GetArguments()[2]?.ToString() ?? ""
+            })
+            .ToList();
 
-        // The final log should contain success/failure counts
-        // We verify the logger received at least 3 log calls (starting, processing N tenants, finished)
-        _logger.ReceivedCalls().Count().Should().BeGreaterThanOrEqualTo(3);
+        logCalls.Should().HaveCountGreaterThanOrEqualTo(4);
+
+        logCalls.Should().ContainSingle(l =>
+            l.Level == LogLevel.Information && l.Message.Contains("starting"));
+
+        logCalls.Should().Contain(l =>
+            l.Level == LogLevel.Information && l.Message.Contains("processing") && l.Message.Contains("2 tenants"));
+
+        logCalls.Should().Contain(l =>
+            l.Level == LogLevel.Error && l.Message.Contains("tenant-bad"));
+
+        logCalls.Should().ContainSingle(l =>
+            l.Level == LogLevel.Information &&
+            l.Message.Contains("1 succeeded") &&
+            l.Message.Contains("1 failed"));
     }
 
     [Fact]

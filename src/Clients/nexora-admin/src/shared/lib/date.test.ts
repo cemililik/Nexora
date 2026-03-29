@@ -95,13 +95,12 @@ describe('formatRelativeTime', () => {
     expect(result).toBe('-');
   });
 
-  it('should return a value for future date', () => {
+  it('should return localized date for future date', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-29T12:00:00Z'));
 
     const result = formatRelativeTime('2026-04-15T12:00:00Z');
 
-    expect(result).toBeTruthy();
-    expect(result).not.toBe('-');
+    expect(result).toBe(new Date('2026-04-15T12:00:00Z').toLocaleDateString('en'));
   });
 });

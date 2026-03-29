@@ -63,7 +63,7 @@ public sealed class RemoveUserFromRoleTests : IDisposable
     [Fact]
     public async Task Handle_UserNotFound_ReturnsFailure()
     {
-        // User has no org memberships, so handler returns user_not_found
+        // Non-existent user ID supplied, handler returns user_not_found
         var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, NullLogger<RemoveUserFromRoleHandler>.Instance);
         var command = new RemoveUserFromRoleCommand(_role.Id.Value, Guid.NewGuid());
 

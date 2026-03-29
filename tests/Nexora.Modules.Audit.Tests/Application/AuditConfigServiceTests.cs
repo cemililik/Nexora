@@ -49,7 +49,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeTrue();
     }
@@ -63,7 +63,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -78,7 +78,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -96,7 +96,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeTrue();
     }
@@ -111,7 +111,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -129,7 +129,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -139,7 +139,7 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None, defaultEnabled: true);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None, defaultEnabled: true);
 
         result.Should().BeTrue();
     }
@@ -149,7 +149,7 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None, defaultEnabled: false);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None, defaultEnabled: false);
 
         result.Should().BeFalse();
     }
@@ -165,7 +165,7 @@ public sealed class AuditConfigServiceTests : IDisposable
         var service = CreateService();
 
         // Should fall back to default (true) since no setting exists for our tenant
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeTrue();
     }
@@ -183,7 +183,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -202,7 +202,7 @@ public sealed class AuditConfigServiceTests : IDisposable
         var service = CreateService();
 
         // DeleteContact has no operation-level setting, should fall back to module-level
-        var result = await service.IsEnabledAsync("contacts", "DeleteContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("Contacts", "DeleteContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
