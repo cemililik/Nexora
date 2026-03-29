@@ -12,6 +12,7 @@ const TYPE_COLOR_MAP: Record<AuditOperationType, string> = {
   Update: 'border-transparent bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   Delete: 'border-transparent bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   Action: 'border-transparent bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  Read: 'border-transparent bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 };
 
 const TYPE_KEY_MAP: Record<AuditOperationType, string> = {
@@ -19,6 +20,7 @@ const TYPE_KEY_MAP: Record<AuditOperationType, string> = {
   Update: 'lockey_audit_type_update',
   Delete: 'lockey_audit_type_delete',
   Action: 'lockey_audit_type_action',
+  Read: 'lockey_audit_type_read',
 };
 
 export function AuditOperationTypeBadge({ operationType }: AuditOperationTypeBadgeProps) {

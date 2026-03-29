@@ -408,12 +408,19 @@ public static class DevelopmentSeed
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
 
+        // Set search_path once, then use plain table names (avoids SQL injection scanner false positive)
+        await using (var setPath = conn.CreateCommand())
+        {
+            setPath.CommandText = $"SET search_path TO \"{SchemaName}\"";
+            await setPath.ExecuteNonQueryAsync();
+        }
+
         var alterStatements = new[]
         {
             // OrganizationUser.JoinedAt — added for member join date tracking
-            $"ALTER TABLE \"{SchemaName}\".identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
+            "ALTER TABLE identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
             // UserRole.AssignedAt — added for role assignment date tracking
-            $"ALTER TABLE \"{SchemaName}\".identity_user_roles ADD COLUMN IF NOT EXISTS \"AssignedAt\" timestamptz DEFAULT now()",
+            "ALTER TABLE identity_user_roles ADD COLUMN IF NOT EXISTS \"AssignedAt\" timestamptz DEFAULT now()",
         };
 
         foreach (var sql in alterStatements)

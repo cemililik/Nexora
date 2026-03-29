@@ -19,6 +19,7 @@
   "lockey_audit_type_update": "Update",
   "lockey_audit_type_delete": "Delete",
   "lockey_audit_type_action": "Action",
+  "lockey_audit_type_read": "Read",
   "lockey_audit_detail_title": "Audit Log Detail",
   "lockey_audit_detail_summary": "Summary",
   "lockey_audit_detail_user_info": "User Information",

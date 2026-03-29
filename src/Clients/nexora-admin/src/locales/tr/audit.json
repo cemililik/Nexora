@@ -19,6 +19,7 @@
   "lockey_audit_type_update": "Guncelleme",
   "lockey_audit_type_delete": "Silme",
   "lockey_audit_type_action": "Eylem",
+  "lockey_audit_type_read": "Okuma",
   "lockey_audit_detail_title": "Denetim Kaydi Detayi",
   "lockey_audit_detail_summary": "Ozet",
   "lockey_audit_detail_user_info": "Kullanici Bilgileri",
