@@ -63,6 +63,32 @@ public static class RoleEndpoints
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         });
 
+        group.MapGet("/{id:guid}/users", async (Guid id, int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetRoleUsersQuery(id, page ?? 1, pageSize ?? 20), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<PagedResult<RoleUserDto>>.Success(result.Value!, result.Message))
+                : Results.NotFound(ApiEnvelope<PagedResult<RoleUserDto>>.Fail(result.Error!));
+        });
+
+        group.MapPost("/{id:guid}/users", async (Guid id, AddUserToRoleRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new AddUserToRoleCommand(id, request.UserId);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+        });
+
+        group.MapDelete("/{id:guid}/users/{userId:guid}", async (Guid id, Guid userId, ISender sender, CancellationToken ct) =>
+        {
+            var command = new RemoveUserFromRoleCommand(id, userId);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
+        });
+
         // Permissions listing
         endpoints.MapGroup("/permissions")
             .RequireAuthorization()
@@ -77,3 +103,6 @@ public static class RoleEndpoints
 }
 
 public sealed record UpdateRoleRequest(string Name, string? Description, List<Guid>? PermissionIds);
+
+/// <summary>Request body for adding a user to a role.</summary>
+public sealed record AddUserToRoleRequest(Guid UserId);

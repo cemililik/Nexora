@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
@@ -15,20 +16,23 @@ public sealed record SignatureReminderJobParams : JobParams;
 /// Runs daily. Only targets recipients in Pending or Viewed status.
 /// </summary>
 public sealed class SignatureReminderJob(
-    ITenantContextAccessor tenantContextAccessor,
-    DocumentsDbContext dbContext,
-    INotificationService notificationService,
-    ILogger<SignatureReminderJob> logger) : NexoraJob<SignatureReminderJobParams>(tenantContextAccessor, logger)
+    IActiveTenantProvider tenantProvider,
+    IServiceScopeFactory scopeFactory,
+    ILogger<SignatureReminderJob> logger) : PlatformJob<SignatureReminderJobParams>(tenantProvider, scopeFactory, logger)
 {
+    protected override string? GetRequiredModule() => "documents";
+
     /// <inheritdoc />
-    protected override async Task ExecuteAsync(SignatureReminderJobParams parameters, CancellationToken ct)
+    protected override async Task ExecuteForTenantAsync(
+        SignatureReminderJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(parameters.TenantId);
+        var dbContext = scopedServices.GetRequiredService<DocumentsDbContext>();
+        var notificationService = scopedServices.GetRequiredService<INotificationService>();
 
         var activeRequests = await dbContext.SignatureRequests
             .Include(s => s.Recipients)
-            .Where(s => s.TenantId == tenantId
-                && (s.Status == SignatureRequestStatus.Sent || s.Status == SignatureRequestStatus.PartiallySigned))
+            .Where(s => s.Status == SignatureRequestStatus.Sent || s.Status == SignatureRequestStatus.PartiallySigned)
             .ToListAsync(ct);
 
         var pendingRecipients = activeRequests
@@ -55,8 +59,6 @@ public sealed class SignatureReminderJob(
             ), ct);
         }
 
-        logger.LogInformation(
-            "Sent {Count} signature reminders in tenant {TenantId}",
-            pendingRecipients.Count, tenantId);
+        logger.LogInformation("Sent {Count} signature reminders", pendingRecipients.Count);
     }
 }

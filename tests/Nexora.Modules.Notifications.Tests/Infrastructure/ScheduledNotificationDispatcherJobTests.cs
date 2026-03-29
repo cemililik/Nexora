@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Nexora.Modules.Notifications.Domain.Entities;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.Modules.Notifications.Infrastructure;
@@ -13,6 +15,8 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly IActiveTenantProvider _tenantProvider;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
@@ -23,6 +27,21 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _dbContext = new NotificationsDbContext(options, _tenantAccessor);
+
+        // Set up PlatformJob infrastructure mocks
+        _tenantProvider = Substitute.For<IActiveTenantProvider>();
+        _tenantProvider.GetActiveTenantsWithModuleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ActiveTenantInfo> { new(_tenantId.ToString(), "tenant_test") });
+
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(ITenantContextAccessor)).Returns(_tenantAccessor);
+        serviceProvider.GetService(typeof(NotificationsDbContext)).Returns(_dbContext);
+
+        var scope = Substitute.For<IServiceScope>();
+        scope.ServiceProvider.Returns(serviceProvider);
+
+        _scopeFactory = Substitute.For<IServiceScopeFactory>();
+        _scopeFactory.CreateScope().Returns(scope);
     }
 
     [Fact]
@@ -31,12 +50,9 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
         // Arrange — schedule in the past (due)
         var notification = await SeedNotificationWithPastSchedule(TimeSpan.FromHours(-1));
 
-        var job = new ScheduledNotificationDispatcherJob(_tenantAccessor, _dbContext,
+        var job = new ScheduledNotificationDispatcherJob(_tenantProvider, _scopeFactory,
             NullLogger<ScheduledNotificationDispatcherJob>.Instance);
-        var parameters = new ScheduledNotificationDispatcherJobParams
-        {
-            TenantId = _tenantId.ToString()
-        };
+        var parameters = new ScheduledNotificationDispatcherJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -55,12 +71,9 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
         // Arrange — schedule in the future (not due)
         await SeedNotificationWithSchedule(DateTime.UtcNow.AddHours(2));
 
-        var job = new ScheduledNotificationDispatcherJob(_tenantAccessor, _dbContext,
+        var job = new ScheduledNotificationDispatcherJob(_tenantProvider, _scopeFactory,
             NullLogger<ScheduledNotificationDispatcherJob>.Instance);
-        var parameters = new ScheduledNotificationDispatcherJobParams
-        {
-            TenantId = _tenantId.ToString()
-        };
+        var parameters = new ScheduledNotificationDispatcherJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -78,12 +91,9 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
         schedule.Cancel();
         await _dbContext.SaveChangesAsync();
 
-        var job = new ScheduledNotificationDispatcherJob(_tenantAccessor, _dbContext,
+        var job = new ScheduledNotificationDispatcherJob(_tenantProvider, _scopeFactory,
             NullLogger<ScheduledNotificationDispatcherJob>.Instance);
-        var parameters = new ScheduledNotificationDispatcherJobParams
-        {
-            TenantId = _tenantId.ToString()
-        };
+        var parameters = new ScheduledNotificationDispatcherJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -97,43 +107,38 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
     public async Task Execute_NoDueSchedules_ShouldNotThrow()
     {
         // Arrange
-        var job = new ScheduledNotificationDispatcherJob(_tenantAccessor, _dbContext,
+        var job = new ScheduledNotificationDispatcherJob(_tenantProvider, _scopeFactory,
             NullLogger<ScheduledNotificationDispatcherJob>.Instance);
-        var parameters = new ScheduledNotificationDispatcherJobParams
-        {
-            TenantId = _tenantId.ToString()
-        };
+        var parameters = new ScheduledNotificationDispatcherJobParams { TenantId = "system" };
 
         // Act & Assert
         await job.RunAsync(parameters, CancellationToken.None);
     }
 
     [Fact]
-    public async Task Execute_DifferentTenant_ShouldNotDispatchOtherTenantSchedules()
+    public async Task Execute_FutureScheduleForAnyTenant_ShouldRemainPending()
     {
-        // Arrange — schedule for different tenant
+        // Arrange — future schedule for a different tenant; PlatformJob processes all tenants
+        // in the in-memory DB (no tenant-level query filter), so the schedule stays pending
+        // because it is not yet due, not because of tenant filtering.
         var otherTenantId = Guid.NewGuid();
         var notification = Notification.Create(
             otherTenantId, NotificationChannel.Email, "Test", "Body", "scheduled");
         notification.AddRecipient(Guid.NewGuid(), "user@test.com");
         notification.ClearDomainEvents();
-        // Use a past date by creating with future date then we test filtering
         var schedule = NotificationSchedule.Create(notification.Id, DateTime.UtcNow.AddDays(1));
         await _dbContext.Notifications.AddAsync(notification);
         await _dbContext.NotificationSchedules.AddAsync(schedule);
         await _dbContext.SaveChangesAsync();
 
-        var job = new ScheduledNotificationDispatcherJob(_tenantAccessor, _dbContext,
+        var job = new ScheduledNotificationDispatcherJob(_tenantProvider, _scopeFactory,
             NullLogger<ScheduledNotificationDispatcherJob>.Instance);
-        var parameters = new ScheduledNotificationDispatcherJobParams
-        {
-            TenantId = _tenantId.ToString()
-        };
+        var parameters = new ScheduledNotificationDispatcherJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
 
-        // Assert
+        // Assert — remains pending because ScheduledAt is in the future
         var updated = await _dbContext.NotificationSchedules.FirstAsync();
         updated.Status.Should().Be(ScheduleStatus.Pending);
     }

@@ -8,6 +8,7 @@ public sealed class UserRole : Entity<UserRoleId>
 {
     public OrganizationUserId OrganizationUserId { get; private set; }
     public RoleId RoleId { get; private set; }
+    public DateTimeOffset AssignedAt { get; private set; }
 
     private UserRole() { }
 
@@ -18,7 +19,8 @@ public sealed class UserRole : Entity<UserRoleId>
         {
             Id = UserRoleId.New(),
             OrganizationUserId = organizationUserId,
-            RoleId = roleId
+            RoleId = roleId,
+            AssignedAt = DateTimeOffset.UtcNow
         };
     }
 }

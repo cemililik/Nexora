@@ -47,6 +47,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Api.ContractTests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Identity.IntegrationTests", "tests\Nexora.Modules.Identity.IntegrationTests\Nexora.Modules.Identity.IntegrationTests.csproj", "{EBD3ACA9-F131-446D-8FF6-D1EB43B45000}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Audit", "src\Modules\Nexora.Modules.Audit\Nexora.Modules.Audit.csproj", "{7AF7EA0E-3049-4CC9-AA87-E9191B9FABD9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nexora.Modules.Audit.Tests", "tests\Nexora.Modules.Audit.Tests\Nexora.Modules.Audit.Tests.csproj", "{D4B2F8A1-5C3E-4A7D-9B1F-6E8C2D0A3F5B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -128,6 +132,14 @@ Global
 		{EBD3ACA9-F131-446D-8FF6-D1EB43B45000}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EBD3ACA9-F131-446D-8FF6-D1EB43B45000}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EBD3ACA9-F131-446D-8FF6-D1EB43B45000}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7AF7EA0E-3049-4CC9-AA87-E9191B9FABD9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AF7EA0E-3049-4CC9-AA87-E9191B9FABD9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AF7EA0E-3049-4CC9-AA87-E9191B9FABD9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AF7EA0E-3049-4CC9-AA87-E9191B9FABD9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D4B2F8A1-5C3E-4A7D-9B1F-6E8C2D0A3F5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D4B2F8A1-5C3E-4A7D-9B1F-6E8C2D0A3F5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D4B2F8A1-5C3E-4A7D-9B1F-6E8C2D0A3F5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D4B2F8A1-5C3E-4A7D-9B1F-6E8C2D0A3F5B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{5DC212CE-9A03-4BF4-BE61-0874B4D6749E} = {6DA7CA5E-2DBB-459C-8A8C-229F9C5624F9}
@@ -149,5 +161,7 @@ Global
 		{573E8E80-AC52-48AA-9DF1-E82F5CED32CB} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
 		{6293CF33-2C7F-448A-88E1-A3E1F35EE5C7} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
 		{EBD3ACA9-F131-446D-8FF6-D1EB43B45000} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
+		{7AF7EA0E-3049-4CC9-AA87-E9191B9FABD9} = {F7005014-649E-446D-B6E1-2408DB9B52BC}
+		{D4B2F8A1-5C3E-4A7D-9B1F-6E8C2D0A3F5B} = {5D011C4A-08AE-48A9-BA32-295A965EAB78}
 	EndGlobalSection
 EndGlobal

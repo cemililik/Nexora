@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -31,6 +32,7 @@ import {
   useAddMember,
   useRemoveMember,
 } from '../hooks/useOrganizations';
+import { formatRelativeTime } from '@/shared/lib/date';
 import { useUsers } from '../hooks/useUsers';
 import type { OrganizationMemberDto, UpdateOrganizationRequest } from '../types';
 
@@ -111,6 +113,11 @@ export default function OrganizationDetailPage() {
     },
     { key: 'email', header: t('lockey_identity_col_email'), render: (row) => row.email },
     {
+      key: 'joinedAt',
+      header: t('lockey_identity_col_joined_at'),
+      render: (row) => formatRelativeTime(row.joinedAt),
+    },
+    {
       key: 'actions',
       header: t('lockey_identity_col_actions'),
       render: (row) =>
@@ -118,10 +125,11 @@ export default function OrganizationDetailPage() {
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon"
             onClick={() => setMemberToRemove(row.userId)}
+            title={t('lockey_identity_action_remove_member')}
           >
-            {t('lockey_identity_action_remove_member')}
+            <Trash2 className="h-4 w-4 text-destructive" />
           </Button>
         ) : null,
     },

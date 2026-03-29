@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Base;
 
@@ -17,6 +18,32 @@ public abstract class BaseDbContext(
     private readonly DomainEventDispatcher? _domainEventDispatcher = domainEventDispatcher;
 
     protected ITenantContextAccessor TenantContextAccessor { get; } = tenantContextAccessor;
+
+    /// <summary>
+    /// Returns the current tenant schema name for model cache keying.
+    /// Returns "default" if no tenant context is set (e.g., in tests or platform operations).
+    /// </summary>
+    internal string GetCurrentSchema()
+    {
+        try
+        {
+            return TenantContextAccessor.Current.SchemaName;
+        }
+        catch (InvalidOperationException)
+        {
+            return "default";
+        }
+    }
+
+    /// <summary>
+    /// Replaces the default model cache key factory with <see cref="TenantModelCacheKeyFactory"/>
+    /// so each tenant schema gets its own cached model. Without this, the first tenant's schema
+    /// is cached and reused for all subsequent tenants.
+    /// </summary>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ReplaceService<IModelCacheKeyFactory, TenantModelCacheKeyFactory>();
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

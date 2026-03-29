@@ -7,6 +7,7 @@ import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import {
   Select,
   SelectContent,
@@ -34,7 +35,7 @@ const STATUS_KEY_MAP: Record<SignatureRequestStatus, string> = {
 export default function SignatureListPage() {
   const { t, i18n } = useTranslation('documents');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('documents.signature.create');
@@ -79,7 +80,7 @@ export default function SignatureListPage() {
     {
       key: 'createdAt',
       header: t('lockey_documents_signatures_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
     {
       key: 'actions',
@@ -150,6 +151,7 @@ export default function SignatureListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_documents_signatures_empty')}
         keyExtractor={(row) => row.id}

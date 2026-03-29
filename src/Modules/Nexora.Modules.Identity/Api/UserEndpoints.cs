@@ -3,9 +3,12 @@ using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
+using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -20,22 +23,42 @@ public static class UserEndpoints
         var group = endpoints.MapGroup("/users")
             .RequireAuthorization();
 
-        group.MapGet("/", async (int? page, int? pageSize, ISender sender, CancellationToken ct) =>
+        group.MapGet("/", async (int? page, int? pageSize, Guid? organizationId, Guid? roleId, string? search, ISender sender, CancellationToken ct) =>
         {
-            var query = new GetUsersQuery(page ?? 1, pageSize ?? 20);
+            var query = new GetUsersQuery(page ?? 1, pageSize ?? 20, organizationId, roleId, search);
             var result = await sender.Send(query, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<PagedResult<UserDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<PagedResult<UserDto>>.Fail(result.Error!));
         });
 
-        group.MapGet("/me", async (HttpContext httpContext, ISender sender, CancellationToken ct) =>
+        group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, ILogger<IdentityDbContext> logger, CancellationToken ct) =>
         {
             var keycloakUserId = httpContext.User.FindFirstValue("sub");
             if (string.IsNullOrEmpty(keycloakUserId))
                 return Results.Unauthorized();
 
             var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
+            if (result.IsSuccess)
+            {
+                // Design decision: LastLoginAt is updated inline with await + try-catch rather than
+                // fire-and-forget (Task.Run), because fire-and-forget caused DbContext/connection pool
+                // corruption due to the scoped lifetime of IdentityDbContext. The await ensures the
+                // DbContext is not disposed mid-operation. The try-catch guarantees that a failed
+                // LastLoginAt update never affects the /me response.
+                // SAFE: ExecuteUpdateAsync filters by strongly-typed UserId — no tenant isolation bypass risk.
+                try
+                {
+                    await dbContext.Users
+                        .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
+                        .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to update LastLoginAt for user {UserId}", result.Value!.Id);
+                }
+            }
+
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<UserDetailDto>.Success(result.Value!))
                 : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));

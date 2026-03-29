@@ -81,7 +81,7 @@ public sealed class AddOrganizationMemberHandler(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var dto = new OrganizationMemberDto(
-            user.Id.Value, user.Email, user.FirstName, user.LastName, orgUser.IsDefaultOrg);
+            user.Id.Value, user.Email, user.FirstName, user.LastName, orgUser.IsDefaultOrg, orgUser.JoinedAt);
 
         logger.LogInformation("Member {UserId} added to organization {OrganizationId}", request.UserId, request.OrganizationId);
 

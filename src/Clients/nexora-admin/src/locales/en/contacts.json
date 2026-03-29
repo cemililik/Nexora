@@ -286,6 +286,9 @@
 
   "lockey_contacts_available_tags": "Available Tags",
   "lockey_contacts_related_contact_id": "Related Contact ID",
+  "lockey_contacts_relationship_related_contact": "Related Contact",
+  "lockey_contacts_relationship_search_contacts": "Search contacts...",
+  "lockey_contacts_relationship_no_contacts_found": "No contacts found.",
   "lockey_contacts_relationship_type": "Relationship Type",
 
   "lockey_contacts_notes_placeholder": "Write a note...",
@@ -326,6 +329,8 @@
 
   "lockey_contacts_relationships_remove_title": "Remove Relationship",
   "lockey_contacts_relationships_remove_description": "Are you sure you want to remove this relationship?",
+
+  "lockey_contacts_address_delete_confirm": "Are you sure you want to remove this address? This action cannot be undone.",
 
   "lockey_contacts_export_settings": "Export Settings",
   "lockey_contacts_export_status": "Export Status",

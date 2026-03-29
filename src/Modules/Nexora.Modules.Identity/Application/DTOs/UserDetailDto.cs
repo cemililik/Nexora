@@ -9,7 +9,8 @@ public sealed record UserDetailDto(
     string? Phone,
     string Status,
     DateTimeOffset? LastLoginAt,
-    List<UserOrganizationDto> Organizations);
+    List<UserOrganizationDto> Organizations,
+    List<string>? Permissions = null);
 
 /// <summary>Organization membership info for a user.</summary>
 public sealed record UserOrganizationDto(

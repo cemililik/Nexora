@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { useScheduledNotifications, useCancelScheduledNotification } from '../hooks/useSchedule';
 import { ScheduleStatusBadge } from '../components/ScheduleStatusBadge';
@@ -14,7 +15,7 @@ import type { NotificationScheduleDto } from '../types';
 
 export default function ScheduleListPage() {
   const { t, i18n } = useTranslation('notifications');
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('notifications.schedule.manage');
@@ -51,7 +52,7 @@ export default function ScheduleListPage() {
     {
       key: 'createdAt',
       header: t('lockey_notifications_schedule_col_created_at'),
-      render: (row) => new Date(row.createdAt).toLocaleDateString(i18n.language),
+      render: (row) => formatRelativeTime(row.createdAt),
     },
     {
       key: 'actions',
@@ -86,6 +87,7 @@ export default function ScheduleListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_notifications_schedule_empty')}
         keyExtractor={(row) => row.id}

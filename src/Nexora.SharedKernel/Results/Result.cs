@@ -3,10 +3,22 @@ using Nexora.SharedKernel.Localization;
 namespace Nexora.SharedKernel.Results;
 
 /// <summary>
+/// Non-generic result interface for polymorphic outcome inspection.
+/// </summary>
+public interface IOperationResult
+{
+    /// <summary>Indicates whether the operation succeeded.</summary>
+    bool IsSuccess { get; }
+
+    /// <summary>Error details when the operation failed; null on success.</summary>
+    Error? Error { get; }
+}
+
+/// <summary>
 /// Represents the outcome of an operation without a return value.
 /// Use factory methods to create success or failure results.
 /// </summary>
-public sealed class Result
+public sealed class Result : IOperationResult
 {
     /// <summary>Indicates whether the operation succeeded.</summary>
     public bool IsSuccess { get; }
@@ -61,7 +73,7 @@ public sealed class Result
 /// Use factory methods to create success or failure results.
 /// </summary>
 /// <typeparam name="T">The type of the value returned on success.</typeparam>
-public sealed class Result<T>
+public sealed class Result<T> : IOperationResult
 {
     /// <summary>Indicates whether the operation succeeded.</summary>
     public bool IsSuccess { get; }

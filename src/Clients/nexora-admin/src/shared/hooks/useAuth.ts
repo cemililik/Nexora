@@ -88,7 +88,7 @@ export function useAuth() {
           token: keycloak.token,
           tenantId: claims.tenant_id,
           organizationId: claims.organization_id,
-          permissions: claims.permissions,
+          permissions: userInfo?.permissions ?? claims.permissions,
         });
 
         setIsInitializing(false);

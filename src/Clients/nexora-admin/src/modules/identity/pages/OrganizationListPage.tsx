@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -12,7 +12,8 @@ import type { OrganizationDto } from '../types';
 
 export default function OrganizationListPage() {
   const { t } = useTranslation('identity');
-  const { page, pageSize, setPage } = usePagination();
+  const navigate = useNavigate();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data, isPending } = useOrganizations({ page, pageSize });
 
@@ -28,12 +29,7 @@ export default function OrganizationListPage() {
       key: 'name',
       header: t('lockey_identity_col_org_name'),
       render: (row) => (
-        <Link
-          to={`/identity/organizations/${row.id}`}
-          className="font-medium text-primary hover:underline"
-        >
-          {row.name}
-        </Link>
+        <span className="font-medium">{row.name}</span>
       ),
     },
     { key: 'slug', header: t('lockey_identity_col_slug'), render: (row) => row.slug },
@@ -73,8 +69,11 @@ export default function OrganizationListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_identity_empty_orgs')}
+        keyExtractor={(row) => row.id}
+        onRowClick={(row) => navigate(`/identity/organizations/${row.id}`)}
       />
     </div>
   );

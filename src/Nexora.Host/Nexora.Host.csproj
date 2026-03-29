@@ -12,6 +12,7 @@
     <ProjectReference Include="..\Modules\Nexora.Modules.Documents\Nexora.Modules.Documents.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Notifications\Nexora.Modules.Notifications.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Reporting\Nexora.Modules.Reporting.csproj" />
+    <ProjectReference Include="..\Modules\Nexora.Modules.Audit\Nexora.Modules.Audit.csproj" />
   </ItemGroup>
 
   <ItemGroup>

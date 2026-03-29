@@ -286,6 +286,9 @@
 
   "lockey_contacts_available_tags": "Mevcut Etiketler",
   "lockey_contacts_related_contact_id": "İlgili Kişi Kimliği",
+  "lockey_contacts_relationship_related_contact": "İlgili Kişi",
+  "lockey_contacts_relationship_search_contacts": "Kişi ara...",
+  "lockey_contacts_relationship_no_contacts_found": "Kişi bulunamadı.",
   "lockey_contacts_relationship_type": "İlişki Türü",
 
   "lockey_contacts_notes_placeholder": "Bir not yazın...",
@@ -326,6 +329,8 @@
 
   "lockey_contacts_relationships_remove_title": "İlişkiyi Kaldır",
   "lockey_contacts_relationships_remove_description": "Bu ilişkiyi kaldırmak istediğinizden emin misiniz?",
+
+  "lockey_contacts_address_delete_confirm": "Bu adresi kaldırmak istediğinizden emin misiniz? Bu işlem geri alınamaz.",
 
   "lockey_contacts_export_settings": "Dışa Aktarma Ayarları",
   "lockey_contacts_export_status": "Dışa Aktarma Durumu",

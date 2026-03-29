@@ -4,5 +4,6 @@
   "lockey_validation_min_length": "{{field}} must be at least {{min}} characters.",
   "lockey_validation_max_length": "{{field}} must be at most {{max}} characters.",
   "lockey_validation_failed": "Please correct the errors below.",
-  "lockey_validation_invalid_json": "Invalid JSON format"
+  "lockey_validation_invalid_json": "Invalid JSON format",
+  "lockey_validation_password_min": "Password must be at least {{min}} characters."
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Nexora.Infrastructure.MultiTenancy;
@@ -16,6 +17,8 @@ public sealed class SignatureReminderJobTests : IDisposable
     private readonly DocumentsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly INotificationService _notificationService;
+    private readonly IActiveTenantProvider _tenantProvider;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
@@ -34,6 +37,22 @@ public sealed class SignatureReminderJobTests : IDisposable
         _notificationService = Substitute.For<INotificationService>();
         _notificationService.SendAsync(Arg.Any<SendNotificationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Guid.NewGuid());
+
+        // Set up PlatformJob infrastructure mocks
+        _tenantProvider = Substitute.For<IActiveTenantProvider>();
+        _tenantProvider.GetActiveTenantsWithModuleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new List<ActiveTenantInfo> { new(_tenantId.ToString(), "tenant_test") });
+
+        var serviceProvider = Substitute.For<IServiceProvider>();
+        serviceProvider.GetService(typeof(ITenantContextAccessor)).Returns(_tenantAccessor);
+        serviceProvider.GetService(typeof(DocumentsDbContext)).Returns(_dbContext);
+        serviceProvider.GetService(typeof(INotificationService)).Returns(_notificationService);
+
+        var scope = Substitute.For<IServiceScope>();
+        scope.ServiceProvider.Returns(serviceProvider);
+
+        _scopeFactory = Substitute.For<IServiceScopeFactory>();
+        _scopeFactory.CreateScope().Returns(scope);
     }
 
     private async Task<DocumentId> SeedDocumentAsync()
@@ -59,8 +78,8 @@ public sealed class SignatureReminderJobTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var job = new SignatureReminderJob(
-            _tenantAccessor, _dbContext, _notificationService, NullLogger<SignatureReminderJob>.Instance);
-        var parameters = new SignatureReminderJobParams { TenantId = _tenantId.ToString() };
+            _tenantProvider, _scopeFactory, NullLogger<SignatureReminderJob>.Instance);
+        var parameters = new SignatureReminderJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -86,8 +105,8 @@ public sealed class SignatureReminderJobTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var job = new SignatureReminderJob(
-            _tenantAccessor, _dbContext, _notificationService, NullLogger<SignatureReminderJob>.Instance);
-        var parameters = new SignatureReminderJobParams { TenantId = _tenantId.ToString() };
+            _tenantProvider, _scopeFactory, NullLogger<SignatureReminderJob>.Instance);
+        var parameters = new SignatureReminderJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -102,8 +121,8 @@ public sealed class SignatureReminderJobTests : IDisposable
     {
         // Arrange — no requests at all
         var job = new SignatureReminderJob(
-            _tenantAccessor, _dbContext, _notificationService, NullLogger<SignatureReminderJob>.Instance);
-        var parameters = new SignatureReminderJobParams { TenantId = _tenantId.ToString() };
+            _tenantProvider, _scopeFactory, NullLogger<SignatureReminderJob>.Instance);
+        var parameters = new SignatureReminderJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -125,8 +144,8 @@ public sealed class SignatureReminderJobTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var job = new SignatureReminderJob(
-            _tenantAccessor, _dbContext, _notificationService, NullLogger<SignatureReminderJob>.Instance);
-        var parameters = new SignatureReminderJobParams { TenantId = _tenantId.ToString() };
+            _tenantProvider, _scopeFactory, NullLogger<SignatureReminderJob>.Instance);
+        var parameters = new SignatureReminderJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
@@ -137,9 +156,11 @@ public sealed class SignatureReminderJobTests : IDisposable
     }
 
     [Fact]
-    public async Task Execute_DifferentTenant_DoesNotSendReminder()
+    public async Task Execute_SentRequest_InDifferentTenantSchema_IsProcessedByPlatformJob()
     {
-        // Arrange
+        // Note: Tenant schema isolation cannot be tested with in-memory DB.
+        // PlatformJob creates a fresh DI scope per tenant in production.
+        // This test verifies that a sent request from ANY tenant is processed.
         var docId = await SeedDocumentAsync();
         var otherTenantId = Guid.NewGuid();
         var request = SignatureRequest.Create(otherTenantId, _orgId, docId, _userId, "Other Tenant");
@@ -149,14 +170,13 @@ public sealed class SignatureReminderJobTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var job = new SignatureReminderJob(
-            _tenantAccessor, _dbContext, _notificationService, NullLogger<SignatureReminderJob>.Instance);
-        var parameters = new SignatureReminderJobParams { TenantId = _tenantId.ToString() };
+            _tenantProvider, _scopeFactory, NullLogger<SignatureReminderJob>.Instance);
 
         // Act
-        await job.RunAsync(parameters, CancellationToken.None);
+        await job.RunAsync(new SignatureReminderJobParams { TenantId = "system" }, CancellationToken.None);
 
-        // Assert
-        await _notificationService.DidNotReceive().SendAsync(
+        // Assert — in-memory DB has no schema isolation, so the request IS processed
+        await _notificationService.Received(1).SendAsync(
             Arg.Any<SendNotificationRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -172,8 +192,8 @@ public sealed class SignatureReminderJobTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var job = new SignatureReminderJob(
-            _tenantAccessor, _dbContext, _notificationService, NullLogger<SignatureReminderJob>.Instance);
-        var parameters = new SignatureReminderJobParams { TenantId = _tenantId.ToString() };
+            _tenantProvider, _scopeFactory, NullLogger<SignatureReminderJob>.Instance);
+        var parameters = new SignatureReminderJobParams { TenantId = "system" };
 
         // Act
         await job.RunAsync(parameters, CancellationToken.None);

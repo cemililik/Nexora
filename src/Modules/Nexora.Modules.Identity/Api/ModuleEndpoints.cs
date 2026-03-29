@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
+using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Api;
@@ -15,6 +16,14 @@ public static class ModuleEndpoints
     /// <summary>Maps module install, uninstall, and listing endpoints.</summary>
     public static void MapModuleEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        // Platform-level: list all registered (discoverable) modules
+        endpoints.MapGet("/modules/registered", (IReadOnlyList<IModule> modules) =>
+        {
+            var result = modules.Select(m => new RegisteredModuleDto(
+                m.Name, m.DisplayName, m.Version, m.Dependencies.ToList())).ToList();
+            return Results.Ok(ApiEnvelope<List<RegisteredModuleDto>>.Success(result));
+        }).RequireAuthorization();
+
         var group = endpoints.MapGroup("/tenants/{tenantId:guid}/modules")
             .RequireAuthorization();
 
@@ -72,3 +81,6 @@ public static class ModuleEndpoints
 
 /// <summary>Request body for installing a module.</summary>
 public sealed record InstallModuleRequest(string ModuleName);
+
+/// <summary>DTO for a registered (discoverable) module.</summary>
+public sealed record RegisteredModuleDto(string Name, string DisplayName, string Version, List<string> Dependencies);

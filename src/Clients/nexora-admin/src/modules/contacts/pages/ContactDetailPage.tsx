@@ -1,13 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Pencil, Trash2, Search } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
@@ -17,10 +34,12 @@ import { usePermissions } from '@/shared/hooks/usePermissions';
 import { ContactStatusBadge, ContactTypeBadge } from '../components/ContactStatusBadge';
 import {
   useContact,
+  useContacts,
   useUpdateContact,
   useArchiveContact,
   useRestoreContact,
 } from '../hooks/useContacts';
+import { useAddresses, useAddAddress, useUpdateAddress, useDeleteAddress } from '../hooks/useAddresses';
 import { useAssignTag, useRemoveTag, useTags } from '../hooks/useTags';
 import { useRelationships, useAddRelationship, useRemoveRelationship } from '../hooks/useRelationships';
 import { useNotes, useAddNote, useDeleteNote, usePinNote } from '../hooks/useNotes';
@@ -33,6 +52,8 @@ import { useGdprExport, useGdprDelete } from '../hooks/useImportExport';
 import { ContactForm } from '../components/ContactForm';
 import type {
   ContactDetailDto,
+  ContactAddressDto,
+  AddressType,
   RelationshipType,
   ConsentType,
   CommunicationChannel,
@@ -292,24 +313,186 @@ function OverviewTab({
         </CardContent>
       </Card>
 
+      <AddressesCard contactId={contact.id} addresses={contact.addresses} t={t} />
+    </div>
+  );
+}
+
+/* ─── Addresses Card ─── */
+
+const addressTypes: AddressType[] = ['Home', 'Work', 'Billing', 'Shipping'];
+
+const createAddressSchema = (t: (key: string, options?: Record<string, unknown>) => string) =>
+  z.object({
+    type: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+    street1: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+    street2: z.string().optional(),
+    city: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+    state: z.string().optional(),
+    postalCode: z.string().optional(),
+    countryCode: z.string().min(1, { message: t('lockey_validation_required', { ns: 'validation' }) }),
+    isPrimary: z.boolean().optional(),
+  });
+
+type AddressFormValues = z.infer<ReturnType<typeof createAddressSchema>>;
+
+interface AddressesCardProps {
+  contactId: string;
+  addresses: ContactAddressDto[];
+  t: ReturnType<typeof useTranslation>['t'];
+}
+
+function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesCardProps) {
+  const { data: fetchedAddresses } = useAddresses(contactId);
+  const addAddress = useAddAddress(contactId);
+  const updateAddress = useUpdateAddress(contactId);
+  const deleteAddress = useDeleteAddress(contactId);
+  const { handleApiError } = useApiError();
+  const { hasPermission } = usePermissions();
+  const canCreate = hasPermission('contacts.contact.update');
+  const canUpdate = hasPermission('contacts.contact.update');
+  const canDelete = hasPermission('contacts.contact.update');
+
+  const addresses = fetchedAddresses ?? initialAddresses;
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<ContactAddressDto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ContactAddressDto | null>(null);
+
+  const addressSchema = useMemo(() => createAddressSchema(t), [t]);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    control,
+    formState: { errors },
+  } = useForm<AddressFormValues>({
+    resolver: zodResolver(addressSchema),
+    defaultValues: {
+      type: 'Home',
+      street1: '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      countryCode: '',
+      isPrimary: false,
+    },
+  });
+
+  const openAddDialog = () => {
+    setEditingAddress(null);
+    reset({
+      type: 'Home',
+      street1: '',
+      street2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      countryCode: '',
+      isPrimary: false,
+    });
+    setDialogOpen(true);
+  };
+
+  const openEditDialog = (addr: ContactAddressDto) => {
+    setEditingAddress(addr);
+    reset({
+      type: addr.type,
+      street1: addr.street1,
+      street2: addr.street2 ?? '',
+      city: addr.city,
+      state: addr.state ?? '',
+      postalCode: addr.postalCode ?? '',
+      countryCode: addr.countryCode,
+      isPrimary: addr.isPrimary,
+    });
+    setDialogOpen(true);
+  };
+
+  const onSubmit = (data: AddressFormValues) => {
+    const payload = {
+      type: data.type as AddressType,
+      street1: data.street1,
+      street2: data.street2 || undefined,
+      city: data.city,
+      state: data.state || undefined,
+      postalCode: data.postalCode || undefined,
+      countryCode: data.countryCode,
+    };
+
+    if (editingAddress) {
+      updateAddress.mutate(
+        { addressId: editingAddress.id, data: payload },
+        {
+          onSuccess: () => { setDialogOpen(false); reset(); },
+          onError: (err) => handleApiError(err),
+        },
+      );
+    } else {
+      addAddress.mutate(
+        { ...payload, isPrimary: data.isPrimary ?? false },
+        {
+          onSuccess: () => { setDialogOpen(false); reset(); },
+          onError: (err) => handleApiError(err),
+        },
+      );
+    }
+  };
+
+  return (
+    <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t('lockey_contacts_addresses_title')}</CardTitle>
+          {canCreate && (
+            <Button type="button" size="sm" onClick={openAddDialog}>
+              {t('lockey_contacts_address_add')}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          {contact.addresses.length === 0 ? (
+          {addresses.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {t('lockey_contacts_empty_addresses')}
             </p>
           ) : (
             <ul className="space-y-4">
-              {contact.addresses.map((addr) => (
+              {addresses.map((addr) => (
                 <li key={addr.id} className="rounded-md border p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline">{t(`lockey_contacts_address_type_${addr.type.toLowerCase()}`)}</Badge>
-                    {addr.isPrimary && (
-                      <Badge variant="secondary">{t('lockey_contacts_address_primary')}</Badge>
-                    )}
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{t(`lockey_contacts_address_type_${addr.type.toLowerCase()}`)}</Badge>
+                      {addr.isPrimary && (
+                        <Badge variant="secondary">{t('lockey_contacts_address_primary')}</Badge>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      {canUpdate && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title={t('lockey_contacts_address_edit')}
+                          aria-label={t('lockey_contacts_address_edit')}
+                          onClick={() => openEditDialog(addr)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title={t('lockey_contacts_address_delete')}
+                          aria-label={t('lockey_contacts_address_delete')}
+                          onClick={() => setDeleteTarget(addr)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm">
                     {addr.street1}
@@ -325,7 +508,135 @@ function OverviewTab({
           )}
         </CardContent>
       </Card>
-    </div>
+
+      {/* Add/Edit Address Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingAddress
+                ? t('lockey_contacts_address_edit')
+                : t('lockey_contacts_address_add')}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {editingAddress
+                ? t('lockey_contacts_address_edit')
+                : t('lockey_contacts_address_add')}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <label htmlFor="address-type" className="text-sm font-medium">{t('lockey_contacts_address_form_type')}</label>
+              <Controller
+                name="type"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="address-type" className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {addressTypes.map((at) => (
+                        <SelectItem key={at} value={at}>
+                          {t(`lockey_contacts_address_type_${at.toLowerCase()}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.type && (
+                <p className="text-xs text-destructive mt-1">{errors.type.message}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="address-street1" className="text-sm font-medium">{t('lockey_contacts_address_form_street1')}</label>
+              <Input id="address-street1" {...register('street1')} className="mt-1" />
+              {errors.street1 && (
+                <p className="text-xs text-destructive mt-1">{errors.street1.message}</p>
+              )}
+            </div>
+            <div>
+              <label htmlFor="address-street2" className="text-sm font-medium">{t('lockey_contacts_address_form_street2')}</label>
+              <Input id="address-street2" {...register('street2')} className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="address-city" className="text-sm font-medium">{t('lockey_contacts_address_form_city')}</label>
+                <Input id="address-city" {...register('city')} className="mt-1" />
+                {errors.city && (
+                  <p className="text-xs text-destructive mt-1">{errors.city.message}</p>
+                )}
+              </div>
+              <div>
+                <label htmlFor="address-state" className="text-sm font-medium">{t('lockey_contacts_address_form_state')}</label>
+                <Input id="address-state" {...register('state')} className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="address-postalCode" className="text-sm font-medium">{t('lockey_contacts_address_form_postal_code')}</label>
+                <Input id="address-postalCode" {...register('postalCode')} className="mt-1" />
+              </div>
+              <div>
+                <label htmlFor="address-countryCode" className="text-sm font-medium">{t('lockey_contacts_address_form_country_code')}</label>
+                <Input id="address-countryCode" {...register('countryCode')} className="mt-1" />
+                {errors.countryCode && (
+                  <p className="text-xs text-destructive mt-1">{errors.countryCode.message}</p>
+                )}
+              </div>
+            </div>
+            {!editingAddress && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isPrimary"
+                  {...register('isPrimary')}
+                  className="rounded border-input"
+                />
+                <label htmlFor="isPrimary" className="text-sm font-medium">
+                  {t('lockey_contacts_address_form_is_primary')}
+                </label>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                {t('lockey_common_cancel', { ns: 'common' })}
+              </Button>
+              <Button
+                type="submit"
+                disabled={addAddress.isPending || updateAddress.isPending}
+              >
+                {editingAddress
+                  ? t('lockey_common_save', { ns: 'common' })
+                  : t('lockey_contacts_address_add')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Address Confirmation */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={() => setDeleteTarget(null)}
+        title={t('lockey_contacts_address_delete')}
+        description={t('lockey_contacts_address_delete_confirm')}
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteTarget) {
+            deleteAddress.mutate(deleteTarget.id, {
+              onSuccess: () => setDeleteTarget(null),
+              onError: (err) => {
+                handleApiError(err);
+                setDeleteTarget(null);
+              },
+            });
+          }
+        }}
+        isPending={deleteAddress.isPending}
+      />
+    </>
   );
 }
 
@@ -446,12 +757,50 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
   const canCreate = hasPermission('contacts.relationship.create');
   const canDelete = hasPermission('contacts.relationship.delete');
   const [showForm, setShowForm] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedContact, setSelectedContact] = useState<{ id: string; displayName: string } | null>(null);
+  const [showContactSearch, setShowContactSearch] = useState(false);
+  const contactSearchRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleContactSearchChange = useCallback((value: string) => {
+    setContactSearch(value);
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(value);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (contactSearchRef.current && !contactSearchRef.current.contains(event.target as Node)) {
+        setShowContactSearch(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const { data: searchResults } = useContacts({
+    page: 1,
+    pageSize: 20,
+    search: debouncedSearch || undefined,
+  }, { enabled: showForm });
 
   const relationshipSchema = useMemo(() => createRelationshipSchema(t), [t]);
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<RelationshipFormValues>({
     resolver: zodResolver(relationshipSchema),
@@ -463,11 +812,27 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
     'EmployeeOf', 'EmployerOf', 'ContactOf', 'GuardianOf', 'WardOf',
   ];
 
+  const filteredContacts = useMemo(() => {
+    const items = searchResults?.items ?? [];
+    return items.filter((c) => c.id !== contactId);
+  }, [searchResults, contactId]);
+
+  const handleSelectContact = (contact: { id: string; displayName: string }) => {
+    setSelectedContact(contact);
+    setValue('relatedContactId', contact.id);
+    setShowContactSearch(false);
+    setContactSearch('');
+  };
+
   const onSubmit = (data: RelationshipFormValues) => {
     addRelationship.mutate(
       { relatedContactId: data.relatedContactId, type: data.type as RelationshipType },
       {
-        onSuccess: () => { reset(); setShowForm(false); },
+        onSuccess: () => {
+          reset();
+          setSelectedContact(null);
+          setShowForm(false);
+        },
         onError: (err) => handleApiError(err),
       },
     );
@@ -478,7 +843,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>{t('lockey_contacts_tab_relationships')}</CardTitle>
         {canCreate && (
-          <Button type="button" size="sm" onClick={() => setShowForm(!showForm)}>
+          <Button type="button" size="sm" onClick={() => { setShowForm(!showForm); setSelectedContact(null); setContactSearch(''); }}>
             {showForm
               ? t('lockey_common_cancel', { ns: 'common' })
               : t('lockey_contacts_relationship_add')}
@@ -488,20 +853,77 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
       <CardContent>
         {showForm && canCreate && (
           <form onSubmit={handleSubmit(onSubmit)} className="mb-4 flex flex-wrap items-end gap-3 rounded-md border p-3">
-            <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_related_contact_id')}</label>
-              <input
-                type="text"
-                {...register('relatedContactId')}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
+            <input type="hidden" {...register('relatedContactId')} />
+            <div className="w-full sm:w-auto sm:min-w-[240px]">
+              <label className="text-sm font-medium">{t('lockey_contacts_relationship_related_contact')}</label>
+              <div className="relative mt-1">
+                {selectedContact ? (
+                  <div className="flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <span>{selectedContact.displayName}</span>
+                    <button
+                      type="button"
+                      className="ms-2 text-muted-foreground hover:text-foreground"
+                      aria-label={t('lockey_contacts_relationship_clear_selection')}
+                      onClick={() => {
+                        setSelectedContact(null);
+                        setValue('relatedContactId', '');
+                        setShowContactSearch(true);
+                      }}
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ) : (
+                  <div ref={contactSearchRef}>
+                    <div className="relative">
+                      <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder={t('lockey_contacts_relationship_search_contacts')}
+                        value={contactSearch}
+                        onChange={(e) => {
+                          handleContactSearchChange(e.target.value);
+                          setShowContactSearch(true);
+                        }}
+                        onFocus={() => setShowContactSearch(true)}
+                        className="ps-9"
+                      />
+                    </div>
+                    {showContactSearch && (
+                      <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+                        {filteredContacts.length === 0 ? (
+                          <p className="px-3 py-4 text-sm text-muted-foreground text-center">
+                            {t('lockey_contacts_relationship_no_contacts_found')}
+                          </p>
+                        ) : (
+                          filteredContacts.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className="flex w-full items-center px-3 py-2 text-sm hover:bg-accent transition-colors text-start"
+                              onClick={() => handleSelectContact({ id: c.id, displayName: c.displayName })}
+                            >
+                              <div>
+                                <p className="font-medium">{c.displayName}</p>
+                                {c.email && (
+                                  <p className="text-xs text-muted-foreground">{c.email}</p>
+                                )}
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               {errors.relatedContactId && (
                 <p className="text-xs text-destructive mt-1">{errors.relatedContactId.message}</p>
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_relationship_type')}</label>
+              <label htmlFor="relationship-type" className="text-sm font-medium">{t('lockey_contacts_relationship_type')}</label>
               <select
+                id="relationship-type"
                 {...register('type')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
@@ -515,7 +937,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
             <Button
               type="submit"
               size="sm"
-              disabled={addRelationship.isPending}
+              disabled={addRelationship.isPending || !selectedContact}
             >
               {t('lockey_contacts_relationship_add')}
             </Button>

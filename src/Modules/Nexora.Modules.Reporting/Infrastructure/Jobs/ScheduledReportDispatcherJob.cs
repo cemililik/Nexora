@@ -1,5 +1,6 @@
 using Cronos;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
@@ -14,29 +15,32 @@ public sealed record ScheduledReportDispatcherJobParams : JobParams;
 /// Recurring job that checks active report schedules and enqueues executions.
 /// </summary>
 public sealed class ScheduledReportDispatcherJob(
-    ITenantContextAccessor tenantContextAccessor,
-    ReportingDbContext dbContext,
+    IActiveTenantProvider tenantProvider,
+    IServiceScopeFactory scopeFactory,
     ILogger<ScheduledReportDispatcherJob> logger)
-    : NexoraJob<ScheduledReportDispatcherJobParams>(tenantContextAccessor, logger)
+    : PlatformJob<ScheduledReportDispatcherJobParams>(tenantProvider, scopeFactory, logger)
 {
-    protected override async Task ExecuteAsync(ScheduledReportDispatcherJobParams parameters, CancellationToken ct)
+    protected override string? GetRequiredModule() => "reporting";
+
+    protected override async Task ExecuteForTenantAsync(
+        ScheduledReportDispatcherJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
     {
-        var tenantId = Guid.Parse(parameters.TenantId);
+        var dbContext = scopedServices.GetRequiredService<ReportingDbContext>();
+
         var now = DateTimeOffset.UtcNow;
 
         var dueSchedules = await dbContext.ReportSchedules
-            .Where(s => s.TenantId == tenantId && s.IsActive &&
+            .Where(s => s.IsActive &&
                         (s.NextExecutionAt == null || s.NextExecutionAt <= now))
             .ToListAsync(ct);
 
-        logger.LogInformation(
-            "Found {Count} due report schedules for tenant {TenantId}",
-            dueSchedules.Count, tenantId);
+        logger.LogInformation("Found {Count} due report schedules", dueSchedules.Count);
 
         foreach (var schedule in dueSchedules)
         {
             var execution = ReportExecution.Create(
-                tenantId, schedule.DefinitionId, schedule.Format, null, "system:scheduler");
+                schedule.TenantId, schedule.DefinitionId, schedule.Format, null, "system:scheduler");
 
             await dbContext.ReportExecutions.AddAsync(execution, ct);
 

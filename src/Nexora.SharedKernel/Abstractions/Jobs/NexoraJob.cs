@@ -17,6 +17,7 @@ public abstract class NexoraJob<TParams>(
     public async Task RunAsync(TParams parameters, CancellationToken ct)
     {
         var jobName = GetType().Name;
+
         tenantContextAccessor.SetTenant(parameters.TenantId, parameters.OrganizationId);
 
         logger.LogInformation("Job {JobName} starting for tenant {TenantId}", jobName, parameters.TenantId);

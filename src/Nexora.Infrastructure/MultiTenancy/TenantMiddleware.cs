@@ -12,6 +12,7 @@ namespace Nexora.Infrastructure.MultiTenancy;
 /// </summary>
 public sealed class TenantMiddleware(RequestDelegate next)
 {
+    // Hardcoded for simplicity — move to configuration if list grows
     private static readonly HashSet<string> _publicPaths =
     [
         "/health",
@@ -32,7 +33,8 @@ public sealed class TenantMiddleware(RequestDelegate next)
 
         var tenantId = context.User.FindFirstValue("tenant_id");
         var orgId = context.User.FindFirstValue("organization_id");
-        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                     ?? context.User.FindFirstValue("sub");
 
         if (!string.IsNullOrEmpty(tenantId))
         {

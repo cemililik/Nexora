@@ -90,7 +90,16 @@ public sealed class KeycloakAdminService(
     {
         await EnsureAuthenticatedAsync(ct);
 
-        var user = new KeycloakUserRepresentation
+        // GET the full user representation first — Keycloak PUT requires the complete object
+        var getUserResponse = await httpClient.GetAsync(
+            $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
+        getUserResponse.EnsureSuccessStatusCode();
+
+        var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
+            ?? throw new InvalidOperationException(
+                $"Failed to deserialize Keycloak user {keycloakUserId} from realm {realm}.");
+
+        var updatedUser = user with
         {
             Email = email,
             FirstName = firstName,
@@ -98,7 +107,7 @@ public sealed class KeycloakAdminService(
         };
 
         var response = await httpClient.PutAsJsonAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", user, ct);
+            $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
         response.EnsureSuccessStatusCode();
 
         logger.LogInformation("Updated Keycloak user {KeycloakUserId} in realm {Realm}", keycloakUserId, realm);
@@ -120,29 +129,36 @@ public sealed class KeycloakAdminService(
     {
         await EnsureAuthenticatedAsync(ct);
 
-        var user = new KeycloakUserRepresentation { Enabled = enabled };
+        // GET the full user representation first — Keycloak PUT requires the complete object
+        var getUserResponse = await httpClient.GetAsync(
+            $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
+        getUserResponse.EnsureSuccessStatusCode();
+
+        var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
+            ?? throw new InvalidOperationException(
+                $"Failed to deserialize Keycloak user {keycloakUserId} from realm {realm}.");
+
+        var updatedUser = user with { Enabled = enabled };
 
         var response = await httpClient.PutAsJsonAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", user, ct);
+            $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
         response.EnsureSuccessStatusCode();
 
         logger.LogInformation("Set Keycloak user {KeycloakUserId} enabled={Enabled} in realm {Realm}",
             keycloakUserId, enabled, realm);
     }
 
+    /// <summary>
+    /// Acquires a valid admin token, refreshing if expired.
+    /// All header mutation is serialized through the lock to prevent concurrent modification
+    /// of <see cref="HttpClient.DefaultRequestHeaders"/>.
+    /// </summary>
     private async Task EnsureAuthenticatedAsync(CancellationToken ct)
     {
-        if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
-        {
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _cachedToken);
-            return;
-        }
-
         await _tokenLock.WaitAsync(ct);
         try
         {
-            // Double-check after acquiring lock — another thread may have refreshed
+            // Token still valid — just ensure header is set and return
             if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
             {
                 httpClient.DefaultRequestHeaders.Authorization =

@@ -8,6 +8,7 @@ export interface UserInfo {
   status: string;
   lastLoginAt?: string;
   organizations: UserOrganization[];
+  permissions?: string[];
 }
 
 /** Organization membership within a user response. */

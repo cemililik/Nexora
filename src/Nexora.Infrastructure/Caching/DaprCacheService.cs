@@ -36,7 +36,9 @@ public sealed class DaprCacheService(
         }
         catch (InvalidOperationException)
         {
-            // No tenant context set — platform-level operation, no prefix needed
+            // SAFE: ITenantContextAccessor.Current throws InvalidOperationException only when
+            // no tenant context is set (platform-level operation). No other code path in the
+            // property getter produces this exception, so this catch cannot mask unrelated errors.
         }
 
         return key;
@@ -79,13 +81,18 @@ public sealed class DaprCacheService(
             return cached;
 
         // L2: Dapr state store (Redis)
-        var state = await daprClient.GetStateAsync<T>(StateStoreName, prefixedKey, cancellationToken: ct);
-        if (state is not null)
+        // Dapr returns default(T) for missing keys. For reference types this is null.
+        // For value types (bool, int), we use a nullable wrapper to distinguish
+        // "key exists with value false" from "key doesn't exist".
+        var (state, etag) = await daprClient.GetStateAndETagAsync<T>(StateStoreName, prefixedKey, cancellationToken: ct);
+        if (!string.IsNullOrEmpty(etag))
         {
+            // Key exists in Dapr — cache locally
             memoryCache.Set(prefixedKey, state, TimeSpan.FromMinutes(2));
+            return state;
         }
 
-        return state;
+        return default;
     }
 
     /// <inheritdoc />
