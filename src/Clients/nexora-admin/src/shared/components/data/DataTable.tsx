@@ -27,6 +27,9 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
+const INTERACTIVE_SELECTOR =
+  'button, a, input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="textbox"], [role="combobox"], [role="menuitem"], [role="tab"], [role="slider"], [role="spinbutton"], [contenteditable="true"]';
+
 /** Generic data table with pagination and loading state. */
 export function DataTable<T>({
   columns,
@@ -82,14 +85,15 @@ export function DataTable<T>({
                 <tr
                   key={keyExtractor(row, index)}
                   className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
+                  role={onRowClick ? 'button' : undefined}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? (e: React.MouseEvent<HTMLTableRowElement>) => {
-                    if ((e.target as HTMLElement).closest('button, a, input, select')) return;
+                    if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
                     onRowClick(row);
                   } : undefined}
                   onKeyDown={onRowClick ? (e: React.KeyboardEvent<HTMLTableRowElement>) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if ((e.target as HTMLElement).closest('button, a, input, select')) return;
+                    if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return;
                     if (e.key === ' ') e.preventDefault();
                     onRowClick(row);
                   } : undefined}
