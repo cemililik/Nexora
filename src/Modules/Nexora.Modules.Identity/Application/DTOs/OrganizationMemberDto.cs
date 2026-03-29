@@ -6,4 +6,5 @@ public sealed record OrganizationMemberDto(
     string Email,
     string FirstName,
     string LastName,
-    bool IsDefaultOrg);
+    bool IsDefaultOrg,
+    DateTimeOffset JoinedAt);

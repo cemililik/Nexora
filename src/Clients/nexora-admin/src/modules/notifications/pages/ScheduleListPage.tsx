@@ -15,7 +15,7 @@ import type { NotificationScheduleDto } from '../types';
 
 export default function ScheduleListPage() {
   const { t, i18n } = useTranslation('notifications');
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('notifications.schedule.manage');
@@ -87,6 +87,7 @@ export default function ScheduleListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_notifications_schedule_empty')}
         keyExtractor={(row) => row.id}

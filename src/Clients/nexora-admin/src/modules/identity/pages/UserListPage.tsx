@@ -3,6 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
@@ -16,7 +24,7 @@ import type { UserDto } from '../types';
 export default function UserListPage() {
   const { t } = useTranslation('identity');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -52,15 +60,15 @@ export default function UserListPage() {
   }, [setBreadcrumbs]);
 
   const handleOrganizationChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      updateFilter('organizationId', e.target.value);
+    (value: string) => {
+      updateFilter('organizationId', value === '__all__' ? '' : value);
     },
     [updateFilter],
   );
 
   const handleRoleChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      updateFilter('roleId', e.target.value);
+    (value: string) => {
+      updateFilter('roleId', value === '__all__' ? '' : value);
     },
     [updateFilter],
   );
@@ -108,39 +116,45 @@ export default function UserListPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <input
+        <Input
           type="text"
           value={search ?? ''}
           onChange={handleSearchChange}
           placeholder={t('lockey_identity_search_users')}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="w-64"
         />
-        <select
-          value={organizationId ?? ''}
-          onChange={handleOrganizationChange}
-          aria-label={t('lockey_identity_filter_all_organizations')}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        <Select
+          value={organizationId ?? '__all__'}
+          onValueChange={handleOrganizationChange}
         >
-          <option value="">{t('lockey_identity_filter_all_organizations')}</option>
-          {organizations?.items.map((org) => (
-            <option key={org.id} value={org.id}>
-              {org.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={roleId ?? ''}
-          onChange={handleRoleChange}
-          aria-label={t('lockey_identity_filter_all_roles')}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          <SelectTrigger className="w-48" aria-label={t('lockey_identity_filter_all_organizations')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t('lockey_identity_filter_all_organizations')}</SelectItem>
+            {organizations?.items.map((org) => (
+              <SelectItem key={org.id} value={org.id}>
+                {org.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={roleId ?? '__all__'}
+          onValueChange={handleRoleChange}
         >
-          <option value="">{t('lockey_identity_filter_all_roles')}</option>
-          {roles?.map((role) => (
-            <option key={role.id} value={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-48" aria-label={t('lockey_identity_filter_all_roles')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t('lockey_identity_filter_all_roles')}</SelectItem>
+            {roles?.map((role) => (
+              <SelectItem key={role.id} value={role.id}>
+                {role.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <DataTable
@@ -150,6 +164,7 @@ export default function UserListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_identity_empty_users')}
         keyExtractor={(row) => row.id}

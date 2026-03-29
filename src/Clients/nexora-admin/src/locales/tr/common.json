@@ -60,5 +60,6 @@
   "lockey_common_just_now": "Az önce",
   "lockey_common_minutes_ago": "{{count}} dk önce",
   "lockey_common_hours_ago": "{{count}} saat önce",
-  "lockey_common_days_ago": "{{count}} gün önce"
+  "lockey_common_days_ago": "{{count}} gün önce",
+  "lockey_common_items_per_page": "Sayfa başına öğe"
 }

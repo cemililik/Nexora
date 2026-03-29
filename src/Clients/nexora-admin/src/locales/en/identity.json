@@ -42,6 +42,7 @@
   "lockey_identity_col_module_name": "Module",
   "lockey_identity_col_installed_at": "Installed",
   "lockey_identity_col_installed_by": "Installed By",
+  "lockey_identity_col_joined_at": "Joined",
 
   "lockey_identity_status_active": "Active",
   "lockey_identity_status_inactive": "Inactive",

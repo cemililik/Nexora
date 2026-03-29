@@ -24,7 +24,7 @@ import type { NotificationDto, NotificationChannel, NotificationStatus } from '.
 export default function NotificationListPage() {
   const { t } = useTranslation('notifications');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canSend = hasPermission('notifications.notification.send');
@@ -167,6 +167,7 @@ export default function NotificationListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_notifications_empty_notifications')}
         keyExtractor={(row) => row.id}

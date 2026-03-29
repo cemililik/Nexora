@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useAuditLogs } from '../hooks/useAuditLogs';
+import { useAuditableOperations } from '../hooks/useAuditableOperations';
 import { AuditStatusBadge } from '../components/AuditStatusBadge';
 import { AuditOperationTypeBadge } from '../components/AuditOperationTypeBadge';
 import type { AuditLogDto } from '../types';
@@ -22,7 +23,7 @@ import type { AuditLogDto } from '../types';
 export default function AuditLogListPage() {
   const { t } = useTranslation('audit');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,6 +39,12 @@ export default function AuditLogListPage() {
   }, [setBreadcrumbs]);
 
   const { data, isPending } = useAuditLogs({ page, pageSize, module, isSuccess });
+  const { data: auditableModules } = useAuditableOperations();
+
+  const moduleNames = useMemo(() => {
+    if (!auditableModules) return [];
+    return [...new Set(auditableModules.map((m) => m.module))].sort();
+  }, [auditableModules]);
 
   const updateFilter = (key: string, value: string) => {
     setSearchParams((prev: URLSearchParams) => {
@@ -123,10 +130,11 @@ export default function AuditLogListPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">{t('lockey_audit_filter_all_modules')}</SelectItem>
-            <SelectItem value="identity">Identity</SelectItem>
-            <SelectItem value="contacts">Contacts</SelectItem>
-            <SelectItem value="documents">Documents</SelectItem>
-            <SelectItem value="notifications">Notifications</SelectItem>
+            {moduleNames.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name.charAt(0).toUpperCase() + name.slice(1)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select
@@ -151,6 +159,7 @@ export default function AuditLogListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_audit_empty_logs')}
         keyExtractor={(row) => row.id}

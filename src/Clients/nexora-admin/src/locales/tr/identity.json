@@ -42,6 +42,7 @@
   "lockey_identity_col_module_name": "Modül",
   "lockey_identity_col_installed_at": "Yükleme Tarihi",
   "lockey_identity_col_installed_by": "Yükleyen",
+  "lockey_identity_col_joined_at": "Katılım",
 
   "lockey_identity_status_active": "Aktif",
   "lockey_identity_status_inactive": "Pasif",

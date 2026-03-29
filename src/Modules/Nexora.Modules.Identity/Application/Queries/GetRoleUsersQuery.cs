@@ -51,32 +51,23 @@ public sealed class GetRoleUsersHandler(
                 LocalizedMessage.Of("lockey_identity_error_role_not_found"));
         }
 
-        var query = dbContext.UserRoles
-            .AsNoTracking()
-            .Where(ur => ur.RoleId == roleId)
-            .Join(
-                dbContext.OrganizationUsers.AsNoTracking(),
-                ur => ur.OrganizationUserId,
-                ou => ou.Id,
-                (ur, ou) => new { ur, ou })
-            .Join(
-                dbContext.Users.AsNoTracking().Where(u => u.TenantId == tenantId),
-                x => x.ou.UserId,
-                u => u.Id,
-                (x, u) => new { x.ou, User = u })
-            .Join(
-                dbContext.Organizations.AsNoTracking(),
-                x => x.ou.OrganizationId,
-                o => o.Id,
-                (x, o) => new RoleUserDto(
-                    x.User.Id.Value,
-                    x.User.Email,
-                    x.User.FirstName,
-                    x.User.LastName,
-                    o.Id.Value,
-                    o.Name))
-            .OrderBy(r => r.LastName)
-            .ThenBy(r => r.FirstName);
+        var query = (
+            from ur in dbContext.UserRoles.AsNoTracking()
+            where ur.RoleId == roleId
+            from ou in dbContext.OrganizationUsers.AsNoTracking()
+            where ou.Id == ur.OrganizationUserId
+            from u in dbContext.Users.AsNoTracking()
+            where u.Id == ou.UserId && u.TenantId == tenantId
+            from o in dbContext.Organizations.AsNoTracking()
+            where o.Id == ou.OrganizationId
+            orderby u.LastName, u.FirstName
+            select new RoleUserDto(
+                u.Id.Value,
+                u.Email,
+                u.FirstName,
+                u.LastName,
+                o.Id.Value,
+                o.Name));
 
         var totalCount = await query.CountAsync(ct);
 

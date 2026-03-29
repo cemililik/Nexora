@@ -33,7 +33,7 @@ const STATUS_KEY_MAP: Record<DocumentStatus, string> = {
 export default function DocumentListPage() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
 
@@ -167,6 +167,7 @@ export default function DocumentListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_documents_empty_documents')}
         keyExtractor={(row) => row.id}

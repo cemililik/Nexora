@@ -36,7 +36,7 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         if (requestKind == RequestKind.Other)
             return await next();
 
-        logger.LogInformation("AuditLogBehavior triggered for {RequestType} ({RequestKind})", typeof(TRequest).Name, requestKind);
+        logger.LogDebug("AuditLogBehavior triggered for {RequestType} ({RequestKind})", typeof(TRequest).Name, requestKind);
 
         var (module, operation) = ExtractModuleAndOperation(request, requestKind);
         var defaultEnabled = requestKind == RequestKind.Command;
@@ -53,7 +53,7 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
             return await next();
         }
 
-        logger.LogInformation("Audit config result for {Module}.{Operation}: enabled={AuditEnabled}", module, operation, auditEnabled);
+        logger.LogDebug("Audit config result for {Module}.{Operation}: enabled={AuditEnabled}", module, operation, auditEnabled);
 
         if (!auditEnabled)
             return await next();

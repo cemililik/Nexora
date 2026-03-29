@@ -180,6 +180,7 @@ export interface OrganizationMemberDto {
   firstName: string;
   lastName: string;
   isDefaultOrg: boolean;
+  joinedAt: string;
 }
 
 /** Request body for POST /identity/organizations/:id/members. */

@@ -24,7 +24,7 @@ import type { NotificationTemplateDto, NotificationChannel } from '../types';
 export default function TemplateListPage() {
   const { t } = useTranslation('notifications');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('notifications.template.manage');
@@ -163,6 +163,7 @@ export default function TemplateListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_notifications_templates_empty')}
         keyExtractor={(row) => row.id}

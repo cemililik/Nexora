@@ -418,7 +418,7 @@ export default function AuditSettingsPage() {
             onExpandToggle={() => handleExpandToggle(moduleName)}
             onToggle={handleToggle}
             onModuleToggle={handleModuleToggle}
-            isPending={updateSetting.isPending}
+            isPending={bulkUpdate.isPending}
           />
         ))}
       </div>
@@ -434,9 +434,9 @@ export default function AuditSettingsPage() {
           <Button
             type="button"
             onClick={handleSave}
-            disabled={updateSetting.isPending || changeCount === 0}
+            disabled={bulkUpdate.isPending || changeCount === 0}
           >
-            {updateSetting.isPending
+            {bulkUpdate.isPending
               ? t('lockey_audit_settings_saving')
               : t('lockey_audit_settings_save')}
           </Button>

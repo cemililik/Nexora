@@ -13,6 +13,7 @@ namespace Nexora.Modules.Audit.Application.Services;
 /// </summary>
 public sealed class AuditConfigService(
     AuditDbContext dbContext,
+    ICacheService cacheService,
     ITenantContextAccessor tenantContextAccessor) : IAuditConfigService
 {
     private static readonly CacheOptions CacheTtl = new()
@@ -25,8 +26,20 @@ public sealed class AuditConfigService(
     public async Task<bool> IsEnabledAsync(string module, string operation, CancellationToken ct, bool defaultEnabled = true)
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
+        var cacheKey = $"audit:config:{module}:{operation}:{(defaultEnabled ? "1" : "0")}";
 
-        // Direct DB query — no cache for now (cache bool value-type issue to be fixed separately)
+        // Cache a string value ("1"/"0") to avoid value-type serialization issues with bool
+        var cached = await cacheService.GetOrSetAsync(
+            cacheKey,
+            async token => await ResolveFromDatabase(tenantId, module, operation, defaultEnabled, token) ? "1" : "0",
+            CacheTtl,
+            ct);
+
+        return cached == "1";
+    }
+
+    private async Task<bool> ResolveFromDatabase(string tenantId, string module, string operation, bool defaultEnabled, CancellationToken ct)
+    {
         // 1. Check operation-level setting
         var operationSetting = await dbContext.AuditSettings.AsNoTracking()
             .FirstOrDefaultAsync(s =>

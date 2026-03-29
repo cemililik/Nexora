@@ -25,7 +25,7 @@ const CATEGORIES: TemplateCategory[] = ['Contract', 'Receipt', 'Letter', 'Report
 export default function TemplateListPage() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('documents.template.manage');
@@ -177,6 +177,7 @@ export default function TemplateListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_documents_templates_empty')}
         keyExtractor={(row) => row.id}

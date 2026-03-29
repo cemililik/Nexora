@@ -114,7 +114,7 @@ erDiagram
         string user_agent "Browser/client"
         string correlation_id "Request correlation"
         boolean is_success
-        string error_key "lockey_ key if failed"
+        string error_key "Localization key if failed"
         string entity_type "Contact, Document, etc."
         string entity_id "PK of affected entity"
         jsonb before_state "null for Create"

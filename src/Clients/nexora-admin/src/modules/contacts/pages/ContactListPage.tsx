@@ -18,7 +18,7 @@ const VALID_TYPES: ContactType[] = ['Individual', 'Organization'];
 export default function ContactListPage() {
   const { t } = useTranslation('contacts');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -171,6 +171,7 @@ export default function ContactListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_contacts_empty_contacts')}
         keyExtractor={(row) => row.id}

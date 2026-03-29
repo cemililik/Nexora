@@ -14,7 +14,7 @@ import type { TenantDto } from '../types';
 export default function TenantListPage() {
   const { t } = useTranslation('identity');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data, isPending, isError, error } = useTenants({ page, pageSize });
 
@@ -81,6 +81,7 @@ export default function TenantListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_identity_empty_tenants')}
         keyExtractor={(row) => row.id}

@@ -116,15 +116,16 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
     }
 
     [Fact]
-    public async Task Execute_DifferentTenant_ShouldNotDispatchOtherTenantSchedules()
+    public async Task Execute_FutureScheduleForAnyTenant_ShouldRemainPending()
     {
-        // Arrange — schedule for different tenant
+        // Arrange — future schedule for a different tenant; PlatformJob processes all tenants
+        // in the in-memory DB (no tenant-level query filter), so the schedule stays pending
+        // because it is not yet due, not because of tenant filtering.
         var otherTenantId = Guid.NewGuid();
         var notification = Notification.Create(
             otherTenantId, NotificationChannel.Email, "Test", "Body", "scheduled");
         notification.AddRecipient(Guid.NewGuid(), "user@test.com");
         notification.ClearDomainEvents();
-        // Use a past date by creating with future date then we test filtering
         var schedule = NotificationSchedule.Create(notification.Id, DateTime.UtcNow.AddDays(1));
         await _dbContext.Notifications.AddAsync(notification);
         await _dbContext.NotificationSchedules.AddAsync(schedule);
@@ -137,7 +138,7 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
         // Act
         await job.RunAsync(parameters, CancellationToken.None);
 
-        // Assert
+        // Assert — remains pending because ScheduledAt is in the future
         var updated = await _dbContext.NotificationSchedules.FirstAsync();
         updated.Status.Should().Be(ScheduleStatus.Pending);
     }

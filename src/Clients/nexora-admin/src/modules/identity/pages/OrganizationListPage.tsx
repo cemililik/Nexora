@@ -13,7 +13,7 @@ import type { OrganizationDto } from '../types';
 export default function OrganizationListPage() {
   const { t } = useTranslation('identity');
   const navigate = useNavigate();
-  const { page, pageSize, setPage } = usePagination();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data, isPending } = useOrganizations({ page, pageSize });
 
@@ -69,6 +69,7 @@ export default function OrganizationListPage() {
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_identity_empty_orgs')}
         keyExtractor={(row) => row.id}

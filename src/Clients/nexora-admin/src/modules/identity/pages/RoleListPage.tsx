@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -35,6 +36,7 @@ function createRoleSchemaFactory(t: (key: string, options?: Record<string, unkno
 export default function RoleListPage() {
   const { t } = useTranslation('identity');
   const navigate = useNavigate();
+  const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
@@ -137,10 +139,11 @@ export default function RoleListPage() {
         columns={columns}
         data={roles ?? []}
         totalCount={roles?.length ?? 0}
-        page={1}
-        pageSize={roles?.length ?? 20}
-        onPageChange={() => {}}
-        isLoading={false}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        isLoading={isPending}
         emptyMessage={t('lockey_identity_empty_roles')}
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/identity/roles/${row.id}`)}
