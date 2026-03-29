@@ -41,8 +41,12 @@ public static class UserEndpoints
             var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
             if (result.IsSuccess)
             {
+                // Design decision: LastLoginAt is updated inline with await + try-catch rather than
+                // fire-and-forget (Task.Run), because fire-and-forget caused DbContext/connection pool
+                // corruption due to the scoped lifetime of IdentityDbContext. The await ensures the
+                // DbContext is not disposed mid-operation. The try-catch guarantees that a failed
+                // LastLoginAt update never affects the /me response.
                 // SAFE: ExecuteUpdateAsync filters by strongly-typed UserId — no tenant isolation bypass risk.
-                // Failure-tolerant: LastLoginAt update must never affect the /me response.
                 try
                 {
                     await dbContext.Users

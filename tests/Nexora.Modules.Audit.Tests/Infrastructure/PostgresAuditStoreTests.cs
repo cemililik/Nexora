@@ -139,7 +139,7 @@ public sealed class PostgresAuditStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task SaveAsync_ShouldMapOperationTypeToString()
+    public async Task SaveAsync_ReadOperationType_MapsToStringRepresentation()
     {
         var store = new PostgresAuditStore(_dbContext, NullLogger<PostgresAuditStore>.Instance);
 

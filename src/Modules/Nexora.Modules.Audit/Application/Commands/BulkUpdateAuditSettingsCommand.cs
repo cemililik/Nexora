@@ -37,7 +37,8 @@ public sealed class BulkUpdateAuditSettingsValidator : AbstractValidator<BulkUpd
                 .NotEmpty().WithMessage("lockey_audit_validation_operation_required");
 
             item.RuleFor(s => s.RetentionDays)
-                .GreaterThanOrEqualTo(0).WithMessage("lockey_audit_validation_retention_days_must_be_non_negative");
+                .GreaterThan(0).WithMessage("lockey_audit_validation_retention_days_must_be_positive")
+                .LessThanOrEqualTo(3650).WithMessage("lockey_audit_validation_retention_days_max_exceeded");
         });
 
         RuleFor(x => x.Settings)

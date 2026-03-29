@@ -118,7 +118,7 @@ public sealed class BulkUpdateAuditSettingsTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldInvalidateCacheForEachSetting()
+    public async Task Handle_MultipleSettings_InvalidatesCacheForEachSetting()
     {
         var handler = new BulkUpdateAuditSettingsHandler(
             _dbContext, _tenantAccessor, _cacheService,
@@ -134,13 +134,13 @@ public sealed class BulkUpdateAuditSettingsTests : IDisposable
 
         // Each setting should invalidate 2 cache keys (defaultEnabled true and false variants)
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:config:{_tenantId}:Contacts:CreateContact:1", Arg.Any<CancellationToken>());
+            $"audit:Contacts:{_tenantId}:config:CreateContact:1", Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:config:{_tenantId}:Contacts:CreateContact:0", Arg.Any<CancellationToken>());
+            $"audit:Contacts:{_tenantId}:config:CreateContact:0", Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:config:{_tenantId}:CRM:UpdateLead:1", Arg.Any<CancellationToken>());
+            $"audit:CRM:{_tenantId}:config:UpdateLead:1", Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:config:{_tenantId}:CRM:UpdateLead:0", Arg.Any<CancellationToken>());
+            $"audit:CRM:{_tenantId}:config:UpdateLead:0", Arg.Any<CancellationToken>());
     }
 
     [Fact]

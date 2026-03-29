@@ -73,12 +73,18 @@ public sealed class GetUsersHandler(
                 EF.Functions.ILike(u.Email, pattern));
         }
 
-        var orderedQuery = query
-            .OrderBy(u => u.LastName).ThenBy(u => u.FirstName);
-
         var sw = Stopwatch.StartNew();
 
-        var totalCount = await orderedQuery.CountAsync(cancellationToken);
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        if (totalCount == 0)
+        {
+            logger.LogDebug("No users found for tenant {TenantId} with filters Page={Page}, Search={Search}",
+                tenantId.Value, request.Page, request.Search);
+        }
+
+        var orderedQuery = query
+            .OrderBy(u => u.LastName).ThenBy(u => u.FirstName);
 
         var items = await orderedQuery
             .Skip((request.Page - 1) * request.PageSize)

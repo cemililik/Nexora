@@ -184,6 +184,8 @@ public sealed class PlatformJobTests
         _tenantProvider.GetActiveTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<ActiveTenantInfo>().AsReadOnly());
 
+        SetupScope();
+
         var job = new TestPlatformJob(_tenantProvider, _scopeFactory, _logger);
         var parameters = new TestJobParams { TenantId = "platform" };
 
@@ -200,6 +202,8 @@ public sealed class PlatformJobTests
         // Arrange
         _tenantProvider.GetActiveTenantsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<ActiveTenantInfo>().AsReadOnly());
+
+        SetupScope();
 
         var job = new TestPlatformJob(_tenantProvider, _scopeFactory, _logger);
         var parameters = new TestJobParams { TenantId = "platform" };

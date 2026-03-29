@@ -117,7 +117,8 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task UpdateUserAsync_Success_SendsPutRequest()
     {
-        var handler = CreateHandler(HttpStatusCode.NoContent);
+        // UpdateUserAsync now does GET user → PUT user; provide user body for GET response
+        var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", email = "old@test.com", firstName = "Old", lastName = "Name", enabled = true });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 

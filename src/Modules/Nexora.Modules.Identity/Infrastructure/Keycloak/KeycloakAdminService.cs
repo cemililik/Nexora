@@ -90,7 +90,16 @@ public sealed class KeycloakAdminService(
     {
         await EnsureAuthenticatedAsync(ct);
 
-        var user = new KeycloakUserRepresentation
+        // GET the full user representation first — Keycloak PUT requires the complete object
+        var getUserResponse = await httpClient.GetAsync(
+            $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
+        getUserResponse.EnsureSuccessStatusCode();
+
+        var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
+            ?? throw new InvalidOperationException(
+                $"Failed to deserialize Keycloak user {keycloakUserId} from realm {realm}.");
+
+        var updatedUser = user with
         {
             Email = email,
             FirstName = firstName,
@@ -98,7 +107,7 @@ public sealed class KeycloakAdminService(
         };
 
         var response = await httpClient.PutAsJsonAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", user, ct);
+            $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
         response.EnsureSuccessStatusCode();
 
         logger.LogInformation("Updated Keycloak user {KeycloakUserId} in realm {Realm}", keycloakUserId, realm);

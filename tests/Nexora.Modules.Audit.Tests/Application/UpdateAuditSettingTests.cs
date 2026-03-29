@@ -97,7 +97,7 @@ public sealed class UpdateAuditSettingTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldInvalidateCache()
+    public async Task Handle_SettingCreated_InvalidatesBothCacheVariants()
     {
         var handler = new UpdateAuditSettingHandler(
             _dbContext, _tenantAccessor, _cacheService,
@@ -108,10 +108,10 @@ public sealed class UpdateAuditSettingTests : IDisposable
             CancellationToken.None);
 
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:config:{_tenantId}:Contacts:CreateContact:1",
+            $"audit:Contacts:{_tenantId}:config:CreateContact:1",
             Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:config:{_tenantId}:Contacts:CreateContact:0",
+            $"audit:Contacts:{_tenantId}:config:CreateContact:0",
             Arg.Any<CancellationToken>());
     }
 

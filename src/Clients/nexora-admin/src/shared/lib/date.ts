@@ -14,6 +14,7 @@ export function formatRelativeTime(
   if (!dateStr) return fallback;
 
   const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return fallback;
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMinutes = Math.floor(diffMs / (1000 * 60));

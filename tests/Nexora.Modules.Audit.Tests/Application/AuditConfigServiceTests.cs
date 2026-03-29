@@ -44,12 +44,12 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         // Seed operation-level setting (enabled)
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90));
+            AuditSetting.Create(_tenantId, "contacts", "createcontact", true, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeTrue();
     }
@@ -58,12 +58,12 @@ public sealed class AuditConfigServiceTests : IDisposable
     public async Task IsEnabledAsync_OperationLevelDisabled_ShouldReturnFalse()
     {
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "CreateContact", false, 90));
+            AuditSetting.Create(_tenantId, "contacts", "createcontact", false, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -73,12 +73,12 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         // Only module-level setting (operation = "*")
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "*", false, 90));
+            AuditSetting.Create(_tenantId, "contacts", "*", false, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -88,15 +88,15 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         // Module-level disabled
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "*", false, 90));
+            AuditSetting.Create(_tenantId, "contacts", "*", false, 90));
         // Operation-level enabled
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90));
+            AuditSetting.Create(_tenantId, "contacts", "createcontact", true, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeTrue();
     }
@@ -111,7 +111,7 @@ public sealed class AuditConfigServiceTests : IDisposable
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -124,12 +124,12 @@ public sealed class AuditConfigServiceTests : IDisposable
             AuditSetting.Create(_tenantId, "*", "*", true, 90));
         // Module-level disabled
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "*", false, 90));
+            AuditSetting.Create(_tenantId, "contacts", "*", false, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
@@ -139,7 +139,7 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None, defaultEnabled: true);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None, defaultEnabled: true);
 
         result.Should().BeTrue();
     }
@@ -149,7 +149,7 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None, defaultEnabled: false);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None, defaultEnabled: false);
 
         result.Should().BeFalse();
     }
@@ -159,13 +159,13 @@ public sealed class AuditConfigServiceTests : IDisposable
     {
         // Setting for a different tenant
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create("other-tenant", "Contacts", "CreateContact", false, 90));
+            AuditSetting.Create("other-tenant", "contacts", "createcontact", false, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
         // Should fall back to default (true) since no setting exists for our tenant
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeTrue();
     }
@@ -176,33 +176,33 @@ public sealed class AuditConfigServiceTests : IDisposable
         // Global: disabled
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "*", "*", false, 90));
         // Module: enabled
-        _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Contacts", "*", true, 90));
+        _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "contacts", "*", true, 90));
         // Operation: disabled
-        _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Contacts", "CreateContact", false, 90));
+        _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "contacts", "createcontact", false, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
-        var result = await service.IsEnabledAsync("Contacts", "CreateContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "createcontact", CancellationToken.None);
 
         result.Should().BeFalse();
     }
 
     [Fact]
-    public async Task IsEnabledAsync_DifferentOperationSamModule_ShouldFallToModule()
+    public async Task IsEnabledAsync_DifferentOperationSameModule_ShouldFallToModule()
     {
         // Operation-level only for CreateContact
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90));
+            AuditSetting.Create(_tenantId, "contacts", "createcontact", true, 90));
         // Module-level disabled
         _dbContext.AuditSettings.Add(
-            AuditSetting.Create(_tenantId, "Contacts", "*", false, 90));
+            AuditSetting.Create(_tenantId, "contacts", "*", false, 90));
         await _dbContext.SaveChangesAsync();
 
         var service = CreateService();
 
         // DeleteContact has no operation-level setting, should fall back to module-level
-        var result = await service.IsEnabledAsync("Contacts", "DeleteContact", CancellationToken.None);
+        var result = await service.IsEnabledAsync("contacts", "DeleteContact", CancellationToken.None);
 
         result.Should().BeFalse();
     }

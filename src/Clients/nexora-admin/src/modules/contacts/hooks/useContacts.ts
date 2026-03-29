@@ -25,6 +25,7 @@ export const contactKeys = {
 
 export function useContacts(
   params: PaginationParams & { search?: string; status?: ContactStatus; type?: ContactType },
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: contactKeys.list(params),
@@ -36,6 +37,7 @@ export function useContacts(
         status: params.status,
         type: params.type,
       }),
+    enabled: options?.enabled,
   });
 }
 
