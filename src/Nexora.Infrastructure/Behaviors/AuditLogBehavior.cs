@@ -192,9 +192,11 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         var moduleStart = startIndex + prefix.Length;
         var dotIndex = ns.IndexOf('.', moduleStart);
 
-        return dotIndex < 0
+        var moduleName = dotIndex < 0
             ? ns[moduleStart..]
             : ns[moduleStart..dotIndex];
+
+        return moduleName.ToLowerInvariant();
     }
 
     /// <summary>Determines success/failure and error key from the response.</summary>
