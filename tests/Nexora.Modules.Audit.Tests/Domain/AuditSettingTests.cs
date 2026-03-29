@@ -17,8 +17,8 @@ public sealed class AuditSettingTests
         setting.Should().NotBeNull();
         setting.Id.Value.Should().NotBeEmpty();
         setting.TenantId.Should().Be("tenant-1");
-        setting.Module.Should().Be("Contacts");
-        setting.Operation.Should().Be("CreateContact");
+        setting.Module.Should().Be("contacts");
+        setting.Operation.Should().Be("createcontact");
         setting.IsEnabled.Should().BeTrue();
         setting.RetentionDays.Should().Be(90);
         setting.UpdatedByUser.Should().BeNull();

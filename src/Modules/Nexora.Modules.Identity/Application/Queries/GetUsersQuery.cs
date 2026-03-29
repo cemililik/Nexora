@@ -26,10 +26,26 @@ public sealed class GetUsersHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<GetUsersHandler> logger) : IQueryHandler<GetUsersQuery, PagedResult<UserDto>>
 {
+    private const int MaxPageSize = 100;
+
     public async Task<Result<PagedResult<UserDto>>> Handle(
         GetUsersQuery request,
         CancellationToken cancellationToken)
     {
+        if (request.Page < 1)
+        {
+            logger.LogWarning("Invalid page value {Page} in GetUsersQuery", request.Page);
+            return Result<PagedResult<UserDto>>.Failure(
+                new Error(LocalizedMessage.Of("lockey_validation_page_invalid")));
+        }
+
+        if (request.PageSize < 1 || request.PageSize > MaxPageSize)
+        {
+            logger.LogWarning("Invalid page size {PageSize} in GetUsersQuery (max {MaxPageSize})", request.PageSize, MaxPageSize);
+            return Result<PagedResult<UserDto>>.Failure(
+                new Error(LocalizedMessage.Of("lockey_validation_page_size_invalid", new() { ["max"] = MaxPageSize.ToString() })));
+        }
+
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
 
         var query = dbContext.Users.AsNoTracking()
@@ -79,8 +95,8 @@ public sealed class GetUsersHandler(
 
         if (totalCount == 0)
         {
-            logger.LogDebug("No users found for tenant {TenantId} with filters Page={Page}, Search={Search}",
-                tenantId.Value, request.Page, request.Search);
+            logger.LogDebug("No users found for tenant {TenantId} with filters Page={Page}, HasSearch={HasSearch}",
+                tenantId.Value, request.Page, !string.IsNullOrWhiteSpace(request.Search));
         }
 
         var orderedQuery = query

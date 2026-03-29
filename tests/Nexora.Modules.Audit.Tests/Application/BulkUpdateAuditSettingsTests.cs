@@ -77,12 +77,12 @@ public sealed class BulkUpdateAuditSettingsTests : IDisposable
 
         // Verify updates
         var contactsSetting = await _dbContext.AuditSettings
-            .FirstAsync(s => s.Module == "Contacts" && s.Operation == "CreateContact");
+            .FirstAsync(s => s.Module == "contacts" && s.Operation == "createcontact");
         contactsSetting.IsEnabled.Should().BeFalse();
         contactsSetting.RetentionDays.Should().Be(180);
 
         var crmSetting = await _dbContext.AuditSettings
-            .FirstAsync(s => s.Module == "CRM" && s.Operation == "UpdateLead");
+            .FirstAsync(s => s.Module == "crm" && s.Operation == "updatelead");
         crmSetting.IsEnabled.Should().BeTrue();
         crmSetting.RetentionDays.Should().Be(365);
 
@@ -134,13 +134,13 @@ public sealed class BulkUpdateAuditSettingsTests : IDisposable
 
         // Each setting should invalidate 2 cache keys (defaultEnabled true and false variants)
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:Contacts:{_tenantId}:config:CreateContact:1", Arg.Any<CancellationToken>());
+            $"audit:contacts:{_tenantId}:config:createcontact:1", Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:Contacts:{_tenantId}:config:CreateContact:0", Arg.Any<CancellationToken>());
+            $"audit:contacts:{_tenantId}:config:createcontact:0", Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:CRM:{_tenantId}:config:UpdateLead:1", Arg.Any<CancellationToken>());
+            $"audit:crm:{_tenantId}:config:updatelead:1", Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:CRM:{_tenantId}:config:UpdateLead:0", Arg.Any<CancellationToken>());
+            $"audit:crm:{_tenantId}:config:updatelead:0", Arg.Any<CancellationToken>());
     }
 
     [Fact]

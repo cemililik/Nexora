@@ -115,17 +115,30 @@ public sealed class KeycloakAdminServiceTests
     }
 
     [Fact]
-    public async Task UpdateUserAsync_Success_SendsPutRequest()
+    public async Task UpdateUserAsync_Success_PerformsGetThenPut()
     {
-        // UpdateUserAsync now does GET user → PUT user; provide user body for GET response
+        // UpdateUserAsync does GET user → PUT user; provide user body for GET response
         var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", email = "old@test.com", firstName = "Old", lastName = "Name", enabled = true });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 
         await service.UpdateUserAsync("tenant-abc", userId, "new@test.com", "Updated", "User");
 
-        handler.LastRequest!.Method.Should().Be(HttpMethod.Put);
-        handler.LastRequest.RequestUri!.PathAndQuery.Should().Be($"/admin/realms/tenant-abc/users/{userId}");
+        // Verify request sequence: token → GET → PUT
+        var apiRequests = handler.Requests.Where(r =>
+            !r.RequestUri!.PathAndQuery.Contains("/protocol/openid-connect/token")).ToList();
+        apiRequests.Should().HaveCount(2);
+        apiRequests[0].Method.Should().Be(HttpMethod.Get);
+        apiRequests[0].RequestUri!.PathAndQuery.Should().Be($"/admin/realms/tenant-abc/users/{userId}");
+        apiRequests[1].Method.Should().Be(HttpMethod.Put);
+        apiRequests[1].RequestUri!.PathAndQuery.Should().Be($"/admin/realms/tenant-abc/users/{userId}");
+
+        // Verify PUT body contains updated fields
+        var body = await apiRequests[1].Content!.ReadAsStringAsync();
+        var doc = JsonDocument.Parse(body);
+        doc.RootElement.GetProperty("email").GetString().Should().Be("new@test.com");
+        doc.RootElement.GetProperty("firstName").GetString().Should().Be("Updated");
+        doc.RootElement.GetProperty("lastName").GetString().Should().Be("User");
     }
 
     [Fact]
@@ -194,6 +207,7 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
     private bool _isTokenRequest = true;
 
     public HttpRequestMessage? LastRequest { get; private set; }
+    public List<HttpRequestMessage> Requests { get; } = [];
 
     public FakeHttpHandler(HttpStatusCode statusCode, object? content = null,
         Dictionary<string, string>? responseHeaders = null)
@@ -206,6 +220,7 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         LastRequest = request;
+        Requests.Add(request);
 
         // First call is always the token request
         if (_isTokenRequest && request.RequestUri!.PathAndQuery.Contains("/protocol/openid-connect/token"))

@@ -50,12 +50,14 @@ public sealed class UpdateAuditSettingHandler(
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
         var userId = tenantContextAccessor.Current.UserId ?? "system";
+        var module = request.Module.Trim().ToLowerInvariant();
+        var operation = request.Operation.Trim().ToLowerInvariant();
 
         var existing = await dbContext.AuditSettings
             .FirstOrDefaultAsync(s =>
                 s.TenantId == tenantId &&
-                s.Module == request.Module &&
-                s.Operation == request.Operation,
+                s.Module == module &&
+                s.Operation == operation,
                 cancellationToken);
 
         if (existing is not null)
@@ -63,23 +65,23 @@ public sealed class UpdateAuditSettingHandler(
             existing.Update(request.IsEnabled, request.RetentionDays, userId);
             logger.LogInformation(
                 "Audit setting updated for {Module}/{Operation} in tenant {TenantId}",
-                request.Module, request.Operation, tenantId);
+                module, operation, tenantId);
         }
         else
         {
             existing = AuditSetting.Create(
-                tenantId, request.Module, request.Operation,
+                tenantId, module, operation,
                 request.IsEnabled, request.RetentionDays);
             dbContext.AuditSettings.Add(existing);
             logger.LogInformation(
                 "Audit setting created for {Module}/{Operation} in tenant {TenantId}",
-                request.Module, request.Operation, tenantId);
+                module, operation, tenantId);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         // Invalidate cache for this setting (both defaultEnabled variants)
-        var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, request.Module, request.Operation);
+        var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, module, operation);
         await cacheService.RemoveAsync(enabledKey, cancellationToken);
         await cacheService.RemoveAsync(disabledKey, cancellationToken);
 

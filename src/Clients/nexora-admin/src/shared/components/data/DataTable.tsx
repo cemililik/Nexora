@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import React, { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
@@ -26,6 +26,9 @@ interface DataTableProps<T> {
   keyExtractor?: (row: T, index: number) => string | number;
   onRowClick?: (row: T) => void;
 }
+
+const INTERACTIVE_SELECTOR =
+  'button, a, input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="textbox"], [role="combobox"], [role="menuitem"], [role="tab"], [role="slider"], [role="spinbutton"], [contenteditable="true"]';
 
 /** Generic data table with pagination and loading state. */
 export function DataTable<T>({
@@ -84,12 +87,14 @@ export function DataTable<T>({
                   className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? (e: React.MouseEvent<HTMLTableRowElement>) => {
-                    if ((e.target as HTMLElement).closest('button, a, input, select')) return;
+                    const el = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR);
+                    if (el && el !== e.currentTarget) return;
                     onRowClick(row);
                   } : undefined}
                   onKeyDown={onRowClick ? (e: React.KeyboardEvent<HTMLTableRowElement>) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if ((e.target as HTMLElement).closest('button, a, input, select')) return;
+                    const el = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR);
+                    if (el && el !== e.currentTarget) return;
                     if (e.key === ' ') e.preventDefault();
                     onRowClick(row);
                   } : undefined}

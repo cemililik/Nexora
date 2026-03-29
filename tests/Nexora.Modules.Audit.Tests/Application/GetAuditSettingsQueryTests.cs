@@ -50,7 +50,7 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldOrderByModuleThenOperation()
+    public async Task Handle_WithMultipleSettings_ShouldOrderByModuleThenOperation()
     {
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Identity", "Login", true, 365));
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Contacts", "DeleteContact", false, 30));
@@ -62,12 +62,12 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
 
         result.IsSuccess.Should().BeTrue();
         var settings = result.Value!;
-        settings[0].Module.Should().Be("Contacts");
-        settings[0].Operation.Should().Be("CreateContact");
-        settings[1].Module.Should().Be("Contacts");
-        settings[1].Operation.Should().Be("DeleteContact");
-        settings[2].Module.Should().Be("Identity");
-        settings[2].Operation.Should().Be("Login");
+        settings[0].Module.Should().Be("contacts");
+        settings[0].Operation.Should().Be("createcontact");
+        settings[1].Module.Should().Be("contacts");
+        settings[1].Operation.Should().Be("deletecontact");
+        settings[2].Module.Should().Be("identity");
+        settings[2].Operation.Should().Be("login");
     }
 
     [Fact]
@@ -82,11 +82,11 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Should().HaveCount(1);
-        result.Value[0].Module.Should().Be("Contacts");
+        result.Value[0].Module.Should().Be("contacts");
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnCorrectDtoProperties()
+    public async Task Handle_WithSetting_ShouldReturnCorrectDtoProperties()
     {
         var setting = AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90);
         _dbContext.AuditSettings.Add(setting);
@@ -98,8 +98,8 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
         result.IsSuccess.Should().BeTrue();
         var dto = result.Value![0];
         dto.Id.Should().Be(setting.Id.Value);
-        dto.Module.Should().Be("Contacts");
-        dto.Operation.Should().Be("CreateContact");
+        dto.Module.Should().Be("contacts");
+        dto.Operation.Should().Be("createcontact");
         dto.IsEnabled.Should().BeTrue();
         dto.RetentionDays.Should().Be(90);
     }
