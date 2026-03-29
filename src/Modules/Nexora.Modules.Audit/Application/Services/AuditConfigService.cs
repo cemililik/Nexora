@@ -47,37 +47,20 @@ public sealed class AuditConfigService(
     {
         logger.LogDebug("Audit config cache miss for {TenantId}:{Module}.{Operation}, resolving from database", tenantId, module, operation);
 
-        // 1. Check operation-level setting
-        var operationSetting = await dbContext.AuditSettings.AsNoTracking()
-            .FirstOrDefaultAsync(s =>
+        // Single query fetching all applicable settings (operation, module-wildcard, global-wildcard).
+        // Precedence is applied in-memory via ordering: exact match > module wildcard > global wildcard.
+        var settings = await dbContext.AuditSettings.AsNoTracking()
+            .Where(s =>
                 s.TenantId == tenantId &&
-                s.Module == module &&
-                s.Operation == operation, ct);
+                (s.Module == module || s.Module == "*") &&
+                (s.Operation == operation || s.Operation == "*"))
+            .ToListAsync(ct);
 
-        if (operationSetting is not null)
-            return operationSetting.IsEnabled;
+        var best = settings
+            .OrderBy(s => s.Module == "*" ? 1 : 0)
+            .ThenBy(s => s.Operation == "*" ? 1 : 0)
+            .FirstOrDefault();
 
-        // 2. Check module-level setting (operation = "*")
-        var moduleSetting = await dbContext.AuditSettings.AsNoTracking()
-            .FirstOrDefaultAsync(s =>
-                s.TenantId == tenantId &&
-                s.Module == module &&
-                s.Operation == "*", ct);
-
-        if (moduleSetting is not null)
-            return moduleSetting.IsEnabled;
-
-        // 3. Check global setting (module = "*", operation = "*")
-        var globalSetting = await dbContext.AuditSettings.AsNoTracking()
-            .FirstOrDefaultAsync(s =>
-                s.TenantId == tenantId &&
-                s.Module == "*" &&
-                s.Operation == "*", ct);
-
-        if (globalSetting is not null)
-            return globalSetting.IsEnabled;
-
-        // 4. Default: use the caller-specified default (commands default enabled, queries default disabled)
-        return defaultEnabled;
+        return best?.IsEnabled ?? defaultEnabled;
     }
 }

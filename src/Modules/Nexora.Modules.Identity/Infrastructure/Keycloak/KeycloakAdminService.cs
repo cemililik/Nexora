@@ -97,7 +97,7 @@ public sealed class KeycloakAdminService(
 
         var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
             ?? throw new InvalidOperationException(
-                $"Failed to deserialize Keycloak user {keycloakUserId} from realm {realm}.");
+                $"lockey_identity_keycloak_deserialize_failed [UserId={keycloakUserId}, Realm={realm}]");
 
         var updatedUser = user with
         {
@@ -136,7 +136,7 @@ public sealed class KeycloakAdminService(
 
         var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
             ?? throw new InvalidOperationException(
-                $"Failed to deserialize Keycloak user {keycloakUserId} from realm {realm}.");
+                $"lockey_identity_keycloak_deserialize_failed [UserId={keycloakUserId}, Realm={realm}]");
 
         var updatedUser = user with { Enabled = enabled };
 

@@ -5,24 +5,39 @@ using Nexora.Modules.Audit.Infrastructure.Stores;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Testcontainers.PostgreSql;
 using AuditEntryRecord = Nexora.SharedKernel.Abstractions.Audit.AuditEntry;
 
 namespace Nexora.Modules.Audit.Tests.Infrastructure;
 
-public sealed class PostgresAuditStoreTests : IDisposable
+public sealed class PostgresAuditStoreTests : IAsyncLifetime
 {
-    private readonly AuditDbContext _dbContext;
-    private readonly string _tenantId = Guid.NewGuid().ToString();
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
+        .WithImage("postgres:17-alpine")
+        .Build();
 
-    public PostgresAuditStoreTests()
+    private AuditDbContext _dbContext = null!;
+    private string _tenantId = null!;
+
+    public async Task InitializeAsync()
     {
+        await _postgres.StartAsync();
+
+        _tenantId = Guid.NewGuid().ToString();
         var tenantAccessor = CreateTenantAccessor(_tenantId);
 
         var options = new DbContextOptionsBuilder<AuditDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_postgres.GetConnectionString())
             .Options;
 
         _dbContext = new AuditDbContext(options, tenantAccessor);
+        await _dbContext.Database.EnsureCreatedAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        _dbContext.Dispose();
+        await _postgres.DisposeAsync();
     }
 
     [Fact]
@@ -76,7 +91,7 @@ public sealed class PostgresAuditStoreTests : IDisposable
         persisted.AfterState.Should().Be("{\"name\":\"John\"}");
         persisted.Changes.Should().Be("{\"name\":[null,\"John\"]}");
         persisted.Metadata.Should().Be("{\"source\":\"api\"}");
-        persisted.Timestamp.Should().Be(timestamp);
+        persisted.Timestamp.Should().BeCloseTo(timestamp, TimeSpan.FromMilliseconds(1));
     }
 
     [Fact]
@@ -159,8 +174,6 @@ public sealed class PostgresAuditStoreTests : IDisposable
         var persisted = await _dbContext.AuditEntries.FirstAsync();
         persisted.OperationType.Should().Be("Read");
     }
-
-    public void Dispose() => _dbContext.Dispose();
 
     private static ITenantContextAccessor CreateTenantAccessor(string tenantId)
     {

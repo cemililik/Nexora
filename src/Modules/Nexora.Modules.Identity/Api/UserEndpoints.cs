@@ -30,7 +30,13 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<PagedResult<UserDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<PagedResult<UserDto>>.Fail(result.Error!));
-        });
+        })
+        .WithSummary("List users")
+        .WithDescription("Returns a paginated list of users within the current tenant, optionally filtered by organization, role, or search term.")
+        .Produces<ApiEnvelope<PagedResult<UserDto>>>(StatusCodes.Status200OK)
+        .Produces<ApiEnvelope<PagedResult<UserDto>>>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, ILogger<IdentityDbContext> logger, CancellationToken ct) =>
         {
@@ -53,7 +59,11 @@ public static class UserEndpoints
                         .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
                         .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (DbUpdateException ex)
                 {
                     logger.LogWarning(ex, "Failed to update LastLoginAt for user {UserId}", result.Value!.Id);
                 }

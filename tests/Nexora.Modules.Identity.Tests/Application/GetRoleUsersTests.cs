@@ -62,7 +62,7 @@ public sealed class GetRoleUsersTests : IDisposable
         result.Value.Items[0].FirstName.Should().Be("John");
         result.Value.Items[0].LastName.Should().Be("Doe");
         result.Value.Items[0].OrganizationName.Should().Be("Test Org");
-        result.Value.Items[0].AssignedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
+        result.Value.Items[0].AssignedAt.Should().BeCloseTo(userRole.AssignedAt, TimeSpan.FromSeconds(1));
     }
 
     [Fact]
@@ -98,11 +98,9 @@ public sealed class GetRoleUsersTests : IDisposable
         {
             var user = User.Create(_tenantId, $"kc-{i}", $"user{i}@test.com", $"First{i}", $"Last{i}");
             _dbContext.Users.Add(user);
-            await _dbContext.SaveChangesAsync();
 
             var orgUser = OrganizationUser.Create(user.Id, _org.Id);
             _dbContext.OrganizationUsers.Add(orgUser);
-            await _dbContext.SaveChangesAsync();
 
             var userRole = UserRole.Create(orgUser.Id, _role.Id);
             _dbContext.UserRoles.Add(userRole);

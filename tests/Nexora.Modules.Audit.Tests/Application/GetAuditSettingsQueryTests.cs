@@ -50,7 +50,7 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldOrderByModuleThenOperation()
+    public async Task Handle_WithMultipleSettings_ShouldOrderByModuleThenOperation()
     {
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Identity", "Login", true, 365));
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Contacts", "DeleteContact", false, 30));
@@ -86,7 +86,7 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnCorrectDtoProperties()
+    public async Task Handle_WithSetting_ShouldReturnCorrectDtoProperties()
     {
         var setting = AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90);
         _dbContext.AuditSettings.Add(setting);
