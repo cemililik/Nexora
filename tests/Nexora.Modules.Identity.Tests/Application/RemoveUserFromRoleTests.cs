@@ -61,7 +61,7 @@ public sealed class RemoveUserFromRoleTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_RoleNotFound_ReturnsFailure()
+    public async Task Handle_UserNotFound_ReturnsFailure()
     {
         // User has no org memberships, so handler returns user_not_found
         var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, NullLogger<RemoveUserFromRoleHandler>.Instance);
@@ -101,6 +101,18 @@ public sealed class RemoveUserFromRoleTests : IDisposable
         var result = validator.TestValidate(command);
 
         result.ShouldHaveValidationErrorFor(x => x.RoleId)
+            .WithErrorMessage("lockey_validation_required");
+    }
+
+    [Fact]
+    public void Validator_EmptyUserId_FailsValidation()
+    {
+        var validator = new RemoveUserFromRoleValidator();
+        var command = new RemoveUserFromRoleCommand(Guid.NewGuid(), Guid.Empty);
+
+        var result = validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.UserId)
             .WithErrorMessage("lockey_validation_required");
     }
 

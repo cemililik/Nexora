@@ -61,9 +61,8 @@ describe('formatRelativeTime', () => {
 
     const result = formatRelativeTime('2026-01-15T12:00:00Z');
 
-    // Should be a localized date string, not a lockey_ key
-    expect(result).not.toContain('lockey_');
-    expect(result).toBeTruthy();
+    // Should be a localized date string matching the expected date
+    expect(result).toBe(new Date('2026-01-15T12:00:00Z').toLocaleDateString('en'));
   });
 
   it('should return fallback for null input', () => {
@@ -88,5 +87,21 @@ describe('formatRelativeTime', () => {
     const result = formatRelativeTime('');
 
     expect(result).toBe('-');
+  });
+
+  it('should return fallback for invalid date string', () => {
+    const result = formatRelativeTime('not-a-date');
+
+    expect(result).toBe('-');
+  });
+
+  it('should return a value for future date', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00Z'));
+
+    const result = formatRelativeTime('2026-04-15T12:00:00Z');
+
+    expect(result).toBeTruthy();
+    expect(result).not.toBe('-');
   });
 });

@@ -200,7 +200,7 @@ public sealed class AuditLogBehaviorTests
         _configService.IsEnabledAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
             .Returns(true);
         _auditStore.SaveAsync(Arg.Any<AuditEntry>(), Arg.Any<CancellationToken>())
-            .Throws(new Exception("Database unavailable"));
+            .Throws(new InvalidOperationException("Database unavailable"));
 
         var behavior = CreateBehavior<TestAuditCommand, Result<string>>();
         RequestHandlerDelegate<Result<string>> next = () => Task.FromResult(Result<string>.Success("ok"));

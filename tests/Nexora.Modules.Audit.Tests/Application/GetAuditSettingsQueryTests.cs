@@ -25,7 +25,7 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_NoSettings_ShouldReturnEmptyList()
+    public async Task Handle_NoSettingsExist_ShouldReturnEmptyList()
     {
         var handler = new GetAuditSettingsHandler(_dbContext, _tenantAccessor);
         var result = await handler.Handle(new GetAuditSettingsQuery(), CancellationToken.None);
@@ -35,7 +35,7 @@ public sealed class GetAuditSettingsQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_WithSettings_ShouldReturnAllForTenant()
+    public async Task Handle_MultipleSettingsExist_ShouldReturnAllForTenant()
     {
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90));
         _dbContext.AuditSettings.Add(AuditSetting.Create(_tenantId, "CRM", "UpdateLead", false, 30));

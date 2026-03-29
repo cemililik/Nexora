@@ -8,10 +8,10 @@ public static class AuditCacheKeys
 {
     /// <summary>
     /// Builds the cache key for an audit config entry.
-    /// Format: audit:config:{tenantId}:{module}:{operation}:{defaultFlag}
+    /// Format: audit:{module}:{tenantId}:config:{operation}:{defaultFlag}
     /// </summary>
     public static string ConfigKey(string tenantId, string module, string operation, bool defaultEnabled) =>
-        $"audit:config:{tenantId}:{module}:{operation}:{(defaultEnabled ? "1" : "0")}";
+        $"audit:{module}:{tenantId}:config:{operation}:{(defaultEnabled ? "1" : "0")}";
 
     /// <summary>
     /// Returns both defaultEnabled variant keys for cache invalidation.

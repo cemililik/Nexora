@@ -62,6 +62,7 @@ public sealed class GetRoleUsersTests : IDisposable
         result.Value.Items[0].FirstName.Should().Be("John");
         result.Value.Items[0].LastName.Should().Be("Doe");
         result.Value.Items[0].OrganizationName.Should().Be("Test Org");
+        result.Value.Items[0].AssignedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
     }
 
     [Fact]
@@ -105,8 +106,9 @@ public sealed class GetRoleUsersTests : IDisposable
 
             var userRole = UserRole.Create(orgUser.Id, _role.Id);
             _dbContext.UserRoles.Add(userRole);
-            await _dbContext.SaveChangesAsync();
         }
+
+        await _dbContext.SaveChangesAsync();
 
         var handler = new GetRoleUsersHandler(_dbContext, _tenantAccessor, NullLogger<GetRoleUsersHandler>.Instance);
 

@@ -76,6 +76,7 @@ describe('EntityDiffViewer', () => {
     expect(screen.getByText('status')).toBeInTheDocument();
     // The em-dash is rendered for null values
     const cells = screen.getAllByRole('cell');
+    expect(cells).toHaveLength(3);
     const oldValueCell = cells[1]!;
     expect(oldValueCell.textContent).toBe('\u2014');
     expect(screen.getByText('Active')).toBeInTheDocument();
@@ -90,6 +91,7 @@ describe('EntityDiffViewer', () => {
 
     expect(screen.getByText('Some text')).toBeInTheDocument();
     const cells = screen.getAllByRole('cell');
+    expect(cells).toHaveLength(3);
     const newValueCell = cells[2]!;
     expect(newValueCell.textContent).toBe('\u2014');
   });

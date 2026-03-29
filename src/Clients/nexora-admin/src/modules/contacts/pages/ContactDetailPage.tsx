@@ -532,7 +532,7 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
                 control={control}
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger id="address-type" className="mt-1">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -793,7 +793,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
     page: 1,
     pageSize: 20,
     search: debouncedSearch || undefined,
-  });
+  }, { enabled: showForm });
 
   const relationshipSchema = useMemo(() => createRelationshipSchema(t), [t]);
   const {
@@ -863,6 +863,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
                     <button
                       type="button"
                       className="ms-2 text-muted-foreground hover:text-foreground"
+                      aria-label={t('lockey_contacts_relationship_clear_selection')}
                       onClick={() => {
                         setSelectedContact(null);
                         setValue('relatedContactId', '');
@@ -920,8 +921,9 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
               )}
             </div>
             <div>
-              <label className="text-sm font-medium">{t('lockey_contacts_relationship_type')}</label>
+              <label htmlFor="relationship-type" className="text-sm font-medium">{t('lockey_contacts_relationship_type')}</label>
               <select
+                id="relationship-type"
                 {...register('type')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
