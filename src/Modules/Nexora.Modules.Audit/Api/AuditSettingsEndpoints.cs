@@ -64,7 +64,7 @@ public static class AuditSettingsEndpoints
             .SelectMany(a =>
             {
                 try { return a.GetTypes(); }
-                catch (ReflectionTypeLoadException) { return []; }
+                catch (ReflectionTypeLoadException ex) { return ex.Types?.Where(t => t is not null).Cast<Type>() ?? []; }
             })
             .Where(t => t is { IsInterface: false, IsAbstract: false } && (ImplementsCommand(t) || ImplementsQuery(t)))
             .ToList();
@@ -73,7 +73,7 @@ public static class AuditSettingsEndpoints
 
         foreach (var type in moduleTypes)
         {
-            var moduleName = ExtractModuleName(type.Namespace);
+            var moduleName = ExtractModuleName(type.Namespace ?? string.Empty);
             var isQuery = ImplementsQuery(type);
 
             var operationName = isQuery

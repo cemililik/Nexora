@@ -35,15 +35,26 @@ public sealed class GetUsersHandler(
         var query = dbContext.Users.AsNoTracking()
             .Where(u => u.TenantId == tenantId);
 
-        if (request.OrganizationId.HasValue)
+        if (request.OrganizationId.HasValue && request.RoleId.HasValue)
+        {
+            // Correlate on the same OrganizationUser record when both filters are provided
+            var orgId = OrganizationId.From(request.OrganizationId.Value);
+            var roleId = Domain.ValueObjects.RoleId.From(request.RoleId.Value);
+            query = query.Where(u =>
+                dbContext.OrganizationUsers.Any(ou =>
+                    ou.UserId == u.Id &&
+                    ou.OrganizationId == orgId &&
+                    dbContext.UserRoles.Any(ur =>
+                        ur.OrganizationUserId == ou.Id && ur.RoleId == roleId)));
+        }
+        else if (request.OrganizationId.HasValue)
         {
             var orgId = OrganizationId.From(request.OrganizationId.Value);
             query = query.Where(u =>
                 dbContext.OrganizationUsers.Any(ou =>
                     ou.UserId == u.Id && ou.OrganizationId == orgId));
         }
-
-        if (request.RoleId.HasValue)
+        else if (request.RoleId.HasValue)
         {
             var roleId = Domain.ValueObjects.RoleId.From(request.RoleId.Value);
             query = query.Where(u =>
@@ -55,11 +66,11 @@ public sealed class GetUsersHandler(
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            var search = request.Search.Trim().ToLower();
+            var pattern = $"%{request.Search.Trim()}%";
             query = query.Where(u =>
-                u.FirstName.ToLower().Contains(search) ||
-                u.LastName.ToLower().Contains(search) ||
-                u.Email.ToLower().Contains(search));
+                EF.Functions.ILike(u.FirstName, pattern) ||
+                EF.Functions.ILike(u.LastName, pattern) ||
+                EF.Functions.ILike(u.Email, pattern));
         }
 
         var orderedQuery = query

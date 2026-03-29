@@ -1,6 +1,8 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
+using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -18,6 +20,35 @@ public sealed record AuditSettingItem(string Module, string Operation, bool IsEn
 public sealed record BulkUpdateAuditSettingsCommand(
     List<AuditSettingItem> Settings) : ICommand<List<AuditSettingDto>>;
 
+/// <summary>Validates bulk audit settings update input.</summary>
+public sealed class BulkUpdateAuditSettingsValidator : AbstractValidator<BulkUpdateAuditSettingsCommand>
+{
+    public BulkUpdateAuditSettingsValidator()
+    {
+        RuleFor(x => x.Settings)
+            .NotEmpty().WithMessage("lockey_audit_validation_settings_required");
+
+        RuleForEach(x => x.Settings).ChildRules(item =>
+        {
+            item.RuleFor(s => s.Module)
+                .NotEmpty().WithMessage("lockey_audit_validation_module_required");
+
+            item.RuleFor(s => s.Operation)
+                .NotEmpty().WithMessage("lockey_audit_validation_operation_required");
+
+            item.RuleFor(s => s.RetentionDays)
+                .GreaterThanOrEqualTo(0).WithMessage("lockey_audit_validation_retention_days_must_be_non_negative");
+        });
+
+        RuleFor(x => x.Settings)
+            .Must(settings => settings
+                .Select(s => $"{s.Module}:{s.Operation}")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() == settings.Count)
+            .WithMessage("lockey_audit_validation_duplicate_settings");
+    }
+}
+
 /// <summary>Handles bulk upsert of audit settings.</summary>
 public sealed class BulkUpdateAuditSettingsHandler(
     AuditDbContext dbContext,
@@ -33,16 +64,23 @@ public sealed class BulkUpdateAuditSettingsHandler(
         var userId = tenantContextAccessor.Current.UserId ?? "system";
         var results = new List<AuditSettingDto>();
 
+        // Batch load all existing settings for this tenant to avoid N+1 queries
+        var requestedKeys = request.Settings
+            .Select(s => $"{s.Module}:{s.Operation}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var existingSettings = await dbContext.AuditSettings
+            .Where(s => s.TenantId == tenantId)
+            .ToListAsync(cancellationToken);
+
+        var existingLookup = existingSettings
+            .ToDictionary(s => $"{s.Module}:{s.Operation}", StringComparer.OrdinalIgnoreCase);
+
         foreach (var item in request.Settings)
         {
-            var existing = await dbContext.AuditSettings
-                .FirstOrDefaultAsync(s =>
-                    s.TenantId == tenantId &&
-                    s.Module == item.Module &&
-                    s.Operation == item.Operation,
-                    cancellationToken);
+            var key = $"{item.Module}:{item.Operation}";
 
-            if (existing is not null)
+            if (existingLookup.TryGetValue(key, out var existing))
             {
                 existing.Update(item.IsEnabled, item.RetentionDays, userId);
             }
@@ -62,10 +100,9 @@ public sealed class BulkUpdateAuditSettingsHandler(
         // Invalidate cache for each updated setting (both defaultEnabled variants)
         foreach (var item in request.Settings)
         {
-            await cacheService.RemoveAsync(
-                $"audit:config:{tenantId}:{item.Module}:{item.Operation}:1", cancellationToken);
-            await cacheService.RemoveAsync(
-                $"audit:config:{tenantId}:{item.Module}:{item.Operation}:0", cancellationToken);
+            var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, item.Module, item.Operation);
+            await cacheService.RemoveAsync(enabledKey, cancellationToken);
+            await cacheService.RemoveAsync(disabledKey, cancellationToken);
         }
 
         logger.LogInformation(

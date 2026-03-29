@@ -90,11 +90,58 @@ sequenceDiagram
 
 ### 2.3 Pipeline Position
 
-```
+```text
 ValidationBehavior → LoggingBehavior → AuditLogBehavior → Handler
 ```
 
 Audit runs after validation (no point auditing invalid requests) and after logging (observability first).
+
+### 2.4 Audit Entry Lifecycle (State Diagram)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Captured : AuditLogBehavior intercepts command
+    Captured --> Persisted : IAuditStore.SaveAsync succeeds
+    Captured --> Dropped : Auditing disabled for operation
+    Persisted --> Retained : Within retention period
+    Retained --> Expired : Retention period exceeded
+    Expired --> Purged : audit:cleanup-expired job drops partition
+    Purged --> [*]
+```
+
+### 2.5 Integration Diagram (System Boundaries)
+
+```mermaid
+flowchart LR
+    subgraph Clients["Clients"]
+        Admin[nexora-admin<br/>React 19]
+    end
+
+    subgraph Gateway["API Gateway"]
+        APISIX[APISIX<br/>JWT validation]
+    end
+
+    subgraph Platform["Nexora Platform"]
+        AuditAPI[Audit API<br/>Minimal API]
+        Pipeline[AuditLogBehavior<br/>MediatR Pipeline]
+        ConfigSvc[IAuditConfigService]
+        Store[IAuditStore]
+    end
+
+    subgraph Infra["Infrastructure"]
+        PG[(PostgreSQL<br/>Partitioned tables)]
+        Redis[(Redis<br/>Config cache)]
+    end
+
+    Admin -->|HTTPS| APISIX
+    APISIX -->|Validated request| AuditAPI
+    AuditAPI --> Store
+    Pipeline --> ConfigSvc
+    Pipeline --> Store
+    ConfigSvc --> Redis
+    ConfigSvc --> PG
+    Store --> PG
+```
 
 ## 3. Data Model
 
@@ -170,7 +217,7 @@ If no setting exists → auditing is **enabled by default** (secure by default).
 
 ## 5. Module Structure
 
-```
+```text
 src/Modules/Nexora.Modules.Audit/
 ├── Domain/
 │   ├── Entities/
@@ -257,11 +304,11 @@ public interface IAuditable
 |--------|------|------------|-------------|
 | `GET` | `/api/v1/audit/logs` | `audit.logs.read` | List logs (filters: module, user, date range, operation, success/failure) |
 | `GET` | `/api/v1/audit/logs/{id}` | `audit.logs.read` | Single entry with full before/after diff |
-| `GET` | `/api/v1/audit/logs/export` | `audit.logs.export` | CSV export |
+| `GET` | `/api/v1/audit/logs/export` | `audit.logs.export` | CSV export (planned) |
 | `GET` | `/api/v1/audit/settings` | `audit.settings.read` | List audit settings |
 | `PUT` | `/api/v1/audit/settings` | `audit.settings.manage` | Update setting |
-| `POST` | `/api/v1/audit/settings/bulk` | `audit.settings.manage` | Bulk update settings |
-| `GET` | `/api/v1/audit/stats` | `audit.logs.read` | Summary statistics |
+| `PUT` | `/api/v1/audit/settings/bulk` | `audit.settings.manage` | Bulk update settings |
+| `GET` | `/api/v1/audit/settings/operations` | `audit.settings.read` | List auditable operations |
 
 ## 8. Permission Model
 
@@ -274,7 +321,7 @@ public interface IAuditable
 
 ## 9. Frontend Module
 
-```
+```text
 nexora-admin/src/modules/audit/
 ├── manifest.ts
 ├── pages/

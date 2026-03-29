@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -14,7 +15,8 @@ namespace Nexora.Modules.Audit.Application.Services;
 public sealed class AuditConfigService(
     AuditDbContext dbContext,
     ICacheService cacheService,
-    ITenantContextAccessor tenantContextAccessor) : IAuditConfigService
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<AuditConfigService> logger) : IAuditConfigService
 {
     private static readonly CacheOptions CacheTtl = new()
     {
@@ -26,7 +28,7 @@ public sealed class AuditConfigService(
     public async Task<bool> IsEnabledAsync(string module, string operation, CancellationToken ct, bool defaultEnabled = true)
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
-        var cacheKey = $"audit:config:{tenantId}:{module}:{operation}:{(defaultEnabled ? "1" : "0")}";
+        var cacheKey = AuditCacheKeys.ConfigKey(tenantId, module, operation, defaultEnabled);
 
         // Cache a string value ("1"/"0") to avoid value-type serialization issues with bool
         var cached = await cacheService.GetOrSetAsync(
@@ -40,6 +42,8 @@ public sealed class AuditConfigService(
 
     private async Task<bool> ResolveFromDatabase(string tenantId, string module, string operation, bool defaultEnabled, CancellationToken ct)
     {
+        logger.LogDebug("Audit config cache miss for {TenantId}:{Module}.{Operation}, resolving from database", tenantId, module, operation);
+
         // 1. Check operation-level setting
         var operationSetting = await dbContext.AuditSettings.AsNoTracking()
             .FirstOrDefaultAsync(s =>

@@ -15,4 +15,7 @@ public interface IAuditable
 
     /// <summary>The entity type affected, if applicable (e.g., "Contact").</summary>
     string? AuditEntityType { get; }
+
+    /// <summary>Explicit operation type override. When null, derived from operation name prefix.</summary>
+    OperationType? AuditOperationType => null;
 }

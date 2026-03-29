@@ -32,9 +32,10 @@ interface ToggleSwitchProps {
   onChange: () => void;
   disabled?: boolean;
   size?: 'sm' | 'md';
+  'aria-label'?: string;
 }
 
-function ToggleSwitch({ checked, indeterminate, onChange, disabled, size = 'md' }: ToggleSwitchProps) {
+function ToggleSwitch({ checked, indeterminate, onChange, disabled, size = 'md', 'aria-label': ariaLabel }: ToggleSwitchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,6 +56,7 @@ function ToggleSwitch({ checked, indeterminate, onChange, disabled, size = 'md' 
         checked={checked}
         onChange={onChange}
         disabled={disabled}
+        aria-label={ariaLabel}
         className="peer sr-only"
       />
       <div
@@ -88,6 +90,7 @@ function OperationItem({ item, onToggle, isPending }: OperationItemProps) {
         onChange={() => onToggle(item.module, item.operation)}
         disabled={isPending}
         size="sm"
+        aria-label={humanReadableName}
       />
       <span className="text-sm leading-tight">{humanReadableName}</span>
       <AuditOperationTypeBadge operationType={item.operationType} />
@@ -125,12 +128,14 @@ function ModuleCard({
 
   return (
     <Card>
-      <CardHeader
-        className="cursor-pointer select-none py-3"
-        onClick={onExpandToggle}
-      >
+      <CardHeader className="py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="flex cursor-pointer select-none items-center gap-3 bg-transparent border-0 p-0 text-start"
+            onClick={onExpandToggle}
+            aria-expanded={isExpanded}
+          >
             {/* Chevron */}
             <svg
               className={cn(
@@ -144,6 +149,7 @@ function ModuleCard({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              aria-hidden="true"
             >
               <path d="m9 18 6-6-6-6" />
             </svg>
@@ -151,17 +157,15 @@ function ModuleCard({
             <Badge variant="secondary" className="text-xs tabular-nums">
               {enabledCount}/{totalCount} {t('lockey_audit_settings_operations_enabled')}
             </Badge>
-          </div>
-          <div
-            className="flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
+          </button>
+          <div className="flex items-center gap-2">
             {totalCount > 0 && (
               <ToggleSwitch
                 checked={allEnabled}
                 indeterminate={someEnabled}
                 onChange={() => onModuleToggle(moduleName, !allEnabled)}
                 disabled={isPending}
+                aria-label={moduleName}
               />
             )}
           </div>
@@ -188,7 +192,7 @@ function ModuleCard({
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
-const DEFAULT_RETENTION_DAYS = 90;
+const DEFAULT_RETENTION_DAYS = 365;
 
 export default function AuditSettingsPage() {
   const { t } = useTranslation('audit');

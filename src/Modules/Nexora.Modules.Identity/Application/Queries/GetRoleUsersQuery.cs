@@ -38,6 +38,9 @@ public sealed class GetRoleUsersHandler(
         GetRoleUsersQuery request,
         CancellationToken ct)
     {
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
         var roleId = RoleId.From(request.RoleId);
 
@@ -77,8 +80,8 @@ public sealed class GetRoleUsersHandler(
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(ct);
 
         sw.Stop();
@@ -92,8 +95,8 @@ public sealed class GetRoleUsersHandler(
         {
             Items = items,
             TotalCount = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        });
+            Page = page,
+            PageSize = pageSize
+        }, LocalizedMessage.Of("lockey_identity_role_users_retrieved"));
     }
 }
