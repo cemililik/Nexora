@@ -1,6 +1,7 @@
 # Module: Identity & Access Management
 
 > **Status**: Implemented
+> **Version**: 1.0.0
 > **Module Name**: `identity`
 > **Tier**: Core/Platform (always installed)
 > **Dependencies**: None (foundational)
@@ -114,20 +115,11 @@ erDiagram
         timestamp installed_at
     }
 
-    AuditLog {
-        uuid id PK
-        uuid tenant_id FK
-        uuid user_id FK
-        uuid organization_id FK
-        string action
-        string resource_type
-        string resource_id
-        jsonb old_values
-        jsonb new_values
-        string ip_address
-        timestamp created_at
-    }
 ```
+
+> **Note**: Audit logging has moved to the standalone **Audit module** (`Nexora.Modules.Audit`).
+> The `AuditLog` entity previously defined here is no longer part of the Identity module.
+> See [`docs/modules/audit/SPEC.md`](../audit/SPEC.md) for the current audit logging design.
 
 ### Value Objects
 
@@ -186,6 +178,207 @@ stateDiagram-v2
     Suspended --> Active: Admin reactivates
     Suspended --> Deactivated: After retention period
     Deactivated --> [*]
+```
+
+### Sequence Diagrams
+
+```mermaid
+---
+title: User Login Flow
+---
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Keycloak
+    participant APISIX as APISIX Gateway
+    participant API as Identity API
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+
+    User->>Frontend: Enter credentials
+    Frontend->>Keycloak: POST /realms/{tenant}/protocol/openid-connect/token
+    Keycloak-->>Frontend: JWT (access_token + refresh_token)
+    Frontend->>APISIX: GET /api/v1/identity/users/me (Bearer token)
+    APISIX->>APISIX: Validate JWT signature & expiry
+    APISIX->>API: Forward validated request
+    API->>API: Extract tenant_id, user_id from JWT claims
+    API->>Cache: Get user permissions (identity:permissions:{userId})
+    alt Cache hit
+        Cache-->>API: Cached permissions
+    else Cache miss
+        API->>DB: Load user roles + permissions for org
+        DB-->>API: Permission set
+        API->>Cache: Store permissions (TTL 15min)
+    end
+    API-->>Frontend: ApiEnvelope<UserProfileDto> (user + permissions)
+    Frontend->>Frontend: Store user context, render dashboard
+```
+
+```mermaid
+---
+title: Create User Flow
+---
+sequenceDiagram
+    participant Admin
+    participant API as Identity API
+    participant Validator as FluentValidation
+    participant Handler as InviteUserHandler
+    participant Keycloak
+    participant DB as PostgreSQL
+    participant Kafka
+
+    Admin->>API: POST /api/v1/identity/users/invite {email, name, roles}
+    API->>Validator: Validate command
+    Validator-->>API: Validation passed
+    API->>Handler: Send(InviteUserCommand)
+    Handler->>DB: Check if user exists in tenant
+    alt New user
+        Handler->>Keycloak: Create user in tenant realm
+        Keycloak-->>Handler: Keycloak user ID
+        Handler->>DB: Insert User (status: Invited, keycloak_user_id)
+        Handler->>DB: Insert OrganizationUser + UserRole records
+    else Existing user
+        Handler->>DB: Add OrganizationUser + UserRole for new org
+    end
+    Handler->>Kafka: Publish UserCreated event
+    Handler-->>API: Result.Success(UserDto)
+    API-->>Admin: ApiEnvelope<UserDto>
+
+    Note over Kafka: Notifications module picks up event,<br/>sends invitation email
+```
+
+```mermaid
+---
+title: Role Assignment Flow
+---
+sequenceDiagram
+    participant Admin
+    participant API as Identity API
+    participant Handler as AssignRoleHandler
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Kafka
+
+    Admin->>API: POST /api/v1/identity/users/{userId}/roles {roleId}
+    API->>Handler: Send(AssignRoleCommand)
+    Handler->>DB: Verify user exists and belongs to org
+    Handler->>DB: Verify role exists and is active
+    Handler->>DB: Check role not already assigned
+    Handler->>DB: Insert UserRole record
+    Handler->>Cache: Invalidate identity:permissions:{userId}
+    Handler->>Kafka: Publish RoleAssigned event
+    Handler-->>API: Result.Success
+    API-->>Admin: ApiEnvelope (success)
+
+    Note over Cache: Next request from user will<br/>reload permissions from DB
+```
+
+### Component Diagram
+
+```mermaid
+---
+title: Identity Module - Component Diagram
+---
+flowchart TD
+    subgraph Api["Api Layer"]
+        TE[TenantEndpoints]
+        OE[OrganizationEndpoints]
+        UE[UserEndpoints]
+        RE[RoleEndpoints]
+        PE[PermissionEndpoints]
+        ALE[AuditLogEndpoints]
+    end
+
+    subgraph Application["Application Layer"]
+        CMD[Commands<br/>CreateTenant, InviteUser,<br/>AssignRole, SuspendUser, ...]
+        QRY[Queries<br/>GetUser, ListRoles,<br/>GetPermissions, ...]
+        VAL[Validators<br/>FluentValidation per command]
+        DTO[DTOs<br/>UserDto, RoleDto,<br/>TenantDto, ...]
+    end
+
+    subgraph Domain["Domain Layer"]
+        ENT[Entities<br/>Tenant, Organization, User,<br/>Role, Permission, ...]
+        VO[Value Objects<br/>TenantId, UserId, Email,<br/>PermissionKey, ...]
+        EVT[Domain Events<br/>UserCreated, RoleAssigned,<br/>TenantSuspended, ...]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        DBC[IdentityDbContext<br/>EF Core]
+        REPO[Repositories]
+        KCS[KeycloakService<br/>User & Realm sync]
+        CACHE[CacheService<br/>Permission & Tenant cache]
+    end
+
+    subgraph External["External Services"]
+        KC[Keycloak<br/>Identity Provider]
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+    end
+
+    Api --> Application
+    Application --> Domain
+    Application --> Infrastructure
+    Infrastructure --> External
+
+    KCS --> KC
+    DBC --> PG
+    CACHE --> RD
+```
+
+### Integration Diagram
+
+```mermaid
+---
+title: Identity Module - Integration Diagram
+---
+flowchart LR
+    subgraph Clients
+        AdminUI[nexora-admin<br/>React 19]
+        Portal[nexora-portal<br/>Next.js 16]
+    end
+
+    subgraph Gateway
+        APISIX[APISIX<br/>JWT Validation]
+    end
+
+    subgraph Identity["Identity Module"]
+        IAPI[Identity API]
+        IApp[Application Layer<br/>CQRS Handlers]
+        IDomain[Domain Layer]
+        IInfra[Infrastructure Layer]
+    end
+
+    subgraph ExternalAuth["External Auth"]
+        KC[Keycloak<br/>Realm-per-tenant<br/>OIDC/JWT]
+    end
+
+    subgraph SharedInfra["Shared Infrastructure"]
+        PG[(PostgreSQL<br/>public + tenant schemas)]
+        Redis[(Redis<br/>Permission cache)]
+        Kafka[Kafka<br/>Event bus]
+    end
+
+    subgraph ConsumerModules["Consumer Modules"]
+        Contacts[Contacts Module]
+        CRM[CRM Module]
+        Notifications[Notifications Module]
+        Audit[Audit Module]
+        Documents[Documents Module]
+    end
+
+    Clients -->|HTTPS| APISIX
+    APISIX -->|Validated request| IAPI
+    Clients -->|Auth| KC
+    IInfra -->|User sync, realm mgmt| KC
+    IInfra --> PG
+    IInfra --> Redis
+    IApp -->|Publish events| Kafka
+
+    Kafka -->|UserCreated| Contacts
+    Kafka -->|UserCreated| Notifications
+    Kafka -->|RoleAssigned| Audit
+    Kafka -->|TenantCreated| CRM
+    Kafka -->|ModuleInstalled| ConsumerModules
 ```
 
 ## Use Cases
@@ -317,10 +510,9 @@ stateDiagram-v2
 | DELETE | `/api/v1/identity/users/{id}/roles/{roleId}` | Revoke role (returns 200 OK with ApiEnvelope) | `admin.users.manage` |
 
 ### Audit Log
-| Method | Path | Description | Auth |
-|--------|------|-------------|------|
-| GET | `/api/v1/identity/audit-logs` | Query audit logs | `admin.audit.read` |
-| GET | `/api/v1/identity/audit-logs/export` | Export audit logs | `admin.audit.export` |
+
+> **Deprecated**: Audit logging endpoints have moved to the standalone **Audit module** (`/api/v1/audit/*`).
+> See [`docs/modules/audit/SPEC.md`](../audit/SPEC.md) for the current API.
 
 ## Integration Points
 

@@ -4,8 +4,8 @@ set -e
 apk add --no-cache curl > /dev/null 2>&1
 
 KC_URL="http://keycloak:8080"
-KC_ADMIN="admin"
-KC_ADMIN_PASS="admin"
+KC_ADMIN="${KC_ADMIN:-admin}"
+KC_ADMIN_PASS="${KC_ADMIN_PASS:-admin}"
 REALM="nexora-dev"
 
 echo "Waiting for Keycloak to be ready..."
@@ -90,7 +90,7 @@ create_client "nexora-portal" '{
   "clientId":"nexora-portal","name":"Nexora Public Portal","enabled":true,
   "publicClient":false,"directAccessGrantsEnabled":false,"standardFlowEnabled":true,
   "implicitFlowEnabled":false,"serviceAccountsEnabled":false,"protocol":"openid-connect",
-  "secret":"nexora-portal-dev-secret",
+  "secret":"'"${KC_PORTAL_CLIENT_SECRET:-nexora-portal-dev-secret}"'",
   "rootUrl":"http://localhost:3000","baseUrl":"/",
   "redirectUris":["http://localhost:3000/*"],
   "webOrigins":["http://localhost:3000"],
@@ -101,14 +101,14 @@ create_client "nexora-api" '{
   "clientId":"nexora-api","name":"Nexora API","enabled":true,
   "publicClient":false,"directAccessGrantsEnabled":true,"standardFlowEnabled":false,
   "implicitFlowEnabled":false,"serviceAccountsEnabled":true,"protocol":"openid-connect",
-  "secret":"nexora-api-dev-secret"
+  "secret":"'"${KC_API_CLIENT_SECRET:-nexora-api-dev-secret}"'"
 }'
 
 create_client "nexora-gateway" '{
   "clientId":"nexora-gateway","name":"APISIX Gateway","enabled":true,
   "publicClient":false,"directAccessGrantsEnabled":false,"standardFlowEnabled":false,
   "implicitFlowEnabled":false,"serviceAccountsEnabled":false,"protocol":"openid-connect",
-  "secret":"nexora-gateway-dev-secret"
+  "secret":"'"${KC_GATEWAY_CLIENT_SECRET:-nexora-gateway-dev-secret}"'"
 }'
 
 TOKEN=$(get_token)
@@ -238,7 +238,7 @@ else
       "lastName":"Admin",
       "enabled":true,
       "emailVerified":true,
-      "credentials":[{"type":"password","value":"Admin123!","temporary":false}]
+      "credentials":[{"type":"password","value":"'"${KC_DEFAULT_USER_PASSWORD:-Admin123!}"'","temporary":false}]
     }'
   USER_ID=$(curl -s "$KC_URL/admin/realms/$REALM/users?username=admin@nexora.dev" \
     -H "Authorization: Bearer $TOKEN" | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
@@ -315,7 +315,7 @@ echo "  Realm:       $REALM"
 echo "  Clients:     nexora-admin (public, PKCE)"
 echo "               nexora-portal (confidential)"
 echo "               nexora-api (confidential, service account)"
-echo "  Test user:   admin@nexora.dev / Admin123!"
+echo "  Test user:   admin@nexora.dev / ${KC_DEFAULT_USER_PASSWORD:-Admin123!}"
 echo "  Permissions: 63 (all modules)"
 echo ""
 echo "  Admin Console: http://localhost:8080/admin"

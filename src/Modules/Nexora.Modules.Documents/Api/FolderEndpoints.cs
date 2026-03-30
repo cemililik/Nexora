@@ -70,14 +70,21 @@ public static class FolderEndpoints
         });
 
         // Folder access endpoints
+
+        /// <summary>Gets access permissions for a folder.</summary>
         group.MapGet("/{folderId:guid}/access", async (Guid folderId, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new GetFolderAccessQuery(folderId), ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<IReadOnlyList<FolderAccessDto>>.Success(result.Value!, result.Message))
                 : Results.NotFound(ApiEnvelope<IReadOnlyList<FolderAccessDto>>.Fail(result.Error!));
-        });
+        })
+        .WithSummary("Get folder access list")
+        .WithDescription("Returns all active access permissions for the specified folder.")
+        .Produces<ApiEnvelope<IReadOnlyList<FolderAccessDto>>>(StatusCodes.Status200OK)
+        .Produces<ApiEnvelope<IReadOnlyList<FolderAccessDto>>>(StatusCodes.Status404NotFound);
 
+        /// <summary>Grants access to a folder for a user or role.</summary>
         group.MapPost("/{folderId:guid}/access", async (Guid folderId, GrantFolderAccessRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new GrantFolderAccessCommand(folderId, request.UserId, request.RoleId, request.Permission, request.ExpiresAt);
@@ -89,8 +96,14 @@ public static class FolderEndpoints
                 : result.Error!.Message.Key == "lockey_documents_error_folder_not_found"
                     ? Results.NotFound(ApiEnvelope<FolderAccessDto>.Fail(result.Error))
                     : Results.BadRequest(ApiEnvelope<FolderAccessDto>.Fail(result.Error));
-        });
+        })
+        .WithSummary("Grant folder access")
+        .WithDescription("Grants access permission on a folder to a user or role. Exactly one of userId or roleId must be provided.")
+        .Produces<ApiEnvelope<FolderAccessDto>>(StatusCodes.Status201Created)
+        .Produces<ApiEnvelope<FolderAccessDto>>(StatusCodes.Status400BadRequest)
+        .Produces<ApiEnvelope<FolderAccessDto>>(StatusCodes.Status404NotFound);
 
+        /// <summary>Revokes folder access.</summary>
         group.MapDelete("/{folderId:guid}/access/{accessId:guid}", async (Guid folderId, Guid accessId, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new RevokeFolderAccessCommand(folderId, accessId), ct);
@@ -98,7 +111,11 @@ public static class FolderEndpoints
                 return Results.Ok(ApiEnvelope.Success(result.Message));
 
             return Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .WithSummary("Revoke folder access")
+        .WithDescription("Revokes a previously granted access permission on a folder.")
+        .Produces<ApiEnvelope<object>>(StatusCodes.Status200OK)
+        .Produces<ApiEnvelope<object>>(StatusCodes.Status404NotFound);
     }
 }
 
@@ -106,4 +123,4 @@ public static class FolderEndpoints
 public sealed record RenameFolderRequest(string NewName);
 
 /// <summary>Request body for granting folder access.</summary>
-public sealed record GrantFolderAccessRequest(Guid? UserId, Guid? RoleId, string Permission, DateTime? ExpiresAt);
+public sealed record GrantFolderAccessRequest(Guid? UserId, Guid? RoleId, string Permission, DateTimeOffset? ExpiresAt);

@@ -665,7 +665,7 @@ For the full dependency graph with visual diagrams, see [Module Dependencies](..
 
 The plugin architecture is designed to support third-party modules in the future:
 
-```
+```text
 nexora-marketplace/
 ├── Official Modules (by Nexora team)
 ├── Partner Modules (certified third-party)

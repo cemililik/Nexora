@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -15,13 +17,15 @@ public sealed record GetRolesQuery : IQuery<List<RoleDto>>;
 /// <summary>Returns roles with resolved permission keys for the current tenant.</summary>
 public sealed class GetRolesHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetRolesQuery, List<RoleDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetRolesHandler> logger) : IQueryHandler<GetRolesQuery, List<RoleDto>>
 {
     public async Task<Result<List<RoleDto>>> Handle(
         GetRolesQuery request,
         CancellationToken cancellationToken)
     {
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
+        var sw = Stopwatch.StartNew();
 
         var roles = await dbContext.Roles.AsNoTracking()
             .Where(r => r.TenantId == tenantId)
@@ -44,6 +48,10 @@ public sealed class GetRolesHandler(
                 .ToList(),
             r.CreatedAt
         )).ToList();
+
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+            logger.LogWarning("Slow query detected in GetRolesHandler: {ElapsedMs}ms for tenant {TenantId}", sw.ElapsedMilliseconds, tenantId);
 
         return Result<List<RoleDto>>.Success(dtos,
             LocalizedMessage.Of("lockey_identity_roles_listed"));

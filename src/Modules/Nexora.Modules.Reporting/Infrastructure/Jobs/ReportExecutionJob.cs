@@ -94,6 +94,8 @@ public sealed class ReportExecutionJob(
             sw.Stop();
             execution.MarkFailed(ex.Message, sw.ElapsedMilliseconds);
             logger.LogError(ex, "Report execution {ExecutionId} failed", execution.Id);
+            await dbContext.SaveChangesAsync(ct);
+            throw;
         }
 
         await dbContext.SaveChangesAsync(ct);

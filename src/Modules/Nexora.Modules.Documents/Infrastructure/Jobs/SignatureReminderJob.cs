@@ -59,6 +59,6 @@ public sealed class SignatureReminderJob(
             ), ct);
         }
 
-        logger.LogInformation("Sent {Count} signature reminders", pendingRecipients.Count);
+        logger.LogInformation("Sent {Count} signature reminders for tenant {TenantId}", pendingRecipients.Count, tenant.TenantId);
     }
 }

@@ -50,5 +50,13 @@
   "lockey_audit_settings_no_changes": "Kaydedilmemis degisiklik yok",
   "lockey_audit_settings_save": "Degisiklikleri Kaydet",
   "lockey_audit_settings_saving": "Kaydediliyor...",
-  "lockey_audit_handler_exception": "Beklenmeyen bir hata olustu"
+  "lockey_audit_handler_exception": "Beklenmeyen bir hata olustu",
+  "lockey_audit_col_user_id": "Kullanıcı ID",
+  "lockey_audit_col_entity_id": "Varlık ID",
+  "lockey_audit_module_identity": "Kimlik",
+  "lockey_audit_module_contacts": "Kişiler",
+  "lockey_audit_module_documents": "Belgeler",
+  "lockey_audit_module_notifications": "Bildirimler",
+  "lockey_audit_module_reporting": "Raporlama",
+  "lockey_audit_module_audit": "Denetim"
 }

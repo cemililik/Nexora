@@ -102,10 +102,21 @@ public sealed class DaprCacheService(
         CacheOptions? options = null,
         CancellationToken ct = default)
     {
-        var existing = await GetAsync<T>(key, ct);
-        if (existing is not null)
-            return existing;
+        var prefixedKey = PrefixKey(key);
 
+        // L1: in-memory (works for both reference and value types)
+        if (memoryCache.TryGetValue(prefixedKey, out T? l1Cached))
+            return l1Cached!;
+
+        // L2: Dapr state store — use etag to distinguish "key exists with default(T)" from "key not found"
+        var (state, etag) = await daprClient.GetStateAndETagAsync<T>(StateStoreName, prefixedKey, cancellationToken: ct);
+        if (!string.IsNullOrEmpty(etag))
+        {
+            memoryCache.Set(prefixedKey, state, options?.L1Ttl ?? TimeSpan.FromMinutes(2));
+            return state!;
+        }
+
+        // Cache miss — execute factory and store
         var value = await factory(ct);
         await SetAsync(key, value, options, ct);
         return value;
@@ -165,7 +176,7 @@ public sealed class DaprCacheService(
         if (keysToRemove.Count == 0)
             return;
 
-        logger.LogInformation("Removing {Count} cached keys with prefix '{Prefix}'", keysToRemove.Count, prefixedPrefix);
+        logger.LogDebug("Removing {Count} cached keys with prefix '{Prefix}'", keysToRemove.Count, prefixedPrefix);
 
         foreach (var key in keysToRemove)
         {

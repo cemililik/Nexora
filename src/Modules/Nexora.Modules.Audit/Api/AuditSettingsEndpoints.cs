@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Routing;
 using Nexora.Modules.Audit.Application.Commands;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Application.Queries;
+using Nexora.Modules.Audit.Application.Services;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Results;
@@ -27,29 +28,33 @@ public static class AuditSettingsEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<IReadOnlyList<AuditSettingDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<IReadOnlyList<AuditSettingDto>>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("audit.settings.read");
 
         group.MapPut("/", async (UpdateAuditSettingCommand command, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<AuditSettingDto>.Success(result.Value!, result.Message))
-                : Results.BadRequest(ApiEnvelope<AuditSettingDto>.Fail(result.Error!));
-        });
+                : Results.UnprocessableEntity(ApiEnvelope<AuditSettingDto>.Fail(result.Error!));
+        })
+        .RequireAuthorization("audit.settings.manage");
 
         group.MapPut("/bulk", async (BulkUpdateAuditSettingsCommand command, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<List<AuditSettingDto>>.Success(result.Value!, result.Message))
-                : Results.BadRequest(ApiEnvelope<List<AuditSettingDto>>.Fail(result.Error!));
-        });
+                : Results.UnprocessableEntity(ApiEnvelope<List<AuditSettingDto>>.Fail(result.Error!));
+        })
+        .RequireAuthorization("audit.settings.manage");
 
         group.MapGet("/operations", (IReadOnlyList<IModule> modules) =>
         {
             var operations = DiscoverAuditableOperations(modules);
             return Results.Ok(ApiEnvelope<List<AuditableModuleDto>>.Success(operations));
-        });
+        })
+        .RequireAuthorization("audit.settings.read");
     }
 
     /// <summary>
@@ -119,55 +124,15 @@ public static class AuditSettingsEndpoints
             i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IQuery<>));
     }
 
-    /// <summary>Extracts the module name from the namespace (e.g., Nexora.Modules.Identity.Application.Commands → identity).</summary>
-    private static string ExtractModuleName(string? ns)
-    {
-        if (string.IsNullOrEmpty(ns))
-            return "unknown";
-
-        // Namespace pattern: Nexora.Modules.{ModuleName}.Application.Commands
-        var parts = ns.Split('.');
-        for (var i = 0; i < parts.Length - 1; i++)
-        {
-            if (string.Equals(parts[i], "Modules", StringComparison.Ordinal) && i + 1 < parts.Length)
-            {
-                return parts[i + 1].ToLowerInvariant();
-            }
-        }
-
-        return "unknown";
-    }
+    /// <summary>Extracts the module name from the namespace. Delegates to <see cref="AuditOperationDiscovery"/>.</summary>
+    private static string ExtractModuleName(string? ns) => AuditOperationDiscovery.ExtractModuleName(ns);
 
     /// <summary>Extracts a human-readable operation name by removing the "Command" suffix.</summary>
-    private static string ExtractCommandOperationName(string className)
-    {
-        return className.EndsWith("Command", StringComparison.Ordinal)
-            ? className[..^7]
-            : className;
-    }
+    private static string ExtractCommandOperationName(string className) => AuditOperationDiscovery.ExtractCommandOperationName(className);
 
-    /// <summary>
-    /// Extracts query operation name by removing "Query" suffix and adding "Query." prefix.
-    /// Example: "GetUsersQuery" → "Query.GetUsers"
-    /// </summary>
-    private static string ExtractQueryOperationName(string className)
-    {
-        var baseName = className.EndsWith("Query", StringComparison.Ordinal)
-            ? className[..^5]
-            : className;
-
-        return $"Query.{baseName}";
-    }
+    /// <summary>Extracts query operation name by removing "Query" suffix and adding "Query." prefix.</summary>
+    private static string ExtractQueryOperationName(string className) => AuditOperationDiscovery.ExtractQueryOperationName(className);
 
     /// <summary>Determines the operation type from the operation name prefix.</summary>
-    private static string DetermineOperationType(string operationName)
-    {
-        if (operationName.StartsWith("Create", StringComparison.Ordinal))
-            return "Create";
-        if (operationName.StartsWith("Update", StringComparison.Ordinal))
-            return "Update";
-        if (operationName.StartsWith("Delete", StringComparison.Ordinal))
-            return "Delete";
-        return "Action";
-    }
+    private static string DetermineOperationType(string operationName) => AuditOperationDiscovery.DetermineOperationType(operationName);
 }

@@ -82,7 +82,11 @@ public sealed class GetUsersHandler(
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            var pattern = $"%{request.Search.Trim()}%";
+            var escaped = request.Search.Trim()
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
+            var pattern = $"%{escaped}%";
             query = query.Where(u =>
                 EF.Functions.ILike(u.FirstName, pattern) ||
                 EF.Functions.ILike(u.LastName, pattern) ||

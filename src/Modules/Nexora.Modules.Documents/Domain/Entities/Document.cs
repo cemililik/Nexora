@@ -135,8 +135,8 @@ public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
         return document;
     }
 
-    /// <summary>Adds a new version to the document.</summary>
-    public DocumentVersion AddVersion(string storageKey, long fileSize, Guid uploadedByUserId, string? changeNote = null)
+    /// <summary>Adds a new version to the document, updating the document's current storage reference.</summary>
+    public DocumentVersion AddVersion(string storageKey, long fileSize, Guid uploadedByUserId, string? mimeType = null, string? changeNote = null)
     {
         if (CurrentVersion >= MaxVersionCount)
             throw new DomainException("lockey_documents_error_max_versions_exceeded");
@@ -146,6 +146,8 @@ public sealed class Document : AuditableEntity<DocumentId>, IAggregateRoot
         _versions.Add(version);
         StorageKey = storageKey;
         FileSize = fileSize;
+        if (!string.IsNullOrWhiteSpace(mimeType))
+            MimeType = mimeType;
         AddDomainEvent(new DocumentVersionAddedEvent(Id, CurrentVersion));
         return version;
     }

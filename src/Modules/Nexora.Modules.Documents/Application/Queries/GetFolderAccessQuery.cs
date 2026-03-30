@@ -45,7 +45,7 @@ public sealed class GetFolderAccessHandler(
             .OrderBy(a => a.Id)
             .Select(a => new FolderAccessDto(
                 a.Id.Value, a.UserId, a.RoleId, a.Permission.ToString(),
-                a.ExpiresAt, a.ExpiresAt.HasValue && a.ExpiresAt.Value <= DateTime.UtcNow))
+                a.ExpiresAt, a.ExpiresAt.HasValue && a.ExpiresAt.Value <= DateTimeOffset.UtcNow))
             .ToListAsync(cancellationToken);
 
         return Result<IReadOnlyList<FolderAccessDto>>.Success(accessList,

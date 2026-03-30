@@ -1,5 +1,6 @@
 using Nexora.Modules.Audit.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Audit.Domain.Entities;
 
@@ -21,8 +22,10 @@ public sealed class AuditSetting : AuditableEntity<AuditSettingId>
     /// <summary>Normalizes module and operation keys to lowercase trimmed form.</summary>
     public static (string Module, string Operation) NormalizeKey(string module, string operation)
     {
-        ArgumentNullException.ThrowIfNull(module);
-        ArgumentNullException.ThrowIfNull(operation);
+        if (string.IsNullOrWhiteSpace(module))
+            throw new DomainException("lockey_audit_validation_module_required");
+        if (string.IsNullOrWhiteSpace(operation))
+            throw new DomainException("lockey_audit_validation_operation_required");
         return (module.Trim().ToLowerInvariant(), operation.Trim().ToLowerInvariant());
     }
 

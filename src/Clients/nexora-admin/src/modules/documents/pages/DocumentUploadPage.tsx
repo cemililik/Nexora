@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { CheckCircle2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
@@ -25,6 +28,16 @@ import { useFolders } from '../hooks/useFolders';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { FileDropZone } from '../components/FileDropZone';
 
+function createUploadSchema(t: (key: string, options?: Record<string, unknown>) => string) {
+  return z.object({
+    folderId: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    name: z.string().min(1, t('lockey_validation_required', { ns: 'validation' })),
+    description: z.string().optional(),
+  });
+}
+
+type UploadFormValues = z.infer<ReturnType<typeof createUploadSchema>>;
+
 export default function DocumentUploadPage() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
@@ -36,9 +49,12 @@ export default function DocumentUploadPage() {
   const { upload, state, progress, error, documentId, isVersionUpdate, reset } = useFileUpload();
 
   const [file, setFile] = useState<File | null>(null);
-  const [folderId, setFolderId] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+
+  const schema = useMemo(() => createUploadSchema(t), [t]);
+  const form = useForm<UploadFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { folderId: '', name: '', description: '' },
+  });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -52,24 +68,22 @@ export default function DocumentUploadPage() {
     setFile(f);
     // Auto-fill name from file name (without extension)
     const baseName = f.name.replace(/\.[^/.]+$/, '');
-    setName(baseName);
+    form.setValue('name', baseName);
   };
 
-  const handleUpload = async () => {
-    if (!file || !folderId) return;
+  const handleUpload = form.handleSubmit(async (values: UploadFormValues) => {
+    if (!file) return;
     await upload(file, {
-      folderId,
-      name: name || file.name,
-      description: description || undefined,
+      folderId: values.folderId,
+      name: values.name || file.name,
+      description: values.description || undefined,
     });
-  };
+  });
 
   const handleReset = () => {
     reset();
     setFile(null);
-    setFolderId('');
-    setName('');
-    setDescription('');
+    form.reset();
   };
 
   if (!canUpload) {
@@ -125,18 +139,27 @@ export default function DocumentUploadPage() {
               {/* Folder selector */}
               <div>
                 <label className="text-sm font-medium">{t('lockey_documents_form_folder')}</label>
-                <Select value={folderId} onValueChange={setFolderId} disabled={isUploading}>
-                  <SelectTrigger className="mt-1" aria-label={t('lockey_documents_form_folder')}>
-                    <SelectValue placeholder={t('lockey_documents_filter_all_folders')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {folders?.map((f) => (
-                      <SelectItem key={f.id} value={f.id}>
-                        {f.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  control={form.control}
+                  name="folderId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange} disabled={isUploading}>
+                      <SelectTrigger className="mt-1" aria-label={t('lockey_documents_form_folder')}>
+                        <SelectValue placeholder={t('lockey_documents_filter_all_folders')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {folders?.map((f) => (
+                          <SelectItem key={f.id} value={f.id}>
+                            {f.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.folderId?.message && (
+                  <p className="mt-1 text-sm text-destructive">{form.formState.errors.folderId.message}</p>
+                )}
               </div>
 
               {/* File drop zone */}
@@ -151,19 +174,20 @@ export default function DocumentUploadPage() {
               <div>
                 <label className="text-sm font-medium">{t('lockey_documents_form_name')}</label>
                 <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  {...form.register('name')}
                   className="mt-1"
                   disabled={isUploading}
                 />
+                {form.formState.errors.name?.message && (
+                  <p className="mt-1 text-sm text-destructive">{form.formState.errors.name.message}</p>
+                )}
               </div>
 
               {/* Description */}
               <div>
                 <label className="text-sm font-medium">{t('lockey_documents_form_description')}</label>
                 <Textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  {...form.register('description')}
                   className="mt-1"
                   rows={3}
                   disabled={isUploading}
@@ -206,7 +230,7 @@ export default function DocumentUploadPage() {
                 <Button
                   type="button"
                   onClick={handleUpload}
-                  disabled={!file || !folderId || isUploading}
+                  disabled={!file || !form.getValues('folderId') || isUploading}
                 >
                   {t('lockey_documents_action_upload')}
                 </Button>

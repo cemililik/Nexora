@@ -1,6 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using FluentValidation;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -20,52 +22,43 @@ public sealed record GetAuditLogsQuery(
     DateTimeOffset? DateFrom = null,
     DateTimeOffset? DateTo = null) : IQuery<PagedResult<AuditLogDto>>;
 
+public sealed class GetAuditLogsValidator : AbstractValidator<GetAuditLogsQuery>
+{
+    public GetAuditLogsValidator()
+    {
+        RuleFor(x => x.Page).GreaterThan(0).WithMessage("lockey_validation_page_must_be_positive");
+        RuleFor(x => x.PageSize).InclusiveBetween(1, 100).WithMessage("lockey_validation_page_size_range");
+    }
+}
+
 /// <summary>Returns a paginated list of audit log entries filtered by tenant context and optional criteria.</summary>
 public sealed class GetAuditLogsHandler(
-    AuditDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetAuditLogsQuery, PagedResult<AuditLogDto>>
+    IAuditEntryRepository auditEntryRepository,
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetAuditLogsHandler> logger) : IQueryHandler<GetAuditLogsQuery, PagedResult<AuditLogDto>>
 {
     public async Task<Result<PagedResult<AuditLogDto>>> Handle(
         GetAuditLogsQuery request,
         CancellationToken cancellationToken)
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
+        var sw = Stopwatch.StartNew();
 
-        var query = dbContext.AuditEntries.AsNoTracking()
-            .Where(e => e.TenantId == tenantId);
+        var (entries, totalCount) = await auditEntryRepository.GetPagedAsync(
+            tenantId, request.Page, request.PageSize,
+            request.Module, request.Operation, request.UserId,
+            request.EntityType, request.IsSuccess,
+            request.DateFrom, request.DateTo,
+            cancellationToken);
 
-        if (request.Module is not null)
-            query = query.Where(e => e.Module == request.Module);
+        var items = entries.Select(e => new AuditLogDto(
+            e.Id.Value, e.Module, e.Operation, e.OperationType,
+            e.UserEmail, e.IsSuccess, e.EntityType, e.EntityId,
+            e.Timestamp)).ToList();
 
-        if (request.Operation is not null)
-            query = query.Where(e => e.Operation == request.Operation);
-
-        if (request.UserId is not null)
-            query = query.Where(e => e.UserId == request.UserId);
-
-        if (request.EntityType is not null)
-            query = query.Where(e => e.EntityType == request.EntityType);
-
-        if (request.IsSuccess is not null)
-            query = query.Where(e => e.IsSuccess == request.IsSuccess);
-
-        if (request.DateFrom is not null)
-            query = query.Where(e => e.Timestamp >= request.DateFrom);
-
-        if (request.DateTo is not null)
-            query = query.Where(e => e.Timestamp <= request.DateTo);
-
-        var ordered = query.OrderByDescending(e => e.Timestamp);
-        var totalCount = await ordered.CountAsync(cancellationToken);
-
-        var items = await ordered
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(e => new AuditLogDto(
-                e.Id.Value, e.Module, e.Operation, e.OperationType,
-                e.UserEmail, e.IsSuccess, e.EntityType, e.EntityId,
-                e.Timestamp))
-            .ToListAsync(cancellationToken);
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+            logger.LogWarning("Slow query detected in GetAuditLogsHandler: {ElapsedMs}ms for tenant {TenantId}", sw.ElapsedMilliseconds, tenantId);
 
         var result = new PagedResult<AuditLogDto>
         {

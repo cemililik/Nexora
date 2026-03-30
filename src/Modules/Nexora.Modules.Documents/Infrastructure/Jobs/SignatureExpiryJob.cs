@@ -49,6 +49,6 @@ public sealed class SignatureExpiryJob(
 
         await dbContext.SaveChangesAsync(ct);
 
-        logger.LogInformation("Expired {Count} signature requests", expiredRequests.Count);
+        logger.LogInformation("Expired {Count} signature requests for tenant {TenantId}", expiredRequests.Count, tenant.TenantId);
     }
 }

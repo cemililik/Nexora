@@ -27,5 +27,6 @@ export function useAuditLogs(
         userId: params.userId,
         entityType: params.entityType,
       }),
+    staleTime: 30 * 1000, // 30 seconds — audit logs update frequently
   });
 }

@@ -207,6 +207,38 @@ public sealed class ConfirmUploadTests : IDisposable
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Handle_DuplicateUpload_ReturnsIsVersionUpdateTrue()
+    {
+        // Arrange — create a document first via a successful upload
+        var folderId = await SeedFolderAsync();
+        var storageKey1 = $"{_orgId}/documents/{Guid.NewGuid()}/report.pdf";
+        var storageKey2 = $"{_orgId}/documents/{Guid.NewGuid()}/report.pdf";
+        _fileStorage.ObjectExistsAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var handler = CreateHandler();
+
+        // First upload — creates the document
+        var firstResult = await handler.Handle(
+            new ConfirmUploadCommand(folderId, storageKey1, "report.pdf", "application/pdf", 1024),
+            CancellationToken.None);
+        firstResult.IsSuccess.Should().BeTrue();
+        firstResult.Value!.IsVersionUpdate.Should().BeFalse();
+
+        // Act — second upload with the same name and folder
+        var secondResult = await handler.Handle(
+            new ConfirmUploadCommand(folderId, storageKey2, "report.pdf", "application/pdf", 2048),
+            CancellationToken.None);
+
+        // Assert
+        secondResult.IsSuccess.Should().BeTrue();
+        secondResult.Value!.IsVersionUpdate.Should().BeTrue();
+        secondResult.Value!.Document.CurrentVersion.Should().Be(2);
+        secondResult.Value!.Document.FileSize.Should().Be(2048);
+        secondResult.Value!.Document.StorageKey.Should().Be(storageKey2);
+    }
+
     public void Dispose() => _dbContext.Dispose();
 
     private ConfirmUploadHandler CreateHandler() =>

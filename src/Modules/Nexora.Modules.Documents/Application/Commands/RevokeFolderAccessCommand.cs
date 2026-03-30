@@ -39,11 +39,15 @@ public sealed class RevokeFolderAccessHandler(
             return Result.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
 
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+            return Result.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
+
         var folderId = FolderId.From(request.FolderId);
 
         var folder = await dbContext.Folders
             .Include(f => f.AccessList)
-            .FirstOrDefaultAsync(f => f.Id == folderId && f.TenantId == tenantId, cancellationToken);
+            .FirstOrDefaultAsync(f => f.Id == folderId && f.TenantId == tenantId && f.OrganizationId == orgId, cancellationToken);
 
         if (folder is null)
         {

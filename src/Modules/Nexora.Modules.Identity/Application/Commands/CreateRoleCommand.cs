@@ -69,10 +69,11 @@ public sealed class CreateRoleHandler(
         await dbContext.Roles.AddAsync(role, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var permissionKeys = role.Permissions
-            .Select(rp => dbContext.Permissions.Find(rp.PermissionId)?.Key ?? "")
-            .Where(k => !string.IsNullOrEmpty(k))
-            .ToList();
+        var assignedPermissionIds = role.Permissions.Select(rp => rp.PermissionId).ToList();
+        var permissionKeys = await dbContext.Permissions
+            .Where(p => assignedPermissionIds.Contains(p.Id))
+            .Select(p => p.Key)
+            .ToListAsync(cancellationToken);
 
         var dto = new RoleDto(
             role.Id.Value,

@@ -1,10 +1,9 @@
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Entities;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -39,7 +38,7 @@ public sealed class UpdateAuditSettingValidator : AbstractValidator<UpdateAuditS
 
 /// <summary>Upserts an audit setting: creates if not exists, updates if exists. Invalidates cache.</summary>
 public sealed class UpdateAuditSettingHandler(
-    AuditDbContext dbContext,
+    IAuditSettingRepository auditSettingRepository,
     ITenantContextAccessor tenantContextAccessor,
     ICacheService cacheService,
     ILogger<UpdateAuditSettingHandler> logger) : ICommandHandler<UpdateAuditSettingCommand, AuditSettingDto>
@@ -52,12 +51,7 @@ public sealed class UpdateAuditSettingHandler(
         var userId = tenantContextAccessor.Current.UserId ?? "system";
         var (module, operation) = AuditSetting.NormalizeKey(request.Module, request.Operation);
 
-        var existing = await dbContext.AuditSettings
-            .FirstOrDefaultAsync(s =>
-                s.TenantId == tenantId &&
-                s.Module == module &&
-                s.Operation == operation,
-                cancellationToken);
+        var existing = await auditSettingRepository.FindByKeyAsync(tenantId, module, operation, cancellationToken);
 
         if (existing is not null)
         {
@@ -71,16 +65,16 @@ public sealed class UpdateAuditSettingHandler(
             existing = AuditSetting.Create(
                 tenantId, module, operation,
                 request.IsEnabled, request.RetentionDays);
-            dbContext.AuditSettings.Add(existing);
+            auditSettingRepository.Add(existing);
             logger.LogInformation(
                 "Audit setting created for {Module}/{Operation} in tenant {TenantId}",
                 module, operation, tenantId);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditSettingRepository.SaveChangesAsync(cancellationToken);
 
         // Invalidate cache for this setting (both defaultEnabled variants)
-        var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, module, operation);
+        var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(module, operation);
         await cacheService.RemoveAsync(enabledKey, cancellationToken);
         await cacheService.RemoveAsync(disabledKey, cancellationToken);
 

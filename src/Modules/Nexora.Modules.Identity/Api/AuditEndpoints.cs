@@ -29,7 +29,8 @@ public static class AuditEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<PagedResult<AuditLogDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<PagedResult<AuditLogDto>>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("audit.logs.read");
 
         group.MapPost("/", async (RecordAuditLogCommand command, ISender sender, CancellationToken ct) =>
         {
@@ -37,6 +38,7 @@ public static class AuditEndpoints
             return result.IsSuccess
                 ? Results.Created("/api/v1/identity/audit-logs", ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("audit.logs.read");
     }
 }

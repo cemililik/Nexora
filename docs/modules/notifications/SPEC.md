@@ -102,6 +102,219 @@ erDiagram
 | `NotificationBounced` | Email bounced | Contacts (flag invalid email) |
 | `NotificationFailed` | Delivery failed | Admin alert, retry queue |
 
+### Entity Lifecycles
+
+```mermaid
+---
+title: Notification Lifecycle
+---
+stateDiagram-v2
+    [*] --> Queued: Event received / ad-hoc send
+    Queued --> Sending: Worker picks up from Kafka
+    Sending --> Sent: All recipients processed
+    Sending --> PartialFailure: Some recipients failed
+    Sending --> Failed: All recipients failed
+
+    state "Per Recipient" as recipient {
+        [*] --> Pending: Notification created
+        Pending --> rSent: Provider accepts
+        rSent --> Delivered: Provider confirms delivery
+        Delivered --> Opened: Recipient opens (email pixel)
+        Opened --> Clicked: Recipient clicks link
+        rSent --> Bounced: Email bounced
+        rSent --> rFailed: Provider rejects
+        Pending --> rFailed: Consent denied / rate limited
+        Pending --> Unsubscribed: Contact opted out
+    }
+```
+
+```mermaid
+---
+title: Notification Schedule Lifecycle
+---
+stateDiagram-v2
+    [*] --> Pending: Schedule created
+    Pending --> Dispatched: Scheduled time reached (cron trigger)
+    Pending --> Cancelled: User cancels before dispatch
+    Dispatched --> [*]: Notification enters delivery pipeline
+    Cancelled --> [*]
+```
+
+### Sequence Diagrams
+
+```mermaid
+---
+title: Send Transactional Notification
+---
+sequenceDiagram
+    participant Module as Source Module
+    participant Kafka
+    participant NHandler as Notification Handler
+    participant Consent as Consent Check
+    participant Renderer as TemplateRenderer
+    participant DB as PostgreSQL
+    participant Provider as Email/SMS Provider
+    participant Webhook as Provider Webhook
+
+    Module->>Kafka: Publish event (e.g., donation.confirmed)
+    Kafka->>NHandler: Consume event
+    NHandler->>DB: Resolve template by event code + channel
+    NHandler->>DB: Resolve recipient(s) from event payload
+    NHandler->>Consent: Check contact communication preference
+    alt Opted out
+        Consent-->>NHandler: Suppressed
+        NHandler->>DB: Log suppression
+    else Opted in
+        Consent-->>NHandler: Allowed
+        NHandler->>Renderer: Render template (variables, language)
+        Renderer-->>NHandler: Rendered subject + body
+        NHandler->>DB: Create Notification + NotificationRecipient (status: Pending)
+        NHandler->>Provider: Send message via configured provider
+        Provider-->>NHandler: Provider message ID
+        NHandler->>DB: Update recipient (status: Sent, provider_message_id)
+    end
+
+    Note over Webhook: Async delivery tracking
+    Provider->>Webhook: POST /api/v1/notifications/webhooks/{provider}
+    Webhook->>DB: Update recipient status (Delivered/Bounced/Failed)
+```
+
+```mermaid
+---
+title: Schedule Notification Flow
+---
+sequenceDiagram
+    participant User
+    participant API as Notifications API
+    participant Handler as ScheduleNotificationHandler
+    participant DB as PostgreSQL
+    participant Hangfire
+    participant Worker as Notification Worker
+    participant Provider as Email/SMS Provider
+
+    User->>API: POST /api/v1/notifications/send {recipients, template, scheduledAt}
+    API->>Handler: Send(ScheduleNotificationCommand)
+    Handler->>Handler: Validate template exists, recipients valid
+    Handler->>DB: Create Notification (status: Queued)
+    Handler->>DB: Create NotificationSchedule (status: Pending, scheduledAt)
+    Handler-->>API: Result.Success(NotificationDto)
+    API-->>User: ApiEnvelope<NotificationDto>
+
+    Note over Hangfire: At scheduledAt time
+    Hangfire->>Worker: Trigger scheduled notification job
+    Worker->>DB: Load NotificationSchedule, verify status = Pending
+    Worker->>DB: Update schedule status → Dispatched
+    Worker->>DB: Load notification + recipients
+    loop For each recipient
+        Worker->>Worker: Check consent, render template
+        Worker->>Provider: Send message
+        Provider-->>Worker: Accepted
+        Worker->>DB: Update recipient status → Sent
+    end
+    Worker->>DB: Update notification status → Sent
+```
+
+### Component Diagram
+
+```mermaid
+---
+title: Notifications Module - Component Diagram
+---
+flowchart TD
+    subgraph Api["Api Layer"]
+        NE[NotificationEndpoints]
+        THE[TemplateEndpoints]
+        PE[ProviderEndpoints]
+        WH[WebhookEndpoints<br/>Provider callbacks]
+    end
+
+    subgraph Application["Application Layer"]
+        CMD[Commands<br/>SendNotification, SendBulk,<br/>ScheduleNotification, ...]
+        QRY[Queries<br/>GetNotification, ListTemplates, ...]
+        VAL[Validators]
+        SVC[Services<br/>TemplateRenderer,<br/>ConsentChecker]
+        HNDL[Event Handlers<br/>DonationConfirmedHandler,<br/>LeadAssignedHandler, ...]
+    end
+
+    subgraph Domain["Domain Layer"]
+        ENT[Entities<br/>Notification, NotificationRecipient,<br/>NotificationTemplate,<br/>NotificationProvider, NotificationSchedule]
+        VO[Value Objects]
+        EVT[Domain Events<br/>NotificationSent, NotificationBounced]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        DBC[NotificationsDbContext]
+        EMAIL[EmailProviderService<br/>SendGrid / Mailgun]
+        SMS[SmsProviderService<br/>Twilio / Netgsm]
+        WA[WhatsAppProviderService]
+        PUSH[PushProviderService<br/>FCM / APNS]
+        JOBS[Background Jobs<br/>ScheduledNotificationJob]
+    end
+
+    subgraph External["External Services"]
+        PG[(PostgreSQL)]
+        KF[Kafka]
+        SG[SendGrid]
+        TW[Twilio]
+    end
+
+    Api --> Application
+    Application --> Domain
+    Application --> Infrastructure
+
+    EMAIL --> SG
+    SMS --> TW
+    DBC --> PG
+    HNDL --> KF
+```
+
+### Integration Diagram
+
+```mermaid
+---
+title: Notifications Module - Integration Diagram
+---
+flowchart LR
+    subgraph ProducerModules["All Modules (Event Producers)"]
+        Identity[Identity<br/>user.created]
+        CRM[CRM<br/>lead.assigned,<br/>campaign.dispatch]
+        Donations[Donations<br/>donation.confirmed,<br/>recurring.failed]
+        Education[Education<br/>appointment.booked,<br/>enrollment.accepted]
+        Sponsorship[Sponsorship<br/>update.sent,<br/>installment.overdue]
+    end
+
+    subgraph Kafka["Kafka Event Bus"]
+        Topics[Event Topics]
+    end
+
+    subgraph Notifications["Notifications Module"]
+        Handlers[Event Handlers]
+        Engine[Delivery Engine<br/>Consent + Render + Route]
+        Providers[Provider Adapters]
+        Webhooks[Webhook Receivers]
+    end
+
+    subgraph ExternalProviders["External Providers"]
+        SendGrid[SendGrid / Mailgun]
+        Twilio[Twilio / Netgsm]
+        WhatsApp[WhatsApp Business]
+        FCM[FCM / APNS]
+    end
+
+    subgraph Contacts["Contacts Module"]
+        Prefs[Communication Preferences<br/>& Consent Records]
+    end
+
+    ProducerModules -->|Events| Topics
+    Topics --> Handlers
+    Handlers --> Engine
+    Engine -->|Check consent| Prefs
+    Engine --> Providers
+    Providers --> ExternalProviders
+    ExternalProviders -->|Delivery status| Webhooks
+    Webhooks -->|Update status| Notifications
+```
+
 ### Delivery Flow
 
 ```mermaid

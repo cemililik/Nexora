@@ -26,7 +26,8 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<List<RoleDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<List<RoleDto>>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.read");
 
         group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -34,7 +35,8 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<RoleDetailDto>.Success(result.Value!))
                 : Results.NotFound(ApiEnvelope<RoleDetailDto>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.read");
 
         group.MapPost("/", async (CreateRoleCommand command, ISender sender, CancellationToken ct) =>
         {
@@ -44,7 +46,8 @@ public static class RoleEndpoints
                     $"/api/v1/identity/roles/{result.Value!.Id}",
                     ApiEnvelope<RoleDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<RoleDto>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.manage");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -53,7 +56,8 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<RoleDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<RoleDto>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.manage");
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -61,7 +65,8 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.manage");
 
         group.MapGet("/{id:guid}/users", async (Guid id, int? page, int? pageSize, ISender sender, CancellationToken ct) =>
         {
@@ -69,7 +74,8 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<PagedResult<RoleUserDto>>.Success(result.Value!, result.Message))
                 : Results.NotFound(ApiEnvelope<PagedResult<RoleUserDto>>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.read");
 
         group.MapPost("/{id:guid}/users", async (Guid id, AddUserToRoleRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -78,7 +84,8 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.manage");
 
         group.MapDelete("/{id:guid}/users/{userId:guid}", async (Guid id, Guid userId, ISender sender, CancellationToken ct) =>
         {
@@ -87,11 +94,12 @@ public static class RoleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.roles.manage");
 
         // Permissions listing
         endpoints.MapGroup("/permissions")
-            .RequireAuthorization()
+            .RequireAuthorization("identity.roles.read")
             .MapGet("/", async (string? module, ISender sender, CancellationToken ct) =>
             {
                 var result = await sender.Send(new GetPermissionsQuery(module), ct);

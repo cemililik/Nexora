@@ -36,6 +36,10 @@ public sealed class GetDocumentsHandler(
             return Result<PagedResult<DocumentDto>>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
 
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+            return Result<PagedResult<DocumentDto>>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
+
         if (tenantContextAccessor.Current.UserId is not { } uid || !Guid.TryParse(uid, out var userId))
             return Result<PagedResult<DocumentDto>>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_user_context"));
@@ -43,8 +47,8 @@ public sealed class GetDocumentsHandler(
         var page = Math.Max(1, request.Page);
         var pageSize = Math.Clamp(request.PageSize, 1, 100);
 
-        var query = dbContext.Documents
-            .Where(d => d.TenantId == tenantId);
+        var query = dbContext.Documents.AsNoTracking()
+            .Where(d => d.TenantId == tenantId && d.OrganizationId == orgId);
 
         if (request.FolderId.HasValue)
         {

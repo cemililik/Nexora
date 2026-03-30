@@ -55,7 +55,7 @@ export default function SignatureCreatePage() {
   const [contactSearch, setContactSearch] = useState('');
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [recipientName, setRecipientName] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
+  const [recipientEmail, setRecipientEmail] = useState<string | undefined>('');
   const [recipientContactId, setRecipientContactId] = useState('');
   const { data: contactsResult } = useContacts(
     { page: 1, pageSize: 10, search: contactSearch || undefined },
@@ -142,11 +142,13 @@ export default function SignatureCreatePage() {
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
           {showDocDropdown && documents.length > 0 && !selectedDocLabel && (
-            <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md">
+            <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md" role="listbox">
               {documents.map((doc) => (
                 <button
                   key={doc.id}
                   type="button"
+                  role="option"
+                  aria-selected={form.getValues('documentId') === doc.id}
                   className="w-full px-3 py-2 text-start text-sm hover:bg-accent"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
@@ -245,17 +247,19 @@ export default function SignatureCreatePage() {
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
               {showContactDropdown && contacts.length > 0 && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md">
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md" role="listbox">
                   {contacts.map((contact) => (
                     <button
                       key={contact.id}
                       type="button"
+                      role="option"
+                      aria-selected={recipientContactId === contact.id}
                       className="w-full px-3 py-2 text-start text-sm hover:bg-accent"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => {
                         setRecipientContactId(contact.id);
                         setRecipientName(contact.displayName);
-                        setRecipientEmail(contact.email ?? '');
+                        setRecipientEmail(contact.email ?? undefined);
                         setContactSearch('');
                         setShowContactDropdown(false);
                       }}
@@ -285,7 +289,7 @@ export default function SignatureCreatePage() {
                 <label className="text-xs font-medium">{t('lockey_documents_signatures_form_recipient_email')}</label>
                 <input
                   type="email"
-                  value={recipientEmail}
+                  value={recipientEmail ?? ''}
                   onChange={(e) => setRecipientEmail(e.target.value)}
                   placeholder={t('lockey_documents_signatures_form_recipient_email')}
                   className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

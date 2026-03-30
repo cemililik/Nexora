@@ -44,7 +44,7 @@ public sealed class GetDocumentByIdHandler(
                 LocalizedMessage.Of("lockey_documents_error_access_denied"));
         }
 
-        var document = await dbContext.Documents
+        var document = await dbContext.Documents.AsNoTracking()
             .Include(d => d.Versions)
             .Include(d => d.AccessList)
             .FirstOrDefaultAsync(d => d.Id == documentId && d.TenantId == tenantId, cancellationToken);

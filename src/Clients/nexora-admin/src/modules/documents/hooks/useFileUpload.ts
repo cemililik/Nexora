@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import axios from 'axios';
 
 import { api } from '@/shared/lib/api';
 import { useGenerateUploadUrl } from './useDocuments';
@@ -16,6 +17,12 @@ interface UseFileUploadReturn {
   reset: () => void;
 }
 
+/**
+ * Hook for uploading files via presigned URL flow.
+ *
+ * The returned `error` value is a `lockey_` translation key suitable for
+ * passing directly to `t()` for user-facing error messages.
+ */
 export function useFileUpload(): UseFileUploadReturn {
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
@@ -107,7 +114,13 @@ export function useFileUpload(): UseFileUploadReturn {
         setProgress(100);
       } catch (err) {
         setState('error');
-        setError(err instanceof Error ? err.message : 'lockey_error_unexpected');
+        if (axios.isAxiosError(err) || (err instanceof Error && 'response' in err)) {
+          setError('lockey_error_api');
+        } else if (err instanceof Error) {
+          setError(err.message.startsWith('lockey_') ? err.message : 'lockey_error_network');
+        } else {
+          setError('lockey_error_unexpected');
+        }
       }
     },
     [generateUrl, reset],

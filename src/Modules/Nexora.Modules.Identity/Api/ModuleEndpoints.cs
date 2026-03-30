@@ -22,10 +22,10 @@ public static class ModuleEndpoints
             var result = modules.Select(m => new RegisteredModuleDto(
                 m.Name, m.DisplayName, m.Version, m.Dependencies.ToList())).ToList();
             return Results.Ok(ApiEnvelope<List<RegisteredModuleDto>>.Success(result));
-        }).RequireAuthorization();
+        }).RequireAuthorization("identity.modules.manage");
 
         var group = endpoints.MapGroup("/tenants/{tenantId:guid}/modules")
-            .RequireAuthorization();
+            .RequireAuthorization("identity.modules.manage");
 
         group.MapGet("/", async (Guid tenantId, ISender sender, CancellationToken ct) =>
         {

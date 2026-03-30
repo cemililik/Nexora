@@ -38,6 +38,7 @@ export function useDocuments(
         search: params.search,
         status: params.status,
       }),
+    staleTime: 30 * 1000,
   });
 }
 

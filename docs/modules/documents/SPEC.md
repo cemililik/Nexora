@@ -132,6 +132,201 @@ stateDiagram-v2
     note right of Completed: Document archived\nto signer's folder
 ```
 
+### Sequence Diagrams
+
+```mermaid
+---
+title: Document Upload Flow (Presigned URL)
+---
+sequenceDiagram
+    participant User
+    participant Frontend as nexora-admin
+    participant API as Documents API
+    participant Handler as UploadHandler
+    participant MinIO
+    participant DB as PostgreSQL
+
+    User->>Frontend: Select file (drag & drop / picker)
+    Frontend->>API: POST /api/v1/documents/documents {fileName, mimeType, folderId}
+    API->>Handler: Send(GenerateUploadUrlCommand)
+    Handler->>Handler: Validate MIME type whitelist & file size limit
+    Handler->>MinIO: Generate presigned PUT URL (TTL 15min)
+    MinIO-->>Handler: Presigned URL + storage key
+    Handler->>DB: Create Document record (status: pending_upload)
+    Handler-->>API: Result.Success({uploadUrl, documentId})
+    API-->>Frontend: ApiEnvelope<UploadUrlDto>
+
+    Frontend->>MinIO: PUT file via presigned URL (XHR direct upload)
+    MinIO-->>Frontend: 200 OK
+
+    Frontend->>API: POST /api/v1/documents/documents/{id}/confirm
+    API->>Handler: Send(ConfirmUploadCommand)
+    Handler->>MinIO: HEAD object (verify upload exists)
+    MinIO-->>Handler: Object metadata (size, etag)
+    Handler->>DB: Update Document (status: active, file_size, current_version: 1)
+    Handler->>DB: Create DocumentVersion (version_number: 1)
+    Handler-->>API: Result.Success(DocumentDto)
+    API-->>Frontend: ApiEnvelope<DocumentDto>
+```
+
+```mermaid
+---
+title: Folder Access Grant Flow
+---
+sequenceDiagram
+    participant Admin
+    participant API as Documents API
+    participant Handler as GrantFolderAccessHandler
+    participant DB as PostgreSQL
+    participant Kafka
+
+    Admin->>API: POST /api/v1/documents/folders/{folderId}/access {userId, permission, expiresAt}
+    API->>Handler: Send(GrantFolderAccessCommand)
+    Handler->>DB: Verify folder exists and admin has manage permission
+    Handler->>DB: Check for existing FolderAccess grant
+    alt Already granted
+        Handler->>DB: Update permission level & expiresAt
+    else New grant
+        Handler->>DB: Insert FolderAccess record
+    end
+    Handler->>DB: SaveChangesAsync
+    Handler->>Kafka: Publish FolderAccessGranted event
+    Handler-->>API: Result.Success
+    API-->>Admin: ApiEnvelope (success)
+
+    Note over Kafka: Notifications module sends<br/>access notification to user
+    Note over DB: FolderAccessExpiryJob revokes<br/>expired grants automatically
+```
+
+```mermaid
+---
+title: Document Download Flow
+---
+sequenceDiagram
+    participant User
+    participant Frontend as nexora-admin
+    participant API as Documents API
+    participant Handler as DownloadHandler
+    participant DB as PostgreSQL
+    participant MinIO
+
+    User->>Frontend: Click download on document
+    Frontend->>API: GET /api/v1/documents/documents/{id}/download
+    API->>Handler: Send(DownloadDocumentQuery)
+    Handler->>DB: Load Document record
+    Handler->>Handler: Check user permission (documents.documents.read)<br/>+ folder access if applicable
+    alt Access denied
+        Handler-->>API: Result.Failure (forbidden)
+        API-->>Frontend: 403 Forbidden
+    else Access granted
+        Handler->>MinIO: Generate presigned GET URL (TTL 5min)
+        MinIO-->>Handler: Presigned download URL
+        Handler-->>API: Result.Success({downloadUrl, fileName, mimeType})
+        API-->>Frontend: ApiEnvelope<DownloadUrlDto>
+        Frontend->>MinIO: GET file via presigned URL
+        MinIO-->>Frontend: File stream
+        Frontend->>User: Browser download dialog
+    end
+```
+
+### Component Diagram
+
+```mermaid
+---
+title: Documents Module - Component Diagram
+---
+flowchart TD
+    subgraph Api["Api Layer"]
+        DE[DocumentEndpoints]
+        FE[FolderEndpoints]
+        SE[SignatureEndpoints]
+        TE[TemplateEndpoints]
+    end
+
+    subgraph Application["Application Layer"]
+        CMD[Commands<br/>GenerateUploadUrl, ConfirmUpload,<br/>GrantFolderAccess, CreateSignRequest, ...]
+        QRY[Queries<br/>GetDocument, ListFolders,<br/>DownloadDocument, ...]
+        VAL[Validators]
+        SVC[Services<br/>TemplateRenderer]
+    end
+
+    subgraph Domain["Domain Layer"]
+        ENT[Entities<br/>Document, Folder, DocumentVersion,<br/>DocumentAccess, SignatureRequest,<br/>SignatureRecipient, DocumentTemplate]
+        VO[Value Objects<br/>DocumentId, FolderId, StorageKey]
+        EVT[Domain Events<br/>DocumentUploaded, SignatureCompleted]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        DBC[DocumentsDbContext]
+        MINIO[MinioStorageService<br/>Presigned URLs, object ops]
+        JOBS[Background Jobs<br/>FolderAccessExpiryJob]
+    end
+
+    subgraph External["External Services"]
+        MS[(MinIO<br/>S3-compatible storage)]
+        PG[(PostgreSQL)]
+        KF[Kafka<br/>Event bus]
+    end
+
+    Api --> Application
+    Application --> Domain
+    Application --> Infrastructure
+    Infrastructure --> External
+
+    MINIO --> MS
+    DBC --> PG
+```
+
+### Integration Diagram
+
+```mermaid
+---
+title: Documents Module - Integration Diagram
+---
+flowchart LR
+    subgraph Clients
+        AdminUI[nexora-admin]
+        Portal[nexora-portal]
+    end
+
+    subgraph Documents["Documents Module"]
+        DAPI[Documents API]
+        DApp[Application Layer]
+        DInfra[Infrastructure Layer]
+    end
+
+    subgraph Storage["File Storage"]
+        MinIO[(MinIO<br/>Tenant-isolated buckets)]
+    end
+
+    subgraph SharedInfra["Shared Infrastructure"]
+        PG[(PostgreSQL)]
+        Kafka[Kafka]
+    end
+
+    subgraph ProducerModules["Event Producers"]
+        Education[Education Module]
+        Donations[Donations Module]
+        HR[HR Module]
+    end
+
+    subgraph Identity["Identity Module"]
+        Auth[Auth & Permissions]
+    end
+
+    Clients -->|Presigned URL upload/download| MinIO
+    Clients -->|API calls| DAPI
+    DInfra -->|Generate presigned URLs| MinIO
+    DInfra --> PG
+    DApp -->|Publish events| Kafka
+
+    Kafka -->|enrollment.accepted| DApp
+    Kafka -->|donation.confirmed| DApp
+    Kafka -->|contract.created| DApp
+
+    DAPI -->|Permission check| Auth
+```
+
 ## Use Cases
 
 ### UC-DOC-001: Upload & Organize Document

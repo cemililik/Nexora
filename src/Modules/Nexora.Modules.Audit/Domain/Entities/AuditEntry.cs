@@ -51,6 +51,10 @@ public sealed class AuditEntry : Entity<AuditEntryId>
         string? metadata,
         DateTimeOffset timestamp)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(module);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+
         return new AuditEntry
         {
             Id = AuditEntryId.New(),

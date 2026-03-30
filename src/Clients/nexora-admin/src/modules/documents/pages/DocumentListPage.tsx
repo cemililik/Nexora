@@ -9,6 +9,7 @@ import { SearchInput } from '@/shared/components/data/SearchInput';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useApiError } from '@/shared/hooks/useApiError';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { formatRelativeTime } from '@/shared/lib/date';
 import {
@@ -39,6 +40,7 @@ export default function DocumentListPage() {
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
+  const { handleApiError } = useApiError();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get('search') ?? '';
@@ -228,7 +230,10 @@ export default function DocumentListPage() {
           if (deleteId) {
             archiveDoc.mutate(deleteId, {
               onSuccess: () => setDeleteId(null),
-              onError: () => setDeleteId(null),
+              onError: (error) => {
+                handleApiError(error);
+                setDeleteId(null);
+              },
             });
           }
         }}

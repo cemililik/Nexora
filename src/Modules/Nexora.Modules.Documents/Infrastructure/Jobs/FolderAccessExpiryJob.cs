@@ -27,20 +27,32 @@ public sealed class FolderAccessExpiryJob(
     {
         var dbContext = scopedServices.GetRequiredService<DocumentsDbContext>();
 
-        var now = DateTime.UtcNow;
+        var now = DateTimeOffset.UtcNow;
 
-        var expiredAccesses = await dbContext.FolderAccesses
+        // Batch soft-delete: Load only IDs, then remove in chunks to avoid OOM on large datasets.
+        // BaseDbContext interceptor converts Remove() to soft delete for AuditableEntity.
+        var expiredIds = await dbContext.FolderAccesses
             .Where(a => a.ExpiresAt != null && a.ExpiresAt <= now)
+            .Select(a => a.Id)
             .ToListAsync(ct);
 
-        if (expiredAccesses.Count == 0)
+        if (expiredIds.Count == 0)
             return;
 
-        foreach (var access in expiredAccesses)
-            dbContext.FolderAccesses.Remove(access);
+        const int batchSize = 100;
+        for (var i = 0; i < expiredIds.Count; i += batchSize)
+        {
+            var batch = expiredIds.Skip(i).Take(batchSize).ToList();
+            var entities = await dbContext.FolderAccesses
+                .Where(a => batch.Contains(a.Id))
+                .ToListAsync(ct);
 
-        await dbContext.SaveChangesAsync(ct);
+            dbContext.FolderAccesses.RemoveRange(entities);
+            await dbContext.SaveChangesAsync(ct);
+        }
 
-        logger.LogInformation("Soft-deleted {Count} expired folder access grants", expiredAccesses.Count);
+        logger.LogInformation(
+            "Soft-deleted {Count} expired folder access grants for tenant {TenantId}",
+            expiredIds.Count, tenant.TenantId);
     }
 }

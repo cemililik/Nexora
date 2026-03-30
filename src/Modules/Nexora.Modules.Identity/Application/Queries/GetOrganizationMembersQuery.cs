@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -18,7 +19,8 @@ public sealed record GetOrganizationMembersQuery(
 /// <summary>Returns paginated members of an organization.</summary>
 public sealed class GetOrganizationMembersHandler(
     IdentityDbContext dbContext,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetOrganizationMembersQuery, PagedResult<OrganizationMemberDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetOrganizationMembersHandler> logger) : IQueryHandler<GetOrganizationMembersQuery, PagedResult<OrganizationMemberDto>>
 {
     public async Task<Result<PagedResult<OrganizationMemberDto>>> Handle(
         GetOrganizationMembersQuery request,
@@ -28,15 +30,18 @@ public sealed class GetOrganizationMembersHandler(
         var orgId = OrganizationId.From(request.OrganizationId);
 
         // Verify organization belongs to tenant
-        var orgExists = await dbContext.Organizations
+        var orgExists = await dbContext.Organizations.AsNoTracking()
             .AnyAsync(o => o.Id == orgId && o.TenantId == tenantId, cancellationToken);
 
         if (!orgExists)
-            return Result<PagedResult<OrganizationMemberDto>>.Failure("lockey_identity_error_org_not_found");
+        {
+            logger.LogDebug("Organization not found for {OrganizationId} in tenant {TenantId}", request.OrganizationId, tenantId);
+            return Result<PagedResult<OrganizationMemberDto>>.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
+        }
 
-        var query = dbContext.OrganizationUsers
+        var query = dbContext.OrganizationUsers.AsNoTracking()
             .Where(ou => ou.OrganizationId == orgId)
-            .Join(dbContext.Users,
+            .Join(dbContext.Users.AsNoTracking(),
                 ou => ou.UserId,
                 u => u.Id,
                 (ou, u) => new { ou, u });

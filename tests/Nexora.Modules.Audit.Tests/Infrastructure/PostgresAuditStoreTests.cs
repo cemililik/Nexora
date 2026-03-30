@@ -47,7 +47,7 @@ public sealed class PostgresAuditStoreTests : IAsyncLifetime
         var userId = Guid.NewGuid();
         var timestamp = DateTimeOffset.UtcNow;
         var entry = new AuditEntryRecord(
-            Id: Guid.NewGuid(),
+            Id: AuditEntryId.New(),
             TenantId: _tenantId,
             Module: "Contacts",
             Operation: "CreateContact",
@@ -102,7 +102,7 @@ public sealed class PostgresAuditStoreTests : IAsyncLifetime
         var store = new PostgresAuditStore(_dbContext, NullLogger<PostgresAuditStore>.Instance);
 
         var entry = new AuditEntryRecord(
-            Id: Guid.NewGuid(),
+            Id: AuditEntryId.New(),
             TenantId: _tenantId,
             Module: "Identity",
             Operation: "Login",
@@ -138,7 +138,7 @@ public sealed class PostgresAuditStoreTests : IAsyncLifetime
         for (var i = 0; i < 5; i++)
         {
             var entry = new AuditEntryRecord(
-                Id: Guid.NewGuid(),
+                Id: AuditEntryId.New(),
                 TenantId: _tenantId,
                 Module: "Contacts",
                 Operation: $"Op{i}",
@@ -161,7 +161,7 @@ public sealed class PostgresAuditStoreTests : IAsyncLifetime
         var store = new PostgresAuditStore(_dbContext, NullLogger<PostgresAuditStore>.Instance);
 
         var entry = new AuditEntryRecord(
-            Id: Guid.NewGuid(),
+            Id: AuditEntryId.New(),
             TenantId: _tenantId,
             Module: "Contacts",
             Operation: "GetContacts",

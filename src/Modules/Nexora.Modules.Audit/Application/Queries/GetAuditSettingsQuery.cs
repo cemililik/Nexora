@@ -1,6 +1,5 @@
-using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Audit.Application.DTOs;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Localization;
@@ -13,7 +12,7 @@ public sealed record GetAuditSettingsQuery : IQuery<IReadOnlyList<AuditSettingDt
 
 /// <summary>Returns all audit settings for the current tenant.</summary>
 public sealed class GetAuditSettingsHandler(
-    AuditDbContext dbContext,
+    IAuditSettingRepository auditSettingRepository,
     ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetAuditSettingsQuery, IReadOnlyList<AuditSettingDto>>
 {
     public async Task<Result<IReadOnlyList<AuditSettingDto>>> Handle(
@@ -22,15 +21,12 @@ public sealed class GetAuditSettingsHandler(
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
 
-        var settings = await dbContext.AuditSettings.AsNoTracking()
-            .Where(s => s.TenantId == tenantId)
-            .OrderBy(s => s.Module)
-            .ThenBy(s => s.Operation)
-            .Select(s => new AuditSettingDto(
-                s.Id.Value, s.Module, s.Operation, s.IsEnabled, s.RetentionDays))
-            .ToListAsync(cancellationToken);
+        var settings = await auditSettingRepository.GetAllByTenantAsync(tenantId, cancellationToken);
 
-        return Result<IReadOnlyList<AuditSettingDto>>.Success(settings,
+        var dtos = settings.Select(s => new AuditSettingDto(
+            s.Id.Value, s.Module, s.Operation, s.IsEnabled, s.RetentionDays)).ToList();
+
+        return Result<IReadOnlyList<AuditSettingDto>>.Success(dtos,
             LocalizedMessage.Of("lockey_audit_settings_listed"));
     }
 }

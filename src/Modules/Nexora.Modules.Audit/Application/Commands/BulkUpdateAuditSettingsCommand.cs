@@ -1,10 +1,9 @@
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Entities;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -43,8 +42,8 @@ public sealed class BulkUpdateAuditSettingsValidator : AbstractValidator<BulkUpd
 
         RuleFor(x => x.Settings)
             .Must(settings => settings
-                .Select(s => $"{s.Module}:{s.Operation}")
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(s => $"{s.Module.Trim().ToLowerInvariant()}:{s.Operation.Trim().ToLowerInvariant()}")
+                .Distinct(StringComparer.Ordinal)
                 .Count() == settings.Count)
             .WithMessage("lockey_audit_validation_duplicate_settings");
     }
@@ -52,7 +51,7 @@ public sealed class BulkUpdateAuditSettingsValidator : AbstractValidator<BulkUpd
 
 /// <summary>Handles bulk upsert of audit settings.</summary>
 public sealed class BulkUpdateAuditSettingsHandler(
-    AuditDbContext dbContext,
+    IAuditSettingRepository auditSettingRepository,
     ITenantContextAccessor tenantContextAccessor,
     ICacheService cacheService,
     ILogger<BulkUpdateAuditSettingsHandler> logger) : ICommandHandler<BulkUpdateAuditSettingsCommand, List<AuditSettingDto>>
@@ -66,9 +65,7 @@ public sealed class BulkUpdateAuditSettingsHandler(
         var results = new List<AuditSettingDto>();
 
         // Batch load all existing settings for this tenant to avoid N+1 queries
-        var existingSettings = await dbContext.AuditSettings
-            .Where(s => s.TenantId == tenantId)
-            .ToListAsync(cancellationToken);
+        var existingSettings = await auditSettingRepository.GetAllByTenantAsync(tenantId, cancellationToken);
 
         var existingLookup = existingSettings
             .ToDictionary(s => $"{s.Module}:{s.Operation}", StringComparer.OrdinalIgnoreCase);
@@ -88,7 +85,7 @@ public sealed class BulkUpdateAuditSettingsHandler(
             else
             {
                 existing = AuditSetting.Create(tenantId, item.Module, item.Operation, item.IsEnabled, item.RetentionDays);
-                await dbContext.AuditSettings.AddAsync(existing, cancellationToken);
+                auditSettingRepository.Add(existing);
             }
 
             results.Add(new AuditSettingDto(
@@ -96,15 +93,19 @@ public sealed class BulkUpdateAuditSettingsHandler(
                 existing.IsEnabled, existing.RetentionDays));
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await auditSettingRepository.SaveChangesAsync(cancellationToken);
 
         // Invalidate cache for each updated setting (both defaultEnabled variants)
-        foreach (var (mod, op) in normalizedKeys)
+        var invalidationTasks = normalizedKeys.SelectMany(k =>
         {
-            var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(tenantId, mod, op);
-            await cacheService.RemoveAsync(enabledKey, cancellationToken);
-            await cacheService.RemoveAsync(disabledKey, cancellationToken);
-        }
+            var (enabledKey, disabledKey) = AuditCacheKeys.InvalidationKeys(k.Module, k.Operation);
+            return new[]
+            {
+                cacheService.RemoveAsync(enabledKey, cancellationToken),
+                cacheService.RemoveAsync(disabledKey, cancellationToken)
+            };
+        });
+        await Task.WhenAll(invalidationTasks);
 
         logger.LogInformation(
             "Bulk updated {Count} audit settings for tenant {TenantId}",
