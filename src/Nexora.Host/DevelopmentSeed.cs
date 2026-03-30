@@ -426,13 +426,44 @@ public static class DevelopmentSeed
             "ALTER TABLE identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
             // UserRole.AssignedAt — added for role assignment date tracking
             "ALTER TABLE identity_user_roles ADD COLUMN IF NOT EXISTS \"AssignedAt\" timestamptz DEFAULT now()",
+            // FolderAccess — folder-level access control with optional expiration
+            """
+            CREATE TABLE IF NOT EXISTS documents_folder_accesses (
+                "Id" uuid PRIMARY KEY,
+                "FolderId" uuid NOT NULL,
+                "UserId" uuid,
+                "RoleId" uuid,
+                "Permission" varchar(20) NOT NULL,
+                "ExpiresAt" timestamptz,
+                "CreatedAt" timestamptz NOT NULL DEFAULT now(),
+                "CreatedBy" text,
+                "UpdatedAt" timestamptz,
+                "UpdatedBy" text,
+                "IsDeleted" boolean NOT NULL DEFAULT false,
+                "DeletedAt" timestamptz,
+                "DeletedBy" text
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_documents_folder_accesses_FolderId_UserId\" ON documents_folder_accesses (\"FolderId\", \"UserId\")",
+            "CREATE INDEX IF NOT EXISTS \"IX_documents_folder_accesses_FolderId_RoleId\" ON documents_folder_accesses (\"FolderId\", \"RoleId\")",
+            "CREATE INDEX IF NOT EXISTS \"IX_documents_folder_accesses_ExpiresAt\" ON documents_folder_accesses (\"ExpiresAt\") WHERE \"ExpiresAt\" IS NOT NULL",
+            // Unique filtered index: prevents duplicate document names within the same folder (excluding soft-deleted)
+            "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_documents_documents_TenantId_FolderId_Name\" ON documents_documents (\"TenantId\", \"FolderId\", \"Name\") WHERE \"IsDeleted\" = false",
         };
 
         foreach (var sql in alterStatements)
         {
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = sql;
-            await cmd.ExecuteNonQueryAsync();
+            try
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = sql;
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "23505")
+            {
+                // Unique index creation may fail if duplicate data exists — skip gracefully
+                Log.Warning("[DevSeed] Skipped schema update due to existing data conflict: {Message}", ex.MessageText);
+            }
         }
 
         Log.Information("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);

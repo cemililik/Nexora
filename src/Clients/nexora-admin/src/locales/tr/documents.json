@@ -30,6 +30,8 @@
 
   "lockey_documents_filter_all_statuses": "Tüm Durumlar",
   "lockey_documents_filter_all_folders": "Tüm Klasörler",
+  "lockey_documents_filter_status": "Duruma göre filtrele",
+  "lockey_documents_filter_folder": "Klasöre göre filtrele",
 
   "lockey_documents_form_name": "Belge Adı",
   "lockey_documents_form_description": "Açıklama",
@@ -49,6 +51,8 @@
   "lockey_documents_action_link": "Varlığa Bağla",
   "lockey_documents_action_unlink": "Bağlantıyı Kaldır",
   "lockey_documents_action_delete": "Sil",
+  "lockey_documents_action_preview": "Önizleme",
+  "lockey_documents_action_open_new_tab": "Yeni Sekmede Aç",
 
   "lockey_documents_confirm_archive": "Bu belgeyi arşivlemek istediğinizden emin misiniz?",
   "lockey_documents_confirm_archive_title": "Belgeyi Arşivle",
@@ -72,6 +76,7 @@
   "lockey_documents_empty_documents": "Belge bulunamadı.",
   "lockey_documents_empty_versions": "Versiyon bulunamadı.",
   "lockey_documents_empty_access": "Erişim izni tanımlanmamış.",
+  "lockey_documents_preview_not_available": "Bu dosya türü için önizleme mevcut değil.",
 
   "lockey_documents_tab_details": "Detaylar",
   "lockey_documents_tab_versions": "Versiyonlar",
@@ -102,6 +107,9 @@
   "lockey_documents_access_col_permission": "İzin",
   "lockey_documents_access_confirm_revoke_title": "Erişimi Kaldır",
   "lockey_documents_access_confirm_revoke": "Bu erişimi kaldırmak istediğinizden emin misiniz?",
+  "lockey_documents_access_default_info": "Belge sahibi ve yöneticiler her zaman tam erişime sahiptir. Aşağıda ek erişim izinleri listelenmektedir.",
+  "lockey_documents_access_form_user_search": "Kullanıcı Ara",
+  "lockey_documents_access_form_user_search_placeholder": "Kullanıcı aramak için yazın...",
 
   "lockey_documents_upload_step_select": "Dosya Seç",
   "lockey_documents_upload_step_upload": "Yükleniyor...",
@@ -219,6 +227,27 @@
   "lockey_documents_signatures_filter_all_statuses": "Tüm Durumlar",
   "lockey_documents_signatures_not_signed": "İmzalanmadı",
 
+  "lockey_documents_upload_drag_or_click": "Dosyay\u0131 buraya s\u00fcr\u00fckleyin veya g\u00f6z atmak i\u00e7in t\u0131klay\u0131n",
+  "lockey_documents_upload_max_size": "Maksimum dosya boyutu: {{maxSize}} MB",
+  "lockey_documents_upload_invalid_type": "Bu dosya t\u00fcr\u00fcne izin verilmiyor.",
+  "lockey_documents_upload_file_too_large": "Dosya maksimum {{maxSize}} MB boyutunu a\u015f\u0131yor.",
+  "lockey_documents_upload_step_preparing": "Y\u00fckleme haz\u0131rlan\u0131yor...",
+  "lockey_documents_upload_success_new": "Belge ba\u015far\u0131yla y\u00fcklendi.",
+  "lockey_documents_upload_success_version": "Yeni versiyon ba\u015far\u0131yla y\u00fcklendi.",
+  "lockey_documents_upload_view_document": "Belgeyi G\u00f6r\u00fcnt\u00fcle",
+  "lockey_documents_upload_another": "Ba\u015fka Bir Belge Y\u00fckle",
+  "lockey_documents_upload_no_permission": "Belge y\u00fckleme izniniz bulunmuyor.",
+
+  "lockey_documents_templates_var_name": "De\u011fi\u015fken ad\u0131",
+  "lockey_documents_templates_var_type": "T\u00fcr",
+  "lockey_documents_templates_var_type_string": "Metin",
+  "lockey_documents_templates_var_type_number": "Say\u0131",
+  "lockey_documents_templates_var_type_date": "Tarih",
+  "lockey_documents_templates_var_type_boolean": "Evet/Hay\u0131r",
+  "lockey_documents_templates_var_required": "Zorunlu",
+  "lockey_documents_templates_var_add": "De\u011fi\u015fken Ekle",
+  "lockey_documents_templates_var_no_definitions": "Bu \u015fablon i\u00e7in de\u011fi\u015fken tan\u0131m\u0131 yap\u0131lmam\u0131\u015f.",
+
   "lockey_documents_file_size_bytes": "{{size}} B",
   "lockey_documents_file_size_kb": "{{size}} KB",
   "lockey_documents_file_size_mb": "{{size}} MB",
@@ -233,5 +262,33 @@
   "lockey_documents_permission_signature_create": "İmza oluştur",
   "lockey_documents_permission_signature_manage": "İmzaları yönet",
   "lockey_documents_permission_template_read": "Şablonları görüntüle",
-  "lockey_documents_permission_template_manage": "Şablonları yönet"
+  "lockey_documents_permission_template_manage": "Şablonları yönet",
+
+  "lockey_documents_folder_access_title": "Klasör Erişim Kontrolü",
+  "lockey_documents_folder_access_description": "\"{{folderName}}\" klasörü için erişim izinlerini yönetin.",
+  "lockey_documents_folder_access_current": "Mevcut Erişimler",
+  "lockey_documents_folder_access_grant": "Erişim Ver",
+  "lockey_documents_folder_access_manage": "Erişimi Yönet",
+  "lockey_documents_folder_access_empty": "Bu klasör için erişim izni tanımlanmamış.",
+  "lockey_documents_folder_access_col_expires": "Bitiş",
+  "lockey_documents_folder_access_expired": "Süresi Dolmuş",
+  "lockey_documents_folder_access_search_user": "Kullanıcı ara...",
+  "lockey_documents_folder_access_select_role": "Rol seçin",
+  "lockey_documents_folder_access_expiry": "Süre",
+  "lockey_documents_folder_access_expiry_permanent": "Kalıcı",
+  "lockey_documents_folder_access_expiry_1h": "1 Saat",
+  "lockey_documents_folder_access_expiry_1d": "1 Gün",
+  "lockey_documents_folder_access_expiry_1w": "1 Hafta",
+  "lockey_documents_folder_access_expiry_1m": "1 Ay",
+  "lockey_documents_folder_access_expiry_custom": "Özel",
+  "lockey_documents_folder_access_expiry_date": "Bitiş Tarihi",
+  "lockey_documents_folder_access_toast_granted": "Klasör erişimi verildi.",
+  "lockey_documents_folder_access_toast_revoked": "Klasör erişimi kaldırıldı.",
+  "lockey_documents_folder_access_confirm_revoke_title": "Klasör Erişimini Kaldır",
+  "lockey_documents_folder_access_confirm_revoke": "Bu klasör erişimini kaldırmak istediğinizden emin misiniz?",
+
+  "lockey_documents_signatures_search_document": "Belge ara...",
+  "lockey_documents_signatures_search_contact": "Kişi Ara",
+  "lockey_documents_signatures_search_contact_placeholder": "Kişi aramak için yazın...",
+  "lockey_documents_signatures_recipients_required": "En az bir alıcı gereklidir."
 }

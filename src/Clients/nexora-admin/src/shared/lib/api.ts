@@ -147,6 +147,19 @@ export const api = {
     const response = await apiClient.get<ApiEnvelope<T>>(url, { params });
     return response.data;
   },
+
+  /**
+   * Post and return the raw ApiEnvelope response (for cases where you need
+   * the message, meta, or validation errors).
+   */
+  async postRaw<T>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<ApiEnvelope<T>> {
+    const response = await apiClient.post<ApiEnvelope<T>>(url, data, config);
+    return response.data;
+  },
 };
 
 /**

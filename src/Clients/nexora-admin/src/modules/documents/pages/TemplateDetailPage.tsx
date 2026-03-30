@@ -34,6 +34,8 @@ import {
   useRenderTemplate,
 } from '../hooks/useTemplates';
 import { useFolders } from '../hooks/useFolders';
+import { VariableDefinitionsEditor } from '../components/VariableDefinitionsEditor';
+import { VariableEditor } from '../components/VariableEditor';
 
 const CATEGORIES = ['Contract', 'Receipt', 'Letter', 'Report'] as const;
 const FORMATS = ['Docx', 'Pdf', 'Html'] as const;
@@ -282,13 +284,19 @@ export default function TemplateDetailPage() {
         )}
 
         <div>
-          <label htmlFor="template-variables" className="text-sm font-medium">{t('lockey_documents_templates_form_variables')}</label>
-          <textarea
-            id="template-variables"
-            {...form.register('variableDefinitions')}
-            className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-            rows={4}
-          />
+          <label className="text-sm font-medium">{t('lockey_documents_templates_form_variables')}</label>
+          <div className="mt-1">
+            <Controller
+              control={form.control}
+              name="variableDefinitions"
+              render={({ field }) => (
+                <VariableDefinitionsEditor
+                  value={field.value ?? ''}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -364,11 +372,19 @@ export default function TemplateDetailPage() {
             </div>
             <div>
               <label className="text-sm font-medium">{t('lockey_documents_templates_render_form_variables')}</label>
-              <textarea
-                {...renderForm.register('variables')}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-                rows={4}
-              />
+              <div className="mt-1">
+                <Controller
+                  control={renderForm.control}
+                  name="variables"
+                  render={({ field }) => (
+                    <VariableEditor
+                      variableDefinitions={template?.variableDefinitions ?? ''}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
               {renderForm.formState.errors.variables?.message && (
                 <p className="mt-1 text-sm text-destructive">{renderForm.formState.errors.variables.message}</p>
               )}

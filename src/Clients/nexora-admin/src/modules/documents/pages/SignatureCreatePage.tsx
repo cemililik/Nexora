@@ -9,6 +9,8 @@ import { Button } from '@/shared/components/ui/button';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { useDocuments } from '../hooks/useDocuments';
+import { useContacts } from '@/modules/contacts/hooks/useContacts';
 import { useCreateSignatureRequest } from '../hooks/useSignatures';
 import type { SignatureRecipientInput } from '../types';
 
@@ -37,9 +39,29 @@ export default function SignatureCreatePage() {
   const { handleApiError } = useApiError();
   const createSignature = useCreateSignatureRequest();
 
+  // Document search state
+  const [docSearch, setDocSearch] = useState('');
+  const [showDocDropdown, setShowDocDropdown] = useState(false);
+  const [selectedDocLabel, setSelectedDocLabel] = useState('');
+  const { data: docsResult } = useDocuments({
+    page: 1,
+    pageSize: 10,
+    search: docSearch || undefined,
+    status: 'Active',
+  });
+  const documents = docsResult?.items ?? [];
+
+  // Contact search state
+  const [contactSearch, setContactSearch] = useState('');
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientContactId, setRecipientContactId] = useState('');
+  const { data: contactsResult } = useContacts(
+    { page: 1, pageSize: 10, search: contactSearch || undefined },
+    { enabled: contactSearch.length > 0 },
+  );
+  const contacts = contactsResult?.items ?? [];
 
   const schema = useMemo(() => createSignatureSchema(t), [t]);
   const form = useForm<SignatureFormValues>({
@@ -61,9 +83,9 @@ export default function SignatureCreatePage() {
   }, [setBreadcrumbs]);
 
   const addRecipient = () => {
-    if (!recipientName || !recipientEmail || !recipientContactId) return;
+    if (!recipientName || !recipientEmail) return;
     append({
-      contactId: recipientContactId,
+      contactId: recipientContactId || undefined,
       email: recipientEmail,
       name: recipientName,
       signingOrder: fields.length + 1,
@@ -71,6 +93,7 @@ export default function SignatureCreatePage() {
     setRecipientName('');
     setRecipientEmail('');
     setRecipientContactId('');
+    setContactSearch('');
   };
 
   const removeRecipient = (index: number) => {
@@ -99,13 +122,46 @@ export default function SignatureCreatePage() {
       <h1 className="text-2xl font-semibold">{t('lockey_documents_signatures_create')}</h1>
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
-        <div>
+        {/* Document search combobox */}
+        <div className="relative">
           <label className="text-sm font-medium">{t('lockey_documents_signatures_form_document_id')}</label>
           <input
             type="text"
-            {...form.register('documentId')}
+            value={selectedDocLabel || docSearch}
+            onChange={(e) => {
+              setDocSearch(e.target.value);
+              setSelectedDocLabel('');
+              form.setValue('documentId', '');
+              setShowDocDropdown(true);
+            }}
+            onFocus={() => setShowDocDropdown(true)}
+            onBlur={() => {
+              setTimeout(() => setShowDocDropdown(false), 200);
+            }}
+            placeholder={t('lockey_documents_signatures_search_document')}
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           />
+          {showDocDropdown && documents.length > 0 && !selectedDocLabel && (
+            <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md">
+              {documents.map((doc) => (
+                <button
+                  key={doc.id}
+                  type="button"
+                  className="w-full px-3 py-2 text-start text-sm hover:bg-accent"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    form.setValue('documentId', doc.id);
+                    setSelectedDocLabel(doc.name);
+                    setDocSearch('');
+                    setShowDocDropdown(false);
+                  }}
+                >
+                  <span className="font-medium">{doc.name}</span>
+                  <span className="ml-2 text-muted-foreground">({doc.mimeType})</span>
+                </button>
+              ))}
+            </div>
+          )}
           {form.formState.errors.documentId?.message && (
             <p className="mt-1 text-sm text-destructive">{form.formState.errors.documentId.message}</p>
           )}
@@ -170,28 +226,72 @@ export default function SignatureCreatePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-2">
-            <input
-              type="text"
-              value={recipientName}
-              onChange={(e) => setRecipientName(e.target.value)}
-              placeholder={t('lockey_documents_signatures_form_recipient_name')}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-            <input
-              type="email"
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              placeholder={t('lockey_documents_signatures_form_recipient_email')}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-            <input
-              type="text"
-              value={recipientContactId}
-              onChange={(e) => setRecipientContactId(e.target.value)}
-              placeholder={t('lockey_documents_signatures_form_recipient_contact_id')}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
+          {/* Contact search combobox for adding recipients */}
+          <div className="space-y-2">
+            <div className="relative">
+              <label className="text-xs font-medium">{t('lockey_documents_signatures_search_contact')}</label>
+              <input
+                type="text"
+                value={contactSearch}
+                onChange={(e) => {
+                  setContactSearch(e.target.value);
+                  setShowContactDropdown(true);
+                }}
+                onFocus={() => { if (contactSearch) setShowContactDropdown(true); }}
+                onBlur={() => {
+                  setTimeout(() => setShowContactDropdown(false), 200);
+                }}
+                placeholder={t('lockey_documents_signatures_search_contact_placeholder')}
+                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              {showContactDropdown && contacts.length > 0 && (
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md">
+                  {contacts.map((contact) => (
+                    <button
+                      key={contact.id}
+                      type="button"
+                      className="w-full px-3 py-2 text-start text-sm hover:bg-accent"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setRecipientContactId(contact.id);
+                        setRecipientName(contact.displayName);
+                        setRecipientEmail(contact.email ?? '');
+                        setContactSearch('');
+                        setShowContactDropdown(false);
+                      }}
+                    >
+                      <span className="font-medium">{contact.displayName}</span>
+                      {contact.email && (
+                        <span className="ml-2 text-muted-foreground">{contact.email}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium">{t('lockey_documents_signatures_form_recipient_name')}</label>
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder={t('lockey_documents_signatures_form_recipient_name')}
+                  className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium">{t('lockey_documents_signatures_form_recipient_email')}</label>
+                <input
+                  type="email"
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder={t('lockey_documents_signatures_form_recipient_email')}
+                  className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addRecipient}>
             {t('lockey_documents_signatures_add_recipient')}

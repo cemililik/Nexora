@@ -76,9 +76,9 @@ public static class DocumentEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    $"/api/v1/documents/{result.Value!.Id}",
-                    ApiEnvelope<DocumentDto>.Success(result.Value, result.Message))
-                : Results.BadRequest(ApiEnvelope<DocumentDto>.Fail(result.Error!));
+                    $"/api/v1/documents/{result.Value!.Document.Id}",
+                    ApiEnvelope<ConfirmUploadResultDto>.Success(result.Value, result.Message))
+                : Results.BadRequest(ApiEnvelope<ConfirmUploadResultDto>.Fail(result.Error!));
         });
 
         group.MapPost("/", async (UploadDocumentCommand command, ISender sender, CancellationToken ct) =>
