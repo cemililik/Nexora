@@ -1,5 +1,10 @@
 # Module: Notification Engine
 
+> **Status**: Implemented
+> **Module Name**: `notifications`
+> **Tier**: Core/Platform (always installed)
+> **Dependencies**: `identity`, `contacts`
+
 ## Overview
 The Notification Engine is a **core platform module** that provides unified communication infrastructure for all other modules. It handles email, SMS, WhatsApp, and push notification delivery with template management, delivery tracking, bulk sending with throttling, and per-contact communication preferences/consent enforcement. No module sends notifications directly — they all publish events, and this module handles the delivery.
 
@@ -133,7 +138,9 @@ flowchart TB
 
 - **Html**: Variable values are encoded via `WebUtility.HtmlEncode` before substitution to prevent XSS in rendered HTML content.
 - **Text / Markdown**: Variable values are inserted as-is without encoding.
-- **Subject lines**: Never encoded regardless of template format.
+- **Subject lines**: Never encoded regardless of template format. CR/LF characters are stripped from rendered subjects to prevent email header injection.
+
+`RenderInlineSubject` is used for ad-hoc (non-template) subject lines: it performs variable substitution without HTML encoding and strips CR/LF characters. All three send commands (`SendNotification`, `SendBulkNotification`, `ScheduleNotification`) use `RenderInlineSubject` when a custom subject is provided instead of a template.
 
 ## Use Cases
 

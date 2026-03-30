@@ -1,5 +1,10 @@
 # Module: Identity & Access Management
 
+> **Status**: Implemented
+> **Module Name**: `identity`
+> **Tier**: Core/Platform (always installed)
+> **Dependencies**: None (foundational)
+
 ## Overview
 The Identity module is the **foundational module** of Nexora. It manages multi-tenancy, organizations, users, roles, and permissions. Every other module depends on it for authentication context, tenant resolution, and authorization checks. It integrates with Keycloak as the external identity provider and provides the internal permission/role engine.
 

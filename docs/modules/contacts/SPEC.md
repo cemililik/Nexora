@@ -1,5 +1,10 @@
 # Module: Contact Management
 
+> **Status**: Implemented
+> **Module Name**: `contacts`
+> **Tier**: Core/Platform (always installed)
+> **Dependencies**: `identity`
+
 ## Overview
 The Contact module provides a **unified contact registry** shared across all Nexora modules. A single person can be a donor, parent, volunteer, vendor, and employee simultaneously — represented as one contact record with multiple type tags. This is the foundation for the 360-degree view: when you open a contact card, you see all interactions across CRM, Donations, Sponsorship, Education, and every other module.
 

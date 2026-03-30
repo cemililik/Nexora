@@ -1,12 +1,14 @@
 # Module: Reporting Engine
 
+> **Status**: Implemented
+> **Module Name**: `reporting`
+> **Version**: `1.0.0`
+> **Tier**: Core/Platform (always installed)
+> **Dependencies**: `identity` (required)
+> **Optional Dependencies**: `contacts`, `notifications`, `documents` (for cross-module SQL joins and scheduled email delivery)
+
 ## Overview
 The Reporting module provides SQL-based report definitions, on-demand and scheduled execution, multi-format export (CSV, Excel, PDF, JSON), and dashboard analytics across all Nexora modules. Reports execute within the tenant's PostgreSQL schema using read-only transactions, with results stored in MinIO. It supports parameterized queries, cron-based scheduling, and a widget-based dashboard builder.
-
-**Module Name**: `reporting`
-**Version**: `1.0.0`
-**Dependencies**: `identity` (required)
-**Optional Dependencies**: `contacts`, `notifications`, `documents` (for cross-module SQL joins and scheduled email delivery)
 
 ## Domain Model
 

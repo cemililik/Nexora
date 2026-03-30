@@ -523,6 +523,20 @@ POST /api/v1/identity/modules/install
 }
 ```
 
+### Module Licensing (NMP Integration)
+
+Modules are gated by license verification via `ILicenseVerifier` (defined in SharedKernel). `InstallModuleCommand` calls `ILicenseVerifier.VerifyAsync()` before proceeding with installation.
+
+| Verifier | Deployment | Behavior |
+|----------|------------|----------|
+| `NullLicenseVerifier` | Development, pre-NMP | Always allows — no license check |
+| `NmpLicenseVerifier` | Production SaaS | Checks NMP API, caches result in `platform_license_cache` |
+| `LicenseKeyVerifier` | On-prem | Validates RSA-signed license key payload |
+
+The active `ILicenseVerifier` implementation is determined by the `DeploymentMode` configuration flag (`SaaS` | `OnPrem`). During development, `NullLicenseVerifier` is registered by default.
+
+For full details on the license verification flow, cache table schema, and NMP integration points, see [MANAGEMENT_PORTAL.md — Integration Points with CRM](MANAGEMENT_PORTAL.md#9-integration-points-with-crm).
+
 ## 9. Module Dependency Resolution
 
 ```mermaid

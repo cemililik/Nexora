@@ -25,20 +25,28 @@ gantt
     Portal Framework (Next.js)   :done, p1f, after p1d, 2w
 
     section Phase 1.5 - Bridge
-    Transactional Outbox/Inbox   :p15a, after p1e, 3w
-    Portal UI Extension Points   :p15b, after p1f, 3w
-    Localization (US + TR)       :p15c, after p1e, 3w
-    Demo Data Framework          :p15d, after p15a, 2w
-    Tenant Permission Isolation  :p15e, after p15c, 2w
+    Outbox/Inbox + Cache Inval   :p15a, after p1e, 3w
+    Tenant Permission Isolation  :p15b, after p1e, 3w
+    Localization (US + TR)       :p15c, after p15a, 4w
+    Portal UI Extension Points   :p15d, after p15b, 4w
+    Audit Module Enhancements    :p15e, after p15c, 3w
+    Contact Module Enhancements  :p15f, after p15d, 3w
+    Demo Data Framework          :p15g, after p15e, 2w
+
+    section NMP Track (Parallel with Phase 2)
+    NMP Foundation               :crit, nmp1, after p15b, 4w
+    NMP Billing Integration      :nmp2, after nmp1, 4w
+    NMP Admin Adaptation         :nmp3, after p2d, 4w
+    NMP On-Prem & Marketplace    :nmp4, after nmp2, 4w
 
     section Phase 2 - Core Business
-    CRM module                   :crit, p2a, after p15d, 4w
+    CRM module                   :crit, p2a, after p15g, 4w
     Finance module               :crit, p2b, after p2a, 3w
     Subscription & Billing       :p2c, after p2b, 3w
     Project Management           :p2d, after p2a, 4w
 
     section Phase 3 - Growth
-    Website & CMS                :p3a, after p15b, 5w
+    Website & CMS                :p3a, after p15d, 5w
     Events module                :p3b, after p2a, 3w
     Surveys & Feedback           :p3c, after p3b, 2w
     HR & Payroll                 :p3d, after p2b, 4w
@@ -318,20 +326,77 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Test coverage: +46 test files, ~289 new tests added
 - [x] Key improvements: cache tenant isolation (DaprCacheService auto-prefixes tenant ID via ITenantContextAccessor), HangfireJobScheduler refactor (expression-based `job => job.RunAsync(params, ct)` pattern), ApiEnvelope TraceId on all responses (included when `Activity` is active, omitted otherwise), `.AsNoTracking()` on all query handlers, Entity Equals null safety, AuditableEntity.MarkAsDeleted parameter validation, DELETE endpoints return 200 OK with message
 
-#### Deferred Enhancements (moved to later phases — prioritize based on production feedback)
-- [ ] Table/column autocomplete in SQL editor (fetch tenant schema metadata, suggest in editor)
-- [ ] Visual query builder — Metabase-style UI (select table → pick columns → add filters → group by)
-- [ ] Report templates (pre-built SQL for common reports per module: contact list, donation summary, etc.)
-- [ ] Report sharing (generate public link with token-based access, no auth required)
-- [ ] Report versioning (track query changes, rollback to previous version)
-- [ ] Email delivery for on-demand reports (send completed report as attachment)
+### 1.8 Audit Module (new standalone module)
+
+- [x] SharedKernel: IAuditStore, IAuditContext, IAuditConfigService, AuditEntry record, IAuditable, OperationType enum (Create/Update/Delete/Action/Read)
+- [x] Infrastructure: AuditLogBehavior MediatR pipeline (commands + queries), HttpAuditContext, IOperationResult interface
+- [x] Backend: AuditModule with domain entities (AuditEntry, AuditSetting), DbContext, EF configurations, PostgresAuditStore, AuditConfigService (cached, tenant-scoped)
+- [x] API: GET/PUT audit settings, PUT bulk settings, GET settings/operations (auto-discovery), GET audit logs (paginated + filtered), GET log detail
+- [x] Query audit support: queries auditable when explicitly enabled (disabled by default), "Query." prefix for operation names
+- [x] Dynamic operation discovery: scans all module assemblies for ICommand/IQuery implementations
+- [x] Frontend: manifest, 3 pages (log list, log detail, settings), 4 hooks, 3 components (StatusBadge, OperationTypeBadge, EntityDiffViewer)
+- [x] Audit Settings UX: accordion per module, toggle switches, bulk save, search/filter, module-level toggle
+- [x] Permissions: audit.logs.read, audit.logs.export, audit.settings.read, audit.settings.manage
+- [x] Tests: 67 backend tests (domain, commands, queries, services, store)
+- [x] Cache key centralization: AuditCacheKeys helper, tenant-scoped, normalized inputs
+
+### 1.9 Platform Job Architecture
+
+- [x] PlatformJob<TParams> base class: cross-tenant job execution (iterates all active tenants, fresh DI scope per tenant)
+- [x] IActiveTenantProvider + PlatformTenantProvider: platform-level tenant query (module-filtered)
+- [x] TenantModelCacheKeyFactory: EF Core per-tenant model caching fix (prevents schema corruption in multi-tenant)
+- [x] 6 recurring jobs migrated from NexoraJob to PlatformJob (3 Notification, 2 Document, 1 Reporting)
+- [x] NexoraJob: restored to purely tenant-scoped (removed system workaround)
+- [x] Tests: PlatformJob (6 tests), TenantModelCacheKeyFactory (5 tests), AuditLogBehavior (14 tests)
+
+### 1.10 Admin UI/UX Improvements
+
+- [x] Relative time formatting: formatRelativeTime utility (<1h→minutes, today→hours, <30d→days, older→date) + en/tr translations
+- [x] DataTable: onRowClick (clickable rows), page size selector (20/50/100 configurable), keyboard accessibility (tabIndex, Enter/Space), useId() for unique IDs, cn() utility
+- [x] All list pages: row click navigation, formatRelativeTime on date columns (10 pages updated)
+- [x] Users: search input, organization/role filters, shadcn/ui Select components
+- [x] Roles: card grid → DataTable list view with pagination
+- [x] Role detail: assigned users modal (add/remove with search), assignment date
+- [x] Organization detail: member join date, trash icon remove button, add member dialog
+- [x] Contact detail: address CRUD (add/edit/delete with dialog forms), relationship contact search combobox
+- [x] Sidebar: permission-based menu filtering (hide modules user has no access to)
+- [x] Identity audit-logs nav removed from sidebar (standalone Audit module)
+- [x] Module install: dynamic module list from backend (replaces hardcoded AVAILABLE_MODULES)
+- [x] Keycloak user delete: GET→modify→PUT full representation (400 fix)
+- [x] LastLoginAt: updated on /me endpoint, fire-and-forget with try-catch
+- [x] Permission resolution: /me returns DB permissions (fallback to JWT), sub claim fallback
+
+### 1.11 Documents Module Enhancements
+
+- [x] Upload UX: FileDropZone component (drag-drop, validation), DocumentUploadPage (3-phase presigned URL flow), useFileUpload hook
+- [x] Duplicate detection: same name+folder → auto adds new version (ConfirmUploadResultDto.IsVersionUpdate)
+- [x] Document detail tabs: Overview, Versions, Signatures, Access Control
+- [x] Inline preview: PDF (iframe), images (img tag), fallback message for other types
+- [x] Add Version dialog: FileDropZone replaces raw storageKey/fileSize inputs
+- [x] Access tab: user/role names resolved (not raw UUIDs), default access info banner, document owner display
+- [x] Document list: row click, status/folder/search filters, delete action with confirmation
+- [x] Folder access control: FolderAccess entity with temporal permissions (ExpiresAt), grant/revoke API, FolderAccessExpiryJob
+- [x] Folder access dialog: user search combobox + role dropdown + expiry options (Permanent/1h/1d/1w/1m/Custom)
+- [x] Template editors: VariableDefinitionsEditor (structured schema), VariableEditor (typed inputs from schema)
+- [x] Signature create: document search combobox, recipient contact search combobox
+- [x] Upload security: MIME type whitelist, 100MB max, path traversal guard, unique index (TenantId, FolderId, Name)
+- [x] Kafka healthcheck: start_period 30s, timeout 10s, retries 12
+
+### 1.12 Comprehensive Code Reviews
+
+- [x] Phase 1 comprehensive review (2026-03-29): 63 findings (10 CRITICAL, 25 MAJOR, 28 MINOR) — all resolved
+- [x] Test coverage: +159 new tests across 22 files (Audit 67, Identity 14, Infrastructure 20, SharedKernel 6, Frontend 52)
+- [x] Total backend tests: 1683, all passing
+- [x] Security fixes: cache tenant isolation, Keycloak token thread-safety, PII compliance, input validation
+- [x] Architecture: IOperationResult interface, ExceptionDispatchInfo for stack traces, EF.Functions.ILike, correlated query filters
 
 ---
 
 ## Phase 1.5: Bridge
-> **Goal**: Critical infrastructure and tooling needed before business modules
+> **Goal**: Critical infrastructure and tooling needed before business modules.
+> Items are ordered by priority and NMP-independence — all Phase 1.5 items can be built without waiting for NMP.
 
-### 1.5.1 Transactional Outbox/Inbox (Infrastructure Hardening)
+### 1.5.1 Transactional Outbox/Inbox + Cache Cross-Instance Invalidation (Weeks 1-3)
 
 **Plan**: [OUTBOX_INBOX_PATTERN_PLAN.md](OUTBOX_INBOX_PATTERN_PLAN.md)
 
@@ -343,7 +408,41 @@ Phase 2 introduces financial modules (Finance) and heavy cross-module event flow
 - [ ] **Cleanup Jobs** — OutboxCleanupJob (7 days), InboxCleanupJob (30 days)
 - [ ] **Cache Cross-Instance Invalidation** — `DaprCacheService.RemoveByPrefixAsync` currently only removes keys tracked in-process via `_trackedKeys`; L2 (Redis) entries on other instances remain stale. Implement Dapr pub/sub invalidation: publish prefix-invalidation event from `RemoveByPrefixAsync`, subscribe in all instances to remove matching keys from local `memoryCache` and `_trackedKeys`. Required before horizontal scaling in production.
 
-### 1.5.2 Portal UI Extension Points
+### 1.5.2 Tenant Permission Isolation — Backend Only (Weeks 2-4)
+
+Platform-level vs tenant-level permission separation is required before multi-tenant production deployment and is a prerequisite for NMP.
+
+> **Note**: No admin UI refinement for tenant CRUD — NMP will replace it entirely. This section focuses on backend permission infrastructure only.
+
+**Permission Tier System:**
+- `PermissionScope` enum: `Platform` | `Tenant`
+- Platform-scope permissions (`platform.tenants.*`, `platform.modules.*`) — accessible only to Nexora staff (SaaS) or local Platform Admin (on-prem)
+- Tenant-scope permissions (`identity.users.*`, `contacts.*` etc.) — accessible to tenant admins
+- Current `identity.tenants.*` permissions are incorrectly exposed to all roles — must be isolated to Platform Admin scope
+
+**License Verification Foundation:**
+- `ILicenseVerifier` interface in SharedKernel — `VerifyAsync(tenantId, moduleName)` returns license status
+- `NullLicenseVerifier` implementation — always allows (development, pre-NMP)
+- `platform_license_cache` table (see [MANAGEMENT_PORTAL.md](../architecture/MANAGEMENT_PORTAL.md) for schema)
+
+**Implementation items:**
+- [ ] Separate Platform Admin role from tenant-scoped roles
+- [ ] `PermissionScope` enum (`Platform` | `Tenant`) on Permission entity
+- [ ] `ILicenseVerifier` interface + `NullLicenseVerifier` (SharedKernel)
+- [ ] `platform_license_cache` table (PlatformDbContext)
+- [ ] `SaaS` vs `OnPrem` deployment flag in configuration (`DeploymentMode` setting)
+- [ ] Platform-scope permissions hidden from tenant admin UI
+- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants
+- [ ] License-based limits (max users, max organizations per tenant)
+
+### 1.5.3 Localization (Weeks 3-6)
+
+- [ ] US locale support (USD currency, US date format, US tax receipt template)
+- [ ] TR locale support (TL currency, TR date format, Turkish bağış makbuzu)
+- [ ] Locale-aware number/currency/date formatting in both admin and portal
+- [ ] Translation coverage audit for all existing modules (en + tr files)
+
+### 1.5.4 Portal UI Extension Points (Weeks 4-7)
 
 Modules need to register portal-facing pages, widgets, and navigation items dynamically. This mechanism must be in place before Phase 2 modules ship their portal UIs.
 
@@ -352,14 +451,19 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 - [ ] Portal navigation builder (aggregates navigation from all installed modules)
 - [ ] Cross-module UI contribution (e.g., Finance adds "Payment History" tab to Contact 360° view)
 
-### 1.5.3 Localization (US + TR)
+### 1.5.5 Audit Module Enhancements (Weeks 5-7)
 
-- [ ] US locale support (USD currency, US date format, US tax receipt template)
-- [ ] TR locale support (TL currency, TR date format, Turkish bağış makbuzu)
-- [ ] Locale-aware number/currency/date formatting in both admin and portal
-- [ ] Translation coverage audit for all existing modules (en + tr files)
+- [ ] **Entity Change Tracking (Before/After State)** — AuditLogBehavior Phase 2: capture entity state before and after command execution using EF Core ChangeTracker. Populate `BeforeState`, `AfterState`, and `Changes` JSONB fields in audit entries. Required for compliance audit trails.
+- [ ] **Auth Event Auditing** — Capture Login, Logout, PasswordChange, TokenRefresh events. Requires either Keycloak Event Listener (webhook → backend endpoint → audit entry) or frontend post-login/logout audit API call.
+- [ ] **Audit Log Retention & Partitioning** — PostgreSQL table partitioning by month on `audit_entries.timestamp`. Monthly partition creation job + weekly cleanup job. Configurable retention per module via audit settings.
 
-### 1.5.4 Demo Data Framework
+### 1.5.6 Contact Module Enhancements (Weeks 6-8)
+
+- [ ] **User ↔ Contact Linking** — Optional `ContactId?` FK on User entity. Admin can link a user to an existing contact for 360° view. Not automatic — system users (API, bot) should not create contacts. To be designed alongside CRM module (Phase 2) where "Staff" contact type will be introduced.
+- [ ] **Contact Import Field Mapping** — CSV/Excel import wizard: (1) file upload → preview first 5 rows, (2) user maps each column to a Contact field via dropdowns, (3) validation → import. Current implementation assumes fixed column order.
+- [ ] **Contact Export Improvements** — Export with custom field selection, date range filter, format options (CSV, Excel, vCard).
+
+### 1.5.7 Demo Data Framework (Weeks 7-8)
 
 - [ ] `SeedDemoData()` method in `IModule` interface
 - [ ] Demo tenant provisioning command (`nexora demo:load`)
@@ -367,41 +471,15 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 - [ ] Admin UI "Create Demo Environment" button
 - [ ] Demo data cleanup command
 
-### 1.5.5 Audit Module Enhancements
-
-- [ ] **Entity Change Tracking (Before/After State)** — AuditLogBehavior Phase 2: capture entity state before and after command execution using EF Core ChangeTracker. Populate `BeforeState`, `AfterState`, and `Changes` JSONB fields in audit entries. Required for compliance audit trails.
-- [ ] **Auth Event Auditing** — Capture Login, Logout, PasswordChange, TokenRefresh events. Requires either Keycloak Event Listener (webhook → backend endpoint → audit entry) or frontend post-login/logout audit API call.
-- [ ] **Audit Log Retention & Partitioning** — PostgreSQL table partitioning by month on `audit_entries.timestamp`. Monthly partition creation job + weekly cleanup job. Configurable retention per module via audit settings.
-
-### 1.5.6 Contact Module Enhancements
-
-- [ ] **User ↔ Contact Linking** — Optional `ContactId?` FK on User entity. Admin can link a user to an existing contact for 360° view. Not automatic — system users (API, bot) should not create contacts. To be designed alongside CRM module (Phase 2) where "Staff" contact type will be introduced.
-- [ ] **Contact Import Field Mapping** — CSV/Excel import wizard: (1) file upload → preview first 5 rows, (2) user maps each column to a Contact field via dropdowns, (3) validation → import. Current implementation assumes fixed column order.
-- [ ] **Contact Export Improvements** — Export with custom field selection, date range filter, format options (CSV, Excel, vCard).
-
-### 1.5.7 Tenant Permission Isolation
-
-Platform-level vs tenant-level permission separation is required before multi-tenant production deployment.
-
-**Analysis required:**
-- Platform-scope permissions (`platform.tenants.*`, `platform.modules.*`) — accessible only to Nexora staff (SaaS) or hidden (on-prem)
-- Tenant-scope permissions (`identity.users.*`, `contacts.*` etc.) — accessible to tenant admins
-- Current `identity.tenants.*` permissions are incorrectly exposed to all roles — must be isolated to Platform Admin scope
-- On-prem model: single tenant, no tenant management UI visible
-- SaaS model: Nexora staff manage tenants, customers never see tenant screens
-
-**Implementation items:**
-- [ ] Separate Platform Admin role from tenant-scoped roles
-- [ ] Permission tier system: platform-scope vs tenant-scope
-- [ ] Sidebar visibility: hide tenant management for non-platform users
-- [ ] On-prem vs SaaS deployment flag in configuration
-- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants
-- [ ] License-based limits (max users, max organizations per tenant)
-
 ---
 
 ## Phase 2: Core Business Modules
 > **Goal**: Essential modules that every small and medium-sized business needs, regardless of industry. A restaurant, consultancy, NGO, or school can all start using Nexora from this phase.
+
+> **NMP Parallel Track**: NMP development starts at Phase 1.5 week 4 (after Permission Tier System is ready)
+> and runs concurrently with Phase 2 module development. Phase 2 modules use
+> `ILicenseVerifier` interface with `NullLicenseVerifier` until NMP is production-ready.
+> See [NMP Track](#nmp-track-parallel-with-phase-2) below for details.
 
 ### 2.1 CRM Module
 **Spec**: [modules/crm/SPEC.md](../modules/crm/SPEC.md)
@@ -474,6 +552,19 @@ Task and project tracking for internal teams — works for any industry.
 - [ ] Project dashboard and Gantt views
 - [ ] Finance/Accounting integration (cost journal entries)
 - [ ] **Portal**: Project stakeholder view (progress, milestones, documents)
+
+### 2.5 Reporting Enhancements
+> **Prerequisite**: Reporting Engine stable (Phase 1) + CRM module exists (Phase 2.1)
+
+**Core enhancements (after CRM exists):**
+- [ ] Report templates (pre-built SQL for common reports per module: contact list, donation summary, etc.)
+- [ ] Email delivery for on-demand reports (send completed report as attachment via Notifications module)
+
+**Editor & collaboration enhancements:**
+- [ ] Table/column autocomplete in SQL editor (fetch tenant schema metadata, suggest in editor)
+- [ ] Visual query builder — Metabase-style UI (select table → pick columns → add filters → group by)
+- [ ] Report sharing (generate public link with token-based access, no auth required)
+- [ ] Report versioning (track query changes, rollback to previous version)
 
 ---
 
@@ -754,6 +845,53 @@ graph TD
     style V2 fill:#E8A838,color:#fff
     style V3 fill:#999,color:#fff
 ```
+
+---
+
+## NMP Track (Parallel with Phase 2)
+> **Goal**: Centralized platform management — tenant lifecycle, licensing, billing, marketplace. Replaces tenant management in admin panel with a dedicated operator portal.
+> **Timeline**: Starts at Phase 1.5 week 4 (after Permission Tier System from Phase 1.5.2 is complete) and runs concurrently with Phase 2 module development.
+> **Requires**: Permission Tier System from Phase 1.5.2 (`PermissionScope` enum, `ILicenseVerifier`, `platform_license_cache`)
+
+**Architecture Document**: [MANAGEMENT_PORTAL.md](../architecture/MANAGEMENT_PORTAL.md)
+
+> **Note**: `ILicenseVerifier` interface, `NullLicenseVerifier`, and `platform_license_cache` table are created
+> in Phase 1.5.2 (not in NMP.1) so that Phase 2 modules can use `ILicenseVerifier` from day 1.
+> Admin tenant CRUD UI will NOT be improved — NMP will replace it entirely.
+
+### NMP.1 Foundation (Weeks 1-4 of NMP track)
+**Prerequisite**: Phase 1.5.2 (Permission Tier System) complete
+- [ ] Create Nexora.Management solution (separate codebase)
+- [ ] Keycloak `nexora-management` realm for platform operators
+- [ ] Subscription, LicenseKey, ModuleCatalog domain entities
+- [ ] Tenant lifecycle API (create, list, status management)
+- [ ] License verification internal endpoint (`POST /internal/license/verify`)
+- [ ] `NmpLicenseVerifier` implementation (calls NMP API, replaces `NullLicenseVerifier` in SaaS)
+
+### NMP.2 Billing Integration (Weeks 5-8 of NMP track)
+- [ ] Stripe subscription management (create, update, cancel)
+- [ ] Invoice entity + payment webhook handlers
+- [ ] Plan upgrade/downgrade flows
+- [ ] NMP frontend (tenant dashboard, subscription management)
+
+### NMP.3 Admin Panel Adaptation (After Phase 2 modules exist)
+**Prerequisite**: Phase 2 modules exist (so license tab has content to display)
+- [ ] Remove tenant CRUD from admin panel
+- [ ] License-aware module installation (verify before install)
+- [ ] License tab in admin settings (plan, limits, modules, renewal)
+- [ ] Purchase/upgrade redirect flow
+- [ ] Usage metric collection Hangfire job
+
+### NMP.4 On-Prem & Marketplace (Weeks 13-16 of NMP track)
+- [ ] RSA-signed license key generation
+- [ ] CRM license activation wizard (initial setup)
+- [ ] `LicenseKeyVerifier` implementation (validates RSA-signed key, on-prem)
+- [ ] Hybrid license model: phone-home (default) + manual key (fallback)
+- [ ] Air-gapped mode support
+- [ ] Module marketplace catalog UI
+- [ ] 30-day grace period on license expiry → read-only mode
+
+---
 
 > **Design Philosophy:**
 > - **Platform** modules are always available — they form the foundation for every Nexora installation
