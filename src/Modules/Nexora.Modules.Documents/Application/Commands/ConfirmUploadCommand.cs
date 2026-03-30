@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexora.Modules.Documents.Application.DTOs;
+using Nexora.Modules.Documents.Domain;
 using Nexora.Modules.Documents.Domain.Entities;
 using Nexora.Modules.Documents.Domain.ValueObjects;
 using Nexora.Modules.Documents.Infrastructure;
@@ -29,8 +30,6 @@ public sealed record ConfirmUploadCommand(
 /// <summary>Validates upload confirmation input.</summary>
 public sealed class ConfirmUploadValidator : AbstractValidator<ConfirmUploadCommand>
 {
-    private const long MaxFileSize = 104_857_600; // 100 MB
-
     /// <summary>Allowed MIME types for upload.</summary>
     private static readonly HashSet<string> AllowedMimeTypes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -72,7 +71,7 @@ public sealed class ConfirmUploadValidator : AbstractValidator<ConfirmUploadComm
 
         RuleFor(x => x.FileSize)
             .GreaterThan(0).WithMessage("lockey_documents_validation_file_size_positive")
-            .LessThanOrEqualTo(MaxFileSize).WithMessage("lockey_documents_validation_file_size_max");
+            .LessThanOrEqualTo(DocumentConstants.MaxFileSizeBytes).WithMessage("lockey_documents_validation_file_size_max");
 
         RuleFor(x => x.Description)
             .MaximumLength(2000).WithMessage("lockey_documents_validation_description_max_length");
@@ -157,7 +156,7 @@ public sealed class ConfirmUploadHandler(
         if (existingDoc is not null)
         {
             // Add as new version instead of creating a duplicate
-            var version = existingDoc.AddVersion(request.StorageKey, request.FileSize, parsedUid);
+            var version = existingDoc.AddVersion(request.StorageKey, request.FileSize, parsedUid, request.MimeType);
             await dbContext.SaveChangesAsync(cancellationToken);
 
             logger.LogInformation(

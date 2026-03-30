@@ -1,27 +1,24 @@
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Audit.Application.Queries;
 using Nexora.Modules.Audit.Domain.Entities;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
+using Nexora.Modules.Audit.Domain.ValueObjects;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using NSubstitute;
 
 namespace Nexora.Modules.Audit.Tests.Application;
 
-public sealed class GetAuditLogDetailQueryTests : IDisposable
+public sealed class GetAuditLogDetailQueryTests
 {
-    private readonly AuditDbContext _dbContext;
+    private readonly IAuditEntryRepository _repository;
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly string _tenantId = Guid.NewGuid().ToString();
 
     public GetAuditLogDetailQueryTests()
     {
         _tenantAccessor = CreateTenantAccessor(_tenantId);
-
-        var options = new DbContextOptionsBuilder<AuditDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new AuditDbContext(options, _tenantAccessor);
+        _repository = Substitute.For<IAuditEntryRepository>();
     }
 
     [Fact]
@@ -36,10 +33,12 @@ public sealed class GetAuditLogDetailQueryTests : IDisposable
             "corr-123", true, null, "Contact", "entity-1",
             "{\"name\":null}", "{\"name\":\"John\"}", "{\"name\":[null,\"John\"]}",
             "{\"source\":\"api\"}", timestamp);
-        _dbContext.AuditEntries.Add(entry);
-        await _dbContext.SaveChangesAsync();
 
-        var handler = new GetAuditLogDetailHandler(_dbContext, _tenantAccessor);
+        _repository.GetByIdAsync(entry.Id, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(entry);
+
+        var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
+            NullLogger<GetAuditLogDetailHandler>.Instance);
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(entry.Id.Value), CancellationToken.None);
 
@@ -68,9 +67,14 @@ public sealed class GetAuditLogDetailQueryTests : IDisposable
     [Fact]
     public async Task Handle_NonExistentEntry_ShouldReturnFailure()
     {
-        var handler = new GetAuditLogDetailHandler(_dbContext, _tenantAccessor);
+        var id = Guid.NewGuid();
+        _repository.GetByIdAsync(AuditEntryId.From(id), _tenantId, Arg.Any<CancellationToken>())
+            .Returns((AuditEntry?)null);
+
+        var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
+            NullLogger<GetAuditLogDetailHandler>.Instance);
         var result = await handler.Handle(
-            new GetAuditLogDetailQuery(Guid.NewGuid()), CancellationToken.None);
+            new GetAuditLogDetailQuery(id), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Key.Should().Be("lockey_audit_error_entry_not_found");
@@ -83,10 +87,13 @@ public sealed class GetAuditLogDetailQueryTests : IDisposable
             "other-tenant", "Contacts", "CreateContact", "Command",
             null, null, null, null, null, true, null, null, null,
             null, null, null, null, DateTimeOffset.UtcNow);
-        _dbContext.AuditEntries.Add(entry);
-        await _dbContext.SaveChangesAsync();
 
-        var handler = new GetAuditLogDetailHandler(_dbContext, _tenantAccessor);
+        // Repository filters by tenant, so it returns null for our tenant
+        _repository.GetByIdAsync(entry.Id, _tenantId, Arg.Any<CancellationToken>())
+            .Returns((AuditEntry?)null);
+
+        var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
+            NullLogger<GetAuditLogDetailHandler>.Instance);
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(entry.Id.Value), CancellationToken.None);
 
@@ -102,10 +109,12 @@ public sealed class GetAuditLogDetailQueryTests : IDisposable
             null, "user@test.com", "10.0.0.1", null, null,
             false, "lockey_identity_error_invalid_credentials",
             null, null, null, null, null, null, DateTimeOffset.UtcNow);
-        _dbContext.AuditEntries.Add(entry);
-        await _dbContext.SaveChangesAsync();
 
-        var handler = new GetAuditLogDetailHandler(_dbContext, _tenantAccessor);
+        _repository.GetByIdAsync(entry.Id, _tenantId, Arg.Any<CancellationToken>())
+            .Returns(entry);
+
+        var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
+            NullLogger<GetAuditLogDetailHandler>.Instance);
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(entry.Id.Value), CancellationToken.None);
 
@@ -113,8 +122,6 @@ public sealed class GetAuditLogDetailQueryTests : IDisposable
         result.Value!.IsSuccess.Should().BeFalse();
         result.Value.ErrorKey.Should().Be("lockey_identity_error_invalid_credentials");
     }
-
-    public void Dispose() => _dbContext.Dispose();
 
     private static ITenantContextAccessor CreateTenantAccessor(string tenantId)
     {

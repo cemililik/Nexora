@@ -40,7 +40,13 @@ function parseValues(json: string): Record<string, string> {
   try {
     const parsed: unknown = JSON.parse(json);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      return parsed as Record<string, string>;
+      const result: Record<string, string> = {};
+      for (const [key, val] of Object.entries(parsed as Record<string, unknown>)) {
+        if (typeof val === 'string') {
+          result[key] = val;
+        }
+      }
+      return result;
     }
   } catch {
     // Invalid values JSON
@@ -55,7 +61,13 @@ export function VariableEditor({ variableDefinitions, value, onChange }: Variabl
 
   useEffect(() => {
     const parsed = parseValues(value);
-    setValues(parsed);
+    const parsedSerialized = JSON.stringify(parsed);
+    setValues((prev) => {
+      if (JSON.stringify(prev) === parsedSerialized) {
+        return prev;
+      }
+      return parsed;
+    });
   }, [value]);
 
   const emitChange = useCallback(

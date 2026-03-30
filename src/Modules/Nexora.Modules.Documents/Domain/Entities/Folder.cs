@@ -107,7 +107,7 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
     }
 
     /// <summary>Grants access to the folder for a user or role.</summary>
-    public FolderAccess GrantAccess(Guid? userId, Guid? roleId, AccessPermission permission, DateTime? expiresAt = null)
+    public FolderAccess GrantAccess(Guid? userId, Guid? roleId, AccessPermission permission, DateTimeOffset? expiresAt = null)
     {
         if (userId is null && roleId is null)
             throw new DomainException("lockey_documents_error_access_requires_user_or_role");
@@ -115,8 +115,7 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
         var existing = _accessList.FirstOrDefault(a => a.UserId == userId && a.RoleId == roleId && !a.IsDeleted);
         if (existing is not null)
         {
-            // Idempotent: same permission → return existing; different permission → update
-            if (existing.Permission != permission)
+            if (existing.Permission != permission || existing.ExpiresAt != expiresAt)
                 existing.UpdatePermission(permission, expiresAt);
             return existing;
         }

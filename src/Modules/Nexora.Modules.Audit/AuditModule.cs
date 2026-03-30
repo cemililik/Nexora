@@ -5,7 +5,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Audit.Api;
 using Nexora.Modules.Audit.Application.Services;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Infrastructure.Repositories;
 using Nexora.Modules.Audit.Infrastructure.Stores;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Modules;
@@ -37,6 +39,10 @@ public sealed class AuditModule : IModule
 
         // Register module migration for tenant provisioning
         services.AddSingleton<IModuleMigration, AuditModuleMigration>();
+
+        // Register repositories
+        services.AddScoped<IAuditEntryRepository, AuditEntryRepository>();
+        services.AddScoped<IAuditSettingRepository, AuditSettingRepository>();
 
         // Register audit infrastructure services
         services.AddScoped<IAuditStore, PostgresAuditStore>();

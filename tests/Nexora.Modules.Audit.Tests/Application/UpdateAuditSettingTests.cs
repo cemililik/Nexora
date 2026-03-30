@@ -1,9 +1,8 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Audit.Application.Commands;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Domain.Entities;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -11,9 +10,9 @@ using NSubstitute;
 
 namespace Nexora.Modules.Audit.Tests.Application;
 
-public sealed class UpdateAuditSettingTests : IDisposable
+public sealed class UpdateAuditSettingTests
 {
-    private readonly AuditDbContext _dbContext;
+    private readonly IAuditSettingRepository _repository;
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly ICacheService _cacheService;
     private readonly string _tenantId = Guid.NewGuid().ToString();
@@ -22,19 +21,17 @@ public sealed class UpdateAuditSettingTests : IDisposable
     {
         _tenantAccessor = CreateTenantAccessor(_tenantId);
         _cacheService = Substitute.For<ICacheService>();
-
-        var options = new DbContextOptionsBuilder<AuditDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _dbContext = new AuditDbContext(options, _tenantAccessor);
+        _repository = Substitute.For<IAuditSettingRepository>();
     }
 
     [Fact]
     public async Task Handle_NewSetting_ShouldCreateAndReturnDto()
     {
+        _repository.FindByKeyAsync(_tenantId, "contacts", "createcontact", Arg.Any<CancellationToken>())
+            .Returns((AuditSetting?)null);
+
         var handler = new UpdateAuditSettingHandler(
-            _dbContext, _tenantAccessor, _cacheService,
+            _repository, _tenantAccessor, _cacheService,
             NullLogger<UpdateAuditSettingHandler>.Instance);
 
         var command = new UpdateAuditSettingCommand("Contacts", "CreateContact", true, 90);
@@ -47,40 +44,47 @@ public sealed class UpdateAuditSettingTests : IDisposable
         result.Value.IsEnabled.Should().BeTrue();
         result.Value.RetentionDays.Should().Be(90);
         result.Value.Id.Should().NotBeEmpty();
+
+        _repository.Received(1).Add(Arg.Any<AuditSetting>());
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_NewSetting_ShouldPersistToDatabase()
     {
+        _repository.FindByKeyAsync(_tenantId, "crm", "updatelead", Arg.Any<CancellationToken>())
+            .Returns((AuditSetting?)null);
+
+        AuditSetting? addedSetting = null;
+        _repository.When(r => r.Add(Arg.Any<AuditSetting>()))
+            .Do(ci => addedSetting = ci.ArgAt<AuditSetting>(0));
+
         var handler = new UpdateAuditSettingHandler(
-            _dbContext, _tenantAccessor, _cacheService,
+            _repository, _tenantAccessor, _cacheService,
             NullLogger<UpdateAuditSettingHandler>.Instance);
 
         await handler.Handle(
             new UpdateAuditSettingCommand("CRM", "UpdateLead", false, 30),
             CancellationToken.None);
 
-        var count = await _dbContext.AuditSettings.CountAsync();
-        count.Should().Be(1);
-
-        var persisted = await _dbContext.AuditSettings.FirstAsync();
-        persisted.Module.Should().Be("crm");
-        persisted.Operation.Should().Be("updatelead");
-        persisted.IsEnabled.Should().BeFalse();
-        persisted.RetentionDays.Should().Be(30);
-        persisted.TenantId.Should().Be(_tenantId);
+        addedSetting.Should().NotBeNull();
+        addedSetting!.Module.Should().Be("crm");
+        addedSetting.Operation.Should().Be("updatelead");
+        addedSetting.IsEnabled.Should().BeFalse();
+        addedSetting.RetentionDays.Should().Be(30);
+        addedSetting.TenantId.Should().Be(_tenantId);
     }
 
     [Fact]
     public async Task Handle_ExistingSetting_ShouldUpdateInPlace()
     {
-        // Seed an existing setting
         var existing = AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90);
-        _dbContext.AuditSettings.Add(existing);
-        await _dbContext.SaveChangesAsync();
+
+        _repository.FindByKeyAsync(_tenantId, "contacts", "createcontact", Arg.Any<CancellationToken>())
+            .Returns(existing);
 
         var handler = new UpdateAuditSettingHandler(
-            _dbContext, _tenantAccessor, _cacheService,
+            _repository, _tenantAccessor, _cacheService,
             NullLogger<UpdateAuditSettingHandler>.Instance);
 
         var result = await handler.Handle(
@@ -91,16 +95,19 @@ public sealed class UpdateAuditSettingTests : IDisposable
         result.Value!.IsEnabled.Should().BeFalse();
         result.Value.RetentionDays.Should().Be(365);
 
-        // Verify only one record exists (updated, not duplicated)
-        var totalCount = await _dbContext.AuditSettings.CountAsync();
-        totalCount.Should().Be(1);
+        // Should not add a new entity, only update existing
+        _repository.DidNotReceive().Add(Arg.Any<AuditSetting>());
+        await _repository.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task Handle_SettingCreated_InvalidatesBothCacheVariants()
     {
+        _repository.FindByKeyAsync(_tenantId, "contacts", "createcontact", Arg.Any<CancellationToken>())
+            .Returns((AuditSetting?)null);
+
         var handler = new UpdateAuditSettingHandler(
-            _dbContext, _tenantAccessor, _cacheService,
+            _repository, _tenantAccessor, _cacheService,
             NullLogger<UpdateAuditSettingHandler>.Instance);
 
         await handler.Handle(
@@ -108,10 +115,10 @@ public sealed class UpdateAuditSettingTests : IDisposable
             CancellationToken.None);
 
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:contacts:{_tenantId}:config:createcontact:1",
+            "audit:contacts:config:createcontact:1",
             Arg.Any<CancellationToken>());
         await _cacheService.Received(1).RemoveAsync(
-            $"audit:contacts:{_tenantId}:config:createcontact:0",
+            "audit:contacts:config:createcontact:0",
             Arg.Any<CancellationToken>());
     }
 
@@ -119,12 +126,13 @@ public sealed class UpdateAuditSettingTests : IDisposable
     public async Task Handle_ExistingSetting_ShouldPreserveId()
     {
         var existing = AuditSetting.Create(_tenantId, "Contacts", "DeleteContact", true, 60);
-        _dbContext.AuditSettings.Add(existing);
-        await _dbContext.SaveChangesAsync();
         var originalId = existing.Id.Value;
 
+        _repository.FindByKeyAsync(_tenantId, "contacts", "deletecontact", Arg.Any<CancellationToken>())
+            .Returns(existing);
+
         var handler = new UpdateAuditSettingHandler(
-            _dbContext, _tenantAccessor, _cacheService,
+            _repository, _tenantAccessor, _cacheService,
             NullLogger<UpdateAuditSettingHandler>.Instance);
 
         var result = await handler.Handle(
@@ -133,8 +141,6 @@ public sealed class UpdateAuditSettingTests : IDisposable
 
         result.Value!.Id.Should().Be(originalId);
     }
-
-    public void Dispose() => _dbContext.Dispose();
 
     private static ITenantContextAccessor CreateTenantAccessor(string tenantId)
     {

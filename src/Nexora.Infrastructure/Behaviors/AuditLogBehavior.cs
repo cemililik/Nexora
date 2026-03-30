@@ -47,10 +47,14 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         {
             auditEnabled = await configService.IsEnabledAsync(module, operation, cancellationToken, defaultEnabled);
         }
+        // [ADR] Architectural exemption: Audit logging must never block business logic.
+        // These catch blocks intentionally swallow exceptions to ensure that audit
+        // infrastructure failures (cache unavailable, DB timeout) do not impact
+        // the business operation being audited. See CODING_STANDARDS.md catch(Exception) rule.
         catch (Exception ex)
         {
             // Audit config check failed (e.g., Dapr/cache unavailable) — skip audit, don't block
-            logger.LogError(ex, "AUDIT CONFIG CHECK FAILED for {Module}.{Operation}: {ErrorMessage}", module, operation, ex.Message);
+            logger.LogError(ex, "Audit config check failed for {Module}.{Operation}", module, operation);
             return await next();
         }
 
@@ -97,7 +101,7 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
                     : DeriveOperationType(operation));
 
             var entry = new AuditEntry(
-                Id: Guid.NewGuid(),
+                Id: AuditEntryId.New(),
                 TenantId: tenantId,
                 Module: module,
                 Operation: operation,
@@ -120,9 +124,13 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
             await auditStore.SaveAsync(entry, cancellationToken);
             logger.LogInformation("Audit entry saved for {Module}.{Operation} success={IsSuccess}", module, operation, isSuccess);
         }
+        // [ADR] Architectural exemption: Audit logging must never block business logic.
+        // These catch blocks intentionally swallow exceptions to ensure that audit
+        // infrastructure failures (cache unavailable, DB timeout) do not impact
+        // the business operation being audited. See CODING_STANDARDS.md catch(Exception) rule.
         catch (Exception ex)
         {
-            logger.LogError(ex, "AUDIT SAVE FAILED for {Module}.{Operation}: {ErrorMessage}", module, operation, ex.Message);
+            logger.LogError(ex, "Audit save failed for {Module}.{Operation}", module, operation);
         }
 
         // Re-throw the handler exception preserving the original stack trace

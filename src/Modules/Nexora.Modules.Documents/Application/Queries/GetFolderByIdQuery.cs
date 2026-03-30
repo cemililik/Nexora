@@ -28,7 +28,7 @@ public sealed class GetFolderByIdHandler(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
         var folderId = FolderId.From(request.FolderId);
 
-        var folder = await dbContext.Folders
+        var folder = await dbContext.Folders.AsNoTracking()
             .FirstOrDefaultAsync(f => f.Id == folderId && f.TenantId == tenantId, cancellationToken);
 
         if (folder is null)

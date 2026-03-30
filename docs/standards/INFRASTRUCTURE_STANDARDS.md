@@ -445,7 +445,7 @@ public sealed class GenerateReceiptJob(
 
 ### 2.5 Job Naming Convention
 
-```
+```text
 {module}:{action-descriptor}
 ```
 
@@ -603,7 +603,7 @@ public sealed class DaprSecretProvider(DaprClient dapr) : ISecretProvider
 
 ### 3.4 Secret Naming Convention
 
-```
+```text
 nexora/{category}/{name}
 ```
 
@@ -626,7 +626,7 @@ nexora/{category}/{name}
 
 ### 3.5 Vault Yapısı (Production)
 
-```
+```bash
 vault kv put secret/nexora/database connection-string="Host=...;Password=..."
 vault kv put secret/nexora/stripe api-key="sk_live_..." webhook-secret="whsec_..."
 vault kv put secret/nexora/encryption master-key="base64-encoded-key"

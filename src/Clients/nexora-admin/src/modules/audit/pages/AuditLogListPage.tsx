@@ -132,7 +132,7 @@ export default function AuditLogListPage() {
             <SelectItem value="__all__">{t('lockey_audit_filter_all_modules')}</SelectItem>
             {moduleNames.map((name) => (
               <SelectItem key={name} value={name}>
-                {name.charAt(0).toUpperCase() + name.slice(1)}
+                {t('lockey_audit_module_' + name)}
               </SelectItem>
             ))}
           </SelectContent>

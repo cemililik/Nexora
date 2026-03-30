@@ -128,22 +128,27 @@ export default function DocumentDetailPage() {
     pageSize: 100,
     search: debouncedUserSearch || undefined,
   });
+  // Separate user lookup (no search filter) for resolving names in the access list
+  const { data: lookupUsersData } = useUsers({
+    page: 1,
+    pageSize: 100,
+  });
   const { data: rolesData } = useRoles();
 
   const resolveUserName = useCallback(
     (userId: string): string => {
-      const user = usersData?.items?.find((u) => u.id === userId);
+      const user = lookupUsersData?.items?.find((u) => u.id === userId);
       return user ? `${user.firstName} ${user.lastName}` : userId;
     },
-    [usersData],
+    [lookupUsersData],
   );
 
   const resolveUserEmail = useCallback(
     (userId: string): string => {
-      const user = usersData?.items?.find((u) => u.id === userId);
+      const user = lookupUsersData?.items?.find((u) => u.id === userId);
       return user?.email ?? '';
     },
-    [usersData],
+    [lookupUsersData],
   );
 
   const resolveRoleName = useCallback(
@@ -648,15 +653,19 @@ export default function DocumentDetailPage() {
                 disabled={!versionFile || versionUpload.state !== 'idle'}
                 onClick={async () => {
                   if (!versionFile || !doc) return;
-                  await versionUpload.upload(versionFile, {
-                    folderId: doc.folderId,
-                    name: doc.name,
-                    description: versionForm.getValues('changeNote') || undefined,
-                  });
-                  setAddVersionOpen(false);
-                  setVersionFile(null);
-                  versionForm.reset();
-                  versionUpload.reset();
+                  try {
+                    await versionUpload.upload(versionFile, {
+                      folderId: doc.folderId,
+                      name: doc.name,
+                      description: versionForm.getValues('changeNote') || undefined,
+                    });
+                    setAddVersionOpen(false);
+                    setVersionFile(null);
+                    versionForm.reset();
+                    versionUpload.reset();
+                  } catch {
+                    // Keep dialog open and state intact on error
+                  }
                 }}
               >
                 {t('lockey_documents_versions_add')}

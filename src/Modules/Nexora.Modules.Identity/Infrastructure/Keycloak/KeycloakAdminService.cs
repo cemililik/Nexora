@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -15,108 +16,163 @@ public sealed class KeycloakAdminService(
     ISecretProvider secretProvider,
     ILogger<KeycloakAdminService> logger) : IKeycloakAdminService
 {
+    private static readonly ActivitySource ActivitySource = new("Nexora.Identity.Keycloak");
+
     private readonly KeycloakOptions _options = options.Value;
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
     private string? _cachedToken;
-    private DateTime _tokenExpiry = DateTime.MinValue;
+    private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue;
 
     /// <inheritdoc />
     public async Task<string> CreateRealmAsync(string realmName, string displayName, CancellationToken ct = default)
     {
-        await EnsureAuthenticatedAsync(ct);
+        using var activity = ActivitySource.StartActivity("Keycloak.CreateRealm", ActivityKind.Client);
+        activity?.SetTag("keycloak.operation", "CreateRealm");
+        activity?.SetTag("keycloak.realm", realmName);
 
-        var realm = new KeycloakRealmRepresentation
+        try
         {
-            Realm = realmName,
-            DisplayName = displayName,
-            Enabled = true
-        };
+            var token = await EnsureAuthenticatedAsync(ct);
 
-        var response = await httpClient.PostAsJsonAsync("/admin/realms", realm, ct);
+            var realm = new KeycloakRealmRepresentation
+            {
+                Realm = realmName,
+                DisplayName = displayName,
+                Enabled = true
+            };
 
-        if (response.StatusCode == HttpStatusCode.Conflict)
-        {
-            logger.LogWarning("Realm {RealmName} already exists in Keycloak", realmName);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/admin/realms");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(realm);
+
+            var response = await httpClient.SendAsync(request, ct);
+            activity?.SetTag("http.status_code", (int)response.StatusCode);
+
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                logger.LogWarning("Realm {RealmName} already exists in Keycloak", realmName);
+                return realmName;
+            }
+
+            response.EnsureSuccessStatusCode();
+            logger.LogInformation("Created Keycloak realm {RealmName}", realmName);
             return realmName;
         }
-
-        response.EnsureSuccessStatusCode();
-        logger.LogInformation("Created Keycloak realm {RealmName}", realmName);
-        return realmName;
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     /// <inheritdoc />
     public async Task<string> CreateUserAsync(string realm, string username, string email,
         string firstName, string lastName, string temporaryPassword, CancellationToken ct = default)
     {
-        await EnsureAuthenticatedAsync(ct);
+        using var activity = ActivitySource.StartActivity("Keycloak.CreateUser", ActivityKind.Client);
+        activity?.SetTag("keycloak.operation", "CreateUser");
+        activity?.SetTag("keycloak.realm", realm);
 
-        var user = new KeycloakUserRepresentation
+        try
         {
-            Username = username,
-            Email = email,
-            FirstName = firstName,
-            LastName = lastName,
-            Enabled = true,
-            EmailVerified = false,
-            Credentials =
-            [
-                new KeycloakCredential
-                {
-                    Type = "password",
-                    Value = temporaryPassword,
-                    Temporary = true
-                }
-            ]
-        };
+            var token = await EnsureAuthenticatedAsync(ct);
 
-        var response = await httpClient.PostAsJsonAsync($"/admin/realms/{realm}/users", user, ct);
-        response.EnsureSuccessStatusCode();
+            var user = new KeycloakUserRepresentation
+            {
+                Username = username,
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName,
+                Enabled = true,
+                EmailVerified = false,
+                Credentials =
+                [
+                    new KeycloakCredential
+                    {
+                        Type = "password",
+                        Value = temporaryPassword,
+                        Temporary = true
+                    }
+                ]
+            };
 
-        // Keycloak returns the user ID in the Location header
-        var locationHeader = response.Headers.Location?.ToString();
-        var keycloakUserId = locationHeader?.Split('/').Last()
-            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
-                new() { ["realm"] = realm });
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/admin/realms/{realm}/users");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(user);
 
-        if (string.IsNullOrWhiteSpace(keycloakUserId))
-        {
-            throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
-                new() { ["realm"] = realm });
+            var response = await httpClient.SendAsync(request, ct);
+            activity?.SetTag("http.status_code", (int)response.StatusCode);
+            response.EnsureSuccessStatusCode();
+
+            // Keycloak returns the user ID in the Location header
+            var locationHeader = response.Headers.Location?.ToString();
+            var keycloakUserId = locationHeader?.Split('/').Last()
+                ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
+                    new() { ["realm"] = realm });
+
+            if (string.IsNullOrWhiteSpace(keycloakUserId))
+            {
+                throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
+                    new() { ["realm"] = realm });
+            }
+
+            logger.LogInformation("Created Keycloak user in realm {Realm}", realm);
+
+            return keycloakUserId;
         }
-
-        logger.LogInformation("Created Keycloak user {Username} in realm {Realm} with ID {KeycloakUserId}",
-            username, realm, keycloakUserId);
-
-        return keycloakUserId;
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     /// <inheritdoc />
     public async Task UpdateUserAsync(string realm, string keycloakUserId, string email,
         string firstName, string lastName, CancellationToken ct = default)
     {
-        await EnsureAuthenticatedAsync(ct);
+        using var activity = ActivitySource.StartActivity("Keycloak.UpdateUser", ActivityKind.Client);
+        activity?.SetTag("keycloak.operation", "UpdateUser");
+        activity?.SetTag("keycloak.realm", realm);
 
-        // GET the full user representation first — Keycloak PUT requires the complete object
-        var getUserResponse = await httpClient.GetAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
-        getUserResponse.EnsureSuccessStatusCode();
-
-        var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
-            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed");
-
-        var updatedUser = user with
+        try
         {
-            Email = email,
-            FirstName = firstName,
-            LastName = lastName
-        };
+            var token = await EnsureAuthenticatedAsync(ct);
 
-        var response = await httpClient.PutAsJsonAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
-        response.EnsureSuccessStatusCode();
+            // GET the full user representation first — Keycloak PUT requires the complete object
+            using var getRequest = new HttpRequestMessage(HttpMethod.Get,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        logger.LogInformation("Updated Keycloak user {KeycloakUserId} in realm {Realm}", keycloakUserId, realm);
+            var getUserResponse = await httpClient.SendAsync(getRequest, ct);
+            getUserResponse.EnsureSuccessStatusCode();
+
+            var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
+                ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed");
+
+            var updatedUser = user with
+            {
+                Email = email,
+                FirstName = firstName,
+                LastName = lastName
+            };
+
+            using var putRequest = new HttpRequestMessage(HttpMethod.Put,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            putRequest.Content = JsonContent.Create(updatedUser);
+
+            var response = await httpClient.SendAsync(putRequest, ct);
+            activity?.SetTag("http.status_code", (int)response.StatusCode);
+            response.EnsureSuccessStatusCode();
+
+            logger.LogInformation("Updated Keycloak user in realm {Realm}", realm);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -133,70 +189,100 @@ public sealed class KeycloakAdminService(
 
     private async Task SetUserEnabledAsync(string realm, string keycloakUserId, bool enabled, CancellationToken ct)
     {
-        await EnsureAuthenticatedAsync(ct);
+        var operationName = enabled ? "EnableUser" : "DisableUser";
+        using var activity = ActivitySource.StartActivity($"Keycloak.{operationName}", ActivityKind.Client);
+        activity?.SetTag("keycloak.operation", operationName);
+        activity?.SetTag("keycloak.realm", realm);
 
-        // GET the full user representation first — Keycloak PUT requires the complete object
-        var getUserResponse = await httpClient.GetAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
-        getUserResponse.EnsureSuccessStatusCode();
+        try
+        {
+            var token = await EnsureAuthenticatedAsync(ct);
 
-        var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
-            ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed");
+            // GET the full user representation first — Keycloak PUT requires the complete object
+            using var getRequest = new HttpRequestMessage(HttpMethod.Get,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var updatedUser = user with { Enabled = enabled };
+            var getUserResponse = await httpClient.SendAsync(getRequest, ct);
+            getUserResponse.EnsureSuccessStatusCode();
 
-        var response = await httpClient.PutAsJsonAsync(
-            $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
-        response.EnsureSuccessStatusCode();
+            var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
+                ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_deserialize_failed");
 
-        logger.LogInformation("Set Keycloak user {KeycloakUserId} enabled={Enabled} in realm {Realm}",
-            keycloakUserId, enabled, realm);
+            var updatedUser = user with { Enabled = enabled };
+
+            using var putRequest = new HttpRequestMessage(HttpMethod.Put,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            putRequest.Content = JsonContent.Create(updatedUser);
+
+            var response = await httpClient.SendAsync(putRequest, ct);
+            activity?.SetTag("http.status_code", (int)response.StatusCode);
+            response.EnsureSuccessStatusCode();
+
+            logger.LogInformation("Set Keycloak user enabled={Enabled} in realm {Realm}",
+                enabled, realm);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     /// <summary>
     /// Acquires a valid admin token, refreshing if expired.
-    /// All header mutation is serialized through the lock to prevent concurrent modification
-    /// of <see cref="HttpClient.DefaultRequestHeaders"/>.
+    /// Returns the token string for use in per-request Authorization headers.
     /// </summary>
-    private async Task EnsureAuthenticatedAsync(CancellationToken ct)
+    private async Task<string> EnsureAuthenticatedAsync(CancellationToken ct)
     {
         await _tokenLock.WaitAsync(ct);
         try
         {
-            // Token still valid — just ensure header is set and return
-            if (_cachedToken is not null && DateTime.UtcNow < _tokenExpiry)
+            // Token still valid — return cached token
+            if (_cachedToken is not null && DateTimeOffset.UtcNow < _tokenExpiry)
             {
-                httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _cachedToken);
-                return;
+                return _cachedToken;
             }
 
-            var adminUsername = await secretProvider.GetSecretAsync("nexora/keycloak/admin-username", ct);
-            var adminPassword = await secretProvider.GetSecretAsync("nexora/keycloak/admin-password", ct);
+            using var activity = ActivitySource.StartActivity("Keycloak.GetToken", ActivityKind.Client);
+            activity?.SetTag("keycloak.operation", "GetToken");
+            activity?.SetTag("keycloak.realm", _options.AdminRealm);
 
-            var tokenUrl = $"/realms/{_options.AdminRealm}/protocol/openid-connect/token";
-            var content = new FormUrlEncodedContent(new Dictionary<string, string>
+            try
             {
-                ["grant_type"] = "password",
-                ["client_id"] = _options.AdminClientId,
-                ["username"] = adminUsername,
-                ["password"] = adminPassword
-            });
+                var adminUsername = await secretProvider.GetSecretAsync("nexora/keycloak/admin-username", ct);
+                var adminPassword = await secretProvider.GetSecretAsync("nexora/keycloak/admin-password", ct);
 
-            var response = await httpClient.PostAsync(tokenUrl, content, ct);
-            response.EnsureSuccessStatusCode();
+                var tokenUrl = $"/realms/{_options.AdminRealm}/protocol/openid-connect/token";
+                var content = new FormUrlEncodedContent(new Dictionary<string, string>
+                {
+                    ["grant_type"] = "password",
+                    ["client_id"] = _options.AdminClientId,
+                    ["username"] = adminUsername,
+                    ["password"] = adminPassword
+                });
 
-            var token = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
-                ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_token_deserialize_failed");
+                var response = await httpClient.PostAsync(tokenUrl, content, ct);
+                activity?.SetTag("http.status_code", (int)response.StatusCode);
+                response.EnsureSuccessStatusCode();
 
-            _cachedToken = token.AccessToken;
-            // Expire 30 seconds early to avoid edge cases
-            _tokenExpiry = DateTime.UtcNow.AddSeconds(token.ExpiresIn - 30);
+                var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
+                    ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_token_deserialize_failed");
 
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", _cachedToken);
+                _cachedToken = tokenResponse.AccessToken;
+                // Expire 30 seconds early to avoid edge cases
+                _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(tokenResponse.ExpiresIn - 30);
 
-            logger.LogDebug("Obtained Keycloak admin token, expires in {ExpiresIn}s", token.ExpiresIn);
+                logger.LogDebug("Obtained Keycloak admin token, expires in {ExpiresIn}s", tokenResponse.ExpiresIn);
+
+                return _cachedToken;
+            }
+            catch (Exception ex)
+            {
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
         }
         finally
         {

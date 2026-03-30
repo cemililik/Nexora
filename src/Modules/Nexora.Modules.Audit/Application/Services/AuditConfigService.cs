@@ -1,7 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Domain.Entities;
-using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -14,7 +13,7 @@ namespace Nexora.Modules.Audit.Application.Services;
 /// Results are cached with a 15-minute TTL.
 /// </summary>
 public sealed class AuditConfigService(
-    AuditDbContext dbContext,
+    IAuditSettingRepository auditSettingRepository,
     ICacheService cacheService,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<AuditConfigService> logger) : IAuditConfigService
@@ -31,7 +30,7 @@ public sealed class AuditConfigService(
         (module, operation) = AuditSetting.NormalizeKey(module, operation);
 
         var tenantId = tenantContextAccessor.Current.TenantId;
-        var cacheKey = AuditCacheKeys.ConfigKey(tenantId, module, operation, defaultEnabled);
+        var cacheKey = AuditCacheKeys.ConfigKey(module, operation, defaultEnabled);
 
         // Cache a string value ("1"/"0") to avoid value-type serialization issues with bool
         var cached = await cacheService.GetOrSetAsync(
@@ -52,13 +51,7 @@ public sealed class AuditConfigService(
         //   2. Exact module + wildcard operation (module-level)
         //   3. Wildcard module + wildcard operation (global)
         // Note: Module="*" + Operation=exact is invalid and excluded.
-        var settings = await dbContext.AuditSettings.AsNoTracking()
-            .Where(s =>
-                s.TenantId == tenantId &&
-                (s.Module == module || s.Module == "*") &&
-                (s.Operation == operation || s.Operation == "*") &&
-                !(s.Module == "*" && s.Operation != "*"))
-            .ToListAsync(ct);
+        var settings = await auditSettingRepository.FindConfigSettingsAsync(tenantId, module, operation, ct);
 
         var best = settings
             .OrderBy(s => s.Module == "*" ? 1 : 0)

@@ -3,7 +3,7 @@ namespace Nexora.SharedKernel.Abstractions.Audit;
 /// <summary>
 /// Immutable record representing a single audit log entry.
 /// </summary>
-/// <param name="Id">Unique identifier for the audit entry.</param>
+/// <param name="Id">Strongly-typed identifier for the audit entry.</param>
 /// <param name="TenantId">The tenant that owns this audit entry.</param>
 /// <param name="Module">The module where the operation occurred (e.g., "Contacts", "CRM").</param>
 /// <param name="Operation">The operation name (e.g., "CreateContact", "UpdateLead").</param>
@@ -23,7 +23,7 @@ namespace Nexora.SharedKernel.Abstractions.Audit;
 /// <param name="Metadata">Additional JSON metadata associated with the operation.</param>
 /// <param name="Timestamp">When the operation occurred.</param>
 public sealed record AuditEntry(
-    Guid Id,
+    AuditEntryId Id,
     string TenantId,
     string Module,
     string Operation,

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Input } from '@/shared/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -206,9 +207,18 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
 
             <div className="grid grid-cols-2 gap-3">
               {/* User search combobox */}
-              <div className="relative">
+              <div
+                className="relative"
+                onBlur={(e) => {
+                  // Close dropdown only if focus moves outside this container
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setShowUserDropdown(false);
+                  }
+                }}
+                onFocus={() => setShowUserDropdown(true)}
+              >
                 <label className="text-xs font-medium">{t('lockey_documents_access_col_user')}</label>
-                <input
+                <Input
                   ref={userSearchRef}
                   type="text"
                   value={selectedUserLabel || userSearch}
@@ -219,13 +229,8 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
                     setSelectedRoleId(undefined);
                     setShowUserDropdown(true);
                   }}
-                  onFocus={() => setShowUserDropdown(true)}
-                  onBlur={() => {
-                    // Delay to allow click on dropdown item
-                    setTimeout(() => setShowUserDropdown(false), 200);
-                  }}
                   placeholder={t('lockey_documents_folder_access_search_user')}
-                  className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="mt-1"
                   disabled={!!selectedRoleId}
                 />
                 {showUserDropdown && users.length > 0 && !selectedUserId && (
@@ -265,7 +270,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
                   }}
                   disabled={!!selectedUserId}
                 >
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1" aria-label={t('lockey_documents_access_col_role')}>
                     <SelectValue placeholder={t('lockey_documents_folder_access_select_role')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -284,7 +289,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
               <div>
                 <label className="text-xs font-medium">{t('lockey_documents_access_form_permission')}</label>
                 <Select value={permission} onValueChange={(v) => setPermission(v as AccessPermission)}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1" aria-label={t('lockey_documents_access_form_permission')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -299,7 +304,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
               <div>
                 <label className="text-xs font-medium">{t('lockey_documents_folder_access_expiry')}</label>
                 <Select value={expiryOption} onValueChange={(v) => setExpiryOption(v as ExpiryOption)}>
-                  <SelectTrigger className="mt-1">
+                  <SelectTrigger className="mt-1" aria-label={t('lockey_documents_folder_access_expiry')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -316,11 +321,11 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
               {expiryOption === 'custom' && (
                 <div>
                   <label className="text-xs font-medium">{t('lockey_documents_folder_access_expiry_date')}</label>
-                  <input
+                  <Input
                     type="datetime-local"
                     value={customDate}
                     onChange={(e) => setCustomDate(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    className="mt-1"
                   />
                 </div>
               )}

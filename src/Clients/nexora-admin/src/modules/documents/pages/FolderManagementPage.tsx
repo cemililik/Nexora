@@ -275,7 +275,7 @@ export default function FolderManagementPage() {
         <FolderAccessDialog
           folderId={accessFolder.id}
           folderName={accessFolder.name}
-          open={accessFolder !== null}
+          open
           onOpenChange={(open) => { if (!open) setAccessFolder(null); }}
         />
       )}

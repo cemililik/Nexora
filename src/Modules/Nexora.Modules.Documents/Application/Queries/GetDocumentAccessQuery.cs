@@ -38,7 +38,7 @@ public sealed class GetDocumentAccessHandler(
                 LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
 
-        var accessList = await dbContext.DocumentAccesses
+        var accessList = await dbContext.DocumentAccesses.AsNoTracking()
             .Where(a => a.DocumentId == documentId)
             .OrderBy(a => a.Id)
             .Select(a => new DocumentAccessDto(

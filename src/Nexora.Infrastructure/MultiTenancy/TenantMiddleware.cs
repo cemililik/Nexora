@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Extensions;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -22,19 +22,16 @@ public sealed class TenantMiddleware(RequestDelegate next)
     /// <summary>Extracts tenant context from JWT claims and sets it for the current request.</summary>
     public async Task InvokeAsync(HttpContext context, ITenantContextAccessor accessor)
     {
-        var path = context.Request.Path.Value ?? "";
-
         // Skip tenant resolution for public endpoints
-        if (_publicPaths.Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+        if (_publicPaths.Any(p => context.Request.Path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase)))
         {
             await next(context);
             return;
         }
 
-        var tenantId = context.User.FindFirstValue("tenant_id");
-        var orgId = context.User.FindFirstValue("organization_id");
-        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                     ?? context.User.FindFirstValue("sub");
+        var tenantId = context.User.GetTenantId();
+        var orgId = context.User.GetOrganizationId();
+        var userId = context.User.GetKeycloakUserId();
 
         if (!string.IsNullOrEmpty(tenantId))
         {

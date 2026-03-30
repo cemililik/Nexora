@@ -46,7 +46,7 @@ flowchart TB
 
 ### SaaS (Nexora Hosted)
 
-```
+```text
 Customer purchases → NMP creates tenant → Keycloak realm provisioned →
 DB schema created → Modules installed → Customer accesses admin panel
 ```
@@ -58,7 +58,7 @@ DB schema created → Modules installed → Customer accesses admin panel
 
 ### On-Prem (Customer Hosted)
 
-```
+```text
 Customer purchases → NMP generates license key → Customer installs via Helm →
 CRM validates license key (RSA signature) → Tenant created locally
 ```
@@ -113,6 +113,8 @@ stateDiagram-v2
 
 ### 3.3 Scenarios
 
+<!-- Note: The scenarios table below uses Turkish text intentionally (internal team documentation). -->
+
 | Scenario | Behavior |
 |----------|----------|
 | **Müşteri online + NMP'den modül satın aldı** | Phone-home job (24h) otomatik algılar, entitlement günceller |
@@ -126,7 +128,7 @@ stateDiagram-v2
 
 ### 3.4 Admin Panel — Lisans Sekmesi
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │ Lisans Bilgileri                                 │
 ├─────────────────────────────────────────────────┤
@@ -333,6 +335,7 @@ New table `platform_license_cache`:
 > not in NMP.1 — so Phase 2 modules use `ILicenseVerifier` from day 1.
 
 ### NMP.1: Foundation (NMP Weeks 1-4)
+
 **Prerequisite**: Phase 1.5.2 (Permission Tier System) complete — `PermissionScope` enum, `ILicenseVerifier` interface, `NullLicenseVerifier`, `platform_license_cache` table already exist in CRM.
 - [ ] Create Nexora.Management solution
 - [ ] Keycloak nexora-management realm
@@ -348,6 +351,7 @@ New table `platform_license_cache`:
 - [ ] NMP frontend (tenant list, subscriptions, billing)
 
 ### NMP.3: Admin Panel Adaptation (After Phase 2 modules exist)
+
 **Prerequisite**: Phase 2 modules exist so the license tab has module content to display.
 - [ ] Remove tenant CRUD from admin
 - [ ] License-aware module installation

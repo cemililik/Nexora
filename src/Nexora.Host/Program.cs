@@ -1,12 +1,14 @@
 using FluentValidation;
 using Hangfire;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Nexora.Host;
 using Nexora.Host.Endpoints;
 using Nexora.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Metrics;
@@ -114,6 +116,8 @@ try
             };
         });
     builder.Services.AddAuthorization();
+    builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+    builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
     // CORS — allow frontend clients in development
     builder.Services.AddCors(options =>
