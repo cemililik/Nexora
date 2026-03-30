@@ -193,6 +193,7 @@ public sealed class GetAuditLogsQueryTests
     public async Task Handle_ShouldOrderByTimestampDescending()
     {
         var now = DateTimeOffset.UtcNow;
+        // Repository returns entries already ordered by timestamp descending
         var entries = new List<AuditEntry>
         {
             CreateEntry(timestamp: now),
@@ -269,10 +270,11 @@ public sealed class GetAuditLogsQueryTests
         string operation = "CreateContact",
         Guid? userId = null,
         bool isSuccess = true,
-        DateTimeOffset? timestamp = null)
+        DateTimeOffset? timestamp = null,
+        string? tenantId = null)
     {
         return AuditEntry.Create(
-            _tenantId, module, operation, "Command",
+            tenantId ?? _tenantId, module, operation, "Command",
             userId ?? Guid.NewGuid(), "user@test.com", "127.0.0.1", null, null,
             isSuccess, null, null, null, null, null, null, null,
             timestamp ?? DateTimeOffset.UtcNow);

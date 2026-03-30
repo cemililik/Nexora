@@ -71,7 +71,6 @@ public static class FolderEndpoints
 
         // Folder access endpoints
 
-        /// <summary>Gets access permissions for a folder.</summary>
         group.MapGet("/{folderId:guid}/access", async (Guid folderId, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new GetFolderAccessQuery(folderId), ct);
@@ -84,7 +83,6 @@ public static class FolderEndpoints
         .Produces<ApiEnvelope<IReadOnlyList<FolderAccessDto>>>(StatusCodes.Status200OK)
         .Produces<ApiEnvelope<IReadOnlyList<FolderAccessDto>>>(StatusCodes.Status404NotFound);
 
-        /// <summary>Grants access to a folder for a user or role.</summary>
         group.MapPost("/{folderId:guid}/access", async (Guid folderId, GrantFolderAccessRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new GrantFolderAccessCommand(folderId, request.UserId, request.RoleId, request.Permission, request.ExpiresAt);
@@ -103,7 +101,6 @@ public static class FolderEndpoints
         .Produces<ApiEnvelope<FolderAccessDto>>(StatusCodes.Status400BadRequest)
         .Produces<ApiEnvelope<FolderAccessDto>>(StatusCodes.Status404NotFound);
 
-        /// <summary>Revokes folder access.</summary>
         group.MapDelete("/{folderId:guid}/access/{accessId:guid}", async (Guid folderId, Guid accessId, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new RevokeFolderAccessCommand(folderId, accessId), ct);

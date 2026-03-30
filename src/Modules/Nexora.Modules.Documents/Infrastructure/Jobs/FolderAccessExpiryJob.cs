@@ -55,4 +55,10 @@ public sealed class FolderAccessExpiryJob(
             "Soft-deleted {Count} expired folder access grants for tenant {TenantId}",
             expiredIds.Count, tenant.TenantId);
     }
+
+    /// <summary>Internal test wrapper for <see cref="ExecuteForTenantAsync"/>.</summary>
+    internal Task TestExecuteForTenantAsync(
+        FolderAccessExpiryJobParams parameters, ActiveTenantInfo tenant,
+        IServiceProvider scopedServices, CancellationToken ct)
+        => ExecuteForTenantAsync(parameters, tenant, scopedServices, ct);
 }

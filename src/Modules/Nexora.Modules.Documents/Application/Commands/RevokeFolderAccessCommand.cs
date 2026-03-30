@@ -51,7 +51,7 @@ public sealed class RevokeFolderAccessHandler(
 
         if (folder is null)
         {
-            logger.LogWarning("Folder {FolderId} not found for tenant {TenantId}", request.FolderId, tenantId);
+            logger.LogWarning("Folder {FolderId} not found for tenant {TenantId} in organization {OrganizationId}", request.FolderId, tenantId, orgId);
             return Result.Failure(LocalizedMessage.Of("lockey_documents_error_folder_not_found"));
         }
 

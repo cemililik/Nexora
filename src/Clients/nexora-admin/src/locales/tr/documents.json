@@ -290,5 +290,8 @@
   "lockey_documents_signatures_search_document": "Belge ara...",
   "lockey_documents_signatures_search_contact": "Kişi Ara",
   "lockey_documents_signatures_search_contact_placeholder": "Kişi aramak için yazın...",
-  "lockey_documents_signatures_recipients_required": "En az bir alıcı gereklidir."
+  "lockey_documents_signatures_recipients_required": "En az bir alıcı gereklidir.",
+
+  "lockey_documents_upload_clear": "Dosyaları temizle",
+  "lockey_documents_version_prefix": "v{{version}}"
 }

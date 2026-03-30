@@ -159,7 +159,7 @@ export function FileDropZone({
               handleClear();
             }}
             disabled={disabled}
-            aria-label={t('lockey_documents_upload_clear', { defaultValue: 'Clear files' })}
+            aria-label={t('lockey_documents_upload_clear')}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </Button>

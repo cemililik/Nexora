@@ -56,7 +56,7 @@ public sealed class GetDocumentByIdHandler(
                 LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
 
-        var folder = await dbContext.Folders.FirstOrDefaultAsync(
+        var folder = await dbContext.Folders.AsNoTracking().FirstOrDefaultAsync(
             f => f.Id == document.FolderId && f.TenantId == tenantId, cancellationToken);
 
         var versionDtos = document.Versions

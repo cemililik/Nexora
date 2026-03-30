@@ -94,7 +94,7 @@ export function setAuthToken(token: string | null): void {
 
 function unwrapEnvelope<T>(data: ApiEnvelope<T>): T {
   // data.data can be null for void responses (PUT/DELETE with no body)
-  if (data.data === undefined) {
+  if (data.data === undefined || data.data === null) {
     return undefined as unknown as T;
   }
   return data.data as T;

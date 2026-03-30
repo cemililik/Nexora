@@ -54,6 +54,7 @@ public sealed class AuditEntry : Entity<AuditEntryId>
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(module);
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationType);
 
         return new AuditEntry
         {

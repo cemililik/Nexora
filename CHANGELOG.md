@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Audit module: standalone audit logging with configurable settings per module/operation
 - Documents module: folder access control with time-limited permissions
 - Documents module: drag-and-drop file upload with presigned URL flow
@@ -17,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JWT claim typed extension methods (ClaimsPrincipalExtensions)
 
 ### Changed
+
 - DaprCacheService: fixed value-type caching bug for GetOrSetAsync
 - AuditCacheKeys: removed double tenant ID prefix from cache keys
 - FolderAccess: DateTime → DateTimeOffset for ExpiresAt
@@ -24,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All Documents queries: added OrganizationId isolation filter
 
 ### Fixed
+
 - Keycloak user delete: GET→modify→PUT full representation
 - LastLoginAt connection pool corruption: await instead of fire-and-forget
 - API unwrapEnvelope null data handling for void responses

@@ -286,7 +286,7 @@ flowchart TD
         UE[UserEndpoints]
         RE[RoleEndpoints]
         PE[PermissionEndpoints]
-        ALE[AuditLogEndpoints]
+        ALE[AuditLogEndpoints<br/>deprecated adapter → Audit module]
     end
 
     subgraph Application["Application Layer"]

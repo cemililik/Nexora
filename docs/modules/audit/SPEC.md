@@ -99,7 +99,7 @@ sequenceDiagram
     participant API as Audit Settings API
     participant Validator as FluentValidation
     participant Handler as BulkUpdateSettingsHandler
-    participant DB as AuditDbContext
+    participant Repo as IAuditSettingRepository
     participant Cache as Redis / Dapr Cache
 
     Admin->>API: PUT /api/v1/audit/settings/bulk {settings[]}
@@ -107,9 +107,9 @@ sequenceDiagram
     Validator-->>API: Validation passed
     API->>Handler: Send(BulkUpdateAuditSettingsCommand)
     loop For each setting in batch
-        Handler->>DB: Upsert AuditSetting (module, operation, isEnabled, retentionDays)
+        Handler->>Repo: Upsert AuditSetting (module, operation, isEnabled, retentionDays)
     end
-    Handler->>DB: SaveChangesAsync
+    Handler->>Repo: SaveChangesAsync
     Handler->>Cache: Invalidate audit:config:{tenantId}
     Handler-->>API: Result.Success
     API-->>Admin: ApiEnvelope (success)
@@ -127,12 +127,12 @@ sequenceDiagram
     participant Admin
     participant API as Audit Log API
     participant Handler as GetAuditLogsHandler
-    participant DB as AuditDbContext
+    participant Repo as IAuditEntryRepository
 
     Admin->>API: GET /api/v1/audit/logs?module=contacts&from=...&to=...
     API->>Handler: Send(GetAuditLogsQuery)
-    Handler->>DB: Query audit_entries (AsNoTracking)<br/>Filter: module, user, date range, operation, success
-    DB-->>Handler: Paged result set
+    Handler->>Repo: Query audit_entries (AsNoTracking)<br/>Filter: module, user, date range, operation, success
+    Repo-->>Handler: Paged result set
     Handler->>Handler: Map to AuditLogDto list
     Handler-->>API: Result.Success(PagedResult<AuditLogDto>)
     API-->>Admin: ApiEnvelope<PagedResult<AuditLogDto>>

@@ -47,10 +47,9 @@ public sealed class AuditEntryRepository(AuditDbContext dbContext) : IAuditEntry
         if (dateTo is not null)
             query = query.Where(e => e.Timestamp <= dateTo);
 
-        var ordered = query.OrderByDescending(e => e.Timestamp);
-        var totalCount = await ordered.CountAsync(ct);
+        var totalCount = await query.CountAsync(ct);
 
-        var items = await ordered
+        var items = await query.OrderByDescending(e => e.Timestamp)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);

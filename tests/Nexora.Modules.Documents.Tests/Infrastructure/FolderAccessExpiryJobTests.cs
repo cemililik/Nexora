@@ -12,14 +12,14 @@ using NSubstitute;
 
 namespace Nexora.Modules.Documents.Tests.Infrastructure;
 
-public sealed class FolderAccessExpiryJobTests : IDisposable
+public sealed class FolderAccessExpiryJobTests : IAsyncLifetime, IDisposable
 {
     private readonly DocumentsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
-    private readonly FolderId _folderId;
+    private FolderId _folderId = default!;
 
     public FolderAccessExpiryJobTests()
     {
@@ -30,13 +30,18 @@ public sealed class FolderAccessExpiryJobTests : IDisposable
             .Options;
 
         _dbContext = new DocumentsDbContext(options, _tenantAccessor);
+    }
 
+    public async Task InitializeAsync()
+    {
         // Seed a folder to use for folder access entries
         var folder = Folder.Create(_tenantId, _orgId, "TestFolder", _userId);
         _folderId = folder.Id;
         _dbContext.Folders.Add(folder);
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync();
     }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task ExecuteForTenant_ExpiredAccesses_AreSoftDeleted()
@@ -125,7 +130,7 @@ public sealed class FolderAccessExpiryJobTests : IDisposable
 
     public void Dispose() => _dbContext.Dispose();
 
-    private FolderAccessExpiryJob CreateJob()
+    private static FolderAccessExpiryJob CreateJob()
     {
         var tenantProvider = Substitute.For<IActiveTenantProvider>();
         var scopeFactory = Substitute.For<IServiceScopeFactory>();
@@ -135,8 +140,7 @@ public sealed class FolderAccessExpiryJobTests : IDisposable
     }
 
     /// <summary>
-    /// Invokes the protected ExecuteForTenantAsync via a testable wrapper.
-    /// We create a service provider that returns our in-memory DbContext.
+    /// Invokes the protected ExecuteForTenantAsync via the internal test wrapper.
     /// </summary>
     private async Task RunJobForTenantAsync(FolderAccessExpiryJob job)
     {
@@ -146,17 +150,8 @@ public sealed class FolderAccessExpiryJobTests : IDisposable
 
         var tenant = new ActiveTenantInfo(_tenantId.ToString(), $"tenant_{_tenantId}");
 
-        // Use reflection to call the protected method since it's the cleanest
-        // approach without modifying the production code's visibility
-        var method = typeof(FolderAccessExpiryJob).GetMethod(
-            "ExecuteForTenantAsync",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-        var task = (Task)method!.Invoke(job, [
-            new FolderAccessExpiryJobParams { TenantId = tenant.TenantId }, tenant, sp, CancellationToken.None
-        ])!;
-
-        await task;
+        await job.TestExecuteForTenantAsync(
+            new FolderAccessExpiryJobParams { TenantId = tenant.TenantId }, tenant, sp, CancellationToken.None);
     }
 
     private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)

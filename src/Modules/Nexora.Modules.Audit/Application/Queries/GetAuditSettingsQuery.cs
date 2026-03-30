@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.SharedKernel.Abstractions.CQRS;
@@ -13,7 +15,8 @@ public sealed record GetAuditSettingsQuery : IQuery<IReadOnlyList<AuditSettingDt
 /// <summary>Returns all audit settings for the current tenant.</summary>
 public sealed class GetAuditSettingsHandler(
     IAuditSettingRepository auditSettingRepository,
-    ITenantContextAccessor tenantContextAccessor) : IQueryHandler<GetAuditSettingsQuery, IReadOnlyList<AuditSettingDto>>
+    ITenantContextAccessor tenantContextAccessor,
+    ILogger<GetAuditSettingsHandler> logger) : IQueryHandler<GetAuditSettingsQuery, IReadOnlyList<AuditSettingDto>>
 {
     public async Task<Result<IReadOnlyList<AuditSettingDto>>> Handle(
         GetAuditSettingsQuery request,
@@ -21,7 +24,16 @@ public sealed class GetAuditSettingsHandler(
     {
         var tenantId = tenantContextAccessor.Current.TenantId;
 
+        var sw = Stopwatch.StartNew();
+
         var settings = await auditSettingRepository.GetAllByTenantAsync(tenantId, cancellationToken);
+
+        sw.Stop();
+        if (sw.ElapsedMilliseconds > 500)
+        {
+            logger.LogWarning("Slow query detected: {QueryName} took {ElapsedMs}ms for tenant {TenantId}",
+                nameof(GetAuditSettingsQuery), sw.ElapsedMilliseconds, tenantId);
+        }
 
         var dtos = settings.Select(s => new AuditSettingDto(
             s.Id.Value, s.Module, s.Operation, s.IsEnabled, s.RetentionDays)).ToList();

@@ -107,7 +107,7 @@ export default function DocumentListPage() {
     {
       key: 'version',
       header: t('lockey_documents_col_version'),
-      render: (row) => `v${row.currentVersion}`,
+      render: (row) => t('lockey_documents_version_prefix', { version: row.currentVersion }),
     },
     {
       key: 'createdAt',

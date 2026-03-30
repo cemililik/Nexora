@@ -32,7 +32,7 @@ public sealed class KeycloakAdminService(
 
         try
         {
-            await EnsureAuthenticatedAsync(ct);
+            var token = await EnsureAuthenticatedAsync(ct);
 
             var realm = new KeycloakRealmRepresentation
             {
@@ -41,7 +41,11 @@ public sealed class KeycloakAdminService(
                 Enabled = true
             };
 
-            var response = await httpClient.PostAsJsonAsync("/admin/realms", realm, ct);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/admin/realms");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(realm);
+
+            var response = await httpClient.SendAsync(request, ct);
             activity?.SetTag("http.status_code", (int)response.StatusCode);
 
             if (response.StatusCode == HttpStatusCode.Conflict)
@@ -71,7 +75,7 @@ public sealed class KeycloakAdminService(
 
         try
         {
-            await EnsureAuthenticatedAsync(ct);
+            var token = await EnsureAuthenticatedAsync(ct);
 
             var user = new KeycloakUserRepresentation
             {
@@ -92,7 +96,11 @@ public sealed class KeycloakAdminService(
                 ]
             };
 
-            var response = await httpClient.PostAsJsonAsync($"/admin/realms/{realm}/users", user, ct);
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/admin/realms/{realm}/users");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Content = JsonContent.Create(user);
+
+            var response = await httpClient.SendAsync(request, ct);
             activity?.SetTag("http.status_code", (int)response.StatusCode);
             response.EnsureSuccessStatusCode();
 
@@ -108,8 +116,7 @@ public sealed class KeycloakAdminService(
                     new() { ["realm"] = realm });
             }
 
-            logger.LogInformation("Created Keycloak user {Username} in realm {Realm} with ID {KeycloakUserId}",
-                username, realm, keycloakUserId);
+            logger.LogInformation("Created Keycloak user in realm {Realm}", realm);
 
             return keycloakUserId;
         }
@@ -130,11 +137,14 @@ public sealed class KeycloakAdminService(
 
         try
         {
-            await EnsureAuthenticatedAsync(ct);
+            var token = await EnsureAuthenticatedAsync(ct);
 
             // GET the full user representation first — Keycloak PUT requires the complete object
-            var getUserResponse = await httpClient.GetAsync(
-                $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
+            using var getRequest = new HttpRequestMessage(HttpMethod.Get,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var getUserResponse = await httpClient.SendAsync(getRequest, ct);
             getUserResponse.EnsureSuccessStatusCode();
 
             var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
@@ -147,12 +157,16 @@ public sealed class KeycloakAdminService(
                 LastName = lastName
             };
 
-            var response = await httpClient.PutAsJsonAsync(
-                $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
+            using var putRequest = new HttpRequestMessage(HttpMethod.Put,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            putRequest.Content = JsonContent.Create(updatedUser);
+
+            var response = await httpClient.SendAsync(putRequest, ct);
             activity?.SetTag("http.status_code", (int)response.StatusCode);
             response.EnsureSuccessStatusCode();
 
-            logger.LogInformation("Updated Keycloak user {KeycloakUserId} in realm {Realm}", keycloakUserId, realm);
+            logger.LogInformation("Updated Keycloak user in realm {Realm}", realm);
         }
         catch (Exception ex)
         {
@@ -182,11 +196,14 @@ public sealed class KeycloakAdminService(
 
         try
         {
-            await EnsureAuthenticatedAsync(ct);
+            var token = await EnsureAuthenticatedAsync(ct);
 
             // GET the full user representation first — Keycloak PUT requires the complete object
-            var getUserResponse = await httpClient.GetAsync(
-                $"/admin/realms/{realm}/users/{keycloakUserId}", ct);
+            using var getRequest = new HttpRequestMessage(HttpMethod.Get,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var getUserResponse = await httpClient.SendAsync(getRequest, ct);
             getUserResponse.EnsureSuccessStatusCode();
 
             var user = await getUserResponse.Content.ReadFromJsonAsync<KeycloakUserRepresentation>(ct)
@@ -194,13 +211,17 @@ public sealed class KeycloakAdminService(
 
             var updatedUser = user with { Enabled = enabled };
 
-            var response = await httpClient.PutAsJsonAsync(
-                $"/admin/realms/{realm}/users/{keycloakUserId}", updatedUser, ct);
+            using var putRequest = new HttpRequestMessage(HttpMethod.Put,
+                $"/admin/realms/{realm}/users/{keycloakUserId}");
+            putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            putRequest.Content = JsonContent.Create(updatedUser);
+
+            var response = await httpClient.SendAsync(putRequest, ct);
             activity?.SetTag("http.status_code", (int)response.StatusCode);
             response.EnsureSuccessStatusCode();
 
-            logger.LogInformation("Set Keycloak user {KeycloakUserId} enabled={Enabled} in realm {Realm}",
-                keycloakUserId, enabled, realm);
+            logger.LogInformation("Set Keycloak user enabled={Enabled} in realm {Realm}",
+                enabled, realm);
         }
         catch (Exception ex)
         {
@@ -211,20 +232,17 @@ public sealed class KeycloakAdminService(
 
     /// <summary>
     /// Acquires a valid admin token, refreshing if expired.
-    /// All header mutation is serialized through the lock to prevent concurrent modification
-    /// of <see cref="HttpClient.DefaultRequestHeaders"/>.
+    /// Returns the token string for use in per-request Authorization headers.
     /// </summary>
-    private async Task EnsureAuthenticatedAsync(CancellationToken ct)
+    private async Task<string> EnsureAuthenticatedAsync(CancellationToken ct)
     {
         await _tokenLock.WaitAsync(ct);
         try
         {
-            // Token still valid — just ensure header is set and return
+            // Token still valid — return cached token
             if (_cachedToken is not null && DateTimeOffset.UtcNow < _tokenExpiry)
             {
-                httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _cachedToken);
-                return;
+                return _cachedToken;
             }
 
             using var activity = ActivitySource.StartActivity("Keycloak.GetToken", ActivityKind.Client);
@@ -249,17 +267,16 @@ public sealed class KeycloakAdminService(
                 activity?.SetTag("http.status_code", (int)response.StatusCode);
                 response.EnsureSuccessStatusCode();
 
-                var token = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
+                var tokenResponse = await response.Content.ReadFromJsonAsync<KeycloakTokenResponse>(ct)
                     ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_token_deserialize_failed");
 
-                _cachedToken = token.AccessToken;
+                _cachedToken = tokenResponse.AccessToken;
                 // Expire 30 seconds early to avoid edge cases
-                _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn - 30);
+                _tokenExpiry = DateTimeOffset.UtcNow.AddSeconds(tokenResponse.ExpiresIn - 30);
 
-                httpClient.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _cachedToken);
+                logger.LogDebug("Obtained Keycloak admin token, expires in {ExpiresIn}s", tokenResponse.ExpiresIn);
 
-                logger.LogDebug("Obtained Keycloak admin token, expires in {ExpiresIn}s", token.ExpiresIn);
+                return _cachedToken;
             }
             catch (Exception ex)
             {

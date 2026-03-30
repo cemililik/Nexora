@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Extensions;
 
@@ -31,8 +32,12 @@ public sealed class PermissionAuthorizationHandler(
             return;
         }
 
+        var ct = context.Resource is HttpContext httpContext
+            ? httpContext.RequestAborted
+            : CancellationToken.None;
+
         var permissions = await permissionService.GetUserPermissionsAsync(
-            tenantId, keycloakUserId, CancellationToken.None);
+            tenantId, keycloakUserId, ct);
 
         if (permissions.Contains(requirement.Permission))
         {
@@ -40,7 +45,7 @@ public sealed class PermissionAuthorizationHandler(
         }
         else
         {
-            logger.LogDebug(
+            logger.LogWarning(
                 "Permission denied — user {KeycloakUserId} lacks {Permission} in tenant {TenantId}",
                 keycloakUserId, requirement.Permission, tenantId);
         }

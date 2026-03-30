@@ -52,6 +52,9 @@ public sealed class AuditSetting : AuditableEntity<AuditSettingId>
     /// <summary>Updates the enabled state and retention period for this setting.</summary>
     public void Update(bool isEnabled, int retentionDays, string updatedBy)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(updatedBy);
+        ArgumentOutOfRangeException.ThrowIfNegative(retentionDays);
+
         IsEnabled = isEnabled;
         RetentionDays = retentionDays;
         UpdatedByUser = updatedBy;

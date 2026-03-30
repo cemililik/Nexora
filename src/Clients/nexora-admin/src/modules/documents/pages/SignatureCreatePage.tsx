@@ -51,12 +51,17 @@ export default function SignatureCreatePage() {
   });
   const documents = docsResult?.items ?? [];
 
+  // Document keyboard nav state
+  const [docHighlightIndex, setDocHighlightIndex] = useState(-1);
+
   // Contact search state
   const [contactSearch, setContactSearch] = useState('');
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState<string | undefined>('');
   const [recipientContactId, setRecipientContactId] = useState('');
+  // Contact keyboard nav state
+  const [contactHighlightIndex, setContactHighlightIndex] = useState(-1);
   const { data: contactsResult } = useContacts(
     { page: 1, pageSize: 10, search: contactSearch || undefined },
     { enabled: contactSearch.length > 0 },
@@ -133,16 +138,42 @@ export default function SignatureCreatePage() {
               setSelectedDocLabel('');
               form.setValue('documentId', '');
               setShowDocDropdown(true);
+              setDocHighlightIndex(-1);
             }}
             onFocus={() => setShowDocDropdown(true)}
             onBlur={() => {
               setTimeout(() => setShowDocDropdown(false), 200);
             }}
+            onKeyDown={(e) => {
+              if (!showDocDropdown || documents.length === 0) return;
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setDocHighlightIndex((prev) => Math.min(prev + 1, documents.length - 1));
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setDocHighlightIndex((prev) => Math.max(prev - 1, 0));
+              } else if (e.key === 'Enter' && docHighlightIndex >= 0) {
+                e.preventDefault();
+                const doc = documents[docHighlightIndex];
+                if (!doc) return;
+                form.setValue('documentId', doc.id);
+                setSelectedDocLabel(doc.name);
+                setDocSearch('');
+                setShowDocDropdown(false);
+                setDocHighlightIndex(-1);
+              } else if (e.key === 'Escape') {
+                setShowDocDropdown(false);
+                setDocHighlightIndex(-1);
+              }
+            }}
             placeholder={t('lockey_documents_signatures_search_document')}
             className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            role="combobox"
+            aria-expanded={showDocDropdown}
+            aria-controls="doc-listbox"
           />
           {showDocDropdown && documents.length > 0 && !selectedDocLabel && (
-            <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md" role="listbox">
+            <div id="doc-listbox" className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md" role="listbox">
               {documents.map((doc) => (
                 <button
                   key={doc.id}
@@ -238,16 +269,43 @@ export default function SignatureCreatePage() {
                 onChange={(e) => {
                   setContactSearch(e.target.value);
                   setShowContactDropdown(true);
+                  setContactHighlightIndex(-1);
                 }}
                 onFocus={() => { if (contactSearch) setShowContactDropdown(true); }}
                 onBlur={() => {
                   setTimeout(() => setShowContactDropdown(false), 200);
                 }}
+                onKeyDown={(e) => {
+                  if (!showContactDropdown || contacts.length === 0) return;
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setContactHighlightIndex((prev) => Math.min(prev + 1, contacts.length - 1));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setContactHighlightIndex((prev) => Math.max(prev - 1, 0));
+                  } else if (e.key === 'Enter' && contactHighlightIndex >= 0) {
+                    e.preventDefault();
+                    const contact = contacts[contactHighlightIndex];
+                    if (!contact) return;
+                    setRecipientContactId(contact.id);
+                    setRecipientName(contact.displayName);
+                    setRecipientEmail(contact.email ?? undefined);
+                    setContactSearch('');
+                    setShowContactDropdown(false);
+                    setContactHighlightIndex(-1);
+                  } else if (e.key === 'Escape') {
+                    setShowContactDropdown(false);
+                    setContactHighlightIndex(-1);
+                  }
+                }}
                 placeholder={t('lockey_documents_signatures_search_contact_placeholder')}
                 className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                role="combobox"
+                aria-expanded={showContactDropdown}
+                aria-controls="contact-listbox"
               />
               {showContactDropdown && contacts.length > 0 && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md" role="listbox">
+                <div id="contact-listbox" className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md" role="listbox">
                   {contacts.map((contact) => (
                     <button
                       key={contact.id}

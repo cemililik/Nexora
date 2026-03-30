@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/shared/lib/api';
+import { DEFAULT_LIST_STALE_TIME } from '@/shared/lib/queryDefaults';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import type { AuditLogDto, AuditLogFilters } from '../types';
 
@@ -27,6 +28,6 @@ export function useAuditLogs(
         userId: params.userId,
         entityType: params.entityType,
       }),
-    staleTime: 30 * 1000, // 30 seconds — audit logs update frequently
+    staleTime: DEFAULT_LIST_STALE_TIME,
   });
 }

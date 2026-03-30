@@ -140,6 +140,6 @@ public sealed class GetUsersHandler(
             TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
-        }, new LocalizedMessage("lockey_identity_users_listed"));
+        }, LocalizedMessage.Of("lockey_identity_users_listed"));
     }
 }

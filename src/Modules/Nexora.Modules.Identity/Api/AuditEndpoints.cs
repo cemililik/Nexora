@@ -39,6 +39,6 @@ public static class AuditEndpoints
                 ? Results.Created("/api/v1/identity/audit-logs", ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("audit.logs.read");
+        .RequireAuthorization("audit.logs.write");
     }
 }

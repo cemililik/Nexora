@@ -478,11 +478,7 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 ## Phase 2: Core Business Modules
 
 > **Goal**: Essential modules that every small and medium-sized business needs, regardless of industry. A restaurant, consultancy, NGO, or school can all start using Nexora from this phase.
->
-> **NMP Parallel Track**: NMP development starts at Phase 1.5 week 4 (after Permission Tier System is ready)
-> and runs concurrently with Phase 2 module development. Phase 2 modules use
-> `ILicenseVerifier` interface with `NullLicenseVerifier` until NMP is production-ready.
-> See [NMP Track](#nmp-track-parallel-with-phase-2) below for details.
+> See [NMP Track](#nmp-track-parallel-with-phase-2) for the parallel NMP timeline.
 
 ### 2.1 CRM Module
 **Spec**: [modules/crm/SPEC.md](../modules/crm/SPEC.md)

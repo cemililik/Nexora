@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Audit.Application.Queries;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Domain.Repositories;
@@ -25,7 +26,7 @@ public sealed class GetAuditSettingsQueryTests
         _repository.GetAllByTenantAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(Array.Empty<AuditSetting>() as IReadOnlyList<AuditSetting>);
 
-        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor);
+        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor, NullLogger<GetAuditSettingsHandler>.Instance);
         var result = await handler.Handle(new GetAuditSettingsQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -45,7 +46,7 @@ public sealed class GetAuditSettingsQueryTests
         _repository.GetAllByTenantAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(settings as IReadOnlyList<AuditSetting>);
 
-        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor);
+        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor, NullLogger<GetAuditSettingsHandler>.Instance);
         var result = await handler.Handle(new GetAuditSettingsQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -55,7 +56,7 @@ public sealed class GetAuditSettingsQueryTests
     [Fact]
     public async Task Handle_WithMultipleSettings_ShouldOrderByModuleThenOperation()
     {
-        // Repository returns them already ordered (as per the contract)
+        // Repository returns them already ordered by module then operation (ordering is a repository concern)
         var settings = new List<AuditSetting>
         {
             AuditSetting.Create(_tenantId, "Contacts", "CreateContact", true, 90),
@@ -66,7 +67,7 @@ public sealed class GetAuditSettingsQueryTests
         _repository.GetAllByTenantAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(settings as IReadOnlyList<AuditSetting>);
 
-        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor);
+        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor, NullLogger<GetAuditSettingsHandler>.Instance);
         var result = await handler.Handle(new GetAuditSettingsQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -91,7 +92,7 @@ public sealed class GetAuditSettingsQueryTests
         _repository.GetAllByTenantAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(settings as IReadOnlyList<AuditSetting>);
 
-        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor);
+        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor, NullLogger<GetAuditSettingsHandler>.Instance);
         var result = await handler.Handle(new GetAuditSettingsQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -108,7 +109,7 @@ public sealed class GetAuditSettingsQueryTests
         _repository.GetAllByTenantAsync(_tenantId, Arg.Any<CancellationToken>())
             .Returns(settings as IReadOnlyList<AuditSetting>);
 
-        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor);
+        var handler = new GetAuditSettingsHandler(_repository, _tenantAccessor, NullLogger<GetAuditSettingsHandler>.Instance);
         var result = await handler.Handle(new GetAuditSettingsQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

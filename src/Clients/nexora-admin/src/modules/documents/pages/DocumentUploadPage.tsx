@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CheckCircle2 } from 'lucide-react';
@@ -55,6 +55,8 @@ export default function DocumentUploadPage() {
     resolver: zodResolver(schema),
     defaultValues: { folderId: '', name: '', description: '' },
   });
+
+  const watchedFolderId = useWatch({ control: form.control, name: 'folderId' });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -230,7 +232,7 @@ export default function DocumentUploadPage() {
                 <Button
                   type="button"
                   onClick={handleUpload}
-                  disabled={!file || !form.getValues('folderId') || isUploading}
+                  disabled={!file || !watchedFolderId || isUploading}
                 >
                   {t('lockey_documents_action_upload')}
                 </Button>

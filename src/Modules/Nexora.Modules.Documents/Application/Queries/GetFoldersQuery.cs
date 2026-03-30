@@ -29,8 +29,11 @@ public sealed class GetFoldersHandler(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
 
         if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+        {
+            logger.LogWarning("Invalid organization context for tenant {TenantId} in GetFoldersQuery", tenantId);
             return Result<IReadOnlyList<FolderDto>>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
+        }
 
         var query = dbContext.Folders.AsNoTracking()
             .Where(f => f.TenantId == tenantId && f.OrganizationId == orgId);
