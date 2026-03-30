@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
+import { DEFAULT_LIST_STALE_TIME } from '@/shared/lib/queryDefaults';
 import { useApiError } from '@/shared/hooks/useApiError';
 import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import type {
@@ -38,6 +39,7 @@ export function useDocuments(
         search: params.search,
         status: params.status,
       }),
+    staleTime: DEFAULT_LIST_STALE_TIME,
   });
 }
 

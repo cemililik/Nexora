@@ -17,6 +17,7 @@ const VARIABLE_TYPES = ['String', 'Number', 'Date', 'Boolean'] as const;
 type VariableType = (typeof VARIABLE_TYPES)[number];
 
 interface VariableDefinition {
+  id: string;
   name: string;
   type: VariableType;
   required: boolean;
@@ -32,13 +33,21 @@ function parseDefinitions(json: string): VariableDefinition[] {
   try {
     const parsed: unknown = JSON.parse(json);
     if (Array.isArray(parsed)) {
-      return parsed.filter(
-        (item): item is VariableDefinition =>
-          typeof item === 'object' &&
-          item !== null &&
-          typeof (item as Record<string, unknown>).name === 'string' &&
-          typeof (item as Record<string, unknown>).type === 'string',
-      );
+      return parsed
+        .filter(
+          (item): item is VariableDefinition =>
+            typeof item === 'object' &&
+            item !== null &&
+            typeof (item as Record<string, unknown>).name === 'string' &&
+            typeof (item as Record<string, unknown>).type === 'string' &&
+            (VARIABLE_TYPES as readonly string[]).includes(
+              (item as Record<string, unknown>).type as string,
+            ),
+        )
+        .map((item) => ({
+          ...item,
+          id: item.id || crypto.randomUUID(),
+        }));
     }
   } catch {
     // Invalid JSON — start empty
@@ -77,7 +86,7 @@ export function VariableDefinitionsEditor({ value, onChange }: VariableDefinitio
   );
 
   const addVariable = () => {
-    emitChange([...definitions, { name: '', type: 'String', required: false }]);
+    emitChange([...definitions, { id: crypto.randomUUID(), name: '', type: 'String', required: false }]);
   };
 
   const removeVariable = (index: number) => {
@@ -91,7 +100,7 @@ export function VariableDefinitionsEditor({ value, onChange }: VariableDefinitio
   return (
     <div className="space-y-3">
       {definitions.map((def, index) => (
-        <div key={index} className="flex items-center gap-2">
+        <div key={def.id} className="flex items-center gap-2">
           <Input
             value={def.name}
             onChange={(e) => updateVariable(index, { name: e.target.value })}
@@ -100,7 +109,11 @@ export function VariableDefinitionsEditor({ value, onChange }: VariableDefinitio
           />
           <Select
             value={def.type}
-            onValueChange={(val) => updateVariable(index, { type: val as VariableType })}
+            onValueChange={(val) => {
+              if ((VARIABLE_TYPES as readonly string[]).includes(val)) {
+                updateVariable(index, { type: val as VariableType });
+              }
+            }}
           >
             <SelectTrigger className="w-32" aria-label={t('lockey_documents_templates_var_type')}>
               <SelectValue />

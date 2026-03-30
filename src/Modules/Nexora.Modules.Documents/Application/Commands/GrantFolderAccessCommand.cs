@@ -13,7 +13,7 @@ namespace Nexora.Modules.Documents.Application.Commands;
 
 /// <summary>Command to grant access permission on a folder.</summary>
 public sealed record GrantFolderAccessCommand(
-    Guid FolderId, Guid? UserId, Guid? RoleId, string Permission, DateTime? ExpiresAt) : ICommand<FolderAccessDto>;
+    Guid FolderId, Guid? UserId, Guid? RoleId, string Permission, DateTimeOffset? ExpiresAt) : ICommand<FolderAccessDto>;
 
 /// <summary>Validates grant folder access input.</summary>
 public sealed class GrantFolderAccessValidator : AbstractValidator<GrantFolderAccessCommand>
@@ -53,11 +53,15 @@ public sealed class GrantFolderAccessHandler(
             return Result<FolderAccessDto>.Failure(
                 LocalizedMessage.Of("lockey_documents_error_invalid_tenant_context"));
 
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } orgId)
+            return Result<FolderAccessDto>.Failure(
+                LocalizedMessage.Of("lockey_documents_error_invalid_organization_context"));
+
         var folderId = FolderId.From(request.FolderId);
 
         var folder = await dbContext.Folders
             .Include(f => f.AccessList)
-            .FirstOrDefaultAsync(f => f.Id == folderId && f.TenantId == tenantId, cancellationToken);
+            .FirstOrDefaultAsync(f => f.Id == folderId && f.TenantId == tenantId && f.OrganizationId == orgId, cancellationToken);
 
         if (folder is null)
         {

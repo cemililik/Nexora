@@ -17,8 +17,12 @@ public sealed class FolderAccessConfiguration : IEntityTypeConfiguration<FolderA
         builder.Property(a => a.FolderId).HasConversion(id => id.Value, v => FolderId.From(v));
         builder.Property(a => a.Permission).HasConversion<string>().HasMaxLength(20);
 
-        builder.HasIndex(a => new { a.FolderId, a.UserId });
-        builder.HasIndex(a => new { a.FolderId, a.RoleId });
+        builder.HasIndex(a => new { a.FolderId, a.UserId })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false AND \"UserId\" IS NOT NULL");
+        builder.HasIndex(a => new { a.FolderId, a.RoleId })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false AND \"RoleId\" IS NOT NULL");
         builder.HasIndex(a => a.ExpiresAt).HasFilter("\"ExpiresAt\" IS NOT NULL");
     }
 }

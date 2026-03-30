@@ -219,8 +219,8 @@ Roles are **tenant-defined** (not hardcoded). Default roles are seeded but can b
 
 Permissions have two scopes, controlled by the `PermissionScope` enum on each Permission entity:
 
-- **Platform**: `platform.tenants.*`, `platform.modules.*` — NMP operators only (SaaS) or local Platform Admin (on-prem)
-- **Tenant**: All other permissions (`identity.users.*`, `contacts.*`, etc.) — tenant admins and users
+- **Platform**: `identity.tenants.manage`, `identity.modules.manage` — NMP operators only (SaaS) or local Platform Admin (on-prem)
+- **Tenant**: All other permissions (`identity.users.*`, `contacts.contact.read`, `contacts.contact.write`, etc.) — tenant admins and users
 
 Platform-scope permissions are hidden from the tenant admin UI.
 In SaaS mode: managed via NMP. In on-prem mode: managed by the local Platform Admin.

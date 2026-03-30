@@ -177,7 +177,7 @@ public sealed class GetRolesQueryTests : IDisposable
         await _dbContext.Roles.AddAsync(role);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetRolesHandler(_dbContext, _tenantAccessor);
+        var handler = new GetRolesHandler(_dbContext, _tenantAccessor, NullLogger<GetRolesHandler>.Instance);
         var result = await handler.Handle(new GetRolesQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -189,7 +189,7 @@ public sealed class GetRolesQueryTests : IDisposable
     [Fact]
     public async Task Handle_EmptyDb_ShouldReturnEmptyList()
     {
-        var handler = new GetRolesHandler(_dbContext, _tenantAccessor);
+        var handler = new GetRolesHandler(_dbContext, _tenantAccessor, NullLogger<GetRolesHandler>.Instance);
         var result = await handler.Handle(new GetRolesQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

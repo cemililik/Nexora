@@ -8,6 +8,7 @@ using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -147,6 +148,49 @@ public sealed class CreateUserTests : IDisposable
 
         var count = await _dbContext.Users.CountAsync();
         count.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_KeycloakThrowsHttpRequestException_PropagatesException()
+    {
+        // Arrange — configure Keycloak to throw
+        var failingKeycloak = Substitute.For<IKeycloakAdminService>();
+        failingKeycloak.CreateUserAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Keycloak is unreachable"));
+
+        var handler = new CreateUserHandler(_dbContext, _platformDb, _tenantAccessor, failingKeycloak,
+            NullLogger<CreateUserHandler>.Instance);
+        var command = new CreateUserCommand("fail@example.com", "Fail", "User", "TempPass1!");
+
+        // Act & Assert — exception should propagate (GlobalExceptionHandler catches in prod)
+        var act = () => handler.Handle(command, CancellationToken.None);
+        await act.Should().ThrowAsync<HttpRequestException>()
+            .WithMessage("Keycloak is unreachable");
+    }
+
+    [Fact]
+    public async Task Handle_KeycloakThrowsHttpRequestException_ShouldNotPersistUser()
+    {
+        // Arrange — configure Keycloak to throw
+        var failingKeycloak = Substitute.For<IKeycloakAdminService>();
+        failingKeycloak.CreateUserAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Keycloak is down"));
+
+        var handler = new CreateUserHandler(_dbContext, _platformDb, _tenantAccessor, failingKeycloak,
+            NullLogger<CreateUserHandler>.Instance);
+        var command = new CreateUserCommand("nopersist@example.com", "No", "Persist", "TempPass1!");
+
+        // Act — ignore the exception
+        try { await handler.Handle(command, CancellationToken.None); }
+        catch (HttpRequestException) { }
+
+        // Assert — user should NOT be persisted since exception occurred before save
+        var count = await _dbContext.Users.CountAsync();
+        count.Should().Be(0);
     }
 
     public void Dispose()

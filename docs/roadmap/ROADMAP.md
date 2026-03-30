@@ -393,6 +393,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 ---
 
 ## Phase 1.5: Bridge
+
 > **Goal**: Critical infrastructure and tooling needed before business modules.
 > Items are ordered by priority and NMP-independence — all Phase 1.5 items can be built without waiting for NMP.
 
@@ -434,6 +435,7 @@ Platform-level vs tenant-level permission separation is required before multi-te
 - [ ] Platform-scope permissions hidden from tenant admin UI
 - [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants
 - [ ] License-based limits (max users, max organizations per tenant)
+- [ ] **CR-01 (SEC-12)**: Refactor `ModuleEndpoints` to source tenant ID from `ITenantContextAccessor` (JWT claim) instead of route parameter. Currently `tenantId` comes from URL `/tenants/{tenantId:guid}/modules` — must be scoped through PermissionScope (Platform operators can manage any tenant, tenant users can only manage their own). Deferred from Phase 1 code review because it depends on the Platform vs Tenant permission separation.
 
 ### 1.5.3 Localization (Weeks 3-6)
 
@@ -474,12 +476,9 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 ---
 
 ## Phase 2: Core Business Modules
-> **Goal**: Essential modules that every small and medium-sized business needs, regardless of industry. A restaurant, consultancy, NGO, or school can all start using Nexora from this phase.
 
-> **NMP Parallel Track**: NMP development starts at Phase 1.5 week 4 (after Permission Tier System is ready)
-> and runs concurrently with Phase 2 module development. Phase 2 modules use
-> `ILicenseVerifier` interface with `NullLicenseVerifier` until NMP is production-ready.
-> See [NMP Track](#nmp-track-parallel-with-phase-2) below for details.
+> **Goal**: Essential modules that every small and medium-sized business needs, regardless of industry. A restaurant, consultancy, NGO, or school can all start using Nexora from this phase.
+> See [NMP Track](#nmp-track-parallel-with-phase-2) for the parallel NMP timeline.
 
 ### 2.1 CRM Module
 **Spec**: [modules/crm/SPEC.md](../modules/crm/SPEC.md)
@@ -554,6 +553,7 @@ Task and project tracking for internal teams — works for any industry.
 - [ ] **Portal**: Project stakeholder view (progress, milestones, documents)
 
 ### 2.5 Reporting Enhancements
+
 > **Prerequisite**: Reporting Engine stable (Phase 1) + CRM module exists (Phase 2.1)
 
 **Core enhancements (after CRM exists):**
@@ -569,6 +569,7 @@ Task and project tracking for internal teams — works for any industry.
 ---
 
 ## Phase 3: Growth Modules
+
 > **Goal**: Modules that growing businesses need as they scale — website, events, hiring, inventory, feedback.
 
 ### 3.1 Website & CMS Module
@@ -644,6 +645,7 @@ Generic event management — conferences, workshops, fundraiser dinners, product
 ---
 
 ## Phase 4: Advanced Operations & Vertical Modules
+
 > **Goal**: Advanced operational modules + industry-specific vertical solutions. Each module is built to production quality.
 >
 > **Module tiers**: This phase contains two types of modules:
@@ -849,6 +851,7 @@ graph TD
 ---
 
 ## NMP Track (Parallel with Phase 2)
+
 > **Goal**: Centralized platform management — tenant lifecycle, licensing, billing, marketplace. Replaces tenant management in admin panel with a dedicated operator portal.
 > **Timeline**: Starts at Phase 1.5 week 4 (after Permission Tier System from Phase 1.5.2 is complete) and runs concurrently with Phase 2 module development.
 > **Requires**: Permission Tier System from Phase 1.5.2 (`PermissionScope` enum, `ILicenseVerifier`, `platform_license_cache`)
@@ -860,6 +863,7 @@ graph TD
 > Admin tenant CRUD UI will NOT be improved — NMP will replace it entirely.
 
 ### NMP.1 Foundation (Weeks 1-4 of NMP track)
+
 **Prerequisite**: Phase 1.5.2 (Permission Tier System) complete
 - [ ] Create Nexora.Management solution (separate codebase)
 - [ ] Keycloak `nexora-management` realm for platform operators
@@ -875,6 +879,7 @@ graph TD
 - [ ] NMP frontend (tenant dashboard, subscription management)
 
 ### NMP.3 Admin Panel Adaptation (After Phase 2 modules exist)
+
 **Prerequisite**: Phase 2 modules exist (so license tab has content to display)
 - [ ] Remove tenant CRUD from admin panel
 - [ ] License-aware module installation (verify before install)

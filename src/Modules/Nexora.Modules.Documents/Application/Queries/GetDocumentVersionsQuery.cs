@@ -38,7 +38,7 @@ public sealed class GetDocumentVersionsHandler(
                 LocalizedMessage.Of("lockey_documents_error_document_not_found"));
         }
 
-        var versions = await dbContext.DocumentVersions
+        var versions = await dbContext.DocumentVersions.AsNoTracking()
             .Where(v => v.DocumentId == documentId)
             .OrderByDescending(v => v.VersionNumber)
             .Select(v => new DocumentVersionDto(

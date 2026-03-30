@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Extensions;
 
 namespace Nexora.Infrastructure.Audit;
 
@@ -25,7 +25,7 @@ public sealed class HttpAuditContext(
     /// <inheritdoc />
     // Full email stored in audit entries for compliance audit trail (not logged to Serilog)
     public string? UserEmail =>
-        httpContextAccessor.HttpContext?.User.FindFirstValue("email");
+        httpContextAccessor.HttpContext?.User.GetEmail();
 
     /// <inheritdoc />
     public string? IpAddress

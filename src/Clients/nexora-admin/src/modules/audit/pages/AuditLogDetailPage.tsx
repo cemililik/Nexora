@@ -112,7 +112,7 @@ export default function AuditLogDetailPage() {
                 <dd>{log.userEmail}</dd>
               </div>
               <div>
-                <dt className="text-sm text-muted-foreground">User ID</dt>
+                <dt className="text-sm text-muted-foreground">{t('lockey_audit_col_user_id')}</dt>
                 <dd>{log.userId ?? '—'}</dd>
               </div>
               <div>
@@ -140,7 +140,7 @@ export default function AuditLogDetailPage() {
               <dd>{log.entityType ?? '—'}</dd>
             </div>
             <div>
-              <dt className="text-sm text-muted-foreground">Entity ID</dt>
+              <dt className="text-sm text-muted-foreground">{t('lockey_audit_col_entity_id')}</dt>
               <dd className="break-all text-xs">{log.entityId ?? '—'}</dd>
             </div>
             <div>

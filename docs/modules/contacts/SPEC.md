@@ -1,6 +1,7 @@
 # Module: Contact Management
 
 > **Status**: Implemented
+> **Version**: 1.0.0
 > **Module Name**: `contacts`
 > **Tier**: Core/Platform (always installed)
 > **Dependencies**: `identity`
@@ -189,6 +190,187 @@ stateDiagram-v2
     Archived --> Active: Restore
     Merged --> [*]: Redirect to target
     Archived --> [*]: GDPR delete (after retention)
+```
+
+### Sequence Diagrams
+
+```mermaid
+---
+title: Create Contact Flow
+---
+sequenceDiagram
+    participant User
+    participant API as Contacts API
+    participant Validator as FluentValidation
+    participant Handler as CreateContactHandler
+    participant DB as PostgreSQL
+    participant Kafka
+
+    User->>API: POST /api/v1/contacts/contacts {firstName, lastName, email, ...}
+    API->>Validator: Validate CreateContactCommand
+    Validator->>Validator: Required fields, email format, phone E.164
+    Validator-->>API: Validation passed
+    API->>Handler: Send(CreateContactCommand)
+    Handler->>Handler: Normalize email (lowercase, trim)<br/>Normalize phone (E.164)
+    Handler->>DB: Run duplicate detection<br/>(email match, phone match, name+address fuzzy)
+    DB-->>Handler: Duplicate candidates (scored 0-100)
+    alt Duplicates found (score >= 70)
+        Handler-->>API: Result.Success(DuplicateSuggestionsDto)
+        API-->>User: ApiEnvelope with duplicate suggestions
+    else No duplicates or user confirmed
+        Handler->>DB: Insert Contact (status: Active)
+        Handler->>DB: Apply default tags based on source
+        Handler->>Kafka: Publish ContactCreated event
+        Handler-->>API: Result.Success(ContactDto)
+        API-->>User: ApiEnvelope<ContactDto>
+    end
+```
+
+```mermaid
+---
+title: Contact Search Flow
+---
+sequenceDiagram
+    participant User
+    participant API as Contacts API
+    participant Handler as ListContactsHandler
+    participant DB as PostgreSQL
+
+    User->>API: GET /api/v1/contacts/contacts?search=john&tags=donor&page=1&pageSize=20
+    API->>Handler: Send(GetContactsQuery)
+    Handler->>DB: Build query (AsNoTracking)<br/>Apply full-text search on name/email/phone<br/>Filter by tags, status, organization<br/>Apply pagination (OFFSET/LIMIT)
+    DB-->>Handler: Paged result set + total count
+    Handler->>Handler: Map to ContactDto list
+    Handler-->>API: Result.Success(PagedResult<ContactDto>)
+    API-->>User: ApiEnvelope<PagedResult<ContactDto>>
+
+    Note over DB: Full-text search uses GIN index<br/>Latency target: < 200ms
+```
+
+```mermaid
+---
+title: Merge Contacts Flow
+---
+sequenceDiagram
+    participant Admin
+    participant API as Contacts API
+    participant Handler as MergeContactsHandler
+    participant DB as PostgreSQL
+    participant Kafka
+
+    Admin->>API: POST /api/v1/contacts/contacts/merge<br/>{primaryId, secondaryId, fieldSelections}
+    API->>Handler: Send(MergeContactsCommand)
+    Handler->>DB: Load primary and secondary contacts
+    Handler->>Handler: Validate both contacts exist and are Active
+
+    rect rgb(240, 248, 255)
+        Note over Handler, DB: Merge transaction
+        Handler->>DB: Update primary contact with selected field values
+        Handler->>DB: Move addresses from secondary → primary
+        Handler->>DB: Move tags from secondary → primary (skip duplicates)
+        Handler->>DB: Move notes from secondary → primary
+        Handler->>DB: Move activities from secondary → primary
+        Handler->>DB: Move relationships from secondary → primary
+        Handler->>DB: Set secondary status → Merged, merged_into_id → primary
+        Handler->>DB: SaveChangesAsync (single transaction)
+    end
+
+    Handler->>Kafka: Publish ContactMerged event<br/>{primaryId, secondaryId}
+    Handler-->>API: Result.Success(ContactDto)
+    API-->>Admin: ApiEnvelope<ContactDto>
+
+    Note over Kafka: CRM, Donations, Sponsorship, Education<br/>update their FK references to primary contact
+```
+
+### Component Diagram
+
+```mermaid
+---
+title: Contacts Module - Component Diagram
+---
+flowchart TD
+    subgraph Api["Api Layer"]
+        CE[ContactEndpoints]
+        TE[TagEndpoints]
+        IE[ImportExportEndpoints]
+        RE[RelationshipEndpoints]
+        COE[ConsentEndpoints]
+    end
+
+    subgraph Application["Application Layer"]
+        CMD[Commands<br/>CreateContact, UpdateContact,<br/>MergeContacts, ImportContacts, ...]
+        QRY[Queries<br/>GetContact, ListContacts,<br/>FindDuplicates, Get360View, ...]
+        VAL[Validators<br/>FluentValidation per command]
+        DTO[DTOs<br/>ContactDto, TagDto,<br/>DuplicateSuggestionDto, ...]
+        SVC[Services<br/>DuplicateDetectionService,<br/>ContactImportService]
+    end
+
+    subgraph Domain["Domain Layer"]
+        ENT[Entities<br/>Contact, ContactAddress, Tag,<br/>ContactRelationship, ContactNote,<br/>ConsentRecord, ContactActivity, ...]
+        VO[Value Objects<br/>ContactId, Email, PhoneNumber,<br/>Address, GeoCoordinate, ContactName]
+        EVT[Domain Events<br/>ContactCreated, ContactMerged,<br/>ConsentChanged, ...]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        DBC[ContactsDbContext]
+        REPO[Repositories]
+        JOBS[Background Jobs<br/>ContactImportJob,<br/>GdprExportJob]
+    end
+
+    subgraph External["External Services"]
+        PG[(PostgreSQL)]
+        KF[Kafka]
+    end
+
+    Api --> Application
+    Application --> Domain
+    Application --> Infrastructure
+    Infrastructure --> External
+
+    DBC --> PG
+```
+
+### Integration Diagram
+
+```mermaid
+---
+title: Contacts Module - Integration Diagram
+---
+flowchart LR
+    subgraph Identity["Identity Module"]
+        IDEvents[UserCreated<br/>OrganizationCreated]
+    end
+
+    subgraph Contacts["Contacts Module"]
+        CAPI[Contacts API]
+        CApp[Application Layer]
+        CInfra[Infrastructure Layer]
+    end
+
+    subgraph ConsumerModules["Consumer Modules"]
+        CRM[CRM Module<br/>Lead creation, segments]
+        Donations[Donations Module<br/>Donor summary]
+        Education[Education Module<br/>Parent/student links]
+        Sponsorship[Sponsorship Module<br/>Sponsor tracking]
+        Notifications[Notifications Module<br/>Consent enforcement]
+    end
+
+    subgraph SharedInfra["Shared Infrastructure"]
+        PG[(PostgreSQL)]
+        Kafka[Kafka]
+    end
+
+    IDEvents -->|via Kafka| CApp
+    CApp -->|Publish events| Kafka
+    Kafka -->|ContactCreated| CRM
+    Kafka -->|ContactMerged| ConsumerModules
+    Kafka -->|ConsentChanged| Notifications
+    CInfra --> PG
+
+    CRM -->|lead.activity| Kafka -->|Log activity| CApp
+    Donations -->|donation.confirmed| Kafka
+    Education -->|enrollment.confirmed| Kafka
+    Sponsorship -->|sponsorship.created| Kafka
 ```
 
 ## Use Cases

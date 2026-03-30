@@ -23,6 +23,8 @@ public sealed class KeycloakAdminServiceTests
     private KeycloakAdminService CreateService(HttpMessageHandler handler)
     {
         var client = new HttpClient(handler) { BaseAddress = new Uri(_options.BaseUrl) };
+        _secretProvider.GetSecretAsync("nexora/keycloak/admin-username", Arg.Any<CancellationToken>())
+            .Returns("admin");
         _secretProvider.GetSecretAsync("nexora/keycloak/admin-password", Arg.Any<CancellationToken>())
             .Returns("test-secret");
 
@@ -100,8 +102,7 @@ public sealed class KeycloakAdminServiceTests
 
         await service.CreateUserAsync("test", "jane", "jane@test.com", "Jane", "Smith", "pass123");
 
-        var body = await handler.LastRequest!.Content!.ReadAsStringAsync();
-        var doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(handler.LastRequest!.ContentSnapshot!);
         var root = doc.RootElement;
 
         root.GetProperty("username").GetString().Should().Be("jane");
@@ -134,8 +135,7 @@ public sealed class KeycloakAdminServiceTests
         apiRequests[1].RequestUri!.PathAndQuery.Should().Be($"/admin/realms/tenant-abc/users/{userId}");
 
         // Verify PUT body contains updated fields
-        var body = await apiRequests[1].Content!.ReadAsStringAsync();
-        var doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(apiRequests[1].ContentSnapshot!);
         doc.RootElement.GetProperty("email").GetString().Should().Be("new@test.com");
         doc.RootElement.GetProperty("firstName").GetString().Should().Be("Updated");
         doc.RootElement.GetProperty("lastName").GetString().Should().Be("User");
@@ -152,8 +152,7 @@ public sealed class KeycloakAdminServiceTests
         await service.DisableUserAsync("tenant-abc", userId);
 
         handler.LastRequest!.Method.Should().Be(HttpMethod.Put);
-        var body = await handler.LastRequest.Content!.ReadAsStringAsync();
-        var doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(handler.LastRequest.ContentSnapshot!);
         doc.RootElement.GetProperty("enabled").GetBoolean().Should().BeFalse();
     }
 
@@ -167,8 +166,7 @@ public sealed class KeycloakAdminServiceTests
         await service.EnableUserAsync("tenant-abc", userId);
 
         handler.LastRequest!.Method.Should().Be(HttpMethod.Put);
-        var body = await handler.LastRequest.Content!.ReadAsStringAsync();
-        var doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(handler.LastRequest.ContentSnapshot!);
         doc.RootElement.GetProperty("enabled").GetBoolean().Should().BeTrue();
     }
 
@@ -198,6 +196,9 @@ public sealed class KeycloakAdminServiceTests
     }
 }
 
+/// <summary>Captured snapshot of an HTTP request including a copy of its content (survives disposal).</summary>
+internal sealed record CapturedRequest(HttpMethod Method, Uri? RequestUri, string? ContentSnapshot);
+
 /// <summary>Test HTTP handler that returns configured responses and captures requests.</summary>
 internal sealed class FakeHttpHandler : HttpMessageHandler
 {
@@ -206,8 +207,8 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
     private readonly Dictionary<string, string>? _responseHeaders;
     private bool _isTokenRequest = true;
 
-    public HttpRequestMessage? LastRequest { get; private set; }
-    public List<HttpRequestMessage> Requests { get; } = [];
+    public CapturedRequest? LastRequest { get; private set; }
+    public List<CapturedRequest> Requests { get; } = [];
 
     public FakeHttpHandler(HttpStatusCode statusCode, object? content = null,
         Dictionary<string, string>? responseHeaders = null)
@@ -217,10 +218,16 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
         _responseHeaders = responseHeaders;
     }
 
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
-        LastRequest = request;
-        Requests.Add(request);
+        // Eagerly read content before the caller disposes the request
+        string? contentSnapshot = request.Content is not null
+            ? await request.Content.ReadAsStringAsync(ct)
+            : null;
+
+        var captured = new CapturedRequest(request.Method, request.RequestUri, contentSnapshot);
+        LastRequest = captured;
+        Requests.Add(captured);
 
         // First call is always the token request
         if (_isTokenRequest && request.RequestUri!.PathAndQuery.Contains("/protocol/openid-connect/token"))
@@ -235,7 +242,7 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
                     token_type = "Bearer"
                 })
             };
-            return Task.FromResult(tokenResponse);
+            return tokenResponse;
         }
 
         var response = new HttpResponseMessage(_statusCode);
@@ -254,6 +261,6 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
             }
         }
 
-        return Task.FromResult(response);
+        return response;
     }
 }

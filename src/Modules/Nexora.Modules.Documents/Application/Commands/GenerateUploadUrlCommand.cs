@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexora.Modules.Documents.Application.DTOs;
+using Nexora.Modules.Documents.Domain;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
@@ -19,8 +20,6 @@ public sealed record GenerateUploadUrlCommand(
 /// <summary>Validates upload URL generation input.</summary>
 public sealed class GenerateUploadUrlValidator : AbstractValidator<GenerateUploadUrlCommand>
 {
-    private const long MaxFileSize = 52_428_800; // 50 MB
-
     public GenerateUploadUrlValidator()
     {
         RuleFor(x => x.FileName)
@@ -35,7 +34,7 @@ public sealed class GenerateUploadUrlValidator : AbstractValidator<GenerateUploa
 
         RuleFor(x => x.FileSize)
             .GreaterThan(0).WithMessage("lockey_documents_validation_file_size_positive")
-            .LessThanOrEqualTo(MaxFileSize).WithMessage("lockey_documents_validation_file_size_max");
+            .LessThanOrEqualTo(DocumentConstants.MaxFileSizeBytes).WithMessage("lockey_documents_validation_file_size_max");
     }
 }
 

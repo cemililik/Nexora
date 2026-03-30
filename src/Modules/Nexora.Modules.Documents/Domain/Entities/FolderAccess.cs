@@ -23,7 +23,7 @@ public sealed class FolderAccess : AuditableEntity<FolderAccessId>
     public AccessPermission Permission { get; private set; }
 
     /// <summary>Gets the expiration date/time, or null if permanent.</summary>
-    public DateTime? ExpiresAt { get; private set; }
+    public DateTimeOffset? ExpiresAt { get; private set; }
 
     private FolderAccess() { }
 
@@ -33,7 +33,7 @@ public sealed class FolderAccess : AuditableEntity<FolderAccessId>
         Guid? userId,
         Guid? roleId,
         AccessPermission permission,
-        DateTime? expiresAt = null)
+        DateTimeOffset? expiresAt = null)
     {
         if (userId is null && roleId is null)
             throw new DomainException("lockey_documents_error_access_requires_user_or_role");
@@ -50,10 +50,13 @@ public sealed class FolderAccess : AuditableEntity<FolderAccessId>
     }
 
     /// <summary>Determines whether this access grant has expired.</summary>
-    public bool IsExpired() => ExpiresAt.HasValue && ExpiresAt.Value <= DateTime.UtcNow;
+    public bool IsExpired() => IsExpired(DateTimeOffset.UtcNow);
+
+    /// <summary>Determines whether this access grant has expired relative to the specified time.</summary>
+    public bool IsExpired(DateTimeOffset now) => ExpiresAt.HasValue && ExpiresAt.Value <= now;
 
     /// <summary>Updates the permission level and optionally the expiration date.</summary>
-    public void UpdatePermission(AccessPermission newPermission, DateTime? newExpiresAt = null)
+    public void UpdatePermission(AccessPermission newPermission, DateTimeOffset? newExpiresAt = null)
     {
         Permission = newPermission;
         ExpiresAt = newExpiresAt;

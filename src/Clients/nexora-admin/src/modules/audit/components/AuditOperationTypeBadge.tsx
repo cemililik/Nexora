@@ -23,11 +23,14 @@ const TYPE_KEY_MAP: Record<AuditOperationType, string> = {
   Read: 'lockey_audit_type_read',
 };
 
+const VALID_TYPES: ReadonlySet<string> = new Set<AuditOperationType>(['Create', 'Update', 'Delete', 'Action', 'Read']);
+
 export function AuditOperationTypeBadge({ operationType }: AuditOperationTypeBadgeProps) {
   const { t } = useTranslation('audit');
-  const type = operationType as AuditOperationType;
-  const colorClass = TYPE_COLOR_MAP[type] ?? 'border-transparent bg-secondary text-secondary-foreground';
-  const labelKey = TYPE_KEY_MAP[type];
+  const isValid = VALID_TYPES.has(operationType);
+  const type = isValid ? (operationType as AuditOperationType) : undefined;
+  const colorClass = type ? TYPE_COLOR_MAP[type] : 'border-transparent bg-secondary text-secondary-foreground';
+  const labelKey = type ? TYPE_KEY_MAP[type] : undefined;
 
   return (
     <Badge className={colorClass}>

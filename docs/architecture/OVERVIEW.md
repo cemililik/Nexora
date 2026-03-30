@@ -177,7 +177,7 @@ flowchart TB
 
 Each module follows **Clean Architecture** internally:
 
-```
+```text
 Nexora.Modules.CRM/
 ├── Domain/              # Entities, Value Objects, Domain Events
 │   ├── Entities/

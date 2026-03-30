@@ -15,7 +15,7 @@ public static class AuditLogEndpoints
     public static void MapAuditLogEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/logs")
-            .RequireAuthorization();
+            .RequireAuthorization("audit.logs.read");
 
         group.MapGet("/", async (
             int? page, int? pageSize, string? module, string? operation,

@@ -4,9 +4,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Modules.Identity.Api;
 using Nexora.Modules.Identity.Infrastructure;
+using Nexora.Modules.Identity.Infrastructure.Authorization;
 using Nexora.Modules.Identity.Infrastructure.Keycloak;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity;
@@ -40,6 +42,9 @@ public sealed class IdentityModule : IModule
         });
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(IdentityModule).Assembly));
+
+        // Permission-based authorization — loads user permissions from Identity DB
+        services.AddScoped<IUserPermissionService, UserPermissionService>();
 
         // Register module migration for tenant provisioning
         services.AddSingleton<IModuleMigration, IdentityModuleMigration>();

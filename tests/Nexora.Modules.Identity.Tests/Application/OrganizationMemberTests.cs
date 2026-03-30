@@ -128,7 +128,7 @@ public sealed class OrganizationMemberTests : IDisposable
         _dbContext.OrganizationUsers.Add(orgUser);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new GetOrganizationMembersHandler(_dbContext, _tenantAccessor);
+        var handler = new GetOrganizationMembersHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationMembersHandler>.Instance);
         var result = await handler.Handle(
             new GetOrganizationMembersQuery(_org.Id.Value), CancellationToken.None);
 
@@ -141,7 +141,7 @@ public sealed class OrganizationMemberTests : IDisposable
     [Fact]
     public async Task GetMembers_NonExistentOrg_ShouldReturnFailure()
     {
-        var handler = new GetOrganizationMembersHandler(_dbContext, _tenantAccessor);
+        var handler = new GetOrganizationMembersHandler(_dbContext, _tenantAccessor, NullLogger<GetOrganizationMembersHandler>.Instance);
         var result = await handler.Handle(
             new GetOrganizationMembersQuery(Guid.NewGuid()), CancellationToken.None);
 

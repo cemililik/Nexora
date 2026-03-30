@@ -82,7 +82,11 @@ public sealed class GetUsersHandler(
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
-            var pattern = $"%{request.Search.Trim()}%";
+            var escaped = request.Search.Trim()
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
+            var pattern = $"%{escaped}%";
             query = query.Where(u =>
                 EF.Functions.ILike(u.FirstName, pattern) ||
                 EF.Functions.ILike(u.LastName, pattern) ||
@@ -136,6 +140,6 @@ public sealed class GetUsersHandler(
             TotalCount = totalCount,
             Page = request.Page,
             PageSize = request.PageSize
-        }, new LocalizedMessage("lockey_identity_users_listed"));
+        }, LocalizedMessage.Of("lockey_identity_users_listed"));
     }
 }

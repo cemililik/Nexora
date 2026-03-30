@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -9,6 +8,7 @@ using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
 using Nexora.Modules.Identity.Infrastructure;
+using Nexora.SharedKernel.Extensions;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -31,6 +31,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope<PagedResult<UserDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<PagedResult<UserDto>>.Fail(result.Error!));
         })
+        .RequireAuthorization("identity.users.read")
         .WithSummary("List users")
         .WithDescription("Returns a paginated list of users within the current tenant, optionally filtered by organization, role, or search term.")
         .Produces<ApiEnvelope<PagedResult<UserDto>>>(StatusCodes.Status200OK)
@@ -39,9 +40,10 @@ public static class UserEndpoints
         .Produces(StatusCodes.Status403Forbidden)
         .ProducesProblem(StatusCodes.Status500InternalServerError);
 
+        // /me — any authenticated user, no specific permission required
         group.MapGet("/me", async (HttpContext httpContext, ISender sender, IdentityDbContext dbContext, ILogger<IdentityDbContext> logger, CancellationToken ct) =>
         {
-            var keycloakUserId = httpContext.User.FindFirstValue("sub");
+            var keycloakUserId = httpContext.User.GetKeycloakUserId();
             if (string.IsNullOrEmpty(keycloakUserId))
                 return Results.Unauthorized();
 
@@ -86,7 +88,8 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<UserDetailDto>.Success(result.Value!))
                 : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.read");
 
         group.MapPost("/", async (CreateUserCommand command, ISender sender, CancellationToken ct) =>
         {
@@ -96,7 +99,8 @@ public static class UserEndpoints
                     $"/api/v1/identity/users/{result.Value!.Id}",
                     ApiEnvelope<UserDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<UserDto>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.manage");
 
         group.MapPut("/{id:guid}/profile", async (Guid id, UpdateProfileRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -105,7 +109,8 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<UserDto>.Success(result.Value!, result.Message))
                 : Results.NotFound(ApiEnvelope<UserDto>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.manage");
 
         group.MapPut("/{id:guid}/status", async (Guid id, UpdateUserStatusRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -114,7 +119,8 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.manage");
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -122,7 +128,8 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.manage");
 
         group.MapGet("/{id:guid}/roles", async (Guid id, Guid? organizationId, ISender sender, CancellationToken ct) =>
         {
@@ -134,7 +141,8 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<List<RoleDto>>.Success(result.Value!))
                 : Results.NotFound(ApiEnvelope<List<RoleDto>>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.read");
 
         group.MapPut("/{id:guid}/roles", async (Guid id, AssignRolesRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -143,7 +151,8 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        });
+        })
+        .RequireAuthorization("identity.users.manage");
     }
 }
 

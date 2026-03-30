@@ -54,25 +54,24 @@ public sealed class CreateRoleHandler(
 
         var role = Role.Create(tenantId, request.Name, request.Description);
 
-        // Assign permissions if provided
+        // Assign permissions if provided — keep reference for DTO mapping below
+        var loadedPermissions = new List<Permission>();
         if (request.PermissionIds is { Count: > 0 })
         {
             var permissionIds = request.PermissionIds.Select(PermissionId.From).ToList();
-            var permissions = await dbContext.Permissions
+            loadedPermissions = await dbContext.Permissions
                 .Where(p => permissionIds.Contains(p.Id))
                 .ToListAsync(cancellationToken);
 
-            foreach (var permission in permissions)
+            foreach (var permission in loadedPermissions)
                 role.AssignPermission(permission);
         }
 
         await dbContext.Roles.AddAsync(role, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        var permissionKeys = role.Permissions
-            .Select(rp => dbContext.Permissions.Find(rp.PermissionId)?.Key ?? "")
-            .Where(k => !string.IsNullOrEmpty(k))
-            .ToList();
+        // Use the already-loaded permissions list instead of a second DB query
+        var permissionKeys = loadedPermissions.Select(p => p.Key).ToList();
 
         var dto = new RoleDto(
             role.Id.Value,

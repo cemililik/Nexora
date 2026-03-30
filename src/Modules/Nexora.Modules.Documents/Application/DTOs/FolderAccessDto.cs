@@ -6,5 +6,5 @@ public sealed record FolderAccessDto(
     Guid? UserId,
     Guid? RoleId,
     string Permission,
-    DateTime? ExpiresAt,
+    DateTimeOffset? ExpiresAt,
     bool IsExpired);
