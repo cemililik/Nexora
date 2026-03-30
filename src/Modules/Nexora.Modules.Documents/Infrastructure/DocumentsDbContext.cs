@@ -28,6 +28,8 @@ public sealed class DocumentsDbContext(
     public DbSet<SignatureRecipient> SignatureRecipients => Set<SignatureRecipient>();
     /// <summary>Gets the document templates set.</summary>
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
+    /// <summary>Gets the folder accesses set.</summary>
+    public DbSet<FolderAccess> FolderAccesses => Set<FolderAccess>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

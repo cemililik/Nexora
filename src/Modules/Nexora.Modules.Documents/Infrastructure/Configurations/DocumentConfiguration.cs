@@ -30,6 +30,12 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.HasIndex(d => new { d.TenantId, d.LinkedEntityId });
         builder.HasIndex(d => new { d.TenantId, d.Name });
 
+        // Unique filtered index: prevents duplicate document names within the same folder (excluding soft-deleted)
+        builder.HasIndex(d => new { d.TenantId, d.FolderId, d.Name })
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false")
+            .HasDatabaseName("IX_documents_documents_TenantId_FolderId_Name");
+
         builder.HasMany(d => d.Versions).WithOne().HasForeignKey(v => v.DocumentId);
         builder.Navigation(d => d.Versions).UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasMany(d => d.AccessList).WithOne().HasForeignKey(a => a.DocumentId);

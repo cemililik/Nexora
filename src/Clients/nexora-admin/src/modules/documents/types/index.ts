@@ -120,6 +120,12 @@ export interface SignatureRecipientDto {
   signedAt?: string;
 }
 
+// Confirm Upload Result DTO
+export interface ConfirmUploadResultDto {
+  document: DocumentDto;
+  isVersionUpdate: boolean;
+}
+
 // Upload/Download DTOs
 export interface UploadUrlDto {
   uploadUrl: string;
@@ -236,4 +242,21 @@ export interface SignRequest {
 
 export interface DeclineRequest {
   recipientId: string;
+}
+
+// Folder Access DTOs
+export interface FolderAccessDto {
+  id: string;
+  userId?: string;
+  roleId?: string;
+  permission: AccessPermission;
+  expiresAt?: string;
+  isExpired: boolean;
+}
+
+export interface GrantFolderAccessRequest {
+  userId?: string;
+  roleId?: string;
+  permission: AccessPermission;
+  expiresAt?: string;
 }

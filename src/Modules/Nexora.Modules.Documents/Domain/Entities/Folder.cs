@@ -38,6 +38,11 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
     /// <summary>Gets a value indicating whether this is a system folder.</summary>
     public bool IsSystem { get; private set; }
 
+    private readonly List<FolderAccess> _accessList = [];
+
+    /// <summary>Gets the collection of access permissions.</summary>
+    public IReadOnlyList<FolderAccess> AccessList => _accessList.AsReadOnly();
+
     private Folder() { }
 
     /// <summary>Creates a new Folder instance.</summary>
@@ -99,5 +104,33 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
 
         ParentFolderId = newParentId;
         Path = newPath;
+    }
+
+    /// <summary>Grants access to the folder for a user or role.</summary>
+    public FolderAccess GrantAccess(Guid? userId, Guid? roleId, AccessPermission permission, DateTime? expiresAt = null)
+    {
+        if (userId is null && roleId is null)
+            throw new DomainException("lockey_documents_error_access_requires_user_or_role");
+
+        var existing = _accessList.FirstOrDefault(a => a.UserId == userId && a.RoleId == roleId && !a.IsDeleted);
+        if (existing is not null)
+        {
+            // Idempotent: same permission → return existing; different permission → update
+            if (existing.Permission != permission)
+                existing.UpdatePermission(permission, expiresAt);
+            return existing;
+        }
+
+        var access = FolderAccess.Create(Id, userId, roleId, permission, expiresAt);
+        _accessList.Add(access);
+        return access;
+    }
+
+    /// <summary>Revokes a previously granted access permission.</summary>
+    public void RevokeAccess(FolderAccessId accessId)
+    {
+        var access = _accessList.FirstOrDefault(a => a.Id == accessId)
+            ?? throw new DomainException("lockey_documents_error_access_not_found");
+        _accessList.Remove(access);
     }
 }

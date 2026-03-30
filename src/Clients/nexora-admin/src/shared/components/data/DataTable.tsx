@@ -30,6 +30,12 @@ interface DataTableProps<T> {
 const INTERACTIVE_SELECTOR =
   'button, a, input, select, textarea, [role="button"], [role="link"], [role="checkbox"], [role="radio"], [role="switch"], [role="textbox"], [role="combobox"], [role="menuitem"], [role="tab"], [role="slider"], [role="spinbutton"], [contenteditable="true"]';
 
+/** Returns true if the event target is (or is inside) an interactive child element. */
+function isInteractiveChild(target: HTMLElement, currentTarget: EventTarget): boolean {
+  const el = target.closest(INTERACTIVE_SELECTOR);
+  return !!el && el !== currentTarget;
+}
+
 /** Generic data table with pagination and loading state. */
 export function DataTable<T>({
   columns,
@@ -87,14 +93,12 @@ export function DataTable<T>({
                   className={cn('border-b last:border-0', onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors')}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={onRowClick ? (e: React.MouseEvent<HTMLTableRowElement>) => {
-                    const el = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR);
-                    if (el && el !== e.currentTarget) return;
+                    if (isInteractiveChild(e.target as HTMLElement, e.currentTarget)) return;
                     onRowClick(row);
                   } : undefined}
                   onKeyDown={onRowClick ? (e: React.KeyboardEvent<HTMLTableRowElement>) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
-                    const el = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR);
-                    if (el && el !== e.currentTarget) return;
+                    if (isInteractiveChild(e.target as HTMLElement, e.currentTarget)) return;
                     if (e.key === ' ') e.preventDefault();
                     onRowClick(row);
                   } : undefined}

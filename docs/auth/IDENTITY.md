@@ -215,6 +215,20 @@ Roles are **tenant-defined** (not hardcoded). Default roles are seeded but can b
 | Tenant Admin | Tenant | Manages all organizations within tenant |
 | Org Admin | Organization | Full access within one organization |
 
+### Permission Scopes (Phase 1.5.2)
+
+Permissions have two scopes, controlled by the `PermissionScope` enum on each Permission entity:
+
+- **Platform**: `platform.tenants.*`, `platform.modules.*` — NMP operators only (SaaS) or local Platform Admin (on-prem)
+- **Tenant**: All other permissions (`identity.users.*`, `contacts.*`, etc.) — tenant admins and users
+
+Platform-scope permissions are hidden from the tenant admin UI.
+In SaaS mode: managed via NMP. In on-prem mode: managed by the local Platform Admin.
+
+The deployment model is determined by the `DeploymentMode` configuration flag (`SaaS` | `OnPrem`).
+
+For full details on license verification and NMP integration, see [MANAGEMENT_PORTAL.md — Integration Points with CRM](../architecture/MANAGEMENT_PORTAL.md#9-integration-points-with-crm).
+
 ### Organization-Scoped Access
 Users can have different roles in different organizations:
 ```

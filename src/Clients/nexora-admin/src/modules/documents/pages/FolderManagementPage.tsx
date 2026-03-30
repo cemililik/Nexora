@@ -20,6 +20,7 @@ import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useFolders, useCreateFolder, useRenameFolder, useDeleteFolder } from '../hooks/useFolders';
+import { FolderAccessDialog } from '../components/FolderAccessDialog';
 import type { FolderDto } from '../types';
 
 function createFolderSchema(t: (key: string, options?: Record<string, unknown>) => string) {
@@ -44,6 +45,7 @@ export default function FolderManagementPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingFolder, setEditingFolder] = useState<FolderDto | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [accessFolder, setAccessFolder] = useState<FolderDto | null>(null);
 
   const createFolder = useCreateFolder();
   const renameFolder = useRenameFolder(editingFolder?.id ?? '');
@@ -179,24 +181,36 @@ export default function FolderManagementPage() {
                     {new Date(folder.createdAt).toLocaleDateString(i18n.language)}
                   </td>
                   <td className="px-4 py-2">
-                    {canManage && !folder.isSystem && (
+                    {canManage && (
                       <div className="flex gap-1">
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => openRenameDialog(folder)}
+                          onClick={() => setAccessFolder(folder)}
                         >
-                          {t('lockey_documents_folders_rename')}
+                          {t('lockey_documents_folder_access_manage')}
                         </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleteConfirmId(folder.id)}
-                        >
-                          {t('lockey_documents_folders_delete')}
-                        </Button>
+                        {!folder.isSystem && (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openRenameDialog(folder)}
+                            >
+                              {t('lockey_documents_folders_rename')}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteConfirmId(folder.id)}
+                            >
+                              {t('lockey_documents_folders_delete')}
+                            </Button>
+                          </>
+                        )}
                       </div>
                     )}
                   </td>
@@ -255,6 +269,16 @@ export default function FolderManagementPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Folder Access Dialog */}
+      {accessFolder && (
+        <FolderAccessDialog
+          folderId={accessFolder.id}
+          folderName={accessFolder.name}
+          open={accessFolder !== null}
+          onOpenChange={(open) => { if (!open) setAccessFolder(null); }}
+        />
+      )}
 
       {/* Delete Confirm */}
       <ConfirmDialog

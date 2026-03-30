@@ -85,7 +85,7 @@ public sealed class ConfirmUploadValidatorTests
     {
         // Arrange
         var command = new ConfirmUploadCommand(
-            Guid.NewGuid(), "storage/key", "test.pdf", "application/pdf", 52_428_801);
+            Guid.NewGuid(), "storage/key", "test.pdf", "application/pdf", 104_857_601); // 100MB + 1 byte
 
         // Act
         var result = _validator.Validate(command);

@@ -58,12 +58,12 @@ public sealed class ConfirmUploadTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().NotBeNull();
-        result.Value!.Name.Should().Be("report.pdf");
-        result.Value.MimeType.Should().Be("application/pdf");
-        result.Value.FileSize.Should().Be(1024);
-        result.Value.StorageKey.Should().Be(storageKey);
-        result.Value.Status.Should().Be("Active");
+        result.Value!.Document.Should().NotBeNull();
+        result.Value!.Document.Name.Should().Be("report.pdf");
+        result.Value!.Document.MimeType.Should().Be("application/pdf");
+        result.Value!.Document.FileSize.Should().Be(1024);
+        result.Value!.Document.StorageKey.Should().Be(storageKey);
+        result.Value!.Document.Status.Should().Be("Active");
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class ConfirmUploadTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Description.Should().Be("A test document");
+        result.Value!.Document.Description.Should().Be("A test document");
     }
 
     [Fact]
@@ -159,8 +159,8 @@ public sealed class ConfirmUploadTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value!.LinkedEntityId.Should().Be(entityId);
-        result.Value.LinkedEntityType.Should().Be("Contact");
+        result.Value!.Document.LinkedEntityId.Should().Be(entityId);
+        result.Value!.Document.LinkedEntityType.Should().Be("Contact");
     }
 
     [Fact]

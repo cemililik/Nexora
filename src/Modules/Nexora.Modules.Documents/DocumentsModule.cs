@@ -87,6 +87,12 @@ public sealed class DocumentsModule : IModule
             "0 8 * * *", // Every day at 08:00 UTC
             job => job.RunAsync(new SignatureReminderJobParams { TenantId = "system" }, CancellationToken.None),
             JobQueues.Default);
+
+        scheduler.AddOrUpdate<FolderAccessExpiryJob>(
+            "documents:folder-access-expiry",
+            "0 2 * * *", // Every day at 02:00 UTC
+            job => job.RunAsync(new FolderAccessExpiryJobParams { TenantId = "system" }, CancellationToken.None),
+            JobQueues.Default);
     }
 
     /// <inheritdoc />

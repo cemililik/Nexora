@@ -76,3 +76,14 @@ public readonly record struct DocumentTemplateId(Guid Value)
     /// <summary>Returns the string representation of the identifier.</summary>
     public override string ToString() => Value.ToString();
 }
+
+/// <summary>Strongly-typed ID representing a folder access permission record.</summary>
+public readonly record struct FolderAccessId(Guid Value)
+{
+    /// <summary>Creates a new random identifier.</summary>
+    public static FolderAccessId New() => new(Guid.NewGuid());
+    /// <summary>Wraps an existing Guid value.</summary>
+    public static FolderAccessId From(Guid value) => new(value);
+    /// <summary>Returns the string representation of the identifier.</summary>
+    public override string ToString() => Value.ToString();
+}
