@@ -79,6 +79,12 @@ public sealed class KeycloakAdminService(
             ?? throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
                 new() { ["realm"] = realm });
 
+        if (string.IsNullOrWhiteSpace(keycloakUserId))
+        {
+            throw new KeycloakIntegrationException("lockey_identity_keycloak_missing_location_header",
+                new() { ["realm"] = realm });
+        }
+
         logger.LogInformation("Created Keycloak user {Username} in realm {Realm} with ID {KeycloakUserId}",
             username, realm, keycloakUserId);
 

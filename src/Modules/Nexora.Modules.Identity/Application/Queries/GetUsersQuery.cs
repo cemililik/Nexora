@@ -102,8 +102,16 @@ public sealed class GetUsersHandler(
         var orderedQuery = query
             .OrderBy(u => u.LastName).ThenBy(u => u.FirstName);
 
+        long skipLong = ((long)request.Page - 1) * request.PageSize;
+        if (skipLong > int.MaxValue)
+        {
+            logger.LogWarning("Page overflow detected: Page={Page}, PageSize={PageSize}", request.Page, request.PageSize);
+            return Result<PagedResult<UserDto>>.Failure(
+                new Error(LocalizedMessage.Of("lockey_validation_page_invalid")));
+        }
+
         var items = await orderedQuery
-            .Skip((request.Page - 1) * request.PageSize)
+            .Skip((int)skipLong)
             .Take(request.PageSize)
             .Select(u => new UserDto(
                 u.Id.Value,

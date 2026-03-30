@@ -53,17 +53,13 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
   const grantAccess = useGrantFolderAccess(folderId);
   const revokeAccess = useRevokeFolderAccess(folderId);
 
-  // Resolve user/role names for the access list display
-  const accessUserIds = useMemo(() => {
-    if (!accessList) return undefined;
-    const ids = accessList.filter((a) => a.userId).map((a) => a.userId!);
-    return ids.length > 0 ? ids : undefined;
-  }, [accessList]);
-  const { data: accessUsersResult } = useUsers(
-    accessUserIds ? { page: 1, pageSize: 50, search: undefined } : undefined,
-  );
-  const accessUsers = accessUsersResult?.items ?? [];
+  // Role dropdown (declared early — used in access list display below)
+  const { data: roles } = useRoles();
   const allRoles = roles ?? [];
+
+  // Resolve user/role names for the access list display
+  const { data: accessUsersResult } = useUsers({ page: 1, pageSize: 50, search: undefined });
+  const accessUsers = accessUsersResult?.items ?? [];
 
   // User search
   const [userSearch, setUserSearch] = useState('');
@@ -73,9 +69,6 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
   const userSearchRef = useRef<HTMLInputElement>(null);
   const { data: usersResult } = useUsers({ page: 1, pageSize: 10, search: userSearch || undefined });
   const users = usersResult?.items ?? [];
-
-  // Role dropdown
-  const { data: roles } = useRoles();
   const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(undefined);
 
   // Permission & expiry

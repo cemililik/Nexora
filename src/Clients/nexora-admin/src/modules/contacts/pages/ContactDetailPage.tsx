@@ -830,14 +830,14 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
     setDebouncedSearch('');
   }, [clearPendingDebounce]);
 
-  const handleSelectContact = (contact: { id: string; displayName: string }) => {
+  const handleSelectContact = useCallback((contact: { id: string; displayName: string }) => {
     clearPendingDebounce();
     setSelectedContact(contact);
     setValue('relatedContactId', contact.id);
     setShowContactSearch(false);
     setContactSearch('');
     setDebouncedSearch('');
-  };
+  }, [clearPendingDebounce, setValue]);
 
   const onSubmit = (data: RelationshipFormValues) => {
     addRelationship.mutate(
