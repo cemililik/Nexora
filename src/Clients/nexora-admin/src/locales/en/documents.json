@@ -30,6 +30,8 @@
 
   "lockey_documents_filter_all_statuses": "All Statuses",
   "lockey_documents_filter_all_folders": "All Folders",
+  "lockey_documents_filter_status": "Filter by status",
+  "lockey_documents_filter_folder": "Filter by folder",
 
   "lockey_documents_form_name": "Document Name",
   "lockey_documents_form_description": "Description",
@@ -49,6 +51,8 @@
   "lockey_documents_action_link": "Link to Entity",
   "lockey_documents_action_unlink": "Unlink",
   "lockey_documents_action_delete": "Delete",
+  "lockey_documents_action_preview": "Preview",
+  "lockey_documents_action_open_new_tab": "Open in New Tab",
 
   "lockey_documents_confirm_archive": "Are you sure you want to archive this document?",
   "lockey_documents_confirm_archive_title": "Archive Document",
@@ -72,6 +76,7 @@
   "lockey_documents_empty_documents": "No documents found.",
   "lockey_documents_empty_versions": "No versions available.",
   "lockey_documents_empty_access": "No access permissions set.",
+  "lockey_documents_preview_not_available": "Preview is not available for this file type.",
 
   "lockey_documents_tab_details": "Details",
   "lockey_documents_tab_versions": "Versions",
@@ -102,6 +107,9 @@
   "lockey_documents_access_col_permission": "Permission",
   "lockey_documents_access_confirm_revoke_title": "Revoke Access",
   "lockey_documents_access_confirm_revoke": "Are you sure you want to revoke this access?",
+  "lockey_documents_access_default_info": "Document owner and administrators always have full access. Below are additional access grants.",
+  "lockey_documents_access_form_user_search": "Search User",
+  "lockey_documents_access_form_user_search_placeholder": "Type to search users...",
 
   "lockey_documents_upload_step_select": "Select File",
   "lockey_documents_upload_step_upload": "Uploading...",
@@ -219,6 +227,27 @@
   "lockey_documents_signatures_filter_all_statuses": "All Statuses",
   "lockey_documents_signatures_not_signed": "Not signed",
 
+  "lockey_documents_upload_drag_or_click": "Drag & drop a file here, or click to browse",
+  "lockey_documents_upload_max_size": "Max file size: {{maxSize}} MB",
+  "lockey_documents_upload_invalid_type": "This file type is not allowed.",
+  "lockey_documents_upload_file_too_large": "File exceeds the maximum size of {{maxSize}} MB.",
+  "lockey_documents_upload_step_preparing": "Preparing upload...",
+  "lockey_documents_upload_success_new": "Document uploaded successfully.",
+  "lockey_documents_upload_success_version": "New version uploaded successfully.",
+  "lockey_documents_upload_view_document": "View Document",
+  "lockey_documents_upload_another": "Upload Another",
+  "lockey_documents_upload_no_permission": "You do not have permission to upload documents.",
+
+  "lockey_documents_templates_var_name": "Variable name",
+  "lockey_documents_templates_var_type": "Type",
+  "lockey_documents_templates_var_type_string": "String",
+  "lockey_documents_templates_var_type_number": "Number",
+  "lockey_documents_templates_var_type_date": "Date",
+  "lockey_documents_templates_var_type_boolean": "Boolean",
+  "lockey_documents_templates_var_required": "Required",
+  "lockey_documents_templates_var_add": "Add Variable",
+  "lockey_documents_templates_var_no_definitions": "No variable definitions configured for this template.",
+
   "lockey_documents_file_size_bytes": "{{size}} B",
   "lockey_documents_file_size_kb": "{{size}} KB",
   "lockey_documents_file_size_mb": "{{size}} MB",
@@ -233,5 +262,33 @@
   "lockey_documents_permission_signature_create": "Create signatures",
   "lockey_documents_permission_signature_manage": "Manage signatures",
   "lockey_documents_permission_template_read": "View templates",
-  "lockey_documents_permission_template_manage": "Manage templates"
+  "lockey_documents_permission_template_manage": "Manage templates",
+
+  "lockey_documents_folder_access_title": "Folder Access Control",
+  "lockey_documents_folder_access_description": "Manage access permissions for folder \"{{folderName}}\".",
+  "lockey_documents_folder_access_current": "Current Access",
+  "lockey_documents_folder_access_grant": "Grant Access",
+  "lockey_documents_folder_access_manage": "Manage Access",
+  "lockey_documents_folder_access_empty": "No access permissions set for this folder.",
+  "lockey_documents_folder_access_col_expires": "Expires",
+  "lockey_documents_folder_access_expired": "Expired",
+  "lockey_documents_folder_access_search_user": "Search user...",
+  "lockey_documents_folder_access_select_role": "Select role",
+  "lockey_documents_folder_access_expiry": "Expiry",
+  "lockey_documents_folder_access_expiry_permanent": "Permanent",
+  "lockey_documents_folder_access_expiry_1h": "1 Hour",
+  "lockey_documents_folder_access_expiry_1d": "1 Day",
+  "lockey_documents_folder_access_expiry_1w": "1 Week",
+  "lockey_documents_folder_access_expiry_1m": "1 Month",
+  "lockey_documents_folder_access_expiry_custom": "Custom",
+  "lockey_documents_folder_access_expiry_date": "Expiry Date",
+  "lockey_documents_folder_access_toast_granted": "Folder access granted.",
+  "lockey_documents_folder_access_toast_revoked": "Folder access revoked.",
+  "lockey_documents_folder_access_confirm_revoke_title": "Revoke Folder Access",
+  "lockey_documents_folder_access_confirm_revoke": "Are you sure you want to revoke this folder access?",
+
+  "lockey_documents_signatures_search_document": "Search documents...",
+  "lockey_documents_signatures_search_contact": "Search Contact",
+  "lockey_documents_signatures_search_contact_placeholder": "Type to search contacts...",
+  "lockey_documents_signatures_recipients_required": "At least one recipient is required."
 }

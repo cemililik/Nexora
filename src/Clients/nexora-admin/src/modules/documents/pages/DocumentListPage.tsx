@@ -1,10 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { SearchInput } from '@/shared/components/data/SearchInput';
+import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
@@ -16,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { useDocuments } from '../hooks/useDocuments';
+import { useDocuments, useArchiveDocument } from '../hooks/useDocuments';
+import { useFolders } from '../hooks/useFolders';
 import { DocumentStatusBadge } from '../components/DocumentStatusBadge';
 import { FileSize } from '../components/FileSize';
 import type { DocumentDto, DocumentStatus } from '../types';
@@ -45,6 +48,8 @@ export default function DocumentListPage() {
     : undefined;
   const folderId = searchParams.get('folderId') ?? undefined;
 
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const updateFilter = (key: string, value: string) => {
     setSearchParams((prev: URLSearchParams) => {
       const next = new URLSearchParams(prev);
@@ -72,6 +77,9 @@ export default function DocumentListPage() {
     status,
     folderId,
   });
+
+  const { data: folders } = useFolders();
+  const archiveDoc = useArchiveDocument();
 
   const columns: ColumnDef<DocumentDto>[] = [
     {
@@ -108,14 +116,34 @@ export default function DocumentListPage() {
       key: 'actions',
       header: t('lockey_documents_col_actions'),
       render: (row) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate(`/documents/documents/${row.id}`)}
-        >
-          {t('lockey_documents_action_edit')}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/documents/documents/${row.id}`);
+            }}
+          >
+            {t('lockey_documents_action_edit')}
+          </Button>
+          {hasPermission('documents.document.delete') && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteId(row.id);
+              }}
+              aria-label={t('lockey_documents_action_delete')}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
@@ -158,6 +186,22 @@ export default function DocumentListPage() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={folderId ?? '__all__'}
+          onValueChange={(v) => updateFilter('folderId', v === '__all__' ? '' : v)}
+        >
+          <SelectTrigger className="w-48" aria-label={t('lockey_documents_filter_folder')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t('lockey_documents_filter_all_folders')}</SelectItem>
+            {folders?.map((f) => (
+              <SelectItem key={f.id} value={f.id}>
+                {f.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <DataTable
@@ -170,7 +214,25 @@ export default function DocumentListPage() {
         onPageSizeChange={setPageSize}
         isLoading={isPending}
         emptyMessage={t('lockey_documents_empty_documents')}
+        onRowClick={(row) => navigate(`/documents/documents/${row.id}`)}
         keyExtractor={(row) => row.id}
+      />
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={() => setDeleteId(null)}
+        title={t('lockey_documents_confirm_delete_title')}
+        description={t('lockey_documents_confirm_delete')}
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteId) {
+            archiveDoc.mutate(deleteId, {
+              onSuccess: () => setDeleteId(null),
+              onError: () => setDeleteId(null),
+            });
+          }
+        }}
+        isPending={archiveDoc.isPending}
       />
     </div>
   );

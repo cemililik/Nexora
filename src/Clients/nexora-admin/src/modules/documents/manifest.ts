@@ -17,6 +17,10 @@ export const documentsManifest: AdminModuleManifest = {
       component: lazy(() => import('./pages/DocumentListPage')),
     },
     {
+      path: 'documents/upload',
+      component: lazy(() => import('./pages/DocumentUploadPage')),
+    },
+    {
       path: 'documents/:id',
       component: lazy(() => import('./pages/DocumentDetailPage')),
     },

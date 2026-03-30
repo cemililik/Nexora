@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -27,8 +28,7 @@ public sealed class AuditConfigService(
     /// <inheritdoc />
     public async Task<bool> IsEnabledAsync(string module, string operation, CancellationToken ct, bool defaultEnabled = true)
     {
-        module = module.Trim().ToLowerInvariant();
-        operation = operation.Trim().ToLowerInvariant();
+        (module, operation) = AuditSetting.NormalizeKey(module, operation);
 
         var tenantId = tenantContextAccessor.Current.TenantId;
         var cacheKey = AuditCacheKeys.ConfigKey(tenantId, module, operation, defaultEnabled);

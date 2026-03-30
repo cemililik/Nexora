@@ -1,5 +1,10 @@
 # Module: Document Management
 
+> **Status**: Implemented
+> **Module Name**: `documents`
+> **Tier**: Core/Platform (always installed)
+> **Dependencies**: `identity`
+
 ## Overview
 The Document module provides centralized file storage, organization, digital signatures, and document templates across all Nexora modules. It handles contract signing (enrollment agreements, vendor contracts), receipt archival, official document scanning, and a knowledge base for institutional memory. Files are stored in MinIO (S3-compatible) with tenant-isolated buckets.
 
@@ -138,10 +143,11 @@ stateDiagram-v2
   4. Optionally link to entity (contact, student, project)
   5. Document appears in folder and on linked entity's document tab
 - **Business Rules**:
-  - Max file size: 50MB (configurable)
-  - Allowed types: configurable per organization
+  - Max file size: 100MB (configurable, enforced server-side)
+  - Allowed types: MIME type whitelist (configurable per organization)
+  - Path traversal guard on file names
   - Virus scanning on upload (ClamAV integration)
-  - Version control: re-upload creates new version, old versions retained
+  - Version control: re-upload with same name creates new version, old versions retained
 
 ### UC-DOC-002: Digital Signature (e-Sign)
 - **Actor**: User with `documents.signatures.create` permission
@@ -207,12 +213,37 @@ stateDiagram-v2
 | `donations.donation.confirmed` | Donations | Archive receipt PDF to donor's folder |
 | `hr.contract.created` | HR | Generate employment contract template |
 
+## Recent Enhancements (Implemented)
+
+### Folder Access Control
+- `FolderAccess` entity with temporal permissions (`ExpiresAt` nullable timestamp)
+- `GrantFolderAccessCommand` / `RevokeFolderAccessCommand` for managing per-user/role folder permissions
+- `GetFolderAccessQuery` to list active grants for a folder
+- `FolderAccessExpiryJob` — Hangfire background job that revokes expired folder access grants automatically
+
+### Upload UX
+- `FileDropZone` frontend component (drag & drop upload area)
+- 3-phase presigned URL upload flow: `GenerateUploadUrl` → client uploads to MinIO → `ConfirmUpload`
+- Duplicate detection: uploading a file with the same name to the same folder automatically creates a new version instead of a duplicate document
+
+### Document Preview
+- Inline preview dialog: PDF rendered via iframe, images via `<img>` tag, other types show a download fallback
+
+### Template Editors
+- `VariableDefinitionsEditor` component — define merge field names and types for document templates
+- `VariableEditor` component — fill in variable values when rendering a template
+
+### Upload Security
+- MIME type whitelist validation (only allowed content types accepted)
+- 100 MB maximum file size enforcement
+- Path traversal guard on storage key generation (sanitized file names)
+
 ## Non-Functional Requirements
 
 | Requirement | Target |
 |------------|--------|
 | Upload throughput | 100MB/s |
-| Max file size | 50MB (configurable) |
+| Max file size | 100MB (configurable) |
 | Storage per tenant | Unlimited (billed) |
 | Signature page load | < 2 seconds |
 | PDF generation | < 10 seconds |

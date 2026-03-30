@@ -56,17 +56,18 @@ public static class UserEndpoints
                 // SAFE: ExecuteUpdateAsync filters by strongly-typed UserId — no tenant isolation bypass risk.
                 try
                 {
-                    await dbContext.Users
+                    var rowsAffected = await dbContext.Users
                         .Where(u => u.Id == Domain.ValueObjects.UserId.From(result.Value!.Id))
                         .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow), ct);
+
+                    if (rowsAffected == 0)
+                    {
+                        logger.LogWarning("LastLoginAt update matched no rows for user {UserId}", result.Value!.Id);
+                    }
                 }
                 catch (OperationCanceledException)
                 {
                     throw;
-                }
-                catch (DbUpdateConcurrencyException ex)
-                {
-                    logger.LogWarning(ex, "Concurrency conflict updating LastLoginAt for user {UserId}", result.Value!.Id);
                 }
                 catch (DbUpdateException ex)
                 {

@@ -68,8 +68,42 @@ public static class FolderEndpoints
                 _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
             };
         });
+
+        // Folder access endpoints
+        group.MapGet("/{folderId:guid}/access", async (Guid folderId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetFolderAccessQuery(folderId), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<IReadOnlyList<FolderAccessDto>>.Success(result.Value!, result.Message))
+                : Results.NotFound(ApiEnvelope<IReadOnlyList<FolderAccessDto>>.Fail(result.Error!));
+        });
+
+        group.MapPost("/{folderId:guid}/access", async (Guid folderId, GrantFolderAccessRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new GrantFolderAccessCommand(folderId, request.UserId, request.RoleId, request.Permission, request.ExpiresAt);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Created(
+                    $"/api/v1/documents/folders/{folderId}/access/{result.Value!.Id}",
+                    ApiEnvelope<FolderAccessDto>.Success(result.Value, result.Message))
+                : result.Error!.Message.Key == "lockey_documents_error_folder_not_found"
+                    ? Results.NotFound(ApiEnvelope<FolderAccessDto>.Fail(result.Error))
+                    : Results.BadRequest(ApiEnvelope<FolderAccessDto>.Fail(result.Error));
+        });
+
+        group.MapDelete("/{folderId:guid}/access/{accessId:guid}", async (Guid folderId, Guid accessId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new RevokeFolderAccessCommand(folderId, accessId), ct);
+            if (result.IsSuccess)
+                return Results.Ok(ApiEnvelope.Success(result.Message));
+
+            return Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
+        });
     }
 }
 
 /// <summary>Request body for renaming a folder.</summary>
 public sealed record RenameFolderRequest(string NewName);
+
+/// <summary>Request body for granting folder access.</summary>
+public sealed record GrantFolderAccessRequest(Guid? UserId, Guid? RoleId, string Permission, DateTime? ExpiresAt);
