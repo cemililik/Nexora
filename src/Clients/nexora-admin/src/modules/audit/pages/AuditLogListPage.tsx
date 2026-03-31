@@ -1,9 +1,12 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { FileSearch } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { formatRelativeTime } from '@/shared/lib/date';
@@ -30,6 +33,8 @@ export default function AuditLogListPage() {
   const module = searchParams.get('module') ?? undefined;
   const rawIsSuccess = searchParams.get('isSuccess');
   const isSuccess = rawIsSuccess === 'true' ? true : rawIsSuccess === 'false' ? false : undefined;
+  const dateFrom = searchParams.get('dateFrom') ?? undefined;
+  const dateTo = searchParams.get('dateTo') ?? undefined;
 
   useEffect(() => {
     setBreadcrumbs([
@@ -38,7 +43,7 @@ export default function AuditLogListPage() {
     ]);
   }, [setBreadcrumbs]);
 
-  const { data, isPending } = useAuditLogs({ page, pageSize, module, isSuccess });
+  const { data, isPending } = useAuditLogs({ page, pageSize, module, isSuccess, dateFrom, dateTo });
   const { data: auditableModules } = useAuditableOperations();
 
   const moduleNames = useMemo(() => {
@@ -120,7 +125,7 @@ export default function AuditLogListPage() {
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Select
           value={module ?? '__all__'}
           onValueChange={(v) => updateFilter('module', v === '__all__' ? '' : v)}
@@ -150,6 +155,24 @@ export default function AuditLogListPage() {
             <SelectItem value="false">{t('lockey_audit_status_failed')}</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2">
+          <label htmlFor="audit-date-from" className="text-sm text-muted-foreground">{t('lockey_audit_filter_from_date')}</label>
+          <Input
+            id="audit-date-from"
+            type="date"
+            value={dateFrom ?? ''}
+            onChange={(e) => updateFilter('dateFrom', e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="audit-date-to" className="text-sm text-muted-foreground">{t('lockey_audit_filter_to_date')}</label>
+          <Input
+            id="audit-date-to"
+            type="date"
+            value={dateTo ?? ''}
+            onChange={(e) => updateFilter('dateTo', e.target.value)}
+          />
+        </div>
       </div>
 
       <DataTable
@@ -161,7 +184,13 @@ export default function AuditLogListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_audit_empty_logs')}
+        emptyState={
+          <EmptyState
+            icon={FileSearch}
+            title={t('lockey_audit_empty_title')}
+            description={t('lockey_audit_empty_description')}
+          />
+        }
         keyExtractor={(row) => row.id}
       />
     </div>

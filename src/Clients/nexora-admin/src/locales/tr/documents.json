@@ -293,5 +293,9 @@
   "lockey_documents_signatures_recipients_required": "En az bir alıcı gereklidir.",
 
   "lockey_documents_upload_clear": "Dosyaları temizle",
-  "lockey_documents_version_prefix": "v{{version}}"
+  "lockey_documents_version_prefix": "v{{version}}",
+
+  "lockey_documents_empty_title": "Henüz belge yok",
+  "lockey_documents_empty_description": "Başlamak için ilk belgenizi yükleyin.",
+  "lockey_documents_empty_upload": "Belge yükle"
 }

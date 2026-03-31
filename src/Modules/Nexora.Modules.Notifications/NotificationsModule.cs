@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Infrastructure.Persistence.Inbox;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Notifications.Api;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
@@ -47,6 +48,7 @@ public sealed class NotificationsModule : IModule
 
         // Register inbox guard for idempotent integration event consumption
         services.AddScoped<IInboxGuard, InboxGuard<NotificationsDbContext>>();
+        services.AddScoped<IOutbox, OutboxService<NotificationsDbContext>>();
     }
 
     /// <inheritdoc />

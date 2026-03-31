@@ -5,14 +5,14 @@ namespace Nexora.Infrastructure.Persistence.Outbox;
 
 /// <summary>
 /// EF Core configuration for the <see cref="OutboxMessage"/> entity.
-/// Maps to the <c>outbox_messages</c> table in the public schema.
+/// Maps to the <c>outbox_messages</c> table in the DbContext's default schema (tenant schema).
 /// </summary>
 public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {
     /// <inheritdoc />
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
-        builder.ToTable("outbox_messages", "public");
+        builder.ToTable("outbox_messages");
 
         builder.HasKey(m => m.Id);
 

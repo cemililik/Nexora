@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -120,6 +120,7 @@ interface EditContactFormProps {
   contactType: ContactType;
   defaultValues: UpdateContactRequest;
   onSubmit: (data: UpdateContactRequest) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   isPending: boolean;
 }
 
@@ -135,6 +136,7 @@ export function ContactForm(props: ContactFormProps) {
       contactType={props.contactType}
       defaultValues={props.defaultValues}
       onSubmit={props.onSubmit}
+      onDirtyChange={props.onDirtyChange}
       isPending={props.isPending}
     />
   );
@@ -306,11 +308,13 @@ function EditForm({
   contactType,
   defaultValues,
   onSubmit,
+  onDirtyChange,
   isPending,
 }: {
   contactType: ContactType;
   defaultValues: UpdateContactRequest;
   onSubmit: (data: UpdateContactRequest) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   isPending: boolean;
 }) {
   const { t } = useTranslation('contacts');
@@ -319,6 +323,12 @@ function EditForm({
     resolver: zodResolver(schema),
     defaultValues,
   });
+
+  const { isDirty } = form.formState;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

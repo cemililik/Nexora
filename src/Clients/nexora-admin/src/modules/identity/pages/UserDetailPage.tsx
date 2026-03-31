@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
@@ -48,6 +49,9 @@ export default function UserDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'activate' | 'deactivate' | 'delete' | null>(null);
   const [addOrgOpen, setAddOrgOpen] = useState(false);
+
+  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
+    useUnsavedChangesGuard(isEditing);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -130,7 +134,7 @@ export default function UserDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -270,6 +274,18 @@ export default function UserDetailPage() {
         userId={id}
         existingOrgIds={user.organizations.map((o) => o.organizationId)}
         allOrgs={allOrgs?.items ?? []}
+      />
+
+      {/* Unsaved Changes Guard */}
+      <ConfirmDialog
+        open={isEditBlocked}
+        onOpenChange={() => resetEdit()}
+        title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
+        description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
+        onConfirm={proceedEdit}
+        confirmLabel={t('lockey_common_leave', { ns: 'common' })}
+        cancelLabel={t('lockey_common_stay', { ns: 'common' })}
+        variant="destructive"
       />
     </div>
   );

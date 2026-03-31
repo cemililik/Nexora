@@ -52,7 +52,7 @@ export const useUiStore = create<UiState>()(
     }),
     {
       name: 'ui-store',
-      partialize: (state) => ({ theme: state.theme }),
+      partialize: (state) => ({ theme: state.theme, sidebarOpen: state.sidebarOpen }),
       onRehydrateStorage: () => (state) => {
         if (state?.theme) {
           applyThemeToDOM(state.theme);

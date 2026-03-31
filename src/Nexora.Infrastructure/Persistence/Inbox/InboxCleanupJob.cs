@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,12 @@ public sealed class InboxCleanupJob(
         IServiceProvider scopedServices,
         CancellationToken ct)
     {
+        if (!Regex.IsMatch(tenant.SchemaName, @"^[a-z0-9_]+$"))
+        {
+            logger.LogWarning("Skipping inbox cleanup for tenant with invalid schema name: {SchemaName}", tenant.SchemaName);
+            return;
+        }
+
         var configuration = scopedServices.GetRequiredService<IConfiguration>();
         var connectionString = configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Infrastructure.Persistence.Inbox;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Contacts.Api;
 using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
@@ -54,6 +55,8 @@ public sealed class ContactsModule : IModule
 
         // Register inbox guard for idempotent integration event consumption
         services.AddScoped<IInboxGuard, InboxGuard<ContactsDbContext>>();
+        // Register outbox for transactional event publishing (atomicity with business data)
+        services.AddScoped<IOutbox, OutboxService<ContactsDbContext>>();
     }
 
     /// <inheritdoc />

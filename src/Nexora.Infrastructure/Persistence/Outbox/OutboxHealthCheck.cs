@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 namespace Nexora.Infrastructure.Persistence.Outbox;
 
@@ -7,7 +8,9 @@ namespace Nexora.Infrastructure.Persistence.Outbox;
 /// Health check that monitors the outbox message queue.
 /// Reports Unhealthy when pending messages exceed 1000, Degraded when above 100 or any failed messages exist.
 /// </summary>
-public sealed class OutboxHealthCheck(OutboxDbContext dbContext) : IHealthCheck
+public sealed class OutboxHealthCheck(
+    OutboxDbContext dbContext,
+    IOptions<OutboxOptions> options) : IHealthCheck
 {
     private const int UnhealthyThreshold = 1000;
     private const int DegradedThreshold = 100;
@@ -16,11 +19,13 @@ public sealed class OutboxHealthCheck(OutboxDbContext dbContext) : IHealthCheck
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context, CancellationToken ct = default)
     {
+        var maxRetryCount = options.Value.MaxRetryCount;
+
         var pendingCount = await dbContext.OutboxMessages
             .CountAsync(m => m.ProcessedAt == null, ct);
 
         var failedCount = await dbContext.OutboxMessages
-            .CountAsync(m => m.ProcessedAt == null && m.RetryCount >= 10, ct);
+            .CountAsync(m => m.ProcessedAt == null && m.RetryCount >= maxRetryCount, ct);
 
         var data = new Dictionary<string, object>
         {

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Infrastructure.Persistence.Inbox;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Identity.Api;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Identity.Infrastructure.Authorization;
@@ -63,6 +64,7 @@ public sealed class IdentityModule : IModule
 
         // Register inbox guard for idempotent integration event consumption
         services.AddScoped<IInboxGuard, InboxGuard<IdentityDbContext>>();
+        services.AddScoped<IOutbox, OutboxService<IdentityDbContext>>();
     }
 
     /// <inheritdoc />

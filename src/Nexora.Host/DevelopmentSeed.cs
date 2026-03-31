@@ -455,6 +455,21 @@ public static class DevelopmentSeed
             )
             """,
             "CREATE INDEX IF NOT EXISTS \"IX_inbox_messages_ProcessedAt\" ON inbox_messages (\"ProcessedAt\")",
+            // Outbox table for transactional event publishing (used by all producer modules)
+            """
+            CREATE TABLE IF NOT EXISTS outbox_messages (
+                "Id" uuid PRIMARY KEY,
+                "EventType" varchar(500) NOT NULL,
+                "EventPayload" jsonb NOT NULL,
+                "TenantId" varchar(100) NOT NULL,
+                "CreatedAt" timestamptz NOT NULL DEFAULT now(),
+                "ProcessedAt" timestamptz,
+                "Error" text,
+                "RetryCount" int NOT NULL DEFAULT 0
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_outbox_pending ON outbox_messages (\"CreatedAt\") WHERE \"ProcessedAt\" IS NULL",
+            "CREATE INDEX IF NOT EXISTS ix_outbox_tenant ON outbox_messages (\"TenantId\", \"CreatedAt\") WHERE \"ProcessedAt\" IS NULL",
             // OrganizationUser.JoinedAt — added for member join date tracking
             "ALTER TABLE identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
             // UserRole.AssignedAt — added for role assignment date tracking

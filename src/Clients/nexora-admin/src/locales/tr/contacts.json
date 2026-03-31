@@ -412,5 +412,11 @@
   "lockey_contacts_permission_export_execute": "Kişi dışa aktarımı yap",
   "lockey_contacts_permission_gdpr_export": "Kişisel verileri dışa aktar (KVKK)",
   "lockey_contacts_permission_gdpr_delete": "Kişisel verileri sil (KVKK)",
-  "lockey_contacts_permission_merge_execute": "Yinelenen kişileri birleştir"
+  "lockey_contacts_permission_merge_execute": "Yinelenen kişileri birleştir",
+
+  "lockey_contacts_empty_title": "Henüz kişi yok",
+  "lockey_contacts_empty_description": "Başlamak için ilk kişinizi oluşturun.",
+  "lockey_contacts_empty_create": "Kişi oluştur",
+  "lockey_contacts_hint_email": "Bu kişi için birincil e-posta adresi.",
+  "lockey_contacts_hint_phone": "Ülke kodunu ekleyin (örn. +90)."
 }

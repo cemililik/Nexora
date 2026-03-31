@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Messaging;
+using NSubstitute;
 using Nexora.Modules.Contacts.Application.Commands;
 using Nexora.Modules.Contacts.Domain.Entities;
 using Nexora.Modules.Contacts.Domain.ValueObjects;
@@ -43,6 +45,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
         var updated = await _dbContext.Contacts
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == contact.Id);
+        updated.Should().NotBeNull();
         updated!.FirstName.Should().Be("[REDACTED]");
         updated.LastName.Should().Be("[REDACTED]");
         updated.Email.Should().BeNull();
@@ -74,6 +77,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
             .FirstOrDefaultAsync(c => c.Id == contact.Id);
         auditRecord.Should().NotBeNull();
         auditRecord!.IsDeleted.Should().BeTrue();
+
     }
 
     [Fact]
@@ -183,7 +187,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
     }
 
     private RequestGdprDeleteHandler CreateHandler() =>
-        new(_dbContext, _tenantAccessor, NullLogger<RequestGdprDeleteHandler>.Instance);
+        new(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), NullLogger<RequestGdprDeleteHandler>.Instance);
 
     private async Task<Contact> SeedContact()
     {

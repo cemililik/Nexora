@@ -13,7 +13,7 @@ public sealed class ContactArchivedDomainEventHandler(
     ILogger<ContactArchivedDomainEventHandler> logger) : INotificationHandler<ContactArchivedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="ContactArchivedEvent"/> by publishing a <see cref="ContactArchivedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="ContactArchivedEvent"/> by enqueuing a <see cref="ContactArchivedIntegrationEvent"/> to the transactional outbox.
     /// </summary>
     public async Task Handle(ContactArchivedEvent notification, CancellationToken cancellationToken)
     {

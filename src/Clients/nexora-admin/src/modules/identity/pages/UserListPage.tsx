@@ -1,9 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Users } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import {
   Select,
   SelectContent,
@@ -58,6 +60,31 @@ export default function UserListPage() {
       { label: 'lockey_identity_nav_users' },
     ]);
   }, [setBreadcrumbs]);
+
+  const hasActiveFilters = !!(search || organizationId || roleId);
+
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={Users}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams(new URLSearchParams()),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={Users}
+        title={t('lockey_identity_empty_users_title')}
+        description={t('lockey_identity_empty_users_description')}
+        action={{ label: t('lockey_identity_users_create'), onClick: () => navigate('/identity/users/create') }}
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams]);
 
   const handleOrganizationChange = useCallback(
     (value: string) => {
@@ -166,7 +193,7 @@ export default function UserListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_identity_empty_users')}
+        emptyState={emptyStateNode}
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/identity/users/${row.id}`)}
       />

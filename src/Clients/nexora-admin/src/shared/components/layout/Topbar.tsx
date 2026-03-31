@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogOut, Menu, Moon, Sun, Monitor, Languages } from 'lucide-react';
 
 import { toast } from 'sonner';
 
 import { Button } from '@/shared/components/ui/button';
+import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +28,8 @@ export function Topbar() {
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const setTheme = useUiStore((s) => s.setTheme);
   const theme = useUiStore((s) => s.theme);
+
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
 
   const initials = user
     ? `${user.firstName?.charAt(0) ?? ''}${user.lastName?.charAt(0) ?? ''}` || '?'
@@ -128,18 +132,33 @@ export function Topbar() {
             {user && (
               <>
                 <DropdownMenuLabel>
-                  {user.firstName} {user.lastName}
+                  <div className="flex flex-col">
+                    <span>{user.firstName} {user.lastName}</span>
+                    {user.email && (
+                      <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+                    )}
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
               </>
             )}
-            <DropdownMenuItem onClick={handleLogout}>
+            <DropdownMenuItem onClick={() => setLogoutConfirm(true)}>
               <LogOut className="me-2 h-4 w-4" />
               {t('lockey_common_logout')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ConfirmDialog
+        open={logoutConfirm}
+        onOpenChange={setLogoutConfirm}
+        title={t('lockey_common_logout_confirm_title')}
+        description={t('lockey_common_logout_confirm_description')}
+        onConfirm={handleLogout}
+        confirmLabel={t('lockey_common_logout')}
+        variant="destructive"
+      />
     </header>
   );
 }

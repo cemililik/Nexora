@@ -4,7 +4,9 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -17,6 +19,7 @@ public sealed record RequestGdprDeleteCommand(Guid ContactId, string Reason) : I
 public sealed class RequestGdprDeleteHandler(
     ContactsDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
+    IOutbox outbox,
     ILogger<RequestGdprDeleteHandler> logger) : ICommandHandler<RequestGdprDeleteCommand>
 {
     private const string AnonymizedPlaceholder = "[REDACTED]";
@@ -56,6 +59,14 @@ public sealed class RequestGdprDeleteHandler(
             language: contact.Language,
             currency: contact.Currency,
             title: null);
+
+        // Enqueue GDPR deletion event for cross-module PII cleanup (saved atomically with business data)
+        await outbox.EnqueueAsync(new ContactGdprDeletedIntegrationEvent
+        {
+            TenantId = tenantContextAccessor.Current.TenantId,
+            ContactId = request.ContactId,
+            Reason = request.Reason
+        }, cancellationToken);
 
         // Soft-delete the contact (BaseDbContext intercepts Remove and sets IsDeleted=true)
         dbContext.Contacts.Remove(contact);

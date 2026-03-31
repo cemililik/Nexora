@@ -14,7 +14,7 @@ public sealed class NotificationBouncedDomainEventHandler(
     ILogger<NotificationBouncedDomainEventHandler> logger) : INotificationHandler<NotificationBouncedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="NotificationBouncedEvent"/> by publishing a <see cref="NotificationBouncedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="NotificationBouncedEvent"/> by enqueuing a <see cref="NotificationBouncedIntegrationEvent"/> to the transactional outbox.
     /// </summary>
     public async Task Handle(NotificationBouncedEvent notification, CancellationToken cancellationToken)
     {

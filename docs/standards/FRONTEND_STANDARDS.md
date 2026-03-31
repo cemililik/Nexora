@@ -53,14 +53,16 @@ nexora-admin/
 │   ├── shared/                     # Shared across all modules
 │   │   ├── components/             # shadcn/ui + custom shared components
 │   │   │   ├── ui/                 # shadcn/ui primitives (Button, Input, Dialog...)
-│   │   │   ├── data-table/         # Reusable data table with pagination
-│   │   │   ├── forms/              # Form field wrappers
-│   │   │   └── feedback/           # Toast, Alert, ErrorBoundary
+│   │   │   ├── data/               # DataTable, SearchInput, SearchableDropdown, FormField, TextareaWithCounter
+│   │   │   ├── feedback/           # EmptyState, TabContentSkeleton, LoadingSkeleton, ConfirmDialog, ErrorBoundary
+│   │   │   └── layout/             # AppLayout, Sidebar, Topbar, Breadcrumbs
 │   │   ├── hooks/                  # Shared hooks
 │   │   │   ├── useAuth.ts
 │   │   │   ├── usePermissions.ts
 │   │   │   ├── useModules.ts
-│   │   │   └── usePagination.ts
+│   │   │   ├── usePagination.ts
+│   │   │   ├── useUnsavedChangesGuard.ts
+│   │   │   └── useUndoableDelete.ts
 │   │   ├── lib/                    # Utilities & configuration
 │   │   │   ├── api.ts              # API client (axios/fetch wrapper)
 │   │   │   ├── auth.ts             # Token management, Keycloak
@@ -199,7 +201,11 @@ export function ContactCard({ contact, onEdit }: ContactCardProps) {
 - **Props interface**: Defined in the same file, above the component
 - **No prop drilling** beyond 2 levels — use context or composition
 - **Error boundaries** at route level, not per component
-- **Loading states**: Use `Suspense` with skeleton fallbacks
+- **Loading states**: Use `Suspense` with skeleton fallbacks; use `TabContentSkeleton` for tab content
+- **Empty states**: Use `EmptyState` component — never build inline empty state markup
+- **Form fields**: Use `FormField` wrapper for consistent label/required/hint/error layout
+- **Unsaved changes**: Use `useUnsavedChangesGuard(isDirty)` on all edit forms
+- **Searchable dropdowns**: Use `SearchableDropdown` component in modal dialogs — never build inline dropdown search
 
 ### 5.3 Forbidden Patterns
 
@@ -435,9 +441,11 @@ For Arabic and other RTL languages, use Tailwind RTL utilities:
 
 ### 7.4 Responsive Design
 
-- Mobile-first approach (`sm:`, `md:`, `lg:` breakpoints)
-- Sidebar: collapsible on mobile, persistent on desktop
+- Desktop-first approach with responsive breakpoints (`sm:`, `md:`, `lg:`)
+- **Grid layouts MUST use responsive breakpoints**: `grid-cols-1 sm:grid-cols-2` — never bare `grid-cols-2` which breaks on mobile
+- Sidebar: collapsible on mobile, persistent on desktop (collapse state persisted to localStorage)
 - Data tables: horizontal scroll on mobile, full layout on desktop
+- Filter bars: use `flex-wrap` to handle overflow on narrow screens
 
 ### 7.5 Forbidden Styling
 

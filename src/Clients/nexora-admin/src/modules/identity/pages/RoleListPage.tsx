@@ -1,14 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Shield } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
+import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +43,22 @@ export default function RoleListPage() {
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roleSearch = searchParams.get('search') ?? '';
+  const setRoleSearch = useCallback(
+    (value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set('search', value);
+        } else {
+          next.delete('search');
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
   const { handleApiError } = useApiError();
   const { hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -103,6 +122,15 @@ export default function RoleListPage() {
     },
   ];
 
+  const filteredRoles = useMemo(() => {
+    if (!roles || !roleSearch) return roles ?? [];
+    const lower = roleSearch.toLowerCase();
+    return roles.filter((r) =>
+      r.name.toLowerCase().includes(lower) ||
+      (r.description?.toLowerCase().includes(lower) ?? false),
+    );
+  }, [roles, roleSearch]);
+
   if (isError) {
     return (
       <div className="flex min-h-[200px] flex-col items-center justify-center gap-4 p-8">
@@ -135,16 +163,30 @@ export default function RoleListPage() {
         )}
       </div>
 
+      <SearchInput
+        value={roleSearch}
+        onChange={setRoleSearch}
+        placeholder={t('lockey_identity_search_roles')}
+        className="w-72"
+      />
+
       <DataTable
         columns={columns}
-        data={roles ?? []}
-        totalCount={roles?.length ?? 0}
+        data={filteredRoles}
+        totalCount={filteredRoles.length}
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_identity_empty_roles')}
+        emptyState={
+          <EmptyState
+            icon={Shield}
+            title={t('lockey_identity_empty_roles_title')}
+            description={t('lockey_identity_empty_roles_description')}
+            action={hasPermission('identity.roles.create') ? { label: t('lockey_identity_empty_roles_create'), onClick: () => setIsDialogOpen(true) } : undefined}
+          />
+        }
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/identity/roles/${row.id}`)}
       />

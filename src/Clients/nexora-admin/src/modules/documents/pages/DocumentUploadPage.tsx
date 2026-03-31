@@ -168,7 +168,7 @@ export default function DocumentUploadPage() {
               <div>
                 <label className="text-sm font-medium">{t('lockey_documents_form_file')}</label>
                 <div className="mt-1">
-                  <FileDropZone onFileSelect={handleFileSelect} disabled={isUploading} />
+                  <FileDropZone onFileSelect={handleFileSelect} disabled={isUploading} isUploading={isUploading} progress={progress} />
                 </div>
               </div>
 

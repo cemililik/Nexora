@@ -13,7 +13,7 @@ public sealed class DocumentSignedDomainEventHandler(
     ILogger<DocumentSignedDomainEventHandler> logger) : INotificationHandler<DocumentSignedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="DocumentSignedEvent"/> by publishing a <see cref="DocumentSignedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="DocumentSignedEvent"/> by enqueuing a <see cref="DocumentSignedIntegrationEvent"/> to the transactional outbox.
     /// Logs a warning and skips if the signature request or recipient is not found.
     /// </summary>
     public async Task Handle(DocumentSignedEvent notification, CancellationToken cancellationToken)

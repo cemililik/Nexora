@@ -8,29 +8,27 @@ namespace Nexora.Infrastructure.Tests.Persistence.Outbox;
 
 public sealed class OutboxServiceTests : IDisposable
 {
-    private readonly OutboxDbContext _dbContext;
-    private readonly OutboxService _sut;
+    private readonly OutboxTestDbContext _dbContext;
+    private readonly OutboxService<OutboxTestDbContext> _sut;
 
     public OutboxServiceTests()
     {
-        var options = new DbContextOptionsBuilder<OutboxDbContext>()
+        var options = new DbContextOptionsBuilder<OutboxTestDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _dbContext = new OutboxDbContext(options);
-        _sut = new OutboxService(_dbContext, NullLogger<OutboxService>.Instance);
+        _dbContext = new OutboxTestDbContext(options);
+        _sut = new OutboxService<OutboxTestDbContext>(_dbContext, NullLogger<OutboxService<OutboxTestDbContext>>.Instance);
     }
 
     [Fact]
     public async Task EnqueueAsync_WithValidEvent_CreatesOutboxMessageWithCorrectFields()
     {
-        // Arrange
         var @event = new TestIntegrationEvent { TenantId = "tenant-42", Data = "hello" };
 
-        // Act
         await _sut.EnqueueAsync(@event);
+        await _dbContext.SaveChangesAsync(); // Caller is responsible for saving
 
-        // Assert
         var messages = await _dbContext.OutboxMessages.ToListAsync();
         messages.Should().ContainSingle();
 
@@ -44,13 +42,11 @@ public sealed class OutboxServiceTests : IDisposable
     [Fact]
     public async Task EnqueueAsync_WithValidEvent_SerializesPayloadToValidJson()
     {
-        // Arrange
         var @event = new TestIntegrationEvent { TenantId = "tenant-1", Data = "payload-data" };
 
-        // Act
         await _sut.EnqueueAsync(@event);
+        await _dbContext.SaveChangesAsync();
 
-        // Assert
         var message = await _dbContext.OutboxMessages.SingleAsync();
         var deserialized = JsonSerializer.Deserialize<TestIntegrationEvent>(message.EventPayload);
         deserialized.Should().NotBeNull();
@@ -59,31 +55,31 @@ public sealed class OutboxServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task EnqueueAsync_WithValidEvent_PersistsToDatabase()
+    public async Task EnqueueAsync_WithoutSaveChanges_OnlyStagesInChangeTracker()
     {
-        // Arrange
         var @event = new TestIntegrationEvent { TenantId = "tenant-1" };
 
-        // Act
         await _sut.EnqueueAsync(@event);
+        // Deliberately NOT calling SaveChangesAsync
 
-        // Assert — verify it survives a fresh query (persisted, not just tracked)
-        var count = await _dbContext.OutboxMessages.CountAsync();
-        count.Should().Be(1);
+        // Verify the message is staged in the change tracker but not yet persisted
+        var tracked = _dbContext.ChangeTracker.Entries<OutboxMessage>().Count();
+        tracked.Should().Be(1);
+
+        var entry = _dbContext.ChangeTracker.Entries<OutboxMessage>().Single();
+        entry.State.Should().Be(EntityState.Added);
     }
 
     [Fact]
     public async Task EnqueueAsync_WithMultipleEvents_PersistsAll()
     {
-        // Arrange
         var event1 = new TestIntegrationEvent { TenantId = "tenant-1", Data = "first" };
         var event2 = new TestIntegrationEvent { TenantId = "tenant-2", Data = "second" };
 
-        // Act
         await _sut.EnqueueAsync(event1);
         await _sut.EnqueueAsync(event2);
+        await _dbContext.SaveChangesAsync();
 
-        // Assert
         var messages = await _dbContext.OutboxMessages.ToListAsync();
         messages.Should().HaveCount(2);
         messages.Select(m => m.TenantId).Should().Contain(["tenant-1", "tenant-2"]);
@@ -94,5 +90,17 @@ public sealed class OutboxServiceTests : IDisposable
     private sealed record TestIntegrationEvent : IntegrationEventBase
     {
         public string Data { get; init; } = "test";
+    }
+}
+
+/// <summary>Test DbContext with OutboxMessage mapped.</summary>
+public sealed class OutboxTestDbContext(DbContextOptions<OutboxTestDbContext> options) : DbContext(options)
+{
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
     }
 }

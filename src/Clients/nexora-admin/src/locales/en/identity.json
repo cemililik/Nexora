@@ -243,5 +243,18 @@
   "lockey_identity_toast_user_added_to_role": "User added to role.",
   "lockey_identity_toast_user_removed_from_role": "User removed from role.",
   "lockey_identity_error_user_not_in_role": "User does not have this role.",
-  "lockey_identity_error_user_already_has_role": "User already has this role."
+  "lockey_identity_error_user_already_has_role": "User already has this role.",
+
+  "lockey_identity_empty_users_title": "No users yet",
+  "lockey_identity_empty_users_description": "Users will appear here once they are created.",
+  "lockey_identity_empty_roles_title": "No roles yet",
+  "lockey_identity_empty_roles_description": "Create your first role to manage permissions.",
+  "lockey_identity_empty_roles_create": "Create role",
+  "lockey_identity_empty_orgs_title": "No organizations yet",
+  "lockey_identity_empty_orgs_description": "Create your first organization.",
+  "lockey_identity_empty_orgs_create": "Create organization",
+  "lockey_identity_search_roles": "Search roles...",
+  "lockey_identity_search_organizations": "Search organizations...",
+  "lockey_identity_hint_role_name": "A unique name for this role.",
+  "lockey_identity_hint_role_description": "Describe the purpose and scope of this role."
 }

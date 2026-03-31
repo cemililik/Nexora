@@ -13,7 +13,7 @@ public sealed class DocumentArchivedDomainEventHandler(
     ILogger<DocumentArchivedDomainEventHandler> logger) : INotificationHandler<DocumentArchivedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="DocumentArchivedEvent"/> by publishing a <see cref="DocumentArchivedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="DocumentArchivedEvent"/> by enqueuing a <see cref="DocumentArchivedIntegrationEvent"/> to the transactional outbox.
     /// Reads TenantId from the document entity (same transaction scope as the domain event).
     /// </summary>
     public async Task Handle(DocumentArchivedEvent notification, CancellationToken cancellationToken)

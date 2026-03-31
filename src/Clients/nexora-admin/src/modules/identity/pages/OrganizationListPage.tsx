@@ -1,10 +1,13 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Building } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
+import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { useOrganizations } from '../hooks/useOrganizations';
@@ -15,7 +18,26 @@ export default function OrganizationListPage() {
   const navigate = useNavigate();
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data, isPending } = useOrganizations({ page, pageSize });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const search = searchParams.get('search') ?? undefined;
+  const { data, isPending } = useOrganizations({ page, pageSize, search });
+
+  const updateSearch = useCallback(
+    (value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set('search', value);
+        } else {
+          next.delete('search');
+        }
+        next.set('page', '1');
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   useEffect(() => {
     setBreadcrumbs([
@@ -62,6 +84,13 @@ export default function OrganizationListPage() {
         </Button>
       </div>
 
+      <SearchInput
+        value={search ?? ''}
+        onChange={updateSearch}
+        placeholder={t('lockey_identity_search_organizations')}
+        className="w-72"
+      />
+
       <DataTable
         columns={columns}
         data={data?.items ?? []}
@@ -71,7 +100,14 @@ export default function OrganizationListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_identity_empty_orgs')}
+        emptyState={
+          <EmptyState
+            icon={Building}
+            title={t('lockey_identity_empty_orgs_title')}
+            description={t('lockey_identity_empty_orgs_description')}
+            action={{ label: t('lockey_identity_empty_orgs_create'), onClick: () => navigate('/identity/organizations/create') }}
+          />
+        }
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/identity/organizations/${row.id}`)}
       />

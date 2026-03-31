@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
@@ -45,6 +45,11 @@ export function SearchInput({
     [],
   );
 
+  const handleClear = useCallback(() => {
+    setLocalValue('');
+    onChange('');
+  }, [onChange]);
+
   return (
     <div className={cn('relative', className)}>
       <Search className="absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -52,8 +57,19 @@ export function SearchInput({
         value={localValue}
         onChange={handleChange}
         placeholder={placeholder ?? t('lockey_common_search')}
-        className="ps-9"
+        className={cn('ps-9', localValue && 'pe-9')}
+        aria-label={placeholder ?? t('lockey_common_search')}
       />
+      {localValue && (
+        <button
+          type="button"
+          onClick={handleClear}
+          className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          aria-label={t('lockey_common_clear_search')}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

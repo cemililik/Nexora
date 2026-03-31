@@ -293,5 +293,9 @@
   "lockey_documents_signatures_recipients_required": "At least one recipient is required.",
 
   "lockey_documents_upload_clear": "Clear files",
-  "lockey_documents_version_prefix": "v{{version}}"
+  "lockey_documents_version_prefix": "v{{version}}",
+
+  "lockey_documents_empty_title": "No documents yet",
+  "lockey_documents_empty_description": "Upload your first document to get started.",
+  "lockey_documents_empty_upload": "Upload document"
 }

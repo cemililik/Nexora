@@ -70,6 +70,18 @@ export default function ReportDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'executions' | 'parameters'>('overview');
 
+  const parameters = useMemo(() =>
+    definition?.parameters
+      ? (JSON.parse(definition.parameters) as Array<{ name: string; type: string; required: boolean; defaultValue?: string }>)
+      : [],
+    [definition?.parameters]);
+
+  useEffect(() => {
+    if (activeTab === 'parameters' && (!parameters || parameters.length === 0)) {
+      setActiveTab('overview');
+    }
+  }, [parameters, activeTab]);
+
   const handleDownload = useCallback((executionId: string, format: string) => {
     reportFile.mutate(executionId, {
       onSuccess: (blob) => {
@@ -120,10 +132,6 @@ export default function ReportDetailPage() {
   if (isLoading || !definition) {
     return <p className="text-muted-foreground">{t('lockey_reporting_loading')}</p>;
   }
-
-  const parameters = definition.parameters
-    ? (JSON.parse(definition.parameters) as Array<{ name: string; type: string; required: boolean; defaultValue?: string }>)
-    : [];
 
   const handleExecute = (format?: ReportFormat) => {
     executeReport.mutate({
@@ -419,7 +427,7 @@ function EditReportDialog({ open, onOpenChange, definition, onSave, isPending }:
             <label htmlFor="edit-desc" className="text-sm font-medium">{t('lockey_reporting_col_description')}</label>
             <Input id="edit-desc" {...form.register('description')} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label htmlFor="edit-module" className="text-sm font-medium">{t('lockey_reporting_col_module')}</label>
               <Input id="edit-module" {...form.register('module')} />
