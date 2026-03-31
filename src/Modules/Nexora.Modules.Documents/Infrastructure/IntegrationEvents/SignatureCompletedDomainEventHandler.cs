@@ -13,7 +13,7 @@ public sealed class SignatureCompletedDomainEventHandler(
     ILogger<SignatureCompletedDomainEventHandler> logger) : INotificationHandler<SignatureCompletedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="SignatureCompletedEvent"/> by publishing a <see cref="SignatureCompletedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="SignatureCompletedEvent"/> by enqueuing a <see cref="SignatureCompletedIntegrationEvent"/> to the transactional outbox.
     /// Reads TenantId from the signature request entity (same transaction scope as the domain event).
     /// </summary>
     public async Task Handle(SignatureCompletedEvent notification, CancellationToken cancellationToken)

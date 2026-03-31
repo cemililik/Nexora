@@ -13,8 +13,7 @@ export const TextareaWithCounter = React.forwardRef<
   TextareaWithCounterProps
 >(({ maxLength, className, value, defaultValue, onChange, ...props }, ref) => {
   const [length, setLength] = React.useState(() => {
-    const initial = (value ?? defaultValue ?? '') as string;
-    return initial.length;
+    return String(value ?? defaultValue ?? '').length;
   });
 
   const handleChange = React.useCallback(

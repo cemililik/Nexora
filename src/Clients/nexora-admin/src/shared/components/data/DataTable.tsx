@@ -1,4 +1,4 @@
-import React, { useId, type ReactNode } from 'react';
+import React, { useId, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, ArrowDown, ArrowUpDown, SearchX } from 'lucide-react';
 
@@ -116,7 +116,7 @@ export function DataTable<T>({
                           onSelectionChange(new Set());
                         }
                       }}
-                      aria-label={t('lockey_common_select')}
+                      aria-label={t('lockey_common_select_all')}
                     />
                   </th>
                 )}
@@ -253,24 +253,7 @@ export function DataTable<T>({
               {t('lockey_common_previous')}
             </Button>
             {totalPages > 2 && (
-              <input
-                type="number"
-                min={1}
-                max={totalPages}
-                defaultValue={page}
-                key={page}
-                onKeyDown={(e) => {
-                  if (e.key !== 'Enter') return;
-                  const val = Number((e.target as HTMLInputElement).value);
-                  if (val >= 1 && val <= totalPages) onPageChange(val);
-                }}
-                onBlur={(e) => {
-                  const val = Number(e.target.value);
-                  if (val >= 1 && val <= totalPages && val !== page) onPageChange(val);
-                }}
-                className="w-14 rounded-md border border-input bg-background px-2 py-1 text-center text-sm"
-                aria-label={t('lockey_common_go_to_page')}
-              />
+              <PageJumpInput page={page} totalPages={totalPages} onPageChange={onPageChange} ariaLabel={t('lockey_common_go_to_page')} />
             )}
             <Button
               type="button"
@@ -286,5 +269,38 @@ export function DataTable<T>({
         </div>
       )}
     </div>
+  );
+}
+
+function PageJumpInput({ page, totalPages, onPageChange, ariaLabel }: { page: number; totalPages: number; onPageChange: (p: number) => void; ariaLabel: string }) {
+  const [value, setValue] = useState(String(page));
+
+  React.useEffect(() => {
+    setValue(String(page));
+  }, [page]);
+
+  const commit = () => {
+    const parsed = Number(value);
+    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= totalPages && parsed !== page) {
+      onPageChange(parsed);
+    } else {
+      setValue(String(page));
+    }
+  };
+
+  return (
+    <input
+      type="number"
+      min={1}
+      max={totalPages}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+      onBlur={commit}
+      className="w-14 rounded-md border border-input bg-background px-2 py-1 text-center text-sm"
+      aria-label={ariaLabel}
+    />
   );
 }

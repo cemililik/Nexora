@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -43,7 +43,22 @@ export default function RoleListPage() {
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data: roles, isPending, isError, error } = useRoles();
   const createRole = useCreateRole();
-  const [roleSearch, setRoleSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roleSearch = searchParams.get('search') ?? '';
+  const setRoleSearch = useCallback(
+    (value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set('search', value);
+        } else {
+          next.delete('search');
+        }
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
   const { handleApiError } = useApiError();
   const { hasPermission } = usePermissions();
   const [isDialogOpen, setIsDialogOpen] = useState(false);

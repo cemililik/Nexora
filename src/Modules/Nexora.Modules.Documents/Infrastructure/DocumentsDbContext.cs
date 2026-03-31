@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Inbox;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Documents.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -30,12 +32,16 @@ public sealed class DocumentsDbContext(
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
     /// <summary>Gets the folder accesses set.</summary>
     public DbSet<FolderAccess> FolderAccesses => Set<FolderAccess>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(DocumentsDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
         ApplySoftDeleteFilters(modelBuilder);
     }
 }

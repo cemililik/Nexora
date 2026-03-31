@@ -21,20 +21,15 @@ All entity detail pages MUST use the tab-based layout. Card-based side-by-side l
 
 **Standard Template:**
 
-```
-┌─────────────────────────────────────────────┐
-│ Breadcrumb > Module > Resource > Name       │
-├─────────────────────────────────────────────┤
-│ [Icon] Entity Name              [Actions ▼] │
-│ Status Badge · Metadata · Metadata          │
-├─────────────────────────────────────────────┤
-│ [Tab 1] [Tab 2] [Tab 3] [Tab 4]           │
-├─────────────────────────────────────────────┤
-│                                             │
-│  Tab Content Area                           │
-│  (Cards, Tables, Forms as needed)           │
-│                                             │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph DetailPage["Detail Page Layout"]
+        B["Breadcrumb: Module > Resource > Name"]
+        H["Header: Entity Name + Status Badge + Actions"]
+        T["Tabs: Tab1 | Tab2 | Tab3 | ..."]
+        C["Tab Content Area"]
+    end
+    B --> H --> T --> C
 ```
 
 **Rules:**
@@ -113,17 +108,15 @@ export default function EntityDetailPage() {
 
 **Standard Template:**
 
-```
-┌─────────────────────────────────────────────┐
-│ Breadcrumb > Module > Resources             │
-├─────────────────────────────────────────────┤
-│ [Search...] [Filter ▼] [Filter ▼] [+Create]│
-├─────────────────────────────────────────────┤
-│ DataTable with sortable columns             │
-│ Clickable rows → navigate to detail         │
-├─────────────────────────────────────────────┤
-│ [◄ Prev] Page 1 of 5 [Next ►] [10▼/page]  │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph ListPage["List Page Layout"]
+        B2["Breadcrumb: Module > Resources"]
+        TL["Toolbar: Search + Filters + Create Button"]
+        TB["DataTable: Sortable Columns + Clickable Rows"]
+        P["Pagination: Page Size + Page Navigation"]
+    end
+    B2 --> TL --> TB --> P
 ```
 
 **Rules:**

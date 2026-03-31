@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Building } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
@@ -18,17 +18,26 @@ export default function OrganizationListPage() {
   const navigate = useNavigate();
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const [orgSearch, setOrgSearch] = useState('');
-  const { data, isPending } = useOrganizations({ page, pageSize });
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const filteredItems = useMemo(() => {
-    const items = data?.items ?? [];
-    if (!orgSearch) return items;
-    const lower = orgSearch.toLowerCase();
-    return items.filter((o) =>
-      o.name.toLowerCase().includes(lower) || o.slug.toLowerCase().includes(lower),
-    );
-  }, [data?.items, orgSearch]);
+  const search = searchParams.get('search') ?? undefined;
+  const { data, isPending } = useOrganizations({ page, pageSize, search });
+
+  const updateSearch = useCallback(
+    (value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) {
+          next.set('search', value);
+        } else {
+          next.delete('search');
+        }
+        next.set('page', '1');
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
 
   useEffect(() => {
     setBreadcrumbs([
@@ -76,16 +85,16 @@ export default function OrganizationListPage() {
       </div>
 
       <SearchInput
-        value={orgSearch}
-        onChange={setOrgSearch}
+        value={search ?? ''}
+        onChange={updateSearch}
         placeholder={t('lockey_identity_search_organizations')}
         className="w-72"
       />
 
       <DataTable
         columns={columns}
-        data={filteredItems}
-        totalCount={filteredItems.length}
+        data={data?.items ?? []}
+        totalCount={data?.totalCount ?? 0}
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}

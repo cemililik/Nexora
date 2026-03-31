@@ -15,22 +15,27 @@ import type {
   AddMemberRequest,
 } from '../types';
 
+export interface OrganizationListParams extends PaginationParams {
+  search?: string;
+}
+
 export const orgKeys = {
   all: ['identity', 'organizations'] as const,
-  list: (params: PaginationParams) =>
+  list: (params: OrganizationListParams) =>
     [...orgKeys.all, 'list', params] as const,
   detail: (id: string) => [...orgKeys.all, 'detail', id] as const,
   members: (id: string, params: PaginationParams) =>
     [...orgKeys.all, 'members', id, params] as const,
 };
 
-export function useOrganizations(params: PaginationParams) {
+export function useOrganizations(params: OrganizationListParams) {
   return useQuery({
     queryKey: orgKeys.list(params),
     queryFn: () =>
       api.get<PagedResult<OrganizationDto>>('/identity/organizations', {
         page: params.page,
         pageSize: params.pageSize,
+        search: params.search,
       }),
   });
 }

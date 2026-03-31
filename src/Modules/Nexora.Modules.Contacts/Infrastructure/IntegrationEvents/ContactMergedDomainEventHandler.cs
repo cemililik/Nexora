@@ -13,7 +13,7 @@ public sealed class ContactMergedDomainEventHandler(
     ILogger<ContactMergedDomainEventHandler> logger) : INotificationHandler<ContactMergedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="ContactMergedEvent"/> by publishing a <see cref="ContactMergedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="ContactMergedEvent"/> by enqueuing a <see cref="ContactMergedIntegrationEvent"/> to the transactional outbox.
     /// </summary>
     public async Task Handle(ContactMergedEvent notification, CancellationToken cancellationToken)
     {

@@ -14,7 +14,7 @@ public sealed class NotificationDeliveredDomainEventHandler(
     ILogger<NotificationDeliveredDomainEventHandler> logger) : INotificationHandler<NotificationDeliveredEvent>
 {
     /// <summary>
-    /// Handles a <see cref="NotificationDeliveredEvent"/> by publishing a <see cref="NotificationDeliveredIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="NotificationDeliveredEvent"/> by enqueuing a <see cref="NotificationDeliveredIntegrationEvent"/> to the transactional outbox.
     /// </summary>
     public async Task Handle(NotificationDeliveredEvent notification, CancellationToken cancellationToken)
     {

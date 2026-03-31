@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
@@ -45,11 +45,9 @@ export function EmptyState({
   );
 }
 
-function isActionObject(action: EmptyStateAction | ReactNode): action is EmptyStateAction {
-  return (
-    typeof action === 'object' &&
-    action !== null &&
-    'label' in action &&
-    'onClick' in action
-  );
+function isActionObject(action: unknown): action is EmptyStateAction {
+    if (React.isValidElement(action)) return false;
+    return typeof action === 'object' && action !== null
+        && 'label' in action && typeof (action as Record<string, unknown>).label === 'string'
+        && 'onClick' in action && typeof (action as Record<string, unknown>).onClick === 'function';
 }

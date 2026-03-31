@@ -82,5 +82,7 @@
   "lockey_common_logout_confirm_description": "Are you sure you want to log out?",
   "lockey_common_select_placeholder": "Select an option...",
   "lockey_common_no_results_filtered": "No results match your filters.",
-  "lockey_common_required_field": "Required"
+  "lockey_common_required_field": "Required",
+  "lockey_common_select_all": "Select all",
+  "lockey_common_restore_failed": "Restore failed"
 }

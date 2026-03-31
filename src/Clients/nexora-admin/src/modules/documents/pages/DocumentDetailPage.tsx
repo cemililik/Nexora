@@ -632,6 +632,8 @@ export default function DocumentDetailPage() {
             <FileDropZone
               onFileSelect={setVersionFile}
               disabled={versionUpload.state !== 'idle'}
+              isUploading={versionUpload.state === 'uploading'}
+              progress={versionUpload.progress}
             />
             <div>
               <label htmlFor="version-change-note" className="text-sm font-medium">
@@ -856,7 +858,7 @@ export default function DocumentDetailPage() {
       {/* Unsaved Changes Guard */}
       <ConfirmDialog
         open={isMetadataBlocked}
-        onOpenChange={() => resetMetadata()}
+        onOpenChange={(open) => { if (open) resetMetadata(); }}
         title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
         description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
         onConfirm={proceedMetadata}

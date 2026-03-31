@@ -77,10 +77,11 @@ export default function ContactDetailPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('overview');
   const [isEditing, setIsEditing] = useState(false);
+  const [formIsDirty, setFormIsDirty] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
   const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
-    useUnsavedChangesGuard(isEditing);
+    useUnsavedChangesGuard(isEditing && formIsDirty);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -166,6 +167,7 @@ export default function ContactDetailPage() {
             contact={contact}
             isEditing={isEditing}
             setIsEditing={setIsEditing}
+            onDirtyChange={setFormIsDirty}
             updateContact={updateContact}
             handleApiError={handleApiError}
             t={t}
@@ -237,6 +239,7 @@ interface OverviewTabProps {
   contact: ContactDetailDto;
   isEditing: boolean;
   setIsEditing: (v: boolean) => void;
+  onDirtyChange: (dirty: boolean) => void;
   updateContact: ReturnType<typeof useUpdateContact>;
   handleApiError: (err: unknown) => void;
   t: ReturnType<typeof useTranslation>['t'];
@@ -247,6 +250,7 @@ function OverviewTab({
   contact,
   isEditing,
   setIsEditing,
+  onDirtyChange,
   updateContact,
   handleApiError,
   t,
@@ -292,6 +296,7 @@ function OverviewTab({
                   onError: (err) => handleApiError(err),
                 });
               }}
+              onDirtyChange={onDirtyChange}
               isPending={updateContact.isPending}
             />
           ) : (
@@ -980,9 +985,7 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
           </form>
         )}
 
-        {isRelationshipsPending ? (
-          <TabContentSkeleton variant="list" />
-        ) : relationships?.length === 0 ? (
+        {relationships?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t('lockey_contacts_empty_relationships')}
           </p>
@@ -1095,9 +1098,7 @@ function NotesTab({ contactId, t, i18n }: NotesTabProps) {
           </form>
         )}
 
-        {isPending ? (
-          <LoadingSkeleton lines={3} />
-        ) : notes?.length === 0 ? (
+        {notes?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t('lockey_contacts_empty_notes')}
           </p>

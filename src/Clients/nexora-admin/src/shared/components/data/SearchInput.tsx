@@ -64,7 +64,7 @@ export function SearchInput({
         <button
           type="button"
           onClick={handleClear}
-          className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={t('lockey_common_clear_search')}
         >
           <X className="h-4 w-4" />

@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Reporting.Api;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure.Jobs;
@@ -39,6 +41,9 @@ public sealed class ReportingModule : IModule
         services.AddSingleton<ISqlQueryValidator, SqlQueryValidator>();
         services.AddScoped<IReportExecutionService, ReportExecutionService>();
         services.AddScoped<ReportExportService>();
+
+        // Outbox for transactional event publishing
+        services.AddScoped<IOutbox, OutboxService<ReportingDbContext>>();
     }
 
     public void ConfigureEventHandlers(IServiceCollection services)

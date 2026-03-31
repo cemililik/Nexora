@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { FileSearch } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -156,22 +157,20 @@ export default function AuditLogListPage() {
         </Select>
         <div className="flex items-center gap-2">
           <label htmlFor="audit-date-from" className="text-sm text-muted-foreground">{t('lockey_audit_filter_from_date')}</label>
-          <input
+          <Input
             id="audit-date-from"
             type="date"
             value={dateFrom ?? ''}
             onChange={(e) => updateFilter('dateFrom', e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           />
         </div>
         <div className="flex items-center gap-2">
           <label htmlFor="audit-date-to" className="text-sm text-muted-foreground">{t('lockey_audit_filter_to_date')}</label>
-          <input
+          <Input
             id="audit-date-to"
             type="date"
             value={dateTo ?? ''}
             onChange={(e) => updateFilter('dateTo', e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-1.5 text-sm"
           />
         </div>
       </div>

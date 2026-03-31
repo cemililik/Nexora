@@ -70,6 +70,18 @@ export default function ReportDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'executions' | 'parameters'>('overview');
 
+  const parameters = useMemo(() =>
+    definition?.parameters
+      ? (JSON.parse(definition.parameters) as Array<{ name: string; type: string; required: boolean; defaultValue?: string }>)
+      : [],
+    [definition?.parameters]);
+
+  useEffect(() => {
+    if (activeTab === 'parameters' && (!parameters || parameters.length === 0)) {
+      setActiveTab('overview');
+    }
+  }, [parameters, activeTab]);
+
   const handleDownload = useCallback((executionId: string, format: string) => {
     reportFile.mutate(executionId, {
       onSuccess: (blob) => {
@@ -120,10 +132,6 @@ export default function ReportDetailPage() {
   if (isLoading || !definition) {
     return <p className="text-muted-foreground">{t('lockey_reporting_loading')}</p>;
   }
-
-  const parameters = definition.parameters
-    ? (JSON.parse(definition.parameters) as Array<{ name: string; type: string; required: boolean; defaultValue?: string }>)
-    : [];
 
   const handleExecute = (format?: ReportFormat) => {
     executeReport.mutate({

@@ -26,6 +26,7 @@ export function FileDropZone({
 }: FileDropZoneProps) {
   const { t } = useTranslation('documents');
   const inputRef = useRef<HTMLInputElement>(null);
+  const interactionDisabled = disabled || isUploading;
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,9 +74,9 @@ export function FileDropZone({
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      if (!disabled) setIsDragging(true);
+      if (!interactionDisabled) setIsDragging(true);
     },
-    [disabled],
+    [interactionDisabled],
   );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
@@ -87,12 +88,12 @@ export function FileDropZone({
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      if (disabled) return;
+      if (interactionDisabled) return;
 
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     },
-    [disabled, handleFile],
+    [interactionDisabled, handleFile],
   );
 
   const handleInputChange = useCallback(
@@ -122,13 +123,13 @@ export function FileDropZone({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => !disabled && inputRef.current?.click()}
+        onClick={() => !interactionDisabled && inputRef.current?.click()}
         className={cn(
           'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors',
           isDragging
             ? 'border-primary bg-primary/5'
             : 'border-muted-foreground/25 hover:border-primary/50',
-          disabled && 'cursor-not-allowed opacity-50',
+          interactionDisabled && 'cursor-not-allowed opacity-50',
         )}
       >
         <Upload className="mb-2 h-8 w-8 text-muted-foreground" />
@@ -146,7 +147,7 @@ export function FileDropZone({
         accept={accept}
         onChange={handleInputChange}
         className="hidden"
-        disabled={disabled}
+        disabled={interactionDisabled}
       />
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -165,7 +166,7 @@ export function FileDropZone({
                 e.stopPropagation();
                 handleClear();
               }}
-              disabled={disabled || isUploading}
+              disabled={interactionDisabled}
               aria-label={t('lockey_documents_upload_clear')}
             >
               <X className="h-4 w-4" aria-hidden="true" />

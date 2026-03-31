@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Documents.Api;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.Modules.Documents.Application.Services;
 using Nexora.Modules.Documents.Infrastructure;
 using Nexora.Modules.Documents.Infrastructure.Jobs;
@@ -52,6 +54,9 @@ public sealed class DocumentsModule : IModule
 
         // Cross-module document service
         services.AddScoped<IDocumentService, DocumentService>();
+
+        // Outbox for transactional event publishing
+        services.AddScoped<IOutbox, OutboxService<DocumentsDbContext>>();
     }
 
     /// <inheritdoc />

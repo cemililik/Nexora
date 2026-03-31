@@ -28,10 +28,12 @@ export function useUndoableDelete({
       deleteMutation.mutate(id, {
         onSuccess: () => {
           onSuccess?.();
-          toast(t('lockey_common_deleted_success', { name }), {
+          toast.success(t('lockey_common_deleted_success', { name }), {
             action: {
               label: t('lockey_common_undo'),
-              onClick: () => restoreMutation.mutate(id),
+              onClick: () => restoreMutation.mutate(id, {
+                onError: () => toast.error(t('lockey_common_restore_failed')),
+              }),
             },
             duration: undoDurationMs,
           });

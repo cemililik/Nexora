@@ -69,6 +69,10 @@ export default function UserListPage() {
         <EmptyState
           icon={Users}
           title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams(new URLSearchParams()),
+          }}
         />
       );
     }
@@ -77,9 +81,10 @@ export default function UserListPage() {
         icon={Users}
         title={t('lockey_identity_empty_users_title')}
         description={t('lockey_identity_empty_users_description')}
+        action={{ label: t('lockey_identity_users_create'), onClick: () => navigate('/identity/users/create') }}
       />
     );
-  }, [hasActiveFilters, t]);
+  }, [hasActiveFilters, t, navigate, setSearchParams]);
 
   const handleOrganizationChange = useCallback(
     (value: string) => {

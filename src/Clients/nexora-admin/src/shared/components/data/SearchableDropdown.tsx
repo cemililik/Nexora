@@ -37,7 +37,7 @@ export function SearchableDropdown<T>({
   label,
   className,
 }: SearchableDropdownProps<T>) {
-  const { t } = useTranslation();
+  const { t } = useTranslation('common');
   const inputId = useId();
   const listboxId = useId();
   const [open, setOpen] = useState(false);

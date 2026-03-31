@@ -85,7 +85,7 @@ public static class InfrastructureServiceRegistration
             var connStr = configuration.GetConnectionString("Default");
             options.UseNpgsql(connStr);
         });
-        services.AddScoped<IOutbox, OutboxService>();
+        // IOutbox registered per-module as OutboxService<TContext> for transactional atomicity
         services.AddHostedService<OutboxProcessor>();
         services.AddHealthChecks()
             .AddCheck<OutboxHealthCheck>("outbox", tags: new[] { "ready" });

@@ -4,11 +4,13 @@ import { Users, Contact, FileText, Bell, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { formatRelativeTime } from '@/shared/lib/date';
 import type { PagedResult } from '@/shared/types/api';
+import { useAuditLogs } from '@/modules/audit/hooks/useAuditLogs';
 
 interface StatsCard {
   label: string;
@@ -114,26 +116,12 @@ function StatsCardItem({ card }: { card: StatsCard }) {
   );
 }
 
-interface AuditLogSummary {
-  id: string;
-  timestamp: string;
-  userEmail: string;
-  operation: string;
-  module: string;
-}
-
 function RecentActivityList() {
   const { t } = useTranslation('common');
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboard', 'recentActivity'],
-    queryFn: () =>
-      api.get<PagedResult<AuditLogSummary>>('/audit/logs', { page: 1, pageSize: 5 }),
-    staleTime: 60_000,
-    retry: false,
-  });
+  const { data, isLoading } = useAuditLogs({ page: 1, pageSize: 5 });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">{t('lockey_common_loading')}</p>;
+    return <LoadingSkeleton lines={3} />;
   }
 
   if (!data?.items?.length) {

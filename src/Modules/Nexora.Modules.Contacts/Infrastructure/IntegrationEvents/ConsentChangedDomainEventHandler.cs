@@ -14,7 +14,7 @@ public sealed class ConsentChangedDomainEventHandler(
     ILogger<ConsentChangedDomainEventHandler> logger) : INotificationHandler<ConsentChangedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="ConsentChangedEvent"/> by publishing a <see cref="ConsentChangedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="ConsentChangedEvent"/> by enqueuing a <see cref="ConsentChangedIntegrationEvent"/> to the transactional outbox.
     /// </summary>
     public async Task Handle(ConsentChangedEvent notification, CancellationToken cancellationToken)
     {
