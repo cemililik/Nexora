@@ -59,7 +59,7 @@ describe('useGenerateImportUploadUrl', () => {
     vi.clearAllMocks();
   });
 
-  it('should call api.post with correct endpoint and payload', async () => {
+  it('mutate_WithValidPayload_CallsApiPostWithCorrectEndpointAndPayload', async () => {
     const uploadUrl = { url: 'https://storage.example.com/upload', jobId: 'j-1' };
     mockApiPost.mockResolvedValue(uploadUrl);
 
@@ -90,7 +90,7 @@ describe('useConfirmImport', () => {
     vi.clearAllMocks();
   });
 
-  it('should call api.post with correct endpoint and payload', async () => {
+  it('mutate_WithValidPayload_CallsApiPostWithCorrectEndpointAndPayload', async () => {
     const importJob = { id: 'j-1', status: 'Pending' };
     mockApiPost.mockResolvedValue(importJob);
 
@@ -121,7 +121,7 @@ describe('useImportStatus', () => {
     vi.clearAllMocks();
   });
 
-  it('should call api.get with correct endpoint', async () => {
+  it('query_WithJobId_CallsApiGetWithCorrectEndpoint', async () => {
     const jobStatus = { id: 'j-1', status: 'Completed', processedCount: 100 };
     mockApiGet.mockResolvedValue(jobStatus);
 
@@ -138,7 +138,7 @@ describe('useImportStatus', () => {
     );
   });
 
-  it('should not fetch when jobId is empty', () => {
+  it('query_WithEmptyJobId_DoesNotFetch', () => {
     const { result } = renderHook(() => useImportStatus(''), {
       wrapper: createWrapper(),
     });
@@ -153,7 +153,7 @@ describe('useStartExport', () => {
     vi.clearAllMocks();
   });
 
-  it('should call api.post with correct endpoint and payload', async () => {
+  it('mutate_WithValidPayload_CallsApiPostWithCorrectEndpointAndPayload', async () => {
     const exportJob = { id: 'ej-1', status: 'Pending' };
     mockApiPost.mockResolvedValue(exportJob);
 
@@ -185,7 +185,7 @@ describe('useGdprExport', () => {
     URL.revokeObjectURL = vi.fn();
   });
 
-  it('should call api.post with correct endpoint', async () => {
+  it('mutate_WithContactId_CallsApiPostWithCorrectEndpoint', async () => {
     mockApiPost.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useGdprExport('contact-1'), {
@@ -209,7 +209,7 @@ describe('useGdprDelete', () => {
     vi.clearAllMocks();
   });
 
-  it('should call api.post with correct endpoint and payload', async () => {
+  it('mutate_WithValidPayload_CallsApiPostWithCorrectEndpointAndPayload', async () => {
     mockApiPost.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useGdprDelete('contact-1'), {

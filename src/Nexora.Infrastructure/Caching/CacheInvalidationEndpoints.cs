@@ -26,7 +26,7 @@ public static class CacheInvalidationEndpoints
             return Results.Ok();
         })
         .WithTopic("pubsub", CacheInvalidationHandler.TopicName)
-        .AllowAnonymous()
+        .AllowAnonymous() // Dapr sidecar calls this endpoint internally — no JWT is present
         .ExcludeFromDescription();
 
         return endpoints;

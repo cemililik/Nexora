@@ -79,9 +79,8 @@ interface OperationItemProps {
 }
 
 function OperationItem({ item, onToggle, isPending }: OperationItemProps) {
-  const humanReadableName = item.operation
-    .replace(/([A-Z])/g, ' $1')
-    .trim();
+  const { t } = useTranslation('audit');
+  const operationLabel = t('lockey_audit_operation_' + item.operation.toLowerCase(), { defaultValue: item.operation });
 
   return (
     <div className="flex items-center gap-2 rounded-md border px-3 py-2">
@@ -90,9 +89,9 @@ function OperationItem({ item, onToggle, isPending }: OperationItemProps) {
         onChange={() => onToggle(item.module, item.operation)}
         disabled={isPending}
         size="sm"
-        aria-label={humanReadableName}
+        aria-label={operationLabel}
       />
-      <span className="text-sm leading-tight">{humanReadableName}</span>
+      <span className="text-sm leading-tight">{operationLabel}</span>
       <AuditOperationTypeBadge operationType={item.operationType} />
     </div>
   );
@@ -153,7 +152,7 @@ function ModuleCard({
             >
               <path d="m9 18 6-6-6-6" />
             </svg>
-            <CardTitle className="text-base capitalize">{moduleName}</CardTitle>
+            <CardTitle className="text-base">{t('lockey_audit_module_' + moduleName, { defaultValue: moduleName })}</CardTitle>
             <Badge variant="secondary" className="text-xs tabular-nums">
               {enabledCount}/{totalCount} {t('lockey_audit_settings_operations_enabled')}
             </Badge>

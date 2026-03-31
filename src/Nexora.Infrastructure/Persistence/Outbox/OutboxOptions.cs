@@ -19,4 +19,10 @@ public sealed class OutboxOptions
 
     /// <summary>Number of days after which processed messages are eligible for cleanup.</summary>
     public int CleanupAfterDays { get; set; } = 7;
+
+    /// <summary>Pending message count above which the outbox is considered degraded.</summary>
+    public int DegradedThreshold { get; set; } = 100;
+
+    /// <summary>Pending message count above which the outbox is considered unhealthy.</summary>
+    public int UnhealthyThreshold { get; set; } = 1000;
 }

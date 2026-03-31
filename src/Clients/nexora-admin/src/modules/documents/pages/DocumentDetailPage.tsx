@@ -198,7 +198,7 @@ export default function DocumentDetailPage() {
   useEffect(() => {
     setBreadcrumbs([
       { label: 'lockey_documents_module_name' },
-      { label: 'lockey_documents_list_title' },
+      { label: 'lockey_documents_list_title', path: '/documents' },
       { label: doc?.name ?? '...' },
     ]);
   }, [setBreadcrumbs, doc?.name]);

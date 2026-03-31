@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Application.DTOs;
 using Nexora.Modules.Audit.Domain.Repositories;
@@ -11,6 +12,9 @@ namespace Nexora.Modules.Audit.Application.Queries;
 
 /// <summary>Query to retrieve all audit settings for the current tenant.</summary>
 public sealed record GetAuditSettingsQuery : IQuery<IReadOnlyList<AuditSettingDto>>;
+
+/// <summary>Validator for <see cref="GetAuditSettingsQuery"/>. No input parameters to validate.</summary>
+public sealed class GetAuditSettingsValidator : AbstractValidator<GetAuditSettingsQuery> { }
 
 /// <summary>Returns all audit settings for the current tenant.</summary>
 public sealed class GetAuditSettingsHandler(

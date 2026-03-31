@@ -38,6 +38,7 @@ export interface AuditLogFilters {
   isSuccess?: boolean;
   dateFrom?: string;
   dateTo?: string;
+  search?: string;
 }
 
 export type AuditOperationType = 'Create' | 'Update' | 'Delete' | 'Action' | 'Read';

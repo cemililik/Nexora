@@ -408,7 +408,7 @@ function UserOrgRoles({
   allRoles: RoleDto[];
 }) {
   const { t } = useTranslation('identity');
-  const { data: userRoles, isLoading } = useUserRoles(userId, organizationId);
+  const { data: userRoles, isPending: isRolesPending } = useUserRoles(userId, organizationId);
   const assignRoles = useAssignUserRoles(userId);
   const [editing, setEditing] = useState(false);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
@@ -452,7 +452,7 @@ function UserOrgRoles({
         )}
       </div>
 
-      {isLoading ? (
+      {isRolesPending ? (
         <p className="text-xs text-muted-foreground">{t('lockey_identity_loading')}</p>
       ) : editing ? (
         <div className="space-y-1">

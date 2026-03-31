@@ -71,6 +71,7 @@ public sealed class CreateUserHandler(
 
         // Resolve tenant's Keycloak realm
         var tenant = await platformDb.Tenants
+            .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
 
         if (tenant?.RealmId is null)

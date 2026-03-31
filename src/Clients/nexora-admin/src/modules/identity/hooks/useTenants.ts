@@ -15,18 +15,19 @@ import type {
 
 export const tenantKeys = {
   all: ['identity', 'tenants'] as const,
-  list: (params: PaginationParams) =>
+  list: (params: PaginationParams & { search?: string }) =>
     [...tenantKeys.all, 'list', params] as const,
   detail: (id: string) => [...tenantKeys.all, 'detail', id] as const,
 };
 
-export function useTenants(params: PaginationParams) {
+export function useTenants(params: PaginationParams & { search?: string }) {
   return useQuery({
     queryKey: tenantKeys.list(params),
     queryFn: () =>
       api.get<PagedResult<TenantDto>>('/identity/tenants', {
         page: params.page,
         pageSize: params.pageSize,
+        search: params.search,
       }),
   });
 }

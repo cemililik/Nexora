@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
+import { SearchInput } from '@/shared/components/data/SearchInput';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -30,6 +31,7 @@ export default function NotificationListPage() {
   const canSend = hasPermission('notifications.notification.send');
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? undefined;
   const rawChannel = searchParams.get('channel');
   const channel = CHANNELS.includes(rawChannel as NotificationChannel) ? (rawChannel as NotificationChannel) : undefined;
   const rawStatus = searchParams.get('status');
@@ -42,7 +44,7 @@ export default function NotificationListPage() {
     ]);
   }, [setBreadcrumbs]);
 
-  const { data, isPending } = useNotifications({ page, pageSize, channel, status });
+  const { data, isPending } = useNotifications({ page, pageSize, channel, status, search });
 
   const updateFilter = (key: string, value: string) => {
     setSearchParams((prev: URLSearchParams) => {
@@ -125,7 +127,13 @@ export default function NotificationListPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={search ?? ''}
+          onChange={(value) => updateFilter('search', value)}
+          placeholder={t('lockey_notifications_search_placeholder')}
+          className="w-64"
+        />
         <Select
           value={channel ?? '__all__'}
           onValueChange={(v) => updateFilter('channel', v === '__all__' ? '' : v)}

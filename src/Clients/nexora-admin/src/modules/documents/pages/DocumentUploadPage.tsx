@@ -206,8 +206,8 @@ export default function DocumentUploadPage() {
                   </p>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                     <div
-                      className="h-full bg-primary transition-all duration-300"
-                      style={{ width: `${progress}%` }}
+                      className="h-full bg-primary transition-all duration-300 [width:var(--upload-progress)]"
+                      style={{ '--upload-progress': `${progress}%` } as React.CSSProperties}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">{progress}%</p>
@@ -216,7 +216,7 @@ export default function DocumentUploadPage() {
 
               {/* Error */}
               {isError && error && (
-                <p className="text-sm text-destructive">{error}</p>
+                <p className="text-sm text-destructive">{t(error)}</p>
               )}
 
               {/* Actions */}

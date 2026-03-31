@@ -30,6 +30,7 @@ public sealed class KeycloakAdminService(
         activity?.SetTag("keycloak.operation", "CreateRealm");
         activity?.SetTag("keycloak.realm", realmName);
 
+        Exception? capturedException = null;
         try
         {
             var token = await EnsureAuthenticatedAsync(ct);
@@ -60,8 +61,13 @@ public sealed class KeycloakAdminService(
         }
         catch (Exception ex)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            capturedException = ex;
             throw;
+        }
+        finally
+        {
+            if (capturedException is not null)
+                activity?.SetStatus(ActivityStatusCode.Error, capturedException.Message);
         }
     }
 
@@ -73,6 +79,7 @@ public sealed class KeycloakAdminService(
         activity?.SetTag("keycloak.operation", "CreateUser");
         activity?.SetTag("keycloak.realm", realm);
 
+        Exception? capturedException = null;
         try
         {
             var token = await EnsureAuthenticatedAsync(ct);
@@ -122,8 +129,13 @@ public sealed class KeycloakAdminService(
         }
         catch (Exception ex)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            capturedException = ex;
             throw;
+        }
+        finally
+        {
+            if (capturedException is not null)
+                activity?.SetStatus(ActivityStatusCode.Error, capturedException.Message);
         }
     }
 
@@ -135,6 +147,7 @@ public sealed class KeycloakAdminService(
         activity?.SetTag("keycloak.operation", "UpdateUser");
         activity?.SetTag("keycloak.realm", realm);
 
+        Exception? capturedException = null;
         try
         {
             var token = await EnsureAuthenticatedAsync(ct);
@@ -170,8 +183,13 @@ public sealed class KeycloakAdminService(
         }
         catch (Exception ex)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            capturedException = ex;
             throw;
+        }
+        finally
+        {
+            if (capturedException is not null)
+                activity?.SetStatus(ActivityStatusCode.Error, capturedException.Message);
         }
     }
 
@@ -194,6 +212,7 @@ public sealed class KeycloakAdminService(
         activity?.SetTag("keycloak.operation", operationName);
         activity?.SetTag("keycloak.realm", realm);
 
+        Exception? capturedException = null;
         try
         {
             var token = await EnsureAuthenticatedAsync(ct);
@@ -225,8 +244,13 @@ public sealed class KeycloakAdminService(
         }
         catch (Exception ex)
         {
-            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            capturedException = ex;
             throw;
+        }
+        finally
+        {
+            if (capturedException is not null)
+                activity?.SetStatus(ActivityStatusCode.Error, capturedException.Message);
         }
     }
 
@@ -249,6 +273,7 @@ public sealed class KeycloakAdminService(
             activity?.SetTag("keycloak.operation", "GetToken");
             activity?.SetTag("keycloak.realm", _options.AdminRealm);
 
+            Exception? capturedException = null;
             try
             {
                 var adminUsername = await secretProvider.GetSecretAsync("nexora/keycloak/admin-username", ct);
@@ -280,8 +305,13 @@ public sealed class KeycloakAdminService(
             }
             catch (Exception ex)
             {
-                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                capturedException = ex;
                 throw;
+            }
+            finally
+            {
+                if (capturedException is not null)
+                    activity?.SetStatus(ActivityStatusCode.Error, capturedException.Message);
             }
         }
         finally

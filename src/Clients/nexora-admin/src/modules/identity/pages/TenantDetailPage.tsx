@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { cn } from '@/shared/lib/utils';
@@ -35,7 +37,7 @@ export default function TenantDetailPage() {
 
   const { data: tenant, isPending } = useTenant(id);
   const updateStatus = useUpdateTenantStatus(id);
-  const { data: modules } = useTenantModules(id);
+  const { data: modules, isPending: isModulesPending } = useTenantModules(id);
   const { data: registeredModules } = useRegisteredModules();
   const installModule = useInstallModule(id);
   const activateModule = useActivateModule(id);
@@ -53,6 +55,11 @@ export default function TenantDetailPage() {
       { label: tenant?.name ?? '...' },
     ]);
   }, [setBreadcrumbs, tenant]);
+
+  function handleTabChange(tab: TabKey) {
+    setActiveTab(tab);
+    window.scrollTo(0, 0);
+  }
 
   if (isPending) return <LoadingSkeleton lines={8} />;
   if (!tenant) return null;
@@ -108,7 +115,7 @@ export default function TenantDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -150,10 +157,10 @@ export default function TenantDetailPage() {
               </Button>
             </div>
           )}
-          {!modules?.length ? (
-            <p className="text-sm text-muted-foreground">
-              {t('lockey_identity_empty_modules')}
-            </p>
+          {isModulesPending ? (
+            <TabContentSkeleton />
+          ) : !modules?.length ? (
+            <EmptyState title={t('lockey_identity_empty_modules')} />
           ) : (
             <ul className="space-y-2">
               {modules.map((mod) => (

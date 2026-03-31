@@ -23,6 +23,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_NoEntries_ShouldReturnEmptyPage()
     {
+        // Arrange
         _repository.GetPagedAsync(
                 _tenantId, 1, 20, null, null, null, null, null, null, null, Arg.Any<CancellationToken>())
             .Returns((Array.Empty<AuditEntry>() as IReadOnlyList<AuditEntry>, 0));
@@ -31,8 +32,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery();
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().BeEmpty();
         result.Value.TotalCount.Should().Be(0);
@@ -43,6 +46,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_WithEntries_ShouldReturnPaginatedResults()
     {
+        // Arrange
         var entries = CreateEntries(10, module: "Contacts", operation: "CreateContact");
 
         _repository.GetPagedAsync(
@@ -53,8 +57,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery(Page: 1, PageSize: 10);
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(10);
         result.Value.TotalCount.Should().Be(25);
@@ -65,6 +71,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_SecondPage_ShouldReturnCorrectItems()
     {
+        // Arrange
         var entries = CreateEntries(5, module: "Contacts", operation: "CreateContact");
 
         _repository.GetPagedAsync(
@@ -75,8 +82,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery(Page: 3, PageSize: 10);
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(5);
         result.Value.TotalCount.Should().Be(25);
@@ -85,6 +94,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_FilterByModule_ShouldReturnOnlyMatchingModule()
     {
+        // Arrange
         var entries = CreateEntries(2, module: "Contacts", operation: "CreateContact");
 
         _repository.GetPagedAsync(
@@ -95,8 +105,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery(Module: "Contacts");
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(2);
         result.Value.Items.Should().OnlyContain(i => i.Module == "Contacts");
@@ -105,6 +117,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_FilterByOperation_ShouldReturnOnlyMatchingOperation()
     {
+        // Arrange
         var entries = CreateEntries(2, module: "Contacts", operation: "CreateContact");
 
         _repository.GetPagedAsync(
@@ -115,8 +128,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery(Operation: "CreateContact");
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(2);
         result.Value.Items.Should().OnlyContain(i => i.Operation == "CreateContact");
@@ -125,6 +140,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_FilterByIsSuccess_ShouldReturnOnlyMatchingStatus()
     {
+        // Arrange
         var entries = new List<AuditEntry>
         {
             CreateEntry(isSuccess: false)
@@ -138,8 +154,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery(IsSuccess: false);
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(1);
         result.Value.Items.Should().OnlyContain(i => !i.IsSuccess);
@@ -148,6 +166,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_FilterByDateRange_ShouldReturnOnlyInRange()
     {
+        // Arrange
         var now = DateTimeOffset.UtcNow;
         var entries = CreateEntries(2, timestamp: now.AddDays(-2));
 
@@ -163,8 +182,10 @@ public sealed class GetAuditLogsQueryTests
             DateFrom: now.AddDays(-5),
             DateTo: now);
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(2);
     }
@@ -172,6 +193,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_FilterByUserId_ShouldReturnOnlyMatchingUser()
     {
+        // Arrange
         var targetUserId = Guid.NewGuid();
         var entries = CreateEntries(2, userId: targetUserId);
 
@@ -183,8 +205,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery(UserId: targetUserId);
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(2);
     }
@@ -192,8 +216,8 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_ShouldOrderByTimestampDescending()
     {
+        // Arrange — repository returns entries already ordered by timestamp descending
         var now = DateTimeOffset.UtcNow;
-        // Repository returns entries already ordered by timestamp descending
         var entries = new List<AuditEntry>
         {
             CreateEntry(timestamp: now),
@@ -209,8 +233,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery();
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().BeInDescendingOrder(i => i.Timestamp);
     }
@@ -218,6 +244,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_DifferentTenant_ShouldNotReturnOtherTenantEntries()
     {
+        // Arrange — repository scopes by tenant, so only current tenant's entries are returned
         var entries = new List<AuditEntry>
         {
             CreateEntry(module: "Contacts")
@@ -231,8 +258,10 @@ public sealed class GetAuditLogsQueryTests
             NullLogger<GetAuditLogsHandler>.Instance);
         var query = new GetAuditLogsQuery();
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(1);
         result.Value.Items[0].Module.Should().Be("Contacts");
@@ -241,6 +270,7 @@ public sealed class GetAuditLogsQueryTests
     [Fact]
     public async Task Handle_CombinedFilters_ShouldApplyAll()
     {
+        // Arrange
         var userId = Guid.NewGuid();
         var now = DateTimeOffset.UtcNow;
         var entries = new List<AuditEntry>
@@ -259,8 +289,10 @@ public sealed class GetAuditLogsQueryTests
             Operation: "CreateContact",
             UserId: userId);
 
+        // Act
         var result = await handler.Handle(query, CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(1);
     }

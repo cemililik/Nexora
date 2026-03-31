@@ -18,6 +18,9 @@ public sealed class NotificationDeliveryRequestedEventHandler(
     ILogger<NotificationDeliveryRequestedEventHandler> logger) : IIntegrationEventHandler<NotificationDeliveryRequestedIntegrationEvent>
 {
     private const int BulkBatchSize = 100;
+    private const string SmsMessageIdPrefix = "sms_";
+    private const string EmailMessageIdPrefix = "msg_";
+    private const string BulkMessageIdPrefix = "bulk_";
 
     /// <summary>Handles delivery of a single or bulk notification via the configured channel provider.</summary>
     public async Task HandleAsync(NotificationDeliveryRequestedIntegrationEvent @event, CancellationToken ct)
@@ -89,7 +92,7 @@ public sealed class NotificationDeliveryRequestedEventHandler(
         Notification notification,
         NotificationProvider provider)
     {
-        var messagePrefix = notification.Channel == NotificationChannel.Sms ? "sms_" : "msg_";
+        var messagePrefix = notification.Channel == NotificationChannel.Sms ? SmsMessageIdPrefix : EmailMessageIdPrefix;
         DeliveryJobHelper.ProcessRecipients(pendingRecipients, provider, messagePrefix, logger);
     }
 
@@ -103,7 +106,7 @@ public sealed class NotificationDeliveryRequestedEventHandler(
 
         foreach (var batch in pendingRecipients.Chunk(BulkBatchSize))
         {
-            DeliveryJobHelper.ProcessRecipients(batch, provider, "bulk_", logger);
+            DeliveryJobHelper.ProcessRecipients(batch, provider, BulkMessageIdPrefix, logger);
             processedCount += batch.Count(r => r.Status == RecipientStatus.Sent);
         }
 

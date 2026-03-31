@@ -20,7 +20,7 @@ public sealed class InboxGuard<TContext>(TContext dbContext) : IInboxGuard
             .AnyAsync(m => m.EventId == eventId, ct);
 
         if (alreadyProcessed)
-            OutboxMetrics.InboxDuplicatesSkipped.Add(1);
+            InboxMetrics.DuplicatesSkipped.Add(1);
 
         return alreadyProcessed;
     }

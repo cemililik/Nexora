@@ -88,7 +88,7 @@ public static class InfrastructureServiceRegistration
         // IOutbox registered per-module as OutboxService<TContext> for transactional atomicity
         services.AddHostedService<OutboxProcessor>();
         services.AddHealthChecks()
-            .AddCheck<OutboxHealthCheck>("outbox", tags: new[] { "ready" });
+            .AddCheck<OutboxHealthCheck>("outbox", tags: ["ready"]);
 
         // Secrets
         services.AddScoped<ISecretProvider, DaprSecretProvider>();

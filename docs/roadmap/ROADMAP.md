@@ -481,6 +481,49 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] All existing tests updated for: repository pattern, ILogger injection, strongly-typed IDs
 - [x] Tests: 1,808 total, 0 failures, 1 skipped (SlowQuery in-memory DB limitation)
 
+### 1.14 UX Standards Enforcement & Test Hardening (2026-04-01)
+
+> 22 implementation batches (B1–B22) — UX/UI standards, test quality, and infrastructure improvements applied across all modules.
+
+**UX/UI Standards — Detail Pages:**
+- [x] AuditLogDetailPage: tab layout (Overview + Changes), breadcrumb path set
+- [x] SignatureDetailPage: tab layout (Overview + Recipients), breadcrumb path set
+- [x] RoleDetailPage: `isPending` (TanStack Query v5), TabContentSkeleton, `useUnsavedChangesGuard(isDirty)`
+- [x] UserDetailPage: `useUnsavedChangesGuard(isDirty)` on edit forms
+- [x] TenantDetailPage: `TabContentSkeleton`, `EmptyState` for modules tab, `handleTabChange` with scroll reset
+- [x] OrganizationDetailPage: `TabContentSkeleton`, `useUnsavedChangesGuard`, `handleTabChange` with scroll reset
+- [x] DocumentDetailPage: breadcrumb path fixed (`/documents` link)
+
+**UX/UI Standards — List Pages (SearchInput):**
+- [x] UserListPage: `SearchInput` replaces raw `<Input>` (built-in debounce, `onChange: (value: string) => void`)
+- [x] AuditLogListPage: `SearchInput` + `search` URL param wired to `useAuditLogs` hook
+- [x] SignatureListPage: `SearchInput` + `search` URL param, `EmptyState` with filtered/empty CTA
+- [x] TemplateListPage: `SearchInput` + `search` URL param, `EmptyState` with filtered/empty CTA
+- [x] NotificationListPage: `SearchInput` + `search` URL param
+- [x] ScheduleListPage: status Select filter added (no text search — `NotificationScheduleDto` has no searchable text field)
+- [x] TenantListPage: `SearchInput` + `EmptyState` (filtered reset CTA / empty create CTA), removed raw JS error display
+- [x] All filter bars: `flex flex-wrap` (responsive at narrow widths)
+
+**UX/UI Standards — Components & Hooks:**
+- [x] FolderManagementPage: `LoadingSkeleton`, `EmptyState` with icon+CTA, shadcn `<Input>` replaces raw `<input>`
+- [x] FolderAccessDialog: `SearchableDropdown` replaces custom combobox (keyboard nav, outside-click, `role="listbox"`)
+- [x] FolderAccessDialog: `grid-cols-1 sm:grid-cols-2` / `sm:grid-cols-3` responsive grids
+- [x] DocumentUploadPage: progress bar via CSS custom property (`--upload-progress`) + `[width:var(--upload-progress)]` (no inline style)
+- [x] DocumentUploadPage: `{t(error)}` — error key translated before display
+- [x] AuditSettingsPage: `t('lockey_audit_operation_...')` replaces regex capitalization; `t('lockey_audit_module_...')` replaces CSS capitalize
+- [x] DashboardListPage: `isPending` (TanStack v5), `LoadingSkeleton` replaces loading `<p>`
+- [x] `useFileUpload`: `import type { AxiosError }` (type-only), duck-typed `.isAxiosError === true` check
+
+**Test Quality:**
+- [x] `QueryHandlerTests.cs` split: 5 individual files (`GetTenantsQueryTests`, `GetTenantByIdQueryTests`, `GetUsersQueryTests`, `GetRolesQueryTests`, `GetPermissionsQueryTests`) with correct using-directive order (`Microsoft.*` first)
+- [x] `// Arrange / // Act / // Assert` comments added to `GetAuditLogsQueryTests` (9 tests), `GetAuditLogDetailQueryTests` (4 tests), `KeycloakAdminServiceTests` (8 tests)
+- [x] `useImportExport.test.tsx`: all `it('should ...')` renamed to `Method_Scenario_ExpectedResult` format
+
+**Infrastructure — OutboxProcessorTests → Testcontainers:**
+- [x] `Testcontainers.PostgreSql`, `Microsoft.Extensions.Configuration.InMemory`, `NSubstitute.ExceptionExtensions` added to `Nexora.Infrastructure.Tests.csproj`
+- [x] `TestIntegrationEvent` + `TestProcessorEvent` merged into shared `OutboxTestDbContext.cs`; private duplicate removed from `OutboxServiceTests.cs`
+- [x] `OutboxProcessorTests` rewritten: `PostgreSqlContainer` + `IAsyncLifetime`, proper `IActiveTenantProvider` mock (schema "public"), `IConfiguration` with real connection string, `WaitUntilProcessedAsync` / `WaitUntilRetryIncrementedAsync` poll helpers replace fixed `Task.Delay`
+
 ---
 
 ## Phase 1.5: Bridge

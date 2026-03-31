@@ -40,11 +40,14 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task CreateRealmAsync_Success_ReturnsRealmName()
     {
+        // Arrange
         var handler = CreateHandler(HttpStatusCode.Created);
         var service = CreateService(handler);
 
+        // Act
         var result = await service.CreateRealmAsync("tenant-abc", "ABC Company");
 
+        // Assert
         result.Should().Be("tenant-abc");
         handler.LastRequest!.Method.Should().Be(HttpMethod.Post);
         handler.LastRequest.RequestUri!.PathAndQuery.Should().Be("/admin/realms");
@@ -53,20 +56,25 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task CreateRealmAsync_Conflict_ReturnsRealmNameWithoutError()
     {
+        // Arrange
         var handler = CreateHandler(HttpStatusCode.Conflict);
         var service = CreateService(handler);
 
+        // Act
         var result = await service.CreateRealmAsync("existing-realm", "Existing");
 
+        // Assert
         result.Should().Be("existing-realm");
     }
 
     [Fact]
     public async Task CreateRealmAsync_ServerError_ThrowsHttpRequestException()
     {
+        // Arrange
         var handler = CreateHandler(HttpStatusCode.InternalServerError);
         var service = CreateService(handler);
 
+        // Act & Assert
         var act = () => service.CreateRealmAsync("bad-realm", "Bad");
 
         await act.Should().ThrowAsync<HttpRequestException>();
@@ -75,6 +83,7 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task CreateUserAsync_Success_ReturnsKeycloakUserId()
     {
+        // Arrange
         var userId = Guid.NewGuid().ToString();
         var handler = CreateHandler(HttpStatusCode.Created, responseHeaders: new()
         {
@@ -82,9 +91,11 @@ public sealed class KeycloakAdminServiceTests
         });
         var service = CreateService(handler);
 
+        // Act
         var result = await service.CreateUserAsync("tenant-abc", "john", "john@test.com",
             "John", "Doe", "temp123");
 
+        // Assert
         result.Should().Be(userId);
         handler.LastRequest!.Method.Should().Be(HttpMethod.Post);
         handler.LastRequest.RequestUri!.PathAndQuery.Should().Be("/admin/realms/tenant-abc/users");
@@ -93,6 +104,7 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task CreateUserAsync_RequestBody_ContainsCorrectFields()
     {
+        // Arrange
         var userId = Guid.NewGuid().ToString();
         var handler = CreateHandler(HttpStatusCode.Created, responseHeaders: new()
         {
@@ -100,8 +112,10 @@ public sealed class KeycloakAdminServiceTests
         });
         var service = CreateService(handler);
 
+        // Act
         await service.CreateUserAsync("test", "jane", "jane@test.com", "Jane", "Smith", "pass123");
 
+        // Assert
         var doc = JsonDocument.Parse(handler.LastRequest!.ContentSnapshot!);
         var root = doc.RootElement;
 
@@ -118,14 +132,15 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task UpdateUserAsync_Success_PerformsGetThenPut()
     {
-        // UpdateUserAsync does GET user → PUT user; provide user body for GET response
+        // Arrange — UpdateUserAsync does GET user → PUT user; provide user body for GET response
         var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", email = "old@test.com", firstName = "Old", lastName = "Name", enabled = true });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 
+        // Act
         await service.UpdateUserAsync("tenant-abc", userId, "new@test.com", "Updated", "User");
 
-        // Verify request sequence: token → GET → PUT
+        // Assert — request sequence: token → GET → PUT
         var apiRequests = handler.Requests.Where(r =>
             !r.RequestUri!.PathAndQuery.Contains("/protocol/openid-connect/token")).ToList();
         apiRequests.Should().HaveCount(2);
@@ -134,7 +149,6 @@ public sealed class KeycloakAdminServiceTests
         apiRequests[1].Method.Should().Be(HttpMethod.Put);
         apiRequests[1].RequestUri!.PathAndQuery.Should().Be($"/admin/realms/tenant-abc/users/{userId}");
 
-        // Verify PUT body contains updated fields
         var doc = JsonDocument.Parse(apiRequests[1].ContentSnapshot!);
         doc.RootElement.GetProperty("email").GetString().Should().Be("new@test.com");
         doc.RootElement.GetProperty("firstName").GetString().Should().Be("Updated");
@@ -144,13 +158,15 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task DisableUserAsync_Success_SendsEnabledFalse()
     {
-        // SetUserEnabledAsync now does GET user → PUT user; provide a user body for the GET response
+        // Arrange — SetUserEnabledAsync does GET user → PUT user; provide user body for GET response
         var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", enabled = true });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 
+        // Act
         await service.DisableUserAsync("tenant-abc", userId);
 
+        // Assert
         handler.LastRequest!.Method.Should().Be(HttpMethod.Put);
         var doc = JsonDocument.Parse(handler.LastRequest.ContentSnapshot!);
         doc.RootElement.GetProperty("enabled").GetBoolean().Should().BeFalse();
@@ -159,12 +175,15 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task EnableUserAsync_Success_SendsEnabledTrue()
     {
+        // Arrange
         var handler = CreateHandler(HttpStatusCode.OK, new { id = "u1", username = "test", enabled = false });
         var service = CreateService(handler);
         var userId = Guid.NewGuid().ToString();
 
+        // Act
         await service.EnableUserAsync("tenant-abc", userId);
 
+        // Assert
         handler.LastRequest!.Method.Should().Be(HttpMethod.Put);
         var doc = JsonDocument.Parse(handler.LastRequest.ContentSnapshot!);
         doc.RootElement.GetProperty("enabled").GetBoolean().Should().BeTrue();
@@ -173,25 +192,29 @@ public sealed class KeycloakAdminServiceTests
     [Fact]
     public async Task EnsureAuthenticated_ObtainsTokenFromSecretProvider()
     {
+        // Arrange
         var handler = CreateHandler(HttpStatusCode.Created);
         var service = CreateService(handler);
 
+        // Act
         await service.CreateRealmAsync("test", "Test");
 
+        // Assert
         await _secretProvider.Received(1).GetSecretAsync("nexora/keycloak/admin-password", Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task EnsureAuthenticated_CachesToken_DoesNotRequestTwice()
     {
+        // Arrange
         var handler = CreateHandler(HttpStatusCode.Created);
         var service = CreateService(handler);
 
+        // Act — two calls share the same service instance
         await service.CreateRealmAsync("test1", "Test 1");
         await service.CreateRealmAsync("test2", "Test 2");
 
-        // Token endpoint is only hit once (first request), second request reuses cached token.
-        // The secret provider should only be called once.
+        // Assert — token endpoint is only hit once; second call reuses cached token
         await _secretProvider.Received(1).GetSecretAsync("nexora/keycloak/admin-password", Arg.Any<CancellationToken>());
     }
 }

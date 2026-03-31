@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
+import { SearchableDropdown } from '@/shared/components/data/SearchableDropdown';
 import {
   Dialog,
   DialogContent,
@@ -64,11 +65,8 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
 
   // User search
   const [userSearch, setUserSearch] = useState('');
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
-  const [selectedUserLabel, setSelectedUserLabel] = useState('');
-  const userSearchRef = useRef<HTMLInputElement>(null);
-  const { data: usersResult } = useUsers({ page: 1, pageSize: 10, search: userSearch || undefined });
+  const [selectedUser, setSelectedUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null);
+  const { data: usersResult, isPending: isUserSearchPending } = useUsers({ page: 1, pageSize: 10, search: userSearch || undefined });
   const users = usersResult?.items ?? [];
   const [selectedRoleId, setSelectedRoleId] = useState<string | undefined>(undefined);
 
@@ -82,8 +80,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
 
   const resetForm = () => {
     setUserSearch('');
-    setSelectedUserId(undefined);
-    setSelectedUserLabel('');
+    setSelectedUser(null);
     setSelectedRoleId(undefined);
     setPermission('View');
     setExpiryOption('permanent');
@@ -98,7 +95,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
     const expiresAt = computeExpiresAt(expiryOption, customDate);
     grantAccess.mutate(
       {
-        userId: selectedUserId,
+        userId: selectedUser?.id,
         roleId: selectedRoleId,
         permission,
         expiresAt,
@@ -107,7 +104,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
     );
   };
 
-  const canGrant = (selectedUserId || selectedRoleId) && !(selectedUserId && selectedRoleId);
+  const canGrant = (selectedUser || selectedRoleId) && !(selectedUser && selectedRoleId);
 
   const expiryOptions: { value: ExpiryOption; label: string }[] = useMemo(() => [
     { value: 'permanent', label: t('lockey_documents_folder_access_expiry_permanent') },
@@ -205,70 +202,44 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
           <div className="space-y-3 border-t pt-4">
             <h3 className="text-sm font-semibold">{t('lockey_documents_folder_access_grant')}</h3>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* User search combobox */}
-              <div
-                className="relative"
-                onBlur={(e) => {
-                  // Close dropdown only if focus moves outside this container
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setShowUserDropdown(false);
-                  }
+              <SearchableDropdown
+                value={selectedUser}
+                onSelect={(user) => {
+                  setSelectedUser(user);
+                  setUserSearch('');
+                  setSelectedRoleId(undefined);
                 }}
-                onFocus={() => setShowUserDropdown(true)}
-              >
-                <label className="text-xs font-medium">{t('lockey_documents_access_col_user')}</label>
-                <Input
-                  ref={userSearchRef}
-                  type="text"
-                  value={selectedUserLabel || userSearch}
-                  onChange={(e) => {
-                    setUserSearch(e.target.value);
-                    setSelectedUserId(undefined);
-                    setSelectedUserLabel('');
-                    setSelectedRoleId(undefined);
-                    setShowUserDropdown(true);
-                  }}
-                  placeholder={t('lockey_documents_folder_access_search_user')}
-                  className="mt-1"
-                  disabled={!!selectedRoleId}
-                />
-                {showUserDropdown && users.length > 0 && !selectedUserId && (
-                  <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-popover shadow-md">
-                    {users.map((user) => (
-                      <button
-                        key={user.id}
-                        type="button"
-                        className="w-full px-3 py-2 text-start text-sm hover:bg-accent"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => {
-                          setSelectedUserId(user.id);
-                          setSelectedUserLabel(`${user.firstName} ${user.lastName} (${user.email})`);
-                          setUserSearch('');
-                          setShowUserDropdown(false);
-                        }}
-                      >
-                        {user.firstName} {user.lastName} ({user.email})
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                items={users}
+                isLoading={isUserSearchPending}
+                searchValue={userSearch}
+                onSearchChange={(v) => {
+                  setUserSearch(v);
+                  setSelectedUser(null);
+                  setSelectedRoleId(undefined);
+                }}
+                renderItem={(user) => <span>{user.firstName} {user.lastName} <span className="text-muted-foreground">({user.email})</span></span>}
+                renderSelected={(user) => `${user.firstName} ${user.lastName} (${user.email})`}
+                keyExtractor={(user) => user.id}
+                placeholder={t('lockey_documents_folder_access_search_user')}
+                label={t('lockey_documents_access_col_user')}
+                className={selectedRoleId ? 'pointer-events-none opacity-50' : ''}
+              />
 
               {/* Role dropdown */}
               <div>
-                <label className="text-xs font-medium">{t('lockey_documents_access_col_role')}</label>
+                <label className="text-sm font-medium">{t('lockey_documents_access_col_role')}</label>
                 <Select
                   value={selectedRoleId ?? ''}
                   onValueChange={(v) => {
                     setSelectedRoleId(v || undefined);
                     if (v) {
-                      setSelectedUserId(undefined);
-                      setSelectedUserLabel('');
+                      setSelectedUser(null);
                       setUserSearch('');
                     }
                   }}
-                  disabled={!!selectedUserId}
+                  disabled={!!selectedUser}
                 >
                   <SelectTrigger className="mt-1" aria-label={t('lockey_documents_access_col_role')}>
                     <SelectValue placeholder={t('lockey_documents_folder_access_select_role')} />
@@ -284,7 +255,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Permission */}
               <div>
                 <label className="text-xs font-medium">{t('lockey_documents_access_form_permission')}</label>

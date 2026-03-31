@@ -2,7 +2,6 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.Persistence.Outbox;
-using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Infrastructure.Tests.Persistence.Outbox;
 
@@ -86,9 +85,4 @@ public sealed class OutboxServiceTests : IDisposable
     }
 
     public void Dispose() => _dbContext.Dispose();
-
-    private sealed record TestIntegrationEvent : IntegrationEventBase
-    {
-        public string Data { get; init; } = "test";
-    }
 }

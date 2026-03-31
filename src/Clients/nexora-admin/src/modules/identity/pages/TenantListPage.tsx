@@ -1,11 +1,15 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Building2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { formatRelativeTime } from '@/shared/lib/date';
 import { useTenants } from '../hooks/useTenants';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
@@ -16,7 +20,24 @@ export default function TenantListPage() {
   const navigate = useNavigate();
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data, isPending, isError, error } = useTenants({ page, pageSize });
+  const { hasPermission } = usePermissions();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const search = searchParams.get('search') ?? undefined;
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) { next.set('search', value); } else { next.delete('search'); }
+        next.set('page', '1');
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
+  const { data, isPending, isError } = useTenants({ page, pageSize, search });
 
   useEffect(() => {
     setBreadcrumbs([
@@ -25,13 +46,39 @@ export default function TenantListPage() {
     ]);
   }, [setBreadcrumbs]);
 
+  const hasActiveFilters = !!search;
+
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={Building2}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams(new URLSearchParams()),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={Building2}
+        title={t('lockey_identity_empty_tenants')}
+        action={
+          hasPermission('identity.tenants.create')
+            ? { label: t('lockey_identity_tenants_create'), onClick: () => navigate('/identity/tenants/create') }
+            : undefined
+        }
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams, hasPermission]);
+
   const columns: ColumnDef<TenantDto>[] = [
     {
       key: 'name',
       header: t('lockey_identity_col_tenant_name'),
-      render: (row) => (
-        <span className="font-medium">{row.name}</span>
-      ),
+      render: (row) => <span className="font-medium">{row.name}</span>,
     },
     { key: 'slug', header: t('lockey_identity_col_slug'), render: (row) => row.slug },
     {
@@ -52,7 +99,6 @@ export default function TenantListPage() {
         <p className="text-muted-foreground">
           {t('lockey_error_something_went_wrong', { ns: 'error' })}
         </p>
-        <p className="text-sm text-muted-foreground">{error?.message}</p>
         <Button type="button" onClick={() => window.location.reload()}>
           {t('lockey_common_try_again', { ns: 'common' })}
         </Button>
@@ -74,6 +120,15 @@ export default function TenantListPage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={search ?? ''}
+          onChange={handleSearchChange}
+          placeholder={t('lockey_identity_search_tenants')}
+          className="w-64"
+        />
+      </div>
+
       <DataTable
         columns={columns}
         data={data?.items ?? []}
@@ -83,7 +138,7 @@ export default function TenantListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_identity_empty_tenants')}
+        emptyState={emptyStateNode}
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/identity/tenants/${row.id}`)}
       />

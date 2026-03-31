@@ -4,8 +4,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Users } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
+import { SearchInput } from '@/shared/components/data/SearchInput';
 import {
   Select,
   SelectContent,
@@ -101,8 +101,8 @@ export default function UserListPage() {
   );
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      updateFilter('search', e.target.value);
+    (value: string) => {
+      updateFilter('search', value);
     },
     [updateFilter],
   );
@@ -143,8 +143,7 @@ export default function UserListPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <Input
-          type="text"
+        <SearchInput
           value={search ?? ''}
           onChange={handleSearchChange}
           placeholder={t('lockey_identity_search_users')}

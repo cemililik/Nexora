@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import axios from 'axios';
+import type { AxiosError } from 'axios';
 
 import { api } from '@/shared/lib/api';
 import { useGenerateUploadUrl } from './useDocuments';
@@ -114,7 +114,7 @@ export function useFileUpload(): UseFileUploadReturn {
         setProgress(100);
       } catch (err) {
         setState('error');
-        if (axios.isAxiosError(err) || (err instanceof Error && 'response' in err)) {
+        if ((err as AxiosError).isAxiosError === true || (err instanceof Error && 'response' in err)) {
           setError('lockey_error_api');
         } else if (err instanceof Error) {
           setError(err.message.startsWith('lockey_') ? err.message : 'lockey_error_network');

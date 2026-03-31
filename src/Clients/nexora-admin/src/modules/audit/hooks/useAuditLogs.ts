@@ -27,6 +27,7 @@ export function useAuditLogs(
         operation: params.operation,
         userId: params.userId,
         entityType: params.entityType,
+        search: params.search,
       }),
     staleTime: DEFAULT_LIST_STALE_TIME,
   });

@@ -22,8 +22,8 @@ public sealed class TenantMiddleware(RequestDelegate next)
     /// <summary>Extracts tenant context from JWT claims and sets it for the current request.</summary>
     public async Task InvokeAsync(HttpContext context, ITenantContextAccessor accessor)
     {
-        // Skip tenant resolution for public endpoints
-        if (_publicPaths.Any(p => context.Request.Path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase)))
+        // Skip tenant resolution for public/infrastructure endpoints (health, Hangfire)
+        if (_publicPaths.Any(p => context.Request.Path.StartsWithSegments(new PathString(p), StringComparison.OrdinalIgnoreCase)))
         {
             await next(context);
             return;

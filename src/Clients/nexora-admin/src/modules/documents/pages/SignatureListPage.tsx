@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { FileSignature } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -41,6 +44,7 @@ export default function SignatureListPage() {
   const canCreate = hasPermission('documents.signature.create');
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? undefined;
   const rawStatus = searchParams.get('status');
   const status = STATUSES.includes(rawStatus as SignatureRequestStatus)
     ? (rawStatus as SignatureRequestStatus)
@@ -53,7 +57,34 @@ export default function SignatureListPage() {
     ]);
   }, [setBreadcrumbs]);
 
-  const { data, isPending } = useSignatures({ page, pageSize, status });
+  const { data, isPending } = useSignatures({ page, pageSize, status, search });
+
+  const hasActiveFilters = !!(search || status);
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={FileSignature}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams(new URLSearchParams()),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={FileSignature}
+        title={t('lockey_documents_signatures_empty')}
+        action={
+          canCreate
+            ? { label: t('lockey_documents_signatures_create'), onClick: () => navigate('/documents/signatures/create') }
+            : undefined
+        }
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams, canCreate]);
 
   const columns: ColumnDef<SignatureRequestDto>[] = [
     {
@@ -114,7 +145,20 @@ export default function SignatureListPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={search ?? ''}
+          onChange={(value) => {
+            setSearchParams((prev: URLSearchParams) => {
+              const next = new URLSearchParams(prev);
+              if (value) { next.set('search', value); } else { next.delete('search'); }
+              next.set('page', '1');
+              return next;
+            });
+          }}
+          placeholder={t('lockey_documents_signatures_search_placeholder')}
+          className="w-64"
+        />
         <Select
           value={status ?? '__all__'}
           onValueChange={(v) => {
@@ -153,7 +197,7 @@ export default function SignatureListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_documents_signatures_empty')}
+        emptyState={emptyStateNode}
         keyExtractor={(row) => row.id}
       />
     </div>

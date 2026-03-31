@@ -18,13 +18,13 @@ import type {
 
 export const templateKeys = {
   all: ['documents', 'templates'] as const,
-  list: (params: PaginationParams & { category?: TemplateCategory; isActive?: boolean }) =>
+  list: (params: PaginationParams & { category?: TemplateCategory; isActive?: boolean; search?: string }) =>
     [...templateKeys.all, 'list', params] as const,
   detail: (id: string) => [...templateKeys.all, 'detail', id] as const,
 };
 
 export function useTemplates(
-  params: PaginationParams & { category?: TemplateCategory; isActive?: boolean },
+  params: PaginationParams & { category?: TemplateCategory; isActive?: boolean; search?: string },
 ) {
   return useQuery({
     queryKey: templateKeys.list(params),
@@ -34,6 +34,7 @@ export function useTemplates(
         pageSize: params.pageSize,
         category: params.category,
         isActive: params.isActive,
+        search: params.search,
       }),
   });
 }

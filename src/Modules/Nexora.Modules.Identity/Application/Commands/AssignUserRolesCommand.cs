@@ -67,7 +67,8 @@ public sealed class AssignUserRolesHandler(
 
         if (validRoles.Count != requestedRoleIds.Count)
         {
-            logger.LogWarning("Business rule: {Rule} for {Entity} {Id}", "Invalid roles in request", "User", request.UserId);
+            logger.LogWarning("Role assignment failed: one or more requested roles not found for user {UserId} in tenant {TenantId}",
+                request.UserId, tenantId);
             return Result.Failure(
                 LocalizedMessage.Of("lockey_identity_error_invalid_roles"));
         }
