@@ -58,5 +58,10 @@
   "lockey_audit_module_documents": "Belgeler",
   "lockey_audit_module_notifications": "Bildirimler",
   "lockey_audit_module_reporting": "Raporlama",
-  "lockey_audit_module_audit": "Denetim"
+  "lockey_audit_module_audit": "Denetim",
+
+  "lockey_audit_empty_title": "Denetim kaydı yok",
+  "lockey_audit_empty_description": "İşlemler gerçekleştirildikçe denetim kayıtları burada görünecek.",
+  "lockey_audit_filter_from_date": "Başlangıç tarihi",
+  "lockey_audit_filter_to_date": "Bitiş tarihi"
 }

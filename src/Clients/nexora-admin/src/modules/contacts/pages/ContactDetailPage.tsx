@@ -26,7 +26,9 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
@@ -59,7 +61,7 @@ import type {
   CommunicationChannel,
 } from '../types';
 
-type TabKey = 'overview' | 'tags' | 'relationships' | 'notes' | 'activities' | 'customFields' | 'gdpr';
+type TabKey = 'overview' | 'relationships' | 'notes' | 'activities' | 'gdpr';
 
 export default function ContactDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -77,6 +79,8 @@ export default function ContactDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
+    useUnsavedChangesGuard(isEditing);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -90,11 +94,9 @@ export default function ContactDetailPage() {
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'overview', label: t('lockey_contacts_tab_overview') },
-    { key: 'tags', label: t('lockey_contacts_tab_tags') },
     { key: 'relationships', label: t('lockey_contacts_tab_relationships') },
     { key: 'notes', label: t('lockey_contacts_tab_notes') },
     { key: 'activities', label: t('lockey_contacts_tab_activities') },
-    { key: 'customFields', label: t('lockey_contacts_tab_custom_fields') },
     { key: 'gdpr', label: t('lockey_contacts_tab_gdpr') },
   ];
 
@@ -144,7 +146,7 @@ export default function ContactDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -159,21 +161,23 @@ export default function ContactDetailPage() {
 
       {/* Tab content */}
       {activeTab === 'overview' && (
-        <OverviewTab
-          contact={contact}
-          isEditing={isEditing}
-          setIsEditing={setIsEditing}
-          updateContact={updateContact}
-          handleApiError={handleApiError}
-          t={t}
-          i18n={i18n}
-        />
+        <>
+          <OverviewTab
+            contact={contact}
+            isEditing={isEditing}
+            setIsEditing={setIsEditing}
+            updateContact={updateContact}
+            handleApiError={handleApiError}
+            t={t}
+            i18n={i18n}
+          />
+          <TagsTab contactId={id} t={t} />
+          <CustomFieldsTab contactId={id} t={t} />
+        </>
       )}
-      {activeTab === 'tags' && <TagsTab contactId={id} t={t} />}
       {activeTab === 'relationships' && <RelationshipsTab contactId={id} t={t} i18n={i18n} />}
       {activeTab === 'notes' && <NotesTab contactId={id} t={t} i18n={i18n} />}
       {activeTab === 'activities' && <ActivitiesTab contactId={id} t={t} i18n={i18n} />}
-      {activeTab === 'customFields' && <CustomFieldsTab contactId={id} t={t} />}
       {activeTab === 'gdpr' && (
         <GdprTab
           contactId={id}
@@ -209,6 +213,18 @@ export default function ContactDetailPage() {
           setConfirmAction(null);
         }}
         isPending={archiveContact.isPending || restoreContact.isPending}
+      />
+
+      {/* Unsaved Changes Guard */}
+      <ConfirmDialog
+        open={isEditBlocked}
+        onOpenChange={() => resetEdit()}
+        title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
+        description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
+        onConfirm={proceedEdit}
+        confirmLabel={t('lockey_common_leave', { ns: 'common' })}
+        cancelLabel={t('lockey_common_stay', { ns: 'common' })}
+        variant="destructive"
       />
 
     </div>
@@ -560,7 +576,7 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
               <label htmlFor="address-street2" className="text-sm font-medium">{t('lockey_contacts_address_form_street2')}</label>
               <Input id="address-street2" {...register('street2')} className="mt-1" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="address-city" className="text-sm font-medium">{t('lockey_contacts_address_form_city')}</label>
                 <Input id="address-city" {...register('city')} className="mt-1" />
@@ -573,7 +589,7 @@ function AddressesCard({ contactId, addresses: initialAddresses, t }: AddressesC
                 <Input id="address-state" {...register('state')} className="mt-1" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="address-postalCode" className="text-sm font-medium">{t('lockey_contacts_address_form_postal_code')}</label>
                 <Input id="address-postalCode" {...register('postalCode')} className="mt-1" />
@@ -749,7 +765,7 @@ const createRelationshipSchema = (t: (key: string, options?: Record<string, unkn
 type RelationshipFormValues = z.infer<ReturnType<typeof createRelationshipSchema>>;
 
 function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
-  const { data: relationships, isPending } = useRelationships(contactId);
+  const { data: relationships, isPending: isRelationshipsPending } = useRelationships(contactId);
   const addRelationship = useAddRelationship(contactId);
   const removeRelationship = useRemoveRelationship(contactId);
   const { handleApiError } = useApiError();
@@ -857,6 +873,8 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
     );
   };
 
+  if (isRelationshipsPending) return <TabContentSkeleton variant="list" />;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -962,8 +980,8 @@ function RelationshipsTab({ contactId, t, i18n }: RelationshipsTabProps) {
           </form>
         )}
 
-        {isPending ? (
-          <LoadingSkeleton lines={3} />
+        {isRelationshipsPending ? (
+          <TabContentSkeleton variant="list" />
         ) : relationships?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t('lockey_contacts_empty_relationships')}
@@ -1045,6 +1063,8 @@ function NotesTab({ contactId, t, i18n }: NotesTabProps) {
       onError: (err) => handleApiError(err),
     });
   };
+
+  if (isPending) return <TabContentSkeleton variant="list" />;
 
   return (
     <Card>
@@ -1149,7 +1169,7 @@ function ActivitiesTab({ contactId, t, i18n }: ActivitiesTabProps) {
       </CardHeader>
       <CardContent>
         {isPending ? (
-          <LoadingSkeleton lines={4} />
+          <TabContentSkeleton variant="list" />
         ) : activities?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t('lockey_contacts_empty_activities')}
@@ -1240,7 +1260,7 @@ function CustomFieldsTab({ contactId, t }: CustomFieldsTabProps) {
       </CardHeader>
       <CardContent>
         {isPending ? (
-          <LoadingSkeleton lines={4} />
+          <TabContentSkeleton variant="form" />
         ) : definitions?.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {t('lockey_contacts_empty_custom_fields')}

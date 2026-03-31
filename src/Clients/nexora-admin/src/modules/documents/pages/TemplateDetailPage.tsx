@@ -221,7 +221,7 @@ export default function TemplateDetailPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="template-category" className="text-sm font-medium">{t('lockey_documents_templates_form_category')}</label>
             <Controller

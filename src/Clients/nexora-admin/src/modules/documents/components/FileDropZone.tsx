@@ -10,6 +10,10 @@ interface FileDropZoneProps {
   accept?: string;
   maxSizeMB?: number;
   disabled?: boolean;
+  /** Upload progress percentage (0-100). When provided, a progress bar is shown. */
+  progress?: number;
+  /** Whether upload is currently in progress. */
+  isUploading?: boolean;
 }
 
 export function FileDropZone({
@@ -17,6 +21,8 @@ export function FileDropZone({
   accept,
   maxSizeMB = 100,
   disabled = false,
+  progress,
+  isUploading = false,
 }: FileDropZoneProps) {
   const { t } = useTranslation('documents');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,23 +152,33 @@ export function FileDropZone({
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       {selectedFile && (
-        <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
-          <span className="truncate text-sm">
-            {selectedFile.name} ({formatSize(selectedFile.size)})
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClear();
-            }}
-            disabled={disabled}
-            aria-label={t('lockey_documents_upload_clear')}
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </Button>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2">
+            <span className="truncate text-sm">
+              {selectedFile.name} ({formatSize(selectedFile.size)})
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClear();
+              }}
+              disabled={disabled || isUploading}
+              aria-label={t('lockey_documents_upload_clear')}
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+          {isUploading && progress !== undefined && (
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300"
+                style={{ width: `${Math.min(progress, 100)}%` }}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
