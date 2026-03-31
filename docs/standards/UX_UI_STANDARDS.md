@@ -220,7 +220,7 @@ export default function EntityDetailPage() {
 | Page padding | `p-6` |
 | Section spacing | `space-y-6` |
 | Card padding | `p-4` (compact) or `p-6` (standard) |
-| Page title | `text-2xl font-bold` |
+| Page title | `text-2xl font-semibold` |
 | Section heading | `text-lg font-semibold` |
 | Body text | `text-sm` |
 | Muted/secondary text | `text-sm text-muted-foreground` |

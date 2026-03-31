@@ -5,8 +5,8 @@ import { Pencil, Trash2, Save, X, Shield, UserMinus, UserPlus } from 'lucide-rea
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
+import { RoleStatusBadge } from '../components/RoleStatusBadge';
 import {
   Dialog,
   DialogContent,
@@ -99,9 +99,7 @@ export default function RoleDetailPage() {
               <h1 className="text-2xl font-semibold">{role.name}</h1>
             )}
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant={role.isActive ? 'default' : 'secondary'}>
-                {role.isActive ? t('lockey_identity_active') : t('lockey_identity_inactive')}
-              </Badge>
+              <RoleStatusBadge isActive={role.isActive} />
               {role.isSystemRole && (
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                   {t('lockey_identity_system_role')}
