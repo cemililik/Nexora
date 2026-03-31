@@ -7,6 +7,7 @@ using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure.Jobs;
 using Nexora.Modules.Notifications.Tests.Helpers;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Modules.Notifications.Tests.Infrastructure;
@@ -36,6 +37,7 @@ public sealed class ScheduledNotificationDispatcherJobTests : IDisposable
         var serviceProvider = Substitute.For<IServiceProvider>();
         serviceProvider.GetService(typeof(ITenantContextAccessor)).Returns(_tenantAccessor);
         serviceProvider.GetService(typeof(NotificationsDbContext)).Returns(_dbContext);
+        serviceProvider.GetService(typeof(IOutbox)).Returns(Substitute.For<IOutbox>());
 
         var scope = Substitute.For<IServiceScope>();
         scope.ServiceProvider.Returns(serviceProvider);

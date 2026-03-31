@@ -4,13 +4,12 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Domain.Events;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
-using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles ContactCreatedEvent and publishes integration event.</summary>
+/// <summary>Handles ContactCreatedEvent and enqueues integration event to the outbox.</summary>
 public sealed class ContactCreatedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ContactsDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ContactCreatedDomainEventHandler> logger) : INotificationHandler<ContactCreatedEvent>
@@ -49,6 +48,9 @@ public sealed class ContactCreatedDomainEventHandler(
             DisplayName = contact.DisplayName
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(ContactCreatedIntegrationEvent), integrationEvent.TenantId);
     }
 }

@@ -6,9 +6,9 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 
 namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles DocumentSignedEvent and publishes integration event.</summary>
+/// <summary>Handles DocumentSignedEvent and enqueues integration event to the outbox.</summary>
 public sealed class DocumentSignedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     DocumentsDbContext dbContext,
     ILogger<DocumentSignedDomainEventHandler> logger) : INotificationHandler<DocumentSignedEvent>
 {
@@ -44,6 +44,9 @@ public sealed class DocumentSignedDomainEventHandler(
             RecipientContactId = recipient.ContactId
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(DocumentSignedIntegrationEvent), integrationEvent.TenantId);
     }
 }

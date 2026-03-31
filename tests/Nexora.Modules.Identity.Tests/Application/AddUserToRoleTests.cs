@@ -5,8 +5,11 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Caching;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -44,7 +47,7 @@ public sealed class AddUserToRoleTests : IDisposable
         _dbContext.OrganizationUsers.Add(orgUser);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, NullLogger<AddUserToRoleHandler>.Instance);
+        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AddUserToRoleHandler>.Instance);
         var command = new AddUserToRoleCommand(_role.Id.Value, _user.Id.Value);
 
         // Act
@@ -63,7 +66,7 @@ public sealed class AddUserToRoleTests : IDisposable
         _dbContext.OrganizationUsers.Add(orgUser);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, NullLogger<AddUserToRoleHandler>.Instance);
+        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AddUserToRoleHandler>.Instance);
         var command = new AddUserToRoleCommand(Guid.NewGuid(), _user.Id.Value);
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -76,7 +79,7 @@ public sealed class AddUserToRoleTests : IDisposable
     public async Task Handle_UserNotFound_ReturnsFailure()
     {
         // User with no org memberships
-        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, NullLogger<AddUserToRoleHandler>.Instance);
+        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AddUserToRoleHandler>.Instance);
         var command = new AddUserToRoleCommand(_role.Id.Value, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -97,7 +100,7 @@ public sealed class AddUserToRoleTests : IDisposable
         _dbContext.UserRoles.Add(userRole);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, NullLogger<AddUserToRoleHandler>.Instance);
+        var handler = new AddUserToRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AddUserToRoleHandler>.Instance);
         var command = new AddUserToRoleCommand(_role.Id.Value, _user.Id.Value);
 
         // Act

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Transactional Outbox pattern for reliable event publishing (12 handlers migrated)
+- Inbox pattern for idempotent event consumption (4 handlers protected)
+- OutboxProcessor BackgroundService (polling-based, configurable)
+- Outbox health check + OpenTelemetry metrics + admin status API
+- Cache cross-instance invalidation via Dapr pub/sub
+- Email/SMS delivery via Kafka (replaces per-notification Hangfire jobs)
+- 5 new integration events: UserRolesChanged, ContactImportCompleted, ReportExecuted, FolderAccessGranted/Revoked, ModuleInstalled/Uninstalled
+- Permission cache invalidation on role changes (inline + event-driven)
+- OutboxCleanupJob (7d) + InboxCleanupJob (30d) recurring jobs
 - Audit module: standalone audit logging with configurable settings per module/operation
 - Documents module: folder access control with time-limited permissions
 - Documents module: drag-and-drop file upload with presigned URL flow

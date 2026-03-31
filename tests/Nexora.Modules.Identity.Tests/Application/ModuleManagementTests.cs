@@ -8,6 +8,7 @@ using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.Infrastructure.MultiTenancy;
 using Microsoft.Extensions.Logging.Abstractions;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -60,7 +61,7 @@ public sealed class ModuleManagementTests : IDisposable
     [Fact]
     public async Task InstallModule_ValidModule_ShouldInstall()
     {
-        var handler = new InstallModuleHandler(_platformDb, _modules, NullLogger<InstallModuleHandler>.Instance);
+        var handler = new InstallModuleHandler(_platformDb, _modules, Substitute.For<IOutbox>(), NullLogger<InstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new InstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -72,7 +73,7 @@ public sealed class ModuleManagementTests : IDisposable
     [Fact]
     public async Task InstallModule_AlreadyInstalled_ShouldReturnFailure()
     {
-        var handler = new InstallModuleHandler(_platformDb, _modules, NullLogger<InstallModuleHandler>.Instance);
+        var handler = new InstallModuleHandler(_platformDb, _modules, Substitute.For<IOutbox>(), NullLogger<InstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new InstallModuleCommand(_tenantId.Value, "identity"), CancellationToken.None);
 
@@ -83,7 +84,7 @@ public sealed class ModuleManagementTests : IDisposable
     [Fact]
     public async Task InstallModule_UnknownModule_ShouldReturnFailure()
     {
-        var handler = new InstallModuleHandler(_platformDb, _modules, NullLogger<InstallModuleHandler>.Instance);
+        var handler = new InstallModuleHandler(_platformDb, _modules, Substitute.For<IOutbox>(), NullLogger<InstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new InstallModuleCommand(_tenantId.Value, "nonexistent"), CancellationToken.None);
 
@@ -100,7 +101,7 @@ public sealed class ModuleManagementTests : IDisposable
         identityModule.Deactivate();
         await _platformDb.SaveChangesAsync();
 
-        var handler = new InstallModuleHandler(_platformDb, _modules, NullLogger<InstallModuleHandler>.Instance);
+        var handler = new InstallModuleHandler(_platformDb, _modules, Substitute.For<IOutbox>(), NullLogger<InstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new InstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -111,7 +112,7 @@ public sealed class ModuleManagementTests : IDisposable
     [Fact]
     public async Task InstallModule_NonExistentTenant_ShouldReturnFailure()
     {
-        var handler = new InstallModuleHandler(_platformDb, _modules, NullLogger<InstallModuleHandler>.Instance);
+        var handler = new InstallModuleHandler(_platformDb, _modules, Substitute.For<IOutbox>(), NullLogger<InstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new InstallModuleCommand(Guid.NewGuid(), "crm"), CancellationToken.None);
 
@@ -126,7 +127,7 @@ public sealed class ModuleManagementTests : IDisposable
         _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, NullLogger<UninstallModuleHandler>.Instance);
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), NullLogger<UninstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -148,7 +149,7 @@ public sealed class ModuleManagementTests : IDisposable
     [Fact]
     public async Task UninstallModule_NotInstalled_ShouldReturnFailure()
     {
-        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, NullLogger<UninstallModuleHandler>.Instance);
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), NullLogger<UninstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -162,7 +163,7 @@ public sealed class ModuleManagementTests : IDisposable
         _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, NullLogger<UninstallModuleHandler>.Instance);
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), NullLogger<UninstallModuleHandler>.Instance);
         await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 

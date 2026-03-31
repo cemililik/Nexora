@@ -8,8 +8,10 @@ using Microsoft.Extensions.Options;
 using Nexora.Modules.Contacts.Domain.Entities;
 using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Jobs;
@@ -33,6 +35,7 @@ public sealed class ContactImportJob(
     ITenantContextAccessor tenantContextAccessor,
     ContactsDbContext dbContext,
     IFileStorageService fileStorageService,
+    IOutbox outbox,
     IOptions<StorageOptions> storageOptions,
     ILogger<ContactImportJob> logger) : NexoraJob<ContactImportJobParams>(tenantContextAccessor, logger)
 {
@@ -149,6 +152,15 @@ public sealed class ContactImportJob(
 
             importJob.MarkCompleted();
             await dbContext.SaveChangesAsync(ct);
+
+            await outbox.EnqueueAsync(new ContactImportCompletedIntegrationEvent
+            {
+                TenantId = parameters.TenantId,
+                ImportJobId = parameters.ImportJobId,
+                TotalRows = totalRows,
+                SuccessCount = successCount,
+                ErrorCount = errorCount
+            }, ct);
 
             logger.LogInformation(
                 "Contact import completed. Total: {Total}, Success: {Success}, Errors: {Errors}",

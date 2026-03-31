@@ -980,7 +980,88 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ---
 
-## 5. DomainEventChannel
+## 5. Transactional Outbox/Inbox Pattern
+
+### 5.1 Outbox Pattern (Reliable Event Publishing)
+
+All domain event handlers that publish integration events MUST use `IOutbox.EnqueueAsync()` instead of `IEventBus.PublishAsync()`. The outbox record is persisted within the same database transaction as the entity change, guaranteeing at-least-once delivery even if Kafka is unavailable or the application crashes.
+
+```csharp
+// DOGRU — IOutbox ile
+public sealed class UserCreatedDomainEventHandler(IOutbox outbox)
+    : INotificationHandler<UserCreatedDomainEvent>
+{
+    public async Task Handle(UserCreatedDomainEvent notification, CancellationToken ct)
+    {
+        await outbox.EnqueueAsync(new UserCreatedIntegrationEvent(
+            notification.UserId, notification.TenantId), ct);
+    }
+}
+
+// YANLIS — Dogrudan IEventBus kullanimi (event kaybolabilir)
+// public sealed class BadHandler(IEventBus bus) { ... }  // YASAK
+```
+
+The `OutboxProcessor` BackgroundService polls the outbox table at a configurable interval and publishes pending events to Kafka.
+
+**Configuration:**
+```jsonc
+{
+  "Outbox": {
+    "PollingIntervalSeconds": 5  // default, configurable per environment
+  }
+}
+```
+
+### 5.2 Inbox Pattern (Idempotent Consumption)
+
+Integration event handlers that must be idempotent MUST use `IInboxGuard`. The inbox guard checks whether an event with the same `EventId` has already been processed and skips duplicates.
+
+```csharp
+public sealed class UserCreatedContactHandler(
+    IInboxGuard inboxGuard,
+    IContactRepository repository)
+    : IIntegrationEventHandler<UserCreatedIntegrationEvent>
+{
+    public async Task Handle(UserCreatedIntegrationEvent @event, CancellationToken ct)
+    {
+        if (await inboxGuard.IsAlreadyProcessedAsync(@event.EventId, ct))
+            return;
+
+        // Business logic here...
+        await repository.CreateFromUserAsync(@event.UserId, ct);
+
+        await inboxGuard.MarkAsProcessedAsync(@event.EventId, ct);
+    }
+}
+```
+
+### 5.3 Cleanup Jobs
+
+| Job | Retention | Schedule | Queue |
+|-----|-----------|----------|-------|
+| `outbox:cleanup` | 7 days | Daily | maintenance |
+| `inbox:cleanup` | 30 days | Daily | maintenance |
+
+### 5.4 Monitoring
+
+- **Health check**: Outbox health check reports unhealthy if unprocessed entries exceed threshold
+- **OpenTelemetry metrics**: Queue depth, processing latency, duplicate hit rate
+- **Admin API**: Status endpoint for outbox queue inspection
+
+### 5.5 Kurallar
+
+| Kural | Aciklama |
+|-------|----------|
+| **IOutbox zorunlu** | Domain event handlers MUST use `IOutbox.EnqueueAsync()` — NEVER `IEventBus.PublishAsync()` |
+| **IInboxGuard** | Integration event handlers MUST use `IInboxGuard` for idempotency |
+| **Polling interval** | Configurable via `Outbox:PollingIntervalSeconds` (default: 5s) |
+| **Outbox cleanup** | Processed entries older than 7 days are purged |
+| **Inbox cleanup** | Processed entries older than 30 days are purged |
+
+---
+
+## 6. DomainEventChannel
 
 The `DomainEventChannel` uses `BoundedChannelFullMode.Wait`. In **Wait** mode, `WriteAsync` blocks the caller until space is available, but `TryWrite` (which the dispatcher uses) **never blocks** — it returns `false` immediately when the channel is full. When `TryWrite` returns `false`, the event is **not enqueued** and a warning is logged. The distinction matters:
 
@@ -1002,7 +1083,7 @@ When `TryWrite` fails, the warning log distinguishes "channel completed" (shutdo
 
 ---
 
-## 6. Cross-Cutting Summary
+## 7. Cross-Cutting Summary
 
 ```mermaid
 ---

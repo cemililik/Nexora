@@ -1,21 +1,36 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
+using Nexora.Modules.Notifications.Tests.Helpers;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
+using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Events;
 using NSubstitute;
 
 namespace Nexora.Modules.Notifications.Tests.Infrastructure;
 
-public sealed class IdentityEventHandlerTests
+public sealed class IdentityEventHandlerTests : IDisposable
 {
+    private readonly NotificationsDbContext _dbContext;
+    private readonly IInboxGuard _inboxGuard;
     private readonly INotificationService _notificationService;
     private readonly UserCreatedIntegrationEventHandler _handler;
 
     public IdentityEventHandlerTests()
     {
+        var tenantAccessor = TestTenantAccessor.Create(Guid.NewGuid(), Guid.NewGuid());
+        var options = new DbContextOptionsBuilder<NotificationsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new NotificationsDbContext(options, tenantAccessor);
+        _inboxGuard = Substitute.For<IInboxGuard>();
+        _inboxGuard.IsAlreadyProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
         _notificationService = Substitute.For<INotificationService>();
         _handler = new UserCreatedIntegrationEventHandler(
-            _notificationService, NullLogger<UserCreatedIntegrationEventHandler>.Instance);
+            _dbContext, _inboxGuard, _notificationService, NullLogger<UserCreatedIntegrationEventHandler>.Instance);
     }
 
     [Fact]
@@ -112,4 +127,6 @@ public sealed class IdentityEventHandlerTests
                 r.Variables["email"] == "specific@test.com"),
             Arg.Any<CancellationToken>());
     }
+
+    public void Dispose() => _dbContext.Dispose();
 }

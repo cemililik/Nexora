@@ -7,9 +7,9 @@ using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 
-/// <summary>Publishes NotificationDeliveredIntegrationEvent when a recipient delivery is confirmed.</summary>
+/// <summary>Enqueues NotificationDeliveredIntegrationEvent to the outbox when a recipient delivery is confirmed.</summary>
 public sealed class NotificationDeliveredDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<NotificationDeliveredDomainEventHandler> logger) : INotificationHandler<NotificationDeliveredEvent>
 {
@@ -34,6 +34,9 @@ public sealed class NotificationDeliveredDomainEventHandler(
             ContactId = notification.ContactId
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(NotificationDeliveredIntegrationEvent), integrationEvent.TenantId);
     }
 }

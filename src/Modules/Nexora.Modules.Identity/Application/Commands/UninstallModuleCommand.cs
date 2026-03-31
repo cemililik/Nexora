@@ -5,7 +5,9 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -41,6 +43,7 @@ public sealed class UninstallModuleHandler(
     PlatformDbContext platformDb,
     IdentityDbContext identityDb,
     IEnumerable<IModule> registeredModules,
+    IOutbox outbox,
     ILogger<UninstallModuleHandler> logger) : ICommandHandler<UninstallModuleCommand>
 {
     public async Task<Result> Handle(
@@ -105,6 +108,13 @@ public sealed class UninstallModuleHandler(
         // Soft delete the TenantModule record
         platformDb.TenantModules.Remove(tenantModule);
         await platformDb.SaveChangesAsync(cancellationToken);
+
+        await outbox.EnqueueAsync(new ModuleUninstalledIntegrationEvent
+        {
+            TenantId = request.TenantId.ToString(),
+            ModuleName = request.ModuleName,
+            TenantIdGuid = request.TenantId
+        }, cancellationToken);
 
         logger.LogInformation("Module {ModuleName} uninstalled for tenant {TenantId}", request.ModuleName, request.TenantId);
 

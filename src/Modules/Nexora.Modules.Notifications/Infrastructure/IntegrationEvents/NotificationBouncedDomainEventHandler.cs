@@ -7,9 +7,9 @@ using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 
-/// <summary>Publishes NotificationBouncedIntegrationEvent when an email bounces.</summary>
+/// <summary>Enqueues NotificationBouncedIntegrationEvent to the outbox when an email bounces.</summary>
 public sealed class NotificationBouncedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<NotificationBouncedDomainEventHandler> logger) : INotificationHandler<NotificationBouncedEvent>
 {
@@ -34,6 +34,9 @@ public sealed class NotificationBouncedDomainEventHandler(
             Email = notification.Email
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(NotificationBouncedIntegrationEvent), integrationEvent.TenantId);
     }
 }

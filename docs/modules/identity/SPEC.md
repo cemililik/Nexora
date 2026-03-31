@@ -525,7 +525,15 @@ flowchart LR
 | `identity.user.created` | `nexora.identity.users` | New user registered |
 | `identity.user.deactivated` | `nexora.identity.users` | User deactivated |
 | `identity.role.changed` | `nexora.identity.roles` | Role permissions updated |
-| `identity.module.installed` | `nexora.identity.modules` | Module installed for tenant |
+| `identity.user.roles_changed` (`UserRolesChangedIntegrationEvent`) | `nexora.identity.roles` | User's role assignment changed — triggers permission cache invalidation (inline at handler + event-driven cross-instance via Kafka) |
+| `identity.module.installed` (`ModuleInstalledIntegrationEvent`) | `nexora.identity.modules` | Module installed for tenant |
+| `identity.module.uninstalled` (`ModuleUninstalledIntegrationEvent`) | `nexora.identity.modules` | Module uninstalled from tenant |
+
+### Permission Cache Invalidation
+
+When a user's roles change (assign/revoke), permission cache is invalidated through two mechanisms:
+1. **Inline**: The command handler directly calls `ICacheService.RemoveAsync()` for the affected user's permission cache key
+2. **Event-driven**: `UserRolesChangedIntegrationEvent` is published via Outbox → Kafka, and all application instances invalidate the user's cached permissions, ensuring cross-instance consistency
 
 ### Events Consumed
 | Event | Source | Action |
