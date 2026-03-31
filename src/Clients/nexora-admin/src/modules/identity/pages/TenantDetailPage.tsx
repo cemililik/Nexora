@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
@@ -23,9 +23,12 @@ import { useTenantModules, useInstallModule, useActivateModule, useDeactivateMod
 import type { RegisteredModuleDto } from '../hooks/useModuleManagement';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
 
+type TabKey = 'details' | 'modules';
+
 export default function TenantDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation('identity');
+  const [activeTab, setActiveTab] = useState<TabKey>('details');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
   const { hasPermission } = usePermissions();
@@ -60,10 +63,14 @@ export default function TenantDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{tenant.name}</h1>
-          <p className="text-sm text-muted-foreground">{tenant.slug}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <TenantStatusBadge status={tenant.status} />
+            <span className="text-sm text-muted-foreground">{tenant.slug}</span>
+          </div>
         </div>
         <div className="flex gap-2">
           {hasPermission('identity.tenants.update') && canActivate && (
@@ -92,113 +99,130 @@ export default function TenantDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('lockey_identity_tenant_detail_title')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="space-y-3">
-              <div>
-                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_status')}</dt>
-                <dd><TenantStatusBadge status={tenant.status} /></dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_realm')}</dt>
-                <dd>{tenant.realmId ?? '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_created_at')}</dt>
-                <dd>{new Date(tenant.createdAt).toLocaleDateString(i18n.language)}</dd>
-              </div>
-            </dl>
-          </CardContent>
-        </Card>
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        {([
+          { key: 'details' as const, label: t('lockey_identity_tab_details') },
+          { key: 'modules' as const, label: t('lockey_identity_tab_modules') },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{t('lockey_identity_tenant_modules_title')}</CardTitle>
-            {hasPermission('identity.modules.manage') && (
+      {/* Tab content */}
+      {activeTab === 'details' && (
+        <div className="mt-4">
+          <dl className="space-y-3">
+            <div>
+              <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_status')}</dt>
+              <dd><TenantStatusBadge status={tenant.status} /></dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_realm')}</dt>
+              <dd>{tenant.realmId ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_created_at')}</dt>
+              <dd>{new Date(tenant.createdAt).toLocaleDateString(i18n.language)}</dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
+      {activeTab === 'modules' && (
+        <div className="mt-4 space-y-4">
+          {hasPermission('identity.modules.manage') && (
+            <div className="flex justify-end">
               <Button size="sm" onClick={() => setInstallOpen(true)}>
                 {t('lockey_identity_action_install_module')}
               </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            {!modules?.length ? (
-              <p className="text-sm text-muted-foreground">
-                {t('lockey_identity_empty_modules')}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {modules.map((mod) => (
-                  <li key={mod.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{t('lockey_common_module_' + mod.moduleName, { ns: 'common', defaultValue: mod.moduleName })}</span>
-                      <Badge variant={mod.isActive ? 'default' : 'secondary'}>
-                        {mod.isActive ? t('lockey_identity_status_active') : t('lockey_identity_status_inactive')}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {mod.isActive ? (
-                        <>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={deactivateModule.isPending}
-                            onClick={() => {
-                              deactivateModule.mutate(mod.moduleName, {
-                                onError: (err) => handleApiError(err),
-                              });
-                            }}
-                          >
-                            {t('lockey_identity_action_deactivate_module')}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive"
-                            onClick={() => setModuleToUninstall(mod.moduleName)}
-                          >
-                            {t('lockey_identity_action_uninstall')}
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            disabled={activateModule.isPending}
-                            onClick={() => {
-                              activateModule.mutate(mod.moduleName, {
-                                onError: (err) => handleApiError(err),
-                              });
-                            }}
-                          >
-                            {t('lockey_identity_action_activate_module')}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive"
-                            onClick={() => setModuleToUninstall(mod.moduleName)}
-                          >
-                            {t('lockey_identity_action_uninstall')}
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            </div>
+          )}
+          {!modules?.length ? (
+            <p className="text-sm text-muted-foreground">
+              {t('lockey_identity_empty_modules')}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {modules.map((mod) => (
+                <li key={mod.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{t('lockey_common_module_' + mod.moduleName, { ns: 'common', defaultValue: mod.moduleName })}</span>
+                    <Badge variant={mod.isActive ? 'default' : 'secondary'}>
+                      {mod.isActive ? t('lockey_identity_status_active') : t('lockey_identity_status_inactive')}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {mod.isActive ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={deactivateModule.isPending}
+                          onClick={() => {
+                            deactivateModule.mutate(mod.moduleName, {
+                              onError: (err) => handleApiError(err),
+                            });
+                          }}
+                        >
+                          {t('lockey_identity_action_deactivate_module')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => setModuleToUninstall(mod.moduleName)}
+                        >
+                          {t('lockey_identity_action_uninstall')}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={activateModule.isPending}
+                          onClick={() => {
+                            activateModule.mutate(mod.moduleName, {
+                              onError: (err) => handleApiError(err),
+                            });
+                          }}
+                        >
+                          {t('lockey_identity_action_activate_module')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={() => setModuleToUninstall(mod.moduleName)}
+                        >
+                          {t('lockey_identity_action_uninstall')}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmAction !== null}

@@ -171,6 +171,7 @@
 
   "lockey_contacts_gdpr_title": "GDPR",
   "lockey_contacts_gdpr_export": "Export Personal Data",
+  "lockey_contacts_gdpr_export_completed": "Personal data exported successfully.",
   "lockey_contacts_gdpr_delete": "Delete Personal Data",
   "lockey_contacts_gdpr_delete_reason": "Reason for Deletion",
   "lockey_contacts_gdpr_confirm_delete": "Are you sure you want to permanently delete all personal data for this contact? This action cannot be undone.",
@@ -339,7 +340,10 @@
   "lockey_contacts_export_status_pending": "Pending",
   "lockey_contacts_export_status_processing": "Processing",
   "lockey_contacts_export_status_completed": "Completed",
+  "lockey_contacts_export_status_queued": "Queued",
   "lockey_contacts_export_status_failed": "Failed",
+
+  "lockey_contacts_error_tag_name_duplicate": "A tag with this name already exists.",
 
   "lockey_contacts_action_find_duplicates": "Find Duplicates",
 

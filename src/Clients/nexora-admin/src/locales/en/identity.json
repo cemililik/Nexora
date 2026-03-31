@@ -195,6 +195,10 @@
   "lockey_identity_tab_roles": "Roles",
   "lockey_identity_tab_settings": "Settings",
   "lockey_identity_tab_modules": "Modules",
+  "lockey_identity_tab_details": "Details",
+  "lockey_identity_tab_permissions": "Permissions",
+  "lockey_identity_tab_users": "Users",
+  "lockey_identity_tab_members": "Members",
 
   "lockey_identity_yes": "Yes",
   "lockey_identity_no": "No",

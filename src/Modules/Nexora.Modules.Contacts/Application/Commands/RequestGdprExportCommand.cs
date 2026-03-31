@@ -28,6 +28,7 @@ public sealed class RequestGdprExportHandler(
         var contactId = ContactId.From(request.ContactId);
 
         var contact = await dbContext.Contacts
+            .IgnoreQueryFilters()
             .Include(c => c.Addresses)
             .Include(c => c.Tags)
             .FirstOrDefaultAsync(c => c.Id == contactId && c.TenantId == tenantId, cancellationToken);

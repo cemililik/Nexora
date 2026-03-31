@@ -78,6 +78,15 @@ Before writing ANY code or documentation, you MUST read and strictly follow:
    - Module tables prefixed: `{module}_{table}` in tenant schema
    - Module UI loaded dynamically based on tenant's installed modules
 
+9. **UX/UI Design Standards**: `docs/standards/UX_UI_STANDARDS.md`
+   - Tab-based layout mandatory for all detail pages (not card-based)
+   - Consistent page templates: Detail, List, Create/Edit
+   - Status badge color scheme: green=active, gray=inactive, red=error, yellow=pending
+   - Breadcrumb required on every page
+   - Accessibility: ARIA labels, keyboard nav, focus indicators, color+icon
+   - Empty states with icon, text, and call-to-action
+   - Skeleton loaders for initial load, spinners for mutations
+
 ## Solution Structure
 ```
 src/
@@ -228,6 +237,15 @@ Nexora.Modules.{ModuleName}/
 ## When Writing Frontend Code
 **Full spec**: `docs/standards/FRONTEND_STANDARDS.md`
 **API standard**: `docs/standards/API_INTEGRATION_STANDARDS.md`
+**UX/UI design**: `docs/standards/UX_UI_STANDARDS.md`
+
+### UX/UI Layout Rules
+- Detail pages MUST use **custom underline tab layout** (`<button>` with `border-b-2`) — NOT shadcn/Radix Tabs, NOT card-based side-by-side
+- Tab state via `useState` (not URL params). See ContactDetailPage/DocumentDetailPage as reference.
+- Header: entity name + badges grouped left, actions right. Keep related info close — don't spread across full width.
+- List pages: filters/search/pagination in URL params, DataTable with clickable rows
+- Breadcrumb on every page, status badges with consistent colors, empty states with CTA
+- Refer to `UX_UI_STANDARDS.md` for full templates and component rules
 
 ### Pre-Commit Checklist: ALWAYS Run Linter Before Committing
 **CRITICAL**: Any changes in `src/Clients/` (nexora-admin or nexora-portal) MUST pass linting before commit.

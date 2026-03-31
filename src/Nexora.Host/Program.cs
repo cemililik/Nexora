@@ -166,8 +166,8 @@ try
 
     app.UseSerilogRequestLogging();
     app.UseAuthentication();
+    app.UseMiddleware<TenantMiddleware>(); // Must run before Authorization — PermissionAuthorizationHandler needs tenant context for DB queries
     app.UseAuthorization();
-    app.UseMiddleware<TenantMiddleware>();
 
     // Health checks — liveness, readiness, startup
     app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" }));

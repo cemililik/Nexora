@@ -26,29 +26,33 @@ public sealed class RequestGdprDeleteTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ValidContact_ShouldAnonymize()
+    public async Task Handle_ValidContact_ShouldAnonymizeAndSoftDelete()
     {
         // Arrange
         var contact = await SeedContact();
         var handler = CreateHandler();
 
+        // Act
         var result = await handler.Handle(
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Act
+        // Assert
         result.IsSuccess.Should().BeTrue();
 
-        // Assert
-        var updated = await _dbContext.Contacts.FindAsync(contact.Id);
+        var updated = await _dbContext.Contacts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == contact.Id);
         updated!.FirstName.Should().Be("[REDACTED]");
         updated.LastName.Should().Be("[REDACTED]");
         updated.Email.Should().BeNull();
         updated.Phone.Should().BeNull();
+        updated.IsDeleted.Should().BeTrue();
+        updated.DeletedAt.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task Handle_ActiveContact_ShouldArchive()
+    public async Task Handle_ActiveContact_ShouldBeExcludedFromDefaultQueries()
     {
         // Arrange
         var contact = await SeedContact();
@@ -59,9 +63,17 @@ public sealed class RequestGdprDeleteTests : IDisposable
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert
-        var updated = await _dbContext.Contacts.FindAsync(contact.Id);
-        updated!.Status.Should().Be(ContactStatus.Archived);
+        // Assert — default query (with soft delete filter) should not find the contact
+        var found = await _dbContext.Contacts
+            .FirstOrDefaultAsync(c => c.Id == contact.Id);
+        found.Should().BeNull();
+
+        // Assert — IgnoreQueryFilters should still find it for audit purposes
+        var auditRecord = await _dbContext.Contacts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == contact.Id);
+        auditRecord.Should().NotBeNull();
+        auditRecord!.IsDeleted.Should().BeTrue();
     }
 
     [Fact]

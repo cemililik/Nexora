@@ -207,5 +207,8 @@
   "lockey_notifications_aria_status_filter": "Status filter",
   "lockey_notifications_aria_recipients_table": "Recipients",
   "lockey_notifications_aria_providers_table": "Providers",
-  "lockey_notifications_aria_translations_table": "Translations"
+  "lockey_notifications_aria_translations_table": "Translations",
+
+  "lockey_notifications_tab_details": "Details",
+  "lockey_notifications_tab_translations": "Translations"
 }

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { Button } from '@/shared/components/ui/button';
+import { cn } from '@/shared/lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,8 @@ function createTranslationSchema(t: (key: string, options?: Record<string, unkno
 type TemplateFormValues = z.infer<ReturnType<typeof createTemplateSchema>>;
 type TranslationFormValues = z.infer<ReturnType<typeof createTranslationSchema>>;
 
+type TabKey = 'details' | 'translations';
+
 export default function TemplateDetailPage() {
   const { t } = useTranslation('notifications');
   const { id } = useParams<{ id: string }>();
@@ -63,6 +66,7 @@ export default function TemplateDetailPage() {
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { hasPermission } = usePermissions();
   const canManage = hasPermission('notifications.template.manage');
+  const [activeTab, setActiveTab] = useState<TabKey>('details');
 
   const isCreate = id === 'create';
   const { data: template, isPending } = useNotificationTemplate(id ?? '');
@@ -169,123 +173,155 @@ export default function TemplateDetailPage() {
         )}
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-2xl space-y-4">
-        <div>
-          <label htmlFor="template-code" className="text-sm font-medium">{t('lockey_notifications_templates_form_code')}</label>
-          <input
-            id="template-code"
-            type="text"
-            {...form.register('code')}
-            disabled={!isCreate}
-            className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
-          />
-          {form.formState.errors.code?.message && (
-            <p className="mt-1 text-sm text-destructive">{form.formState.errors.code.message}</p>
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        <button
+          type="button"
+          onClick={() => setActiveTab('details')}
+          className={cn(
+            'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+            activeTab === 'details'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           )}
-        </div>
-
-        <div>
-          <label htmlFor="template-module" className="text-sm font-medium">{t('lockey_notifications_templates_form_module')}</label>
-          <input
-            id="template-module"
-            type="text"
-            {...form.register('module')}
-            disabled={!isCreate}
-            className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
-          />
-          {form.formState.errors.module?.message && (
-            <p className="mt-1 text-sm text-destructive">{form.formState.errors.module.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="template-channel" className="text-sm font-medium">{t('lockey_notifications_templates_form_channel')}</label>
-          <Controller
-            control={form.control}
-            name="channel"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange} disabled={!isCreate}>
-                <SelectTrigger id="template-channel" className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CHANNELS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {t(CHANNEL_KEY_MAP[c])}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        >
+          {t('lockey_notifications_tab_details')}
+        </button>
+        {!isCreate && (
+          <button
+            type="button"
+            onClick={() => setActiveTab('translations')}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'translations'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="template-subject" className="text-sm font-medium">{t('lockey_notifications_templates_form_subject')}</label>
-          <input
-            id="template-subject"
-            type="text"
-            {...form.register('subject')}
-            className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-          {form.formState.errors.subject?.message && (
-            <p className="mt-1 text-sm text-destructive">{form.formState.errors.subject.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="template-body" className="text-sm font-medium">{t('lockey_notifications_templates_form_body')}</label>
-          <textarea
-            id="template-body"
-            {...form.register('body')}
-            rows={10}
-            className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-          />
-          {form.formState.errors.body?.message && (
-            <p className="mt-1 text-sm text-destructive">{form.formState.errors.body.message}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="template-format" className="text-sm font-medium">{t('lockey_notifications_templates_form_format')}</label>
-          <Controller
-            control={form.control}
-            name="format"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="template-format" className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FORMATS.map((f) => (
-                    <SelectItem key={f} value={f}>
-                      {t(FORMAT_KEY_MAP[f])}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={() => navigate('/notifications/templates')}>
-            {t('lockey_common_cancel', { ns: 'common' })}
-          </Button>
-          <Button
-            type="submit"
-            disabled={createTemplate.isPending || updateTemplate.isPending}
           >
-            {isCreate
-              ? t('lockey_notifications_templates_create')
-              : t('lockey_common_save', { ns: 'common' })}
-          </Button>
-        </div>
-      </form>
+            {t('lockey_notifications_tab_translations')}
+          </button>
+        )}
+      </div>
 
-      {/* Translations section (edit mode only) */}
-      {!isCreate && template && (
-        <div className="max-w-2xl space-y-4">
+      {/* Tab content */}
+      {activeTab === 'details' && (
+        <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4 max-w-2xl space-y-4">
+          <div>
+            <label htmlFor="template-code" className="text-sm font-medium">{t('lockey_notifications_templates_form_code')}</label>
+            <input
+              id="template-code"
+              type="text"
+              {...form.register('code')}
+              disabled={!isCreate}
+              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+            />
+            {form.formState.errors.code?.message && (
+              <p className="mt-1 text-sm text-destructive">{form.formState.errors.code.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="template-module" className="text-sm font-medium">{t('lockey_notifications_templates_form_module')}</label>
+            <input
+              id="template-module"
+              type="text"
+              {...form.register('module')}
+              disabled={!isCreate}
+              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
+            />
+            {form.formState.errors.module?.message && (
+              <p className="mt-1 text-sm text-destructive">{form.formState.errors.module.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="template-channel" className="text-sm font-medium">{t('lockey_notifications_templates_form_channel')}</label>
+            <Controller
+              control={form.control}
+              name="channel"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange} disabled={!isCreate}>
+                  <SelectTrigger id="template-channel" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CHANNELS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {t(CHANNEL_KEY_MAP[c])}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="template-subject" className="text-sm font-medium">{t('lockey_notifications_templates_form_subject')}</label>
+            <input
+              id="template-subject"
+              type="text"
+              {...form.register('subject')}
+              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            {form.formState.errors.subject?.message && (
+              <p className="mt-1 text-sm text-destructive">{form.formState.errors.subject.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="template-body" className="text-sm font-medium">{t('lockey_notifications_templates_form_body')}</label>
+            <textarea
+              id="template-body"
+              {...form.register('body')}
+              rows={10}
+              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+            />
+            {form.formState.errors.body?.message && (
+              <p className="mt-1 text-sm text-destructive">{form.formState.errors.body.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="template-format" className="text-sm font-medium">{t('lockey_notifications_templates_form_format')}</label>
+            <Controller
+              control={form.control}
+              name="format"
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger id="template-format" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FORMATS.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {t(FORMAT_KEY_MAP[f])}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => navigate('/notifications/templates')}>
+              {t('lockey_common_cancel', { ns: 'common' })}
+            </Button>
+            <Button
+              type="submit"
+              disabled={createTemplate.isPending || updateTemplate.isPending}
+            >
+              {isCreate
+                ? t('lockey_notifications_templates_create')
+                : t('lockey_common_save', { ns: 'common' })}
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {!isCreate && activeTab === 'translations' && (
+        <div className="mt-4 max-w-2xl space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">{t('lockey_notifications_translations_title')}</h2>
             {canManage && (
@@ -303,7 +339,7 @@ export default function TemplateDetailPage() {
             )}
           </div>
 
-          {template.translations.length > 0 ? (
+          {template && template.translations.length > 0 ? (
             <div className="rounded-lg border">
               <table className="w-full text-sm" aria-label={t('lockey_notifications_aria_translations_table')}>
                 <thead>

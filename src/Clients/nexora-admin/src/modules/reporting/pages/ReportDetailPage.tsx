@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { cn } from '@/shared/lib/utils';
 import {
   useReportDefinition,
   useUpdateReportDefinition,
@@ -67,6 +68,7 @@ export default function ReportDetailPage() {
   const [previewText, setPreviewText] = useState<string | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'executions' | 'parameters'>('overview');
 
   const handleDownload = useCallback((executionId: string, format: string) => {
     reportFile.mutate(executionId, {
@@ -139,7 +141,7 @@ export default function ReportDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{definition.name}</h1>
+          <h1 className="text-2xl font-semibold">{definition.name}</h1>
           {definition.description && (
             <p className="mt-1 text-muted-foreground">{definition.description}</p>
           )}
@@ -161,8 +163,34 @@ export default function ReportDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        {([
+          { key: 'overview' as const, label: t('lockey_reporting_tab_overview') },
+          { key: 'executions' as const, label: t('lockey_reporting_tab_executions') },
+          ...(parameters.length > 0
+            ? [{ key: 'parameters' as const, label: t('lockey_reporting_tab_parameters') }]
+            : []),
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'overview' && (
+        <div className="mt-4 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t('lockey_reporting_query')}</CardTitle>
@@ -174,6 +202,32 @@ export default function ReportDetailPage() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">{t('lockey_reporting_details')}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('lockey_reporting_col_module')}</span>
+                <span className="text-foreground">{definition.module}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('lockey_reporting_col_format')}</span>
+                <span className="text-foreground">{definition.defaultFormat}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('lockey_reporting_col_status')}</span>
+                <span className="text-foreground">
+                  {definition.isActive ? t('lockey_reporting_active') : t('lockey_reporting_inactive')}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === 'executions' && (
+        <div className="mt-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">{t('lockey_reporting_execution_history')}</CardTitle>
@@ -215,45 +269,23 @@ export default function ReportDetailPage() {
             </CardContent>
           </Card>
         </div>
+      )}
 
-        <div className="space-y-6">
+      {activeTab === 'parameters' && parameters.length > 0 && (
+        <div className="mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('lockey_reporting_details')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('lockey_reporting_col_module')}</span>
-                <span className="text-foreground">{definition.module}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('lockey_reporting_col_format')}</span>
-                <span className="text-foreground">{definition.defaultFormat}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('lockey_reporting_col_status')}</span>
-                <span className="text-foreground">
-                  {definition.isActive ? t('lockey_reporting_active') : t('lockey_reporting_inactive')}
-                </span>
-              </div>
+            <CardContent className="pt-6">
+              <ReportParameterForm
+                parameters={parameters}
+                values={paramValues}
+                onChange={setParamValues}
+                onSubmit={() => handleExecute()}
+                isLoading={executeReport.isPending}
+              />
             </CardContent>
           </Card>
-
-          {parameters.length > 0 && (
-            <Card>
-              <CardContent className="pt-6">
-                <ReportParameterForm
-                  parameters={parameters}
-                  values={paramValues}
-                  onChange={setParamValues}
-                  onSubmit={() => handleExecute()}
-                  isLoading={executeReport.isPending}
-                />
-              </CardContent>
-            </Card>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Preview dialog */}
       <Dialog open={!!(previewUrl || previewText)} onOpenChange={(open) => { if (!open) closePreview(); }}>

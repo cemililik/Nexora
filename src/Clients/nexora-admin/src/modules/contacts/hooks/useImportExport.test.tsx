@@ -6,12 +6,16 @@ import { type ReactNode } from 'react';
 // Mock API
 const mockApiGet = vi.fn();
 const mockApiPost = vi.fn();
-vi.mock('@/shared/lib/api', () => ({
-  api: {
-    get: (...args: unknown[]) => mockApiGet(...args),
-    post: (...args: unknown[]) => mockApiPost(...args),
-  },
-}));
+vi.mock('@/shared/lib/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/shared/lib/api')>();
+  return {
+    ...actual,
+    api: {
+      get: (...args: unknown[]) => mockApiGet(...args),
+      post: (...args: unknown[]) => mockApiPost(...args),
+    },
+  };
+});
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
@@ -176,6 +180,9 @@ describe('useStartExport', () => {
 describe('useGdprExport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // URL.createObjectURL/revokeObjectURL are not implemented in jsdom
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    URL.revokeObjectURL = vi.fn();
   });
 
   it('should call api.post with correct endpoint', async () => {
