@@ -180,6 +180,9 @@ describe('useStartExport', () => {
 describe('useGdprExport', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // URL.createObjectURL/revokeObjectURL are not implemented in jsdom
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:mock');
+    URL.revokeObjectURL = vi.fn();
   });
 
   it('should call api.post with correct endpoint', async () => {
