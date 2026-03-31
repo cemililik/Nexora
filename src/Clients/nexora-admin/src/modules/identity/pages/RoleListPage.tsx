@@ -41,10 +41,9 @@ export default function RoleListPage() {
   const navigate = useNavigate();
   const { page, pageSize, setPage, setPageSize } = usePagination();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data: roles, isPending, isError, error } = useRoles();
-  const createRole = useCreateRole();
   const [searchParams, setSearchParams] = useSearchParams();
   const roleSearch = searchParams.get('search') ?? '';
+  const { data: rolesData, isPending, isError, error } = useRoles({ page, pageSize, search: roleSearch });
   const setRoleSearch = useCallback(
     (value: string) => {
       setSearchParams((prev) => {
@@ -122,14 +121,7 @@ export default function RoleListPage() {
     },
   ];
 
-  const filteredRoles = useMemo(() => {
-    if (!roles || !roleSearch) return roles ?? [];
-    const lower = roleSearch.toLowerCase();
-    return roles.filter((r) =>
-      r.name.toLowerCase().includes(lower) ||
-      (r.description?.toLowerCase().includes(lower) ?? false),
-    );
-  }, [roles, roleSearch]);
+  const createRole = useCreateRole();
 
   if (isError) {
     return (
@@ -172,8 +164,8 @@ export default function RoleListPage() {
 
       <DataTable
         columns={columns}
-        data={filteredRoles}
-        totalCount={filteredRoles.length}
+        data={rolesData?.items ?? []}
+        totalCount={rolesData?.totalCount ?? 0}
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}

@@ -80,8 +80,14 @@ export default function ContactDetailPage() {
   const [formIsDirty, setFormIsDirty] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const confirmedRef = useRef(false);
   const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
     useUnsavedChangesGuard(isEditing && formIsDirty);
+
+  const handleProceedEdit = () => {
+    confirmedRef.current = true;
+    proceedEdit();
+  };
 
   useEffect(() => {
     setBreadcrumbs([
@@ -220,10 +226,15 @@ export default function ContactDetailPage() {
       {/* Unsaved Changes Guard */}
       <ConfirmDialog
         open={isEditBlocked}
-        onOpenChange={() => resetEdit()}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!confirmedRef.current) resetEdit();
+            confirmedRef.current = false;
+          }
+        }}
         title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
         description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
-        onConfirm={proceedEdit}
+        onConfirm={handleProceedEdit}
         confirmLabel={t('lockey_common_leave', { ns: 'common' })}
         cancelLabel={t('lockey_common_stay', { ns: 'common' })}
         variant="destructive"

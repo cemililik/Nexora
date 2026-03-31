@@ -64,6 +64,11 @@ export default function AuditLogListPage() {
     });
   };
 
+  const hasActiveFilters = !!(module || rawIsSuccess || dateFrom || dateTo);
+  const handleResetFilters = () => {
+    setSearchParams(new URLSearchParams());
+  };
+
   const columns: ColumnDef<AuditLogDto>[] = [
     {
       key: 'timestamp',
@@ -78,12 +83,12 @@ export default function AuditLogListPage() {
     {
       key: 'module',
       header: t('lockey_audit_col_module'),
-      render: (row) => row.module,
+      render: (row) => t('lockey_audit_module_' + row.module, { defaultValue: row.module }),
     },
     {
       key: 'operation',
       header: t('lockey_audit_col_operation'),
-      render: (row) => row.operation,
+      render: (row) => t('lockey_audit_operation_' + row.operation.toLowerCase(), { defaultValue: row.operation }),
     },
     {
       key: 'operationType',
@@ -189,6 +194,11 @@ export default function AuditLogListPage() {
             icon={FileSearch}
             title={t('lockey_audit_empty_title')}
             description={t('lockey_audit_empty_description')}
+            action={
+              hasActiveFilters
+                ? { label: t('lockey_common_reset_filters', { ns: 'common', defaultValue: 'Reset Filters' }), onClick: handleResetFilters }
+                : undefined
+            }
           />
         }
         keyExtractor={(row) => row.id}

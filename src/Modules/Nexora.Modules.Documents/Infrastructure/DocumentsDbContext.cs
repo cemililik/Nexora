@@ -32,7 +32,9 @@ public sealed class DocumentsDbContext(
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
     /// <summary>Gets the folder accesses set.</summary>
     public DbSet<FolderAccess> FolderAccesses => Set<FolderAccess>();
+    /// <summary>Gets the inbox messages set.</summary>
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
+    /// <summary>Gets the outbox messages set.</summary>
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     /// <inheritdoc />

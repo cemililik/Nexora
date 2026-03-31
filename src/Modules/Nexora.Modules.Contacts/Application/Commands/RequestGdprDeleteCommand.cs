@@ -100,7 +100,7 @@ public sealed class RequestGdprDeleteHandler(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("GDPR delete completed for contact {ContactId}. Reason: {Reason}",
-            contactId, request.Reason);
+            contactId.Value, request.Reason);
 
         return Result.Success(LocalizedMessage.Of("lockey_contacts_gdpr_delete_completed"));
     }

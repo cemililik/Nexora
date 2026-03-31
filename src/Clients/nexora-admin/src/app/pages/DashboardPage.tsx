@@ -117,7 +117,7 @@ function StatsCardItem({ card }: { card: StatsCard }) {
 }
 
 function RecentActivityList() {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'audit']);
   const { data, isLoading } = useAuditLogs({ page: 1, pageSize: 5 });
 
   if (isLoading) {
@@ -125,7 +125,7 @@ function RecentActivityList() {
   }
 
   if (!data?.items?.length) {
-    return <p className="text-sm text-muted-foreground">{t('lockey_common_no_recent_activity')}</p>;
+    return <p className="text-sm text-muted-foreground">{t('common:lockey_common_no_recent_activity')}</p>;
   }
 
   return (
@@ -133,8 +133,8 @@ function RecentActivityList() {
       {data.items.map((log) => (
         <li key={log.id} className="flex items-center justify-between text-sm">
           <div>
-            <span className="font-medium">{log.operation}</span>
-            <span className="text-muted-foreground ms-2">{log.module}</span>
+            <span className="font-medium">{t('audit:lockey_audit_operation_' + log.operation.toLowerCase(), { defaultValue: log.operation })}</span>
+            <span className="text-muted-foreground ms-2">{t('audit:lockey_audit_module_' + log.module, { defaultValue: log.module })}</span>
           </div>
           <div className="text-xs text-muted-foreground">
             {log.userEmail} · {formatRelativeTime(log.timestamp)}
