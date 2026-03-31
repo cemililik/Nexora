@@ -282,14 +282,12 @@ export default function FolderManagementPage() {
       </Dialog>
 
       {/* Folder Access Dialog */}
-      {accessFolder && (
-        <FolderAccessDialog
-          folderId={accessFolder.id}
-          folderName={accessFolder.name}
-          open
-          onOpenChange={(open) => { if (!open) setAccessFolder(null); }}
-        />
-      )}
+      <FolderAccessDialog
+        folderId={accessFolder?.id ?? ''}
+        folderName={accessFolder?.name ?? ''}
+        open={accessFolder !== null}
+        onOpenChange={(isOpen) => { if (!isOpen) setAccessFolder(null); }}
+      />
 
       {/* Delete Confirm */}
       <ConfirmDialog
