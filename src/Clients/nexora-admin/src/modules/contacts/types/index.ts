@@ -352,3 +352,14 @@ export interface PinNoteRequest {
 export interface GdprDeleteRequest {
   reason: string;
 }
+
+export interface GdprExportDto {
+  contactId: string;
+  displayName: string;
+  contactData: ContactDetailDto | null;
+  notes: ContactNoteDto[];
+  consentRecords: ConsentRecordDto[];
+  activities: ContactActivityDto[];
+  customFields: ContactCustomFieldDto[];
+  exportedAt: string;
+}

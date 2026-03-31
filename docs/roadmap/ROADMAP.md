@@ -390,6 +390,97 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Security fixes: cache tenant isolation, Keycloak token thread-safety, PII compliance, input validation
 - [x] Architecture: IOperationResult interface, ExceptionDispatchInfo for stack traces, EF.Functions.ILike, correlated query filters
 
+### 1.13 Deep Code Review & Architecture Hardening (2026-03-31)
+
+> 105 findings from detailed code review + ~40 inline comments — all resolved except CR-01 (deferred to Phase 1.5.2).
+
+**Critical Bug Fixes:**
+- [x] AuditCacheKeys double tenant prefix: removed manual tenantId from cache keys (DaprCacheService auto-prefixes)
+- [x] DaprCacheService GetOrSetAsync value-type bug: etag-based existence check for bool/int caching
+- [x] ReportExecutionJob exception swallowing: re-throw after MarkFailed + CancellationToken.None on error path
+
+**Security & Authorization:**
+- [x] Permission-based authorization infrastructure: PermissionRequirement, PermissionPolicyProvider, PermissionAuthorizationHandler, UserPermissionService (cached, Identity module)
+- [x] All audit + identity endpoints: granular permission policies (audit.logs.read, audit.settings.manage, identity.users.read/manage, identity.roles.read/manage, identity.modules.manage)
+- [x] Documents OrganizationId isolation: added to GetDocumentsQuery, GetFoldersQuery, GrantFolderAccessCommand, RevokeFolderAccessCommand
+- [x] JWT typed extensions: ClaimsPrincipalExtensions (GetKeycloakUserId, GetEmail, GetTenantId, GetOrganizationId) — eliminated all raw FindFirstValue strings
+- [x] Docker credentials: .env pattern with ${VAR:-default} syntax, .env.example created, password masking in init script
+- [x] KeycloakAdminService PII: removed username/keycloakUserId from log messages
+- [x] KeycloakAdminService thread-safety: EnsureAuthenticatedAsync returns token, per-request HttpRequestMessage Authorization headers
+
+**Architecture & Clean Code:**
+- [x] Audit module repository pattern: IAuditEntryRepository, IAuditSettingRepository — Application layer zero Infrastructure dependency
+- [x] KeycloakAdminService ActivitySource: OpenTelemetry spans on all 5 HTTP methods (Nexora.Identity.Keycloak)
+- [x] SharedKernel AuditEntry strongly-typed ID: AuditEntryId replaces raw Guid
+- [x] AuditOperationDiscovery: extracted from endpoint to testable service class
+- [x] CreateRoleHandler N+1 fix: batch permission load, eliminated duplicate DB query
+- [x] AsNoTracking: added to 7 query handlers (6 Documents + 1 Identity)
+- [x] ILogger injection: added to 5 query handlers with slow-query warnings (>500ms)
+- [x] FluentValidation validators: GetAuditLogsQuery, GetAuditLogDetailQuery
+- [x] Upload size constant: unified to DocumentConstants.MaxFileSizeBytes (50MB)
+- [x] AuditLogBehavior: ADR exemption comments, sentence-case logs, removed redundant ex.Message
+- [x] 400→422: audit settings business rule failures return UnprocessableEntity
+- [x] SQL LIKE wildcards: escaped in GetUsersQuery search
+- [x] TenantMiddleware: PathString comparison instead of string.StartsWith
+
+**Domain Model Fixes:**
+- [x] Folder.GrantAccess: updates expiresAt even when permission unchanged
+- [x] FolderAccess DateTime→DateTimeOffset: ExpiresAt, DTOs, API contracts, job
+- [x] FolderAccessConfiguration: unique filtered indexes (IsDeleted=false)
+- [x] FolderAccessExpiryJob: batched soft-delete (100 per batch)
+- [x] ConfirmUploadCommand: MimeType passed to AddVersion on duplicate upload
+- [x] AuditSetting: DomainException instead of ArgumentNullException in NormalizeKey, Update validation
+- [x] AuditEntry.Create: operationType guard clause added
+- [x] BulkUpdate validator: normalized keys before duplicate check
+- [x] GDPR contact deletion: soft-delete (IsDeleted=true) instead of Archive — excluded from default queries, IgnoreQueryFilters for export
+
+**Frontend Fixes:**
+- [x] Hardcoded strings: AuditLogDetailPage (User ID, Entity ID), AuditLogListPage (module names) → lockey_ keys
+- [x] Turkish locale: Unicode escapes → UTF-8 characters in documents.json
+- [x] api.ts: null+undefined check in unwrapEnvelope
+- [x] VariableDefinitionsEditor: stable crypto.randomUUID() keys, type guard, parseDefinitions validation
+- [x] VariableEditor: string-only parseValues, useEffect comparison optimization
+- [x] FolderAccessDialog: shadcn Input, aria-labels, proper onBlur (relatedTarget)
+- [x] FileDropZone: aria-label on clear button
+- [x] DocumentUploadPage: React Hook Form + Zod, useWatch for reactive disabled
+- [x] DocumentDetailPage: separate user lookup for access list, upload error keeps dialog open
+- [x] DocumentListPage: handleApiError in archive onError, version prefix localized
+- [x] SignatureCreatePage: ARIA combobox pattern, keyboard navigation, email null handling
+- [x] ContactDetailPage: handleToggleForm clears search state
+- [x] useFileUpload: error type discrimination (API/network/unexpected), JSDoc
+- [x] staleTime: DEFAULT_LIST_STALE_TIME constant (30s), shared across hooks
+- [x] AuditOperationTypeBadge: type guard against invalid cast
+- [x] Missing locale keys: lockey_contacts_export_status_queued, lockey_contacts_error_tag_name_duplicate, lockey_error_api, lockey_documents_upload_clear, lockey_documents_version_prefix
+
+**UX/UI Standardization:**
+- [x] UX/UI Design Standards document: docs/standards/UX_UI_STANDARDS.md
+- [x] Custom underline tab pattern standardized (border-b-2, useState — not Radix Tabs)
+- [x] Identity module: UserDetailPage, RoleDetailPage, OrganizationDetailPage, TenantDetailPage → tab-based layout
+- [x] Notifications TemplateDetailPage → tab-based (Details + Translations)
+- [x] Reporting ReportDetailPage → tab-based (Overview + Executions + Parameters)
+- [x] Header layout: font-semibold, badges grouped with name, actions right-aligned
+- [x] Unused shadcn tabs.tsx component removed
+
+**Documentation:**
+- [x] CHANGELOG.md created (Keep a Changelog format)
+- [x] 5 module SPECs: 20+ Mermaid diagrams added (sequence, component, integration, state)
+- [x] Identity SPEC: stale AuditLog references removed, Version field added
+- [x] Contacts SPEC: Version field added
+- [x] Audit SPEC: diagrams updated for repository abstraction
+- [x] MANAGEMENT_PORTAL.md: MD022/MD040 fixes, permission scope examples aligned
+- [x] ROADMAP.md: MD022/MD028 fixes, duplicate NMP Parallel Track removed
+- [x] MODULE_SYSTEM.md, OVERVIEW.md, INFRASTRUCTURE_STANDARDS.md: code block language tags
+- [x] CR-01 deferred to Phase 1.5.2 with documentation
+
+**Testing:**
+- [x] DiscoverAuditableOperations: 13 tests (module extraction, operation names, type mapping)
+- [x] FolderAccessExpiryJob: 4 tests (expired, non-expired, empty, mixed)
+- [x] ConfirmUploadTests: IsVersionUpdate assertion
+- [x] GetCurrentUserHandler: 6 tests (not found, success, orgs, tenant isolation)
+- [x] Keycloak failure-path: 2 tests (exception propagation, no persist on failure)
+- [x] All existing tests updated for: repository pattern, ILogger injection, strongly-typed IDs
+- [x] Tests: 1,808 total, 0 failures, 1 skipped (SlowQuery in-memory DB limitation)
+
 ---
 
 ## Phase 1.5: Bridge
@@ -464,6 +555,7 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 - [ ] **User ↔ Contact Linking** — Optional `ContactId?` FK on User entity. Admin can link a user to an existing contact for 360° view. Not automatic — system users (API, bot) should not create contacts. To be designed alongside CRM module (Phase 2) where "Staff" contact type will be introduced.
 - [ ] **Contact Import Field Mapping** — CSV/Excel import wizard: (1) file upload → preview first 5 rows, (2) user maps each column to a Contact field via dropdowns, (3) validation → import. Current implementation assumes fixed column order.
 - [ ] **Contact Export Improvements** — Export with custom field selection, date range filter, format options (CSV, Excel, vCard).
+- [ ] **GDPR Hard Delete (Right to Erasure)** — Current GDPR delete only anonymizes PII and soft-deletes the contact. GDPR Article 17 requires physical removal. Implementation: `ExecuteDeleteAsync()` for all 9 child entities (ContactAddress, ContactNote, ContactCustomField, ContactTag, ContactRelationship, CommunicationPreference, ContactActivity, ConsentRecord, Contact) in FK-safe order. ConsentRecord'lar anonymize edilir (yasal delil olarak tutulur, Madde 17(3)(e)). Cross-module cleanup via `ContactGdprDeletedIntegrationEvent`: Documents (LinkedEntityId nullify, SignatureRecipient PII anonymize), Notifications (RecipientAddress anonymize), Audit (BeforeState/AfterState PII scrub). Tests: SQLite InMemory provider (ExecuteDeleteAsync desteği). GDPR Export'a CommunicationPreference ve ContactRelationship verileri eklenmeli. Plan: `.claude/plans/gdpr-hard-delete.md`
 
 ### 1.5.7 Demo Data Framework (Weeks 7-8)
 

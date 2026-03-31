@@ -171,6 +171,7 @@
 
   "lockey_contacts_gdpr_title": "KVKK / GDPR",
   "lockey_contacts_gdpr_export": "Kişisel Verileri Dışa Aktar",
+  "lockey_contacts_gdpr_export_completed": "Kişisel veriler başarıyla dışa aktarıldı.",
   "lockey_contacts_gdpr_delete": "Kişisel Verileri Sil",
   "lockey_contacts_gdpr_delete_reason": "Silme Nedeni",
   "lockey_contacts_gdpr_confirm_delete": "Bu kişiye ait tüm kişisel verileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -339,7 +340,10 @@
   "lockey_contacts_export_status_pending": "Beklemede",
   "lockey_contacts_export_status_processing": "İşleniyor",
   "lockey_contacts_export_status_completed": "Tamamlandı",
+  "lockey_contacts_export_status_queued": "Sırada",
   "lockey_contacts_export_status_failed": "Başarısız",
+
+  "lockey_contacts_error_tag_name_duplicate": "Bu isimde bir etiket zaten mevcut.",
 
   "lockey_contacts_action_find_duplicates": "Yinelenenleri Bul",
 

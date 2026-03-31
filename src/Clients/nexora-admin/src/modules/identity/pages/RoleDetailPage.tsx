@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router';
-import { Pencil, Trash2, Save, X, Shield, Users, UserMinus, UserPlus } from 'lucide-react';
+import { Pencil, Trash2, Save, X, Shield, UserMinus, UserPlus } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { cn } from '@/shared/lib/utils';
+import { RoleStatusBadge } from '../components/RoleStatusBadge';
 import {
   Dialog,
   DialogContent,
@@ -22,10 +23,13 @@ import { useUsers } from '../hooks/useUsers';
 import { PermissionSelector } from '../components/PermissionSelector';
 import type { RoleUserDto } from '../types';
 
+type TabKey = 'details' | 'permissions' | 'users';
+
 export default function RoleDetailPage() {
   const { t } = useTranslation('identity');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabKey>('details');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { data: role, isLoading } = useRole(id ?? '');
   const { hasPermission } = usePermissions();
@@ -34,7 +38,6 @@ export default function RoleDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [usersOpen, setUsersOpen] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPermissionIds, setEditPermissionIds] = useState<string[]>([]);
@@ -81,6 +84,7 @@ export default function RoleDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-muted-foreground" />
@@ -92,13 +96,16 @@ export default function RoleDetailPage() {
                 className="text-xl font-bold"
               />
             ) : (
-              <h1 className="text-2xl font-bold text-foreground">{role.name}</h1>
+              <h1 className="text-2xl font-semibold">{role.name}</h1>
             )}
-            {role.isSystemRole && (
-              <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded mt-1 inline-block">
-                {t('lockey_identity_system_role')}
-              </span>
-            )}
+            <div className="flex items-center gap-2 mt-1">
+              <RoleStatusBadge isActive={role.isActive} />
+              {role.isSystemRole && (
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                  {t('lockey_identity_system_role')}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -141,76 +148,69 @@ export default function RoleDetailPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                {t('lockey_identity_permissions')}
-                <span className="text-xs text-muted-foreground font-normal">
-                  ({editing ? editPermissionIds.length : role.permissions.length})
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {editing ? (
-                <PermissionSelector
-                  selectedIds={editPermissionIds}
-                  onChange={setEditPermissionIds}
-                />
-              ) : (
-                <PermissionReadOnly permissions={role.permissions} />
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">{t('lockey_identity_details')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('lockey_identity_col_name')}</span>
-                <span className="text-foreground">{role.name}</span>
-              </div>
-              {role.description && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('lockey_identity_role_description')}</span>
-                  <span className="text-foreground">{role.description?.startsWith('lockey_') ? t(role.description) : role.description}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('lockey_identity_col_status')}</span>
-                <span className="text-foreground">
-                  {role.isActive ? t('lockey_identity_active') : t('lockey_identity_inactive')}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card
-            className="cursor-pointer transition-colors hover:bg-accent/50"
-            onClick={() => setUsersOpen(true)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setUsersOpen(true); }}
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        {([
+          { key: 'details' as const, label: t('lockey_identity_tab_details') },
+          { key: 'permissions' as const, label: t('lockey_identity_tab_permissions') },
+          { key: 'users' as const, label: t('lockey_identity_tab_users') },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
           >
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                {t('lockey_identity_assigned_users')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{role.assignedUserCount}</p>
-              <p className="text-xs text-muted-foreground">{t('lockey_identity_users_with_role')}</p>
-            </CardContent>
-          </Card>
-        </div>
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* Tab content */}
+      {activeTab === 'details' && (
+        <div className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t('lockey_identity_col_name')}</span>
+            <span className="text-foreground">{role.name}</span>
+          </div>
+          {role.description && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('lockey_identity_role_description')}</span>
+              <span className="text-foreground">{role.description?.startsWith('lockey_') ? t(role.description) : role.description}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">{t('lockey_identity_col_status')}</span>
+            <span className="text-foreground">
+              {role.isActive ? t('lockey_identity_active') : t('lockey_identity_inactive')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'permissions' && (
+        <div className="mt-4">
+          {editing ? (
+            <PermissionSelector
+              selectedIds={editPermissionIds}
+              onChange={setEditPermissionIds}
+            />
+          ) : (
+            <PermissionReadOnly permissions={role.permissions} />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'users' && (
+        <div className="mt-4">
+          <RoleUsersPanel roleId={role.id} />
+        </div>
+      )}
 
       {/* Delete confirmation */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
@@ -229,28 +229,16 @@ export default function RoleDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Assigned users dialog */}
-      <RoleUsersDialog
-        open={usersOpen}
-        onOpenChange={setUsersOpen}
-        roleId={role.id}
-        roleName={role.name}
-      />
     </div>
   );
 }
 
-function RoleUsersDialog({
-  open,
-  onOpenChange,
+/* ── Role Users Panel (inline, not dialog) ── */
+
+function RoleUsersPanel({
   roleId,
-  roleName,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   roleId: string;
-  roleName: string;
 }) {
   const { t } = useTranslation('identity');
   const { hasPermission } = usePermissions();
@@ -269,74 +257,55 @@ function RoleUsersDialog({
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {t('lockey_identity_role_users_title', { roleName })}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              {t('lockey_identity_role_users_title', { roleName })}
-            </DialogDescription>
-          </DialogHeader>
+    <div className="space-y-4">
+      {hasPermission('identity.roles.update') && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setAddUserOpen(true)}>
+            <UserPlus className="h-4 w-4 me-1" />
+            {t('lockey_identity_role_add_user')}
+          </Button>
+        </div>
+      )}
 
-          {hasPermission('identity.roles.update') && (
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => setAddUserOpen(true)}>
-                <UserPlus className="h-4 w-4 me-1" />
-                {t('lockey_identity_role_add_user')}
-              </Button>
-            </div>
-          )}
-
-          <div className="max-h-80 overflow-y-auto space-y-1">
-            {isPending ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {t('lockey_identity_loading')}
-              </p>
-            ) : roleUsersData?.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {t('lockey_identity_role_no_users')}
-              </p>
-            ) : (
-              roleUsersData?.items.map((user) => (
-                <div
-                  key={`${user.userId}-${user.organizationId}`}
-                  className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent/50 transition-colors"
+      <div className="space-y-1">
+        {isPending ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            {t('lockey_identity_loading')}
+          </p>
+        ) : roleUsersData?.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            {t('lockey_identity_role_no_users')}
+          </p>
+        ) : (
+          roleUsersData?.items.map((user) => (
+            <div
+              key={`${user.userId}-${user.organizationId}`}
+              className="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-accent/50 transition-colors"
+            >
+              <div>
+                <p className="font-medium">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('lockey_identity_col_assigned')}: {formatRelativeTime(user.assignedAt)}
+                </p>
+              </div>
+              {hasPermission('identity.roles.update') && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title={t('lockey_identity_role_remove_user')}
+                  onClick={() => setUserToRemove(user)}
                 >
-                  <div>
-                    <p className="font-medium">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t('lockey_identity_col_assigned')}: {formatRelativeTime(user.assignedAt)}
-                    </p>
-                  </div>
-                  {hasPermission('identity.roles.update') && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      title={t('lockey_identity_role_remove_user')}
-                      onClick={() => setUserToRemove(user)}
-                    >
-                      <UserMinus className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {t('lockey_identity_cancel')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  <UserMinus className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
+            </div>
+          ))
+        )}
+      </div>
 
       {/* Remove user confirmation */}
       <Dialog open={userToRemove !== null} onOpenChange={() => setUserToRemove(null)}>
@@ -371,7 +340,7 @@ function RoleUsersDialog({
         roleId={roleId}
         existingUserIds={roleUsersData?.items.map((u) => u.userId) ?? []}
       />
-    </>
+    </div>
   );
 }
 

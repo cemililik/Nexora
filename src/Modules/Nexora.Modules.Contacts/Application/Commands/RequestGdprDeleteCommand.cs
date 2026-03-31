@@ -13,7 +13,7 @@ namespace Nexora.Modules.Contacts.Application.Commands;
 /// <summary>Command to anonymize and archive a contact's personal data (GDPR right to erasure).</summary>
 public sealed record RequestGdprDeleteCommand(Guid ContactId, string Reason) : ICommand;
 
-/// <summary>Anonymizes PII, revokes all consents, and archives the contact.</summary>
+/// <summary>Anonymizes PII, revokes all consents, and soft-deletes the contact.</summary>
 public sealed class RequestGdprDeleteHandler(
     ContactsDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
@@ -57,9 +57,8 @@ public sealed class RequestGdprDeleteHandler(
             currency: contact.Currency,
             title: null);
 
-        // Archive the contact
-        if (contact.Status == ContactStatus.Active)
-            contact.Archive();
+        // Soft-delete the contact (BaseDbContext intercepts Remove and sets IsDeleted=true)
+        dbContext.Contacts.Remove(contact);
 
         // Revoke all active consents
         var activeConsents = await dbContext.ConsentRecords

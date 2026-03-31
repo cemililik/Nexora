@@ -195,6 +195,10 @@
   "lockey_identity_tab_roles": "Roller",
   "lockey_identity_tab_settings": "Ayarlar",
   "lockey_identity_tab_modules": "Modüller",
+  "lockey_identity_tab_details": "Detaylar",
+  "lockey_identity_tab_permissions": "İzinler",
+  "lockey_identity_tab_users": "Kullanıcılar",
+  "lockey_identity_tab_members": "Üyeler",
 
   "lockey_identity_yes": "Evet",
   "lockey_identity_no": "Hayır",

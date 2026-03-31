@@ -73,5 +73,9 @@
   "lockey_reporting_duration": "{{ms}}ms",
   "lockey_reporting_module_placeholder": "e.g. contacts",
   "lockey_reporting_query_placeholder": "SELECT id, name FROM contacts_contacts",
-  "lockey_reporting_null": "null"
+  "lockey_reporting_null": "null",
+
+  "lockey_reporting_tab_overview": "Overview",
+  "lockey_reporting_tab_executions": "Executions",
+  "lockey_reporting_tab_parameters": "Parameters"
 }

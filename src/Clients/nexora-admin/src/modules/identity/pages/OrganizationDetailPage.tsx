@@ -8,12 +8,12 @@ import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
@@ -45,10 +45,13 @@ function updateOrgSchemaFactory(t: (key: string, options?: Record<string, unknow
   });
 }
 
+type TabKey = 'details' | 'members';
+
 export default function OrganizationDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const { t } = useTranslation('identity');
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabKey>('details');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
   const { hasPermission } = usePermissions();
@@ -137,10 +140,13 @@ export default function OrganizationDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{org.name}</h1>
-          <p className="text-sm text-muted-foreground">{org.slug}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm text-muted-foreground">{org.slug}</span>
+          </div>
         </div>
         <div className="flex gap-2">
           {hasPermission('identity.organization.delete') && (
@@ -164,11 +170,31 @@ export default function OrganizationDetailPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('lockey_identity_org_detail_title')}</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        {([
+          { key: 'details' as const, label: t('lockey_identity_tab_details') },
+          { key: 'members' as const, label: t('lockey_identity_tab_members') },
+        ]).map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'details' && (
+        <div className="mt-4">
           {isEditing ? (
             <form
               onSubmit={form.handleSubmit((data) => {
@@ -233,19 +259,18 @@ export default function OrganizationDetailPage() {
               </div>
             </dl>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>{t('lockey_identity_org_members_title')}</CardTitle>
+      {activeTab === 'members' && (
+        <div className="mt-4 space-y-4">
           {hasPermission('identity.organization.add-member') && (
-            <Button size="sm" onClick={() => setAddMemberOpen(true)}>
-              {t('lockey_identity_action_add_member')}
-            </Button>
+            <div className="flex justify-end">
+              <Button size="sm" onClick={() => setAddMemberOpen(true)}>
+                {t('lockey_identity_action_add_member')}
+              </Button>
+            </div>
           )}
-        </CardHeader>
-        <CardContent>
           <DataTable
             columns={memberColumns}
             data={membersData?.items ?? []}
@@ -256,8 +281,8 @@ export default function OrganizationDetailPage() {
             isLoading={membersLoading}
             emptyMessage={t('lockey_identity_empty_members')}
           />
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       <ConfirmDialog
         open={showDeleteConfirm}
