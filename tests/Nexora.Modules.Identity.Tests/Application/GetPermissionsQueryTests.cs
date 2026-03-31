@@ -50,6 +50,7 @@ public sealed class GetPermissionsQueryTests : IDisposable
         var handler = new GetPermissionsHandler(_dbContext);
         var result = await handler.Handle(new GetPermissionsQuery("crm"), CancellationToken.None);
 
+        result.IsSuccess.Should().BeTrue();
         result.Value.Should().HaveCount(2);
         result.Value!.All(p => p.Module == "crm").Should().BeTrue();
     }

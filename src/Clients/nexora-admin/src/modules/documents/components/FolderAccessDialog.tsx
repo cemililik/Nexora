@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { cn } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
@@ -224,7 +225,7 @@ export function FolderAccessDialog({ folderId, folderName, open, onOpenChange }:
                 keyExtractor={(user) => user.id}
                 placeholder={t('lockey_documents_folder_access_search_user')}
                 label={t('lockey_documents_access_col_user')}
-                className={selectedRoleId ? 'pointer-events-none opacity-50' : ''}
+                className={cn(selectedRoleId && 'pointer-events-none opacity-50')}
               />
 
               {/* Role dropdown */}

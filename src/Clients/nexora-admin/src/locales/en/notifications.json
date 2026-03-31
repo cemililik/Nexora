@@ -210,5 +210,9 @@
   "lockey_notifications_aria_translations_table": "Translations",
 
   "lockey_notifications_tab_details": "Details",
-  "lockey_notifications_tab_translations": "Translations"
+  "lockey_notifications_tab_translations": "Translations",
+
+  "lockey_notifications_search_placeholder": "Search notifications...",
+  "lockey_notifications_send_notification": "Send Notification",
+  "lockey_notifications_empty_notifications": "No notifications found"
 }

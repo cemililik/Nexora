@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Modules.Identity.Application.Queries;
 using Nexora.Modules.Identity.Domain.Entities;
@@ -22,15 +21,18 @@ public sealed class GetTenantsQueryTests : IDisposable
     [Fact]
     public async Task Handle_ShouldReturnPaginatedTenants()
     {
+        // Arrange
         await _platformDb.Tenants.AddRangeAsync(
             Tenant.Create("Alpha", "alpha"),
             Tenant.Create("Beta", "beta"),
             Tenant.Create("Gamma", "gamma"));
         await _platformDb.SaveChangesAsync();
 
+        // Act
         var handler = new GetTenantsHandler(_platformDb);
         var result = await handler.Handle(new GetTenantsQuery(1, 2), CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().HaveCount(2);
         result.Value.TotalCount.Should().Be(3);
@@ -41,9 +43,13 @@ public sealed class GetTenantsQueryTests : IDisposable
     [Fact]
     public async Task Handle_EmptyDb_ShouldReturnEmpty()
     {
+        // Arrange
         var handler = new GetTenantsHandler(_platformDb);
+
+        // Act
         var result = await handler.Handle(new GetTenantsQuery(), CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().BeEmpty();
         result.Value.TotalCount.Should().Be(0);

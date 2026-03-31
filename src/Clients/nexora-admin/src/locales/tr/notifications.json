@@ -210,5 +210,9 @@
   "lockey_notifications_aria_translations_table": "Çeviriler",
 
   "lockey_notifications_tab_details": "Detaylar",
-  "lockey_notifications_tab_translations": "Çeviriler"
+  "lockey_notifications_tab_translations": "Çeviriler",
+
+  "lockey_notifications_search_placeholder": "Bildirim ara...",
+  "lockey_notifications_send_notification": "Bildirim Gönder",
+  "lockey_notifications_empty_notifications": "Bildirim bulunamadı"
 }

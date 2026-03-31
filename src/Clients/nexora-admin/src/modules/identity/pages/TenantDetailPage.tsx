@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
+import { Blocks } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
@@ -160,7 +161,16 @@ export default function TenantDetailPage() {
           {isModulesPending ? (
             <TabContentSkeleton />
           ) : !modules?.length ? (
-            <EmptyState title={t('lockey_identity_empty_modules')} />
+            <EmptyState
+              icon={Blocks}
+              title={t('lockey_identity_empty_modules')}
+              description={t('lockey_identity_empty_modules_description')}
+              action={
+                hasPermission('identity.modules.manage')
+                  ? { label: t('lockey_identity_action_install_module'), onClick: () => setInstallOpen(true) }
+                  : undefined
+              }
+            />
           ) : (
             <ul className="space-y-2">
               {modules.map((mod) => (

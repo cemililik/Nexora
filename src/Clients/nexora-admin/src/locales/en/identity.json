@@ -188,6 +188,7 @@
   "lockey_identity_empty_tenants": "No tenants found.",
   "lockey_identity_empty_audit": "No audit log entries found.",
   "lockey_identity_empty_modules": "No modules installed.",
+  "lockey_identity_empty_modules_description": "Install a module to enable its features for this tenant.",
   "lockey_identity_empty_members": "No members in this organization.",
 
   "lockey_identity_tab_profile": "Profile",

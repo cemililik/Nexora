@@ -1,8 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { Bell } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { SearchInput } from '@/shared/components/data/SearchInput';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -45,6 +47,37 @@ export default function NotificationListPage() {
   }, [setBreadcrumbs]);
 
   const { data, isPending } = useNotifications({ page, pageSize, channel, status, search });
+
+  const hasActiveFilters = !!(search || channel || status);
+  const emptyState = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={Bell}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams((prev) => {
+              const next = new URLSearchParams();
+              if (prev.has('pageSize')) next.set('pageSize', prev.get('pageSize')!);
+              return next;
+            }),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={Bell}
+        title={t('lockey_notifications_empty_notifications')}
+        action={
+          canSend
+            ? { label: t('lockey_notifications_send_notification'), onClick: () => navigate('/notifications/send') }
+            : undefined
+        }
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams, canSend]);
 
   const updateFilter = (key: string, value: string) => {
     setSearchParams((prev: URLSearchParams) => {
@@ -177,7 +210,7 @@ export default function NotificationListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_notifications_empty_notifications')}
+        emptyState={emptyState}
         keyExtractor={(row) => row.id}
       />
     </div>

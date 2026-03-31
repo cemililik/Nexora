@@ -59,7 +59,12 @@ public sealed class KeycloakAdminService(
             logger.LogInformation("Created Keycloak realm {RealmName}", realmName);
             return realmName;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            capturedException = ex;
+            throw;
+        }
+        catch (JsonException ex)
         {
             capturedException = ex;
             throw;
@@ -127,7 +132,12 @@ public sealed class KeycloakAdminService(
 
             return keycloakUserId;
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            capturedException = ex;
+            throw;
+        }
+        catch (JsonException ex)
         {
             capturedException = ex;
             throw;
@@ -181,7 +191,12 @@ public sealed class KeycloakAdminService(
 
             logger.LogInformation("Updated Keycloak user in realm {Realm}", realm);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            capturedException = ex;
+            throw;
+        }
+        catch (JsonException ex)
         {
             capturedException = ex;
             throw;
@@ -242,7 +257,12 @@ public sealed class KeycloakAdminService(
             logger.LogInformation("Set Keycloak user enabled={Enabled} in realm {Realm}",
                 enabled, realm);
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
+        {
+            capturedException = ex;
+            throw;
+        }
+        catch (JsonException ex)
         {
             capturedException = ex;
             throw;
@@ -303,7 +323,12 @@ public sealed class KeycloakAdminService(
 
                 return _cachedToken;
             }
-            catch (Exception ex)
+            catch (HttpRequestException ex)
+            {
+                capturedException = ex;
+                throw;
+            }
+            catch (JsonException ex)
             {
                 capturedException = ex;
                 throw;

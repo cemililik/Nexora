@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
+import { Users } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
@@ -85,11 +87,15 @@ export default function SignatureDetailPage() {
 
       {/* Tab navigation */}
       <div className="border-b">
-        <div className="-mb-px flex gap-6">
+        <div role="tablist" className="-mb-px flex gap-6">
           {TABS.map((tab) => (
             <button
               key={tab.id}
+              id={`${tab.id}-tab`}
               type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`${tab.id}-panel`}
               onClick={() => handleTabChange(tab.id)}
               className={cn(
                 'pb-3 text-sm font-medium transition-colors border-b-2',
@@ -106,7 +112,12 @@ export default function SignatureDetailPage() {
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4">
+        <div
+          id="overview-panel"
+          role="tabpanel"
+          aria-labelledby="overview-tab"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4"
+        >
           <div>
             <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_col_document')}</p>
             <p className="text-sm font-medium">{request.documentId}</p>
@@ -128,7 +139,7 @@ export default function SignatureDetailPage() {
 
       {/* Recipients Tab */}
       {activeTab === 'recipients' && (
-        <div>
+        <div id="recipients-panel" role="tabpanel" aria-labelledby="recipients-tab">
           {request.recipients.length > 0 ? (
             <div className="rounded-lg border">
               <table className="w-full text-sm" aria-label={t('lockey_documents_signatures_col_recipients')}>
@@ -161,7 +172,11 @@ export default function SignatureDetailPage() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_empty')}</p>
+            <EmptyState
+              icon={Users}
+              title={t('lockey_documents_signatures_empty_title')}
+              description={t('lockey_documents_signatures_empty')}
+            />
           )}
         </div>
       )}

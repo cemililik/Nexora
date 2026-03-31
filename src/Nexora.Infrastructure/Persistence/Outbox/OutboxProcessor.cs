@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -63,10 +62,8 @@ public sealed class OutboxProcessor(
         await using var scope = scopeFactory.CreateAsyncScope();
         var tenantProvider = scope.ServiceProvider.GetRequiredService<IActiveTenantProvider>();
         var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
-        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
+        var connectionString = _options.ConnectionString;
 
         var tenants = await tenantProvider.GetActiveTenantsAsync(ct);
         var totalProcessed = 0;
@@ -100,16 +97,35 @@ public sealed class OutboxProcessor(
     private async Task<int> ProcessTenantOutboxAsync(
         string schemaName, string connectionString, IEventBus eventBus, CancellationToken ct)
     {
+        // Fetch a batch of pending message IDs using FOR UPDATE SKIP LOCKED so
+        // concurrent processor instances do not pick up the same rows.
+        var messages = await FetchPendingMessagesAsync(schemaName, connectionString, ct);
+
+        if (messages.Count == 0)
+            return 0;
+
+        logger.LogDebug("OutboxProcessor found {MessageCount} pending messages in schema {SchemaName}",
+            messages.Count, schemaName);
+
+        // Each message is processed in its own isolated transaction so that a single
+        // failure does not roll back successfully published events within the same batch.
+        foreach (var message in messages)
+        {
+            if (ct.IsCancellationRequested)
+                break;
+
+            await ProcessMessageAsync(schemaName, connectionString, eventBus, message, ct);
+        }
+
+        return messages.Count;
+    }
+
+    private async Task<List<(Guid Id, string EventType, string Payload, string TenantId, DateTimeOffset CreatedAt, int RetryCount)>> FetchPendingMessagesAsync(
+        string schemaName, string connectionString, CancellationToken ct)
+    {
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(ct);
 
-        // FOR UPDATE SKIP LOCKED requires an explicit transaction to hold row locks until
-        // the UPDATE (MarkProcessed / RecordFailure) completes. Without a transaction the
-        // lock is released as soon as the SELECT statement finishes, allowing another
-        // processor instance to pick up the same rows concurrently.
-        await using var tx = await connection.BeginTransactionAsync(ct);
-
-        // Fetch pending messages
         var selectSql = $"""
             SELECT "Id", "EventType", "EventPayload", "TenantId", "CreatedAt", "RetryCount"
             FROM "{schemaName}".outbox_messages
@@ -119,6 +135,7 @@ public sealed class OutboxProcessor(
             FOR UPDATE SKIP LOCKED
             """;
 
+        await using var tx = await connection.BeginTransactionAsync(ct);
         await using var selectCmd = new NpgsqlCommand(selectSql, connection, tx);
         selectCmd.Parameters.AddWithValue("maxRetry", _options.MaxRetryCount);
         selectCmd.Parameters.AddWithValue("batchSize", _options.BatchSize);
@@ -139,80 +156,93 @@ public sealed class OutboxProcessor(
             }
         }
 
-        if (messages.Count == 0)
-            return 0;
+        // Commit the SELECT … FOR UPDATE SKIP LOCKED to release the advisory locks
+        // after we have captured the IDs. Each message will be processed and
+        // updated in its own independent transaction below.
+        await tx.CommitAsync(CancellationToken.None);
+        return messages;
+    }
 
-        logger.LogDebug("OutboxProcessor found {MessageCount} pending messages in schema {SchemaName}",
-            messages.Count, schemaName);
+    private async Task ProcessMessageAsync(
+        string schemaName, string connectionString, IEventBus eventBus,
+        (Guid Id, string EventType, string Payload, string TenantId, DateTimeOffset CreatedAt, int RetryCount) message,
+        CancellationToken ct)
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(ct);
+        await using var tx = await connection.BeginTransactionAsync(ct);
 
-        foreach (var message in messages)
+        try
         {
-            try
+            var eventType = Type.GetType(message.EventType);
+            if (eventType is null)
             {
-                var eventType = Type.GetType(message.EventType);
-                if (eventType is null)
-                {
-                    logger.LogError(
-                        "OutboxProcessor could not resolve event type {EventType} (MessageId: {MessageId}, TenantId: {TenantId})",
-                        message.EventType, message.Id, message.TenantId);
-                    await RecordFailureAsync(connection, tx, schemaName, message.Id, $"Could not resolve type: {message.EventType}", message.RetryCount, ct);
-                    continue;
-                }
-
-                var integrationEvent = JsonSerializer.Deserialize(message.Payload, eventType);
-                if (integrationEvent is null)
-                {
-                    logger.LogError(
-                        "OutboxProcessor failed to deserialize event {EventType} (MessageId: {MessageId}, TenantId: {TenantId})",
-                        message.EventType, message.Id, message.TenantId);
-                    await RecordFailureAsync(connection, tx, schemaName, message.Id, "Deserialization returned null", message.RetryCount, ct);
-                    continue;
-                }
-
-                var publishMethod = PublishMethodCache.GetOrAdd(eventType, type =>
-                    typeof(IEventBus).GetMethod(nameof(IEventBus.PublishAsync))!.MakeGenericMethod(type));
-
-                var task = (Task)publishMethod.Invoke(eventBus, [integrationEvent, ct])!;
-                await task;
-
-                await MarkProcessedAsync(connection, tx, schemaName, message.Id, ct);
-
-                var latencyMs = (DateTimeOffset.UtcNow - message.CreatedAt).TotalMilliseconds;
-                OutboxMetrics.MessagesPublished.Add(1);
-                OutboxMetrics.ProcessingLatency.Record(latencyMs);
-
-                logger.LogInformation(
-                    "OutboxProcessor published event {EventType} (MessageId: {MessageId}, TenantId: {TenantId}, LatencyMs: {LatencyMs})",
-                    eventType.Name, message.Id, message.TenantId, latencyMs);
+                logger.LogError(
+                    "OutboxProcessor could not resolve event type {EventType} (MessageId: {MessageId}, TenantId: {TenantId})",
+                    message.EventType, message.Id, message.TenantId);
+                await RecordFailureAsync(connection, tx, schemaName, message.Id, $"Could not resolve type: {message.EventType}", message.RetryCount, ct);
+                await tx.CommitAsync(CancellationToken.None);
+                return;
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+
+            var integrationEvent = JsonSerializer.Deserialize(message.Payload, eventType);
+            if (integrationEvent is null)
             {
-                throw;
+                logger.LogError(
+                    "OutboxProcessor failed to deserialize event {EventType} (MessageId: {MessageId}, TenantId: {TenantId})",
+                    message.EventType, message.Id, message.TenantId);
+                await RecordFailureAsync(connection, tx, schemaName, message.Id, "Deserialization returned null", message.RetryCount, ct);
+                await tx.CommitAsync(CancellationToken.None);
+                return;
             }
-            catch (Exception ex)
-            {
-                OutboxMetrics.MessagesFailed.Add(1);
-                var newRetryCount = message.RetryCount + 1;
 
-                if (newRetryCount >= _options.MaxRetryCount)
-                {
-                    logger.LogError(ex,
-                        "Outbox message {MessageId} exceeded max retries — moved to dead letter (EventType: {EventType}, TenantId: {TenantId}, RetryCount: {RetryCount})",
-                        message.Id, message.EventType, message.TenantId, newRetryCount);
-                }
-                else
-                {
-                    logger.LogWarning(ex,
-                        "OutboxProcessor failed to process message {MessageId} (EventType: {EventType}, TenantId: {TenantId}, RetryCount: {RetryCount})",
-                        message.Id, message.EventType, message.TenantId, newRetryCount);
-                }
+            var publishMethod = PublishMethodCache.GetOrAdd(eventType, type =>
+                typeof(IEventBus).GetMethod(nameof(IEventBus.PublishAsync))!.MakeGenericMethod(type));
 
-                await RecordFailureAsync(connection, tx, schemaName, message.Id, ex.Message, message.RetryCount, ct);
-            }
+            var task = (Task)publishMethod.Invoke(eventBus, [integrationEvent, ct])!;
+            await task;
+
+            await MarkProcessedAsync(connection, tx, schemaName, message.Id, ct);
+
+            // Commit with CancellationToken.None so a shutdown signal does not
+            // leave the database record in an inconsistent state after the event
+            // has already been published to the bus.
+            await tx.CommitAsync(CancellationToken.None);
+
+            var latencyMs = (DateTimeOffset.UtcNow - message.CreatedAt).TotalMilliseconds;
+            OutboxMetrics.MessagesPublished.Add(1);
+            OutboxMetrics.ProcessingLatency.Record(latencyMs);
+
+            logger.LogInformation(
+                "OutboxProcessor published event {EventType} (MessageId: {MessageId}, TenantId: {TenantId}, LatencyMs: {LatencyMs})",
+                eventType.Name, message.Id, message.TenantId, latencyMs);
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            await tx.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            OutboxMetrics.MessagesFailed.Add(1);
+            var newRetryCount = message.RetryCount + 1;
 
-        await tx.CommitAsync(ct);
-        return messages.Count;
+            if (newRetryCount >= _options.MaxRetryCount)
+            {
+                logger.LogError(ex,
+                    "Outbox message {MessageId} exceeded max retries — moved to dead letter (EventType: {EventType}, TenantId: {TenantId}, RetryCount: {RetryCount})",
+                    message.Id, message.EventType, message.TenantId, newRetryCount);
+            }
+            else
+            {
+                logger.LogWarning(ex,
+                    "OutboxProcessor failed to process message {MessageId} (EventType: {EventType}, TenantId: {TenantId}, RetryCount: {RetryCount})",
+                    message.Id, message.EventType, message.TenantId, newRetryCount);
+            }
+
+            await RecordFailureAsync(connection, tx, schemaName, message.Id, ex.Message, message.RetryCount, ct);
+            await tx.CommitAsync(CancellationToken.None);
+        }
     }
 
     private static async Task MarkProcessedAsync(

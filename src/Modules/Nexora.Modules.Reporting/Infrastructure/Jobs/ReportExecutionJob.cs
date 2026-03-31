@@ -104,10 +104,12 @@ public sealed class ReportExecutionJob(
                 "Report execution {ExecutionId} completed: {RowCount} rows in {DurationMs}ms",
                 execution.Id, rows.Count, sw.ElapsedMilliseconds);
         }
-        catch (Exception)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
             execution.MarkFailed("lockey_reporting_error_execution_failed", sw.ElapsedMilliseconds);
+            // Use CancellationToken.None so a late cancellation signal does not
+            // prevent persisting the failure state before re-throwing.
             await dbContext.SaveChangesAsync(CancellationToken.None);
             throw; // NexoraJob base class handles logging and telemetry
         }

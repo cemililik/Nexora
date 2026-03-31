@@ -27,7 +27,7 @@ public sealed class GetRolesQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnRolesWithPermissions()
+    public async Task Handle_WhenRoleExists_ShouldReturnRolesWithPermissions()
     {
         var permission = Permission.Create("crm", "contacts", "read");
         await _dbContext.Permissions.AddAsync(permission);

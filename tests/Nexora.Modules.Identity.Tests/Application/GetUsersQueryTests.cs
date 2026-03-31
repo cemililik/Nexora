@@ -27,7 +27,7 @@ public sealed class GetUsersQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldReturnUsersForTenant()
+    public async Task Handle_WhenUsersExist_ShouldReturnUsersForTenant()
     {
         await _dbContext.Users.AddRangeAsync(
             User.Create(_tenantId, "kc-1", "a@test.com", "Alice", "Smith"),
@@ -43,7 +43,7 @@ public sealed class GetUsersQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_ShouldIsolateTenants()
+    public async Task Handle_WhenMultipleTenants_ShouldReturnOnlyOwnTenantUsers()
     {
         var otherTenantId = TenantId.New();
         await _dbContext.Users.AddAsync(
@@ -55,6 +55,7 @@ public sealed class GetUsersQueryTests : IDisposable
         var handler = new GetUsersHandler(_dbContext, _tenantAccessor, NullLogger<GetUsersHandler>.Instance);
         var result = await handler.Handle(new GetUsersQuery(), CancellationToken.None);
 
+        result.IsSuccess.Should().BeTrue();
         result.Value!.Items.Should().ContainSingle();
         result.Value.Items[0].Email.Should().Be("mine@test.com");
     }

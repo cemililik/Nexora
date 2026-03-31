@@ -274,17 +274,17 @@ export default function AuditSettingsPage() {
         filtered.set(moduleName, ops);
         continue;
       }
-      // Otherwise filter operations by name
+      // Otherwise filter operations by their translated label (same label shown in UI)
       const matchingOps = ops.filter((op) => {
-        const humanName = op.operation.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
-        return humanName.includes(query) || op.operation.toLowerCase().includes(query);
+        const translatedLabel = t('lockey_audit_operation_' + op.operation.toLowerCase(), { defaultValue: op.operation });
+        return translatedLabel.toLowerCase().includes(query) || op.operation.toLowerCase().includes(query);
       });
       if (matchingOps.length > 0) {
         filtered.set(moduleName, matchingOps);
       }
     }
     return filtered;
-  }, [groupedOperations, searchQuery]);
+  }, [groupedOperations, searchQuery, t]);
 
   // Count pending changes compared to saved settings
   const changeCount = useMemo(() => {

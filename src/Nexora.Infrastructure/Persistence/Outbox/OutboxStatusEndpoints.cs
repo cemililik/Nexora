@@ -23,10 +23,17 @@ public static class OutboxStatusEndpoints
         {
             var maxRetryCount = options.Value.MaxRetryCount;
             var degradedThreshold = options.Value.DegradedThreshold;
+            var unhealthyThreshold = options.Value.UnhealthyThreshold;
 
-            var pendingCount = await dbContext.OutboxMessages
+            // All unprocessed messages regardless of retry count
+            var totalPendingCount = await dbContext.OutboxMessages
+                .CountAsync(m => m.ProcessedAt == null, ct);
+
+            // Retryable: not yet at max retries
+            var retryablePendingCount = await dbContext.OutboxMessages
                 .CountAsync(m => m.ProcessedAt == null && m.RetryCount < maxRetryCount, ct);
 
+            // Dead-lettered: exhausted all retries
             var failedCount = await dbContext.OutboxMessages
                 .CountAsync(m => m.ProcessedAt == null && m.RetryCount >= maxRetryCount, ct);
 
@@ -41,15 +48,16 @@ public static class OutboxStatusEndpoints
                     && m.ProcessedAt >= DateTimeOffset.UtcNow.AddHours(-24), ct);
 
             string statusKey;
-            if (failedCount > 0)
+            if (totalPendingCount >= unhealthyThreshold || failedCount > 0)
                 statusKey = "lockey_outbox_status_degraded";
-            else if (pendingCount > degradedThreshold)
+            else if (totalPendingCount >= degradedThreshold)
                 statusKey = "lockey_outbox_status_warning";
             else
                 statusKey = "lockey_outbox_status_healthy";
 
             var dto = new OutboxStatusDto(
-                PendingCount: pendingCount,
+                PendingCount: totalPendingCount,
+                RetryablePendingCount: retryablePendingCount,
                 FailedCount: failedCount,
                 OldestPendingAgeSeconds: oldestPending != default
                     ? (DateTimeOffset.UtcNow - oldestPending).TotalSeconds
@@ -87,6 +95,7 @@ public static class OutboxStatusEndpoints
 /// <summary>Outbox queue status snapshot.</summary>
 public sealed record OutboxStatusDto(
     int PendingCount,
+    int RetryablePendingCount,
     int FailedCount,
     double OldestPendingAgeSeconds,
     int ProcessedLast24H,

@@ -106,6 +106,7 @@ public sealed class NotificationDeliveryRequestedEventHandler(
 
         foreach (var batch in pendingRecipients.Chunk(BulkBatchSize))
         {
+            ct.ThrowIfCancellationRequested();
             DeliveryJobHelper.ProcessRecipients(batch, provider, BulkMessageIdPrefix, logger);
             processedCount += batch.Count(r => r.Status == RecipientStatus.Sent);
         }

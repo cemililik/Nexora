@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { RoleStatusBadge } from '../components/RoleStatusBadge';
@@ -45,12 +46,15 @@ export default function RoleDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editPermissionIds, setEditPermissionIds] = useState<string[]>([]);
 
-  const isDirty = editing && (
-    editName !== (role?.name ?? '') ||
-    editDescription !== (role?.description ?? '') ||
-    JSON.stringify([...editPermissionIds].sort()) !==
-      JSON.stringify([...(role?.permissions.map((p) => p.id) ?? [])].sort())
-  );
+  const isDirty = editing && (() => {
+    const rolePermIds = new Set(role?.permissions.map((p) => p.id) ?? []);
+    return (
+      editName !== (role?.name ?? '') ||
+      editDescription !== (role?.description ?? '') ||
+      editPermissionIds.length !== rolePermIds.size ||
+      editPermissionIds.some((permId) => !rolePermIds.has(permId))
+    );
+  })();
   const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
     useUnsavedChangesGuard(isDirty);
 
@@ -70,7 +74,7 @@ export default function RoleDetailPage() {
   }, [role]);
 
   if (isPending || !role) {
-    return <TabContentSkeleton />;
+    return <LoadingSkeleton />;
   }
 
   const handleSave = () => {

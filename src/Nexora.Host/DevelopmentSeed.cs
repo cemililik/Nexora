@@ -395,8 +395,7 @@ public static class DevelopmentSeed
         }
 
         await dbContext.SaveChangesAsync();
-        logger.LogInformation("[DevSeed] Seeded admin user {Email} (Keycloak: {KeycloakId})",
-            "admin@nexora.dev", keycloakUserId);
+        logger.LogInformation("[DevSeed] Seeded admin user (Keycloak: {KeycloakId})", keycloakUserId);
     }
 
     private static async Task EnsureModuleTablesAsync<TContext>(

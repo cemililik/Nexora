@@ -67,7 +67,11 @@ export default function TemplateListPage() {
           title={t('lockey_common_no_results_filtered', { ns: 'common' })}
           action={{
             label: t('lockey_common_reset_filters', { ns: 'common' }),
-            onClick: () => setSearchParams(new URLSearchParams()),
+            onClick: () => setSearchParams((prev) => {
+              const next = new URLSearchParams();
+              if (prev.has('pageSize')) next.set('pageSize', prev.get('pageSize')!);
+              return next;
+            }),
           }}
         />
       );
