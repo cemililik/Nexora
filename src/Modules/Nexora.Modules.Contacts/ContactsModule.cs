@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Contacts.Api;
 using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
@@ -50,6 +51,9 @@ public sealed class ContactsModule : IModule
 
         // Register activity contributor aggregator for 360-degree view
         services.AddScoped<ContactActivityContributorAggregator>();
+
+        // Register inbox guard for idempotent integration event consumption
+        services.AddScoped<IInboxGuard, InboxGuard<ContactsDbContext>>();
     }
 
     /// <inheritdoc />

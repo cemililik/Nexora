@@ -315,9 +315,26 @@ public class DonationsDbContext : DbContext
 
 Modules **NEVER** reference each other directly. All communication is via:
 
-### 6.1 Integration Events (Async, via Kafka)
+### 6.1 Integration Events (Async, via Kafka + Outbox)
+
+All integration events are published via the **Transactional Outbox** pattern. Domain event handlers call `IOutbox.EnqueueAsync()` instead of `IEventBus.PublishAsync()` directly. This ensures the event is persisted atomically with the entity change. The `OutboxProcessor` BackgroundService polls the outbox table and publishes to Kafka.
+
+On the consumer side, handlers that require idempotency use `IInboxGuard` to deduplicate events by EventId.
 
 ```csharp
+// Domain event handler publishes via Outbox (NOT IEventBus):
+public sealed class ContactMergedDomainEventHandler(IOutbox outbox)
+    : INotificationHandler<ContactMergedDomainEvent>
+{
+    public async Task Handle(ContactMergedDomainEvent notification, CancellationToken ct)
+    {
+        await outbox.EnqueueAsync(new ContactMergedIntegrationEvent(
+            notification.OldContactId,
+            notification.NewContactId,
+            notification.TenantId), ct);
+    }
+}
+
 // Contacts module publishes:
 public sealed record ContactMergedIntegrationEvent(
     Guid OldContactId,

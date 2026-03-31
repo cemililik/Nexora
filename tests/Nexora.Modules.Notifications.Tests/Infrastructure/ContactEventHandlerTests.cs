@@ -5,8 +5,10 @@ using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Notifications.Tests.Helpers;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Events;
+using NSubstitute;
 
 namespace Nexora.Modules.Notifications.Tests.Infrastructure;
 
@@ -14,12 +16,16 @@ public sealed class ContactEventHandlerTests : IDisposable
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly IInboxGuard _inboxGuard;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
     public ContactEventHandlerTests()
     {
         _tenantAccessor = TestTenantAccessor.Create(_tenantId, _orgId);
+        _inboxGuard = Substitute.For<IInboxGuard>();
+        _inboxGuard.IsAlreadyProcessedAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
         var options = new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -34,7 +40,7 @@ public sealed class ContactEventHandlerTests : IDisposable
         await SeedScheduledNotificationForContact(contactId);
 
         var handler = new ConsentChangedIntegrationEventHandler(
-            _dbContext, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
+            _dbContext, _inboxGuard, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
         var @event = new ConsentChangedIntegrationEvent
         {
             TenantId = _tenantId.ToString(),
@@ -59,7 +65,7 @@ public sealed class ContactEventHandlerTests : IDisposable
         await SeedScheduledNotificationForContact(contactId);
 
         var handler = new ConsentChangedIntegrationEventHandler(
-            _dbContext, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
+            _dbContext, _inboxGuard, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
         var @event = new ConsentChangedIntegrationEvent
         {
             TenantId = _tenantId.ToString(),
@@ -81,7 +87,7 @@ public sealed class ContactEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new ConsentChangedIntegrationEventHandler(
-            _dbContext, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
+            _dbContext, _inboxGuard, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
         var @event = new ConsentChangedIntegrationEvent
         {
             TenantId = _tenantId.ToString(),
@@ -103,7 +109,7 @@ public sealed class ContactEventHandlerTests : IDisposable
         await SeedScheduledNotificationForContact(contactId);
 
         var handler = new ConsentChangedIntegrationEventHandler(
-            _dbContext, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
+            _dbContext, _inboxGuard, NullLogger<ConsentChangedIntegrationEventHandler>.Instance);
         var @event = new ConsentChangedIntegrationEvent
         {
             TenantId = _tenantId.ToString(),

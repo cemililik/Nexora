@@ -15,7 +15,7 @@ namespace Nexora.Modules.Documents.Tests.Infrastructure;
 public sealed class IntegrationEventHandlerTests : IDisposable
 {
     private readonly DocumentsDbContext _dbContext;
-    private readonly IEventBus _eventBus;
+    private readonly IOutbox _outbox;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
@@ -30,7 +30,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
             .Options;
 
         _dbContext = new DocumentsDbContext(options, accessor);
-        _eventBus = Substitute.For<IEventBus>();
+        _outbox = Substitute.For<IOutbox>();
     }
 
     private async Task<(Document Doc, SignatureRequest Request)> SeedSignatureRequestAsync()
@@ -56,7 +56,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         // Arrange
         var (doc, request) = await SeedSignatureRequestAsync();
         var handler = new SignatureCompletedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<SignatureCompletedDomainEventHandler>.Instance);
         var @event = new SignatureCompletedEvent(request.Id, doc.Id);
 
@@ -64,7 +64,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await handler.Handle(@event, CancellationToken.None);
 
         // Assert
-        await _eventBus.Received(1).PublishAsync(
+        await _outbox.Received(1).EnqueueAsync(
             Arg.Is<SignatureCompletedIntegrationEvent>(e =>
                 e.SignatureRequestId == request.Id.Value &&
                 e.DocumentId == doc.Id.Value &&
@@ -77,7 +77,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new SignatureCompletedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<SignatureCompletedDomainEventHandler>.Instance);
         var @event = new SignatureCompletedEvent(SignatureRequestId.New(), DocumentId.New());
 
@@ -85,7 +85,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await handler.Handle(@event, CancellationToken.None);
 
         // Assert
-        await _eventBus.DidNotReceive().PublishAsync(
+        await _outbox.DidNotReceive().EnqueueAsync(
             Arg.Any<SignatureCompletedIntegrationEvent>(), Arg.Any<CancellationToken>());
     }
 
@@ -95,7 +95,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         // Arrange
         var (doc, request) = await SeedSignatureRequestAsync();
         var handler = new SignatureCompletedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<SignatureCompletedDomainEventHandler>.Instance);
         var @event = new SignatureCompletedEvent(request.Id, doc.Id);
 
@@ -103,7 +103,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await handler.Handle(@event, CancellationToken.None);
 
         // Assert — TenantId should come from entity, matching our seeded tenantId
-        await _eventBus.Received(1).PublishAsync(
+        await _outbox.Received(1).EnqueueAsync(
             Arg.Is<SignatureCompletedIntegrationEvent>(e => e.TenantId == _tenantId.ToString()),
             Arg.Any<CancellationToken>());
     }
@@ -115,7 +115,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         var (doc, request) = await SeedSignatureRequestAsync();
         var recipient = request.Recipients[0];
         var handler = new DocumentSignedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<DocumentSignedDomainEventHandler>.Instance);
         var @event = new DocumentSignedEvent(request.Id, recipient.Id);
 
@@ -123,7 +123,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await handler.Handle(@event, CancellationToken.None);
 
         // Assert
-        await _eventBus.Received(1).PublishAsync(
+        await _outbox.Received(1).EnqueueAsync(
             Arg.Is<DocumentSignedIntegrationEvent>(e =>
                 e.SignatureRequestId == request.Id.Value &&
                 e.DocumentId == doc.Id.Value &&
@@ -136,13 +136,13 @@ public sealed class IntegrationEventHandlerTests : IDisposable
     public async Task DocumentSignedHandler_RequestNotFound_DoesNotPublish()
     {
         var handler = new DocumentSignedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<DocumentSignedDomainEventHandler>.Instance);
         var @event = new DocumentSignedEvent(SignatureRequestId.New(), SignatureRecipientId.New());
 
         await handler.Handle(@event, CancellationToken.None);
 
-        await _eventBus.DidNotReceive().PublishAsync(
+        await _outbox.DidNotReceive().EnqueueAsync(
             Arg.Any<DocumentSignedIntegrationEvent>(), Arg.Any<CancellationToken>());
     }
 
@@ -166,7 +166,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new DocumentSignedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<DocumentSignedDomainEventHandler>.Instance);
 
         // Use request2's ID but recipient1's ID — compound lookup should fail
@@ -176,7 +176,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await handler.Handle(@event, CancellationToken.None);
 
         // Assert — should not publish because recipient doesn't belong to request2
-        await _eventBus.DidNotReceive().PublishAsync(
+        await _outbox.DidNotReceive().EnqueueAsync(
             Arg.Any<DocumentSignedIntegrationEvent>(), Arg.Any<CancellationToken>());
     }
 
@@ -192,7 +192,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new DocumentArchivedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<DocumentArchivedDomainEventHandler>.Instance);
         var @event = new DocumentArchivedEvent(doc.Id);
 
@@ -200,7 +200,7 @@ public sealed class IntegrationEventHandlerTests : IDisposable
         await handler.Handle(@event, CancellationToken.None);
 
         // Assert
-        await _eventBus.Received(1).PublishAsync(
+        await _outbox.Received(1).EnqueueAsync(
             Arg.Is<DocumentArchivedIntegrationEvent>(e =>
                 e.DocumentId == doc.Id.Value &&
                 e.TenantId == _tenantId.ToString()),
@@ -211,13 +211,13 @@ public sealed class IntegrationEventHandlerTests : IDisposable
     public async Task DocumentArchivedHandler_DocumentNotFound_DoesNotPublish()
     {
         var handler = new DocumentArchivedDomainEventHandler(
-            _eventBus, _dbContext,
+            _outbox, _dbContext,
             NullLogger<DocumentArchivedDomainEventHandler>.Instance);
         var @event = new DocumentArchivedEvent(DocumentId.New());
 
         await handler.Handle(@event, CancellationToken.None);
 
-        await _eventBus.DidNotReceive().PublishAsync(
+        await _outbox.DidNotReceive().EnqueueAsync(
             Arg.Any<DocumentArchivedIntegrationEvent>(), Arg.Any<CancellationToken>());
     }
 

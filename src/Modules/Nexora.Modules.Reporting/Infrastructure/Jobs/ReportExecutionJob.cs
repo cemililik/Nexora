@@ -4,8 +4,10 @@ using Nexora.Modules.Reporting.Domain.ValueObjects;
 using Nexora.Modules.Reporting.Application.Services;
 using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
+using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Reporting.Infrastructure.Jobs;
 
@@ -23,6 +25,7 @@ public sealed class ReportExecutionJob(
     IReportExecutionService executionService,
     ReportExportService exportService,
     IFileStorageService fileStorageService,
+    IOutbox outbox,
     ILogger<ReportExecutionJob> logger)
     : NexoraJob<ReportExecutionJobParams>(tenantContextAccessor, logger)
 {
@@ -84,6 +87,15 @@ public sealed class ReportExecutionJob(
                 ReportExportService.GetContentType(formatStr), ct);
 
             execution.MarkCompleted(storageKey, rows.Count, sw.ElapsedMilliseconds);
+
+            await outbox.EnqueueAsync(new ReportExecutedIntegrationEvent
+            {
+                TenantId = parameters.TenantId,
+                ExecutionId = execution.Id.Value,
+                DefinitionId = definition.Id.Value,
+                ReportName = definition.Name,
+                DurationMs = sw.ElapsedMilliseconds
+            }, ct);
 
             logger.LogInformation(
                 "Report execution {ExecutionId} completed: {RowCount} rows in {DurationMs}ms",

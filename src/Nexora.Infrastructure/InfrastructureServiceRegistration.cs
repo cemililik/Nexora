@@ -16,6 +16,8 @@ using Nexora.Infrastructure.Localization;
 using Nexora.Infrastructure.Messaging;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Infrastructure.Secrets;
+using Nexora.Infrastructure.Persistence.Inbox;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Infrastructure.Storage;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Caching;
@@ -70,9 +72,23 @@ public static class InfrastructureServiceRegistration
         // Caching
         services.AddMemoryCache();
         services.AddScoped<ICacheService, DaprCacheService>();
+        services.AddSingleton<CacheInvalidationHandler>();
 
         // Messaging
         services.AddScoped<IEventBus, DaprEventBus>();
+
+        // Outbox (reliable event publishing)
+        services.Configure<OutboxOptions>(
+            configuration.GetSection(OutboxOptions.SectionName));
+        services.AddDbContext<OutboxDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
+        services.AddScoped<IOutbox, OutboxService>();
+        services.AddHostedService<OutboxProcessor>();
+        services.AddHealthChecks()
+            .AddCheck<OutboxHealthCheck>("outbox", tags: new[] { "ready" });
 
         // Secrets
         services.AddScoped<ISecretProvider, DaprSecretProvider>();
@@ -125,6 +141,10 @@ public static class InfrastructureServiceRegistration
             });
         }
 
+        // Infrastructure cleanup jobs
+        services.AddScoped<OutboxCleanupJob>();
+        services.AddScoped<InboxCleanupJob>();
+
         // Audit context (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
@@ -139,5 +159,30 @@ public static class InfrastructureServiceRegistration
         // Each module can also register validators in its own ConfigureServices().
 
         return services;
+    }
+
+    /// <summary>
+    /// Registers infrastructure-level recurring Hangfire jobs (outbox/inbox cleanup).
+    /// Call this after the application is built and Hangfire is initialized.
+    /// </summary>
+    public static void ConfigureInfrastructureJobs()
+    {
+        // Outbox cleanup — runs daily at 02:00 UTC, deletes processed messages older than configured days
+        RecurringJob.AddOrUpdate<OutboxCleanupJob>(
+            "infrastructure:outbox-cleanup",
+            JobQueues.Maintenance,
+            job => job.RunAsync(CancellationToken.None),
+            "0 2 * * *",
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        // Inbox cleanup — runs daily at 02:30 UTC, deletes inbox messages older than 30 days per tenant
+        RecurringJob.AddOrUpdate<InboxCleanupJob>(
+            "infrastructure:inbox-cleanup",
+            JobQueues.Maintenance,
+            job => job.RunAsync(
+                new InboxCleanupJobParams { TenantId = "system", RetentionDays = 30 },
+                CancellationToken.None),
+            "30 2 * * *",
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
     }
 }

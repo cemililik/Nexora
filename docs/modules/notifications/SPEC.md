@@ -317,21 +317,26 @@ flowchart LR
 
 ### Delivery Flow
 
+Email and SMS delivery is **Kafka-based** via `NotificationDeliveryRequestedIntegrationEvent`, replacing the previous per-notification Hangfire job approach. When a notification is created, a `NotificationDeliveryRequested` domain event is raised, and its handler enqueues an integration event to the **Outbox**. The `OutboxProcessor` publishes it to Kafka, and the delivery consumer processes the actual send.
+
 ```mermaid
 ---
-title: Notification Delivery Pipeline
+title: Notification Delivery Pipeline (Kafka-based)
 ---
 flowchart TB
     Event["Module Event\n(e.g., DonationConfirmed)"] --> Handler["Notification Handler\n(resolve template, recipients)"]
     Handler --> Consent["Check Consent\n(KVKK/GDPR)"]
     Consent -->|Opted in| Render["Render Template\n(variable substitution,\nlanguage selection,\nHtml format → HtmlEncode values)"]
     Consent -->|Opted out| Skip["Skip (log suppression)"]
-    Render --> Queue["Kafka Queue\n(per channel)"]
+    Render --> Outbox["Outbox Table\n(NotificationDeliveryRequested)"]
 
-    Queue --> EmailWorker["Email Worker\n(SendGrid/Mailgun)"]
-    Queue --> SMSWorker["SMS Worker\n(Twilio/Netgsm)"]
-    Queue --> WhatsAppWorker["WhatsApp Worker\n(Business API)"]
-    Queue --> PushWorker["Push Worker\n(FCM/APNS)"]
+    Outbox --> Processor["OutboxProcessor\n(polling)"]
+    Processor --> Kafka["Kafka\n(nexora.notifications)"]
+
+    Kafka --> EmailWorker["Email Consumer\n(SendGrid/Mailgun)"]
+    Kafka --> SMSWorker["SMS Consumer\n(Twilio/Netgsm)"]
+    Kafka --> WhatsAppWorker["WhatsApp Consumer\n(Business API)"]
+    Kafka --> PushWorker["Push Consumer\n(FCM/APNS)"]
 
     EmailWorker --> Track["Track Delivery\n(webhook callbacks)"]
     SMSWorker --> Track
@@ -341,7 +346,8 @@ flowchart TB
     Track --> DB[("Update\nNotificationRecipient\nstatus")]
 
     style Event fill:#8e44ad,color:#fff
-    style Queue fill:#231f20,color:#fff
+    style Outbox fill:#e67e22,color:#fff
+    style Kafka fill:#231f20,color:#fff
     style Track fill:#27ae60,color:#fff
 ```
 
@@ -424,6 +430,7 @@ flowchart TB
 | `notifications.notification.delivered` | `nexora.notifications` |
 | `notifications.notification.bounced` | `nexora.notifications` |
 | `notifications.notification.opened` | `nexora.notifications` |
+| `notifications.delivery.requested` (`NotificationDeliveryRequestedIntegrationEvent`) | `nexora.notifications` |
 
 ## Non-Functional Requirements
 

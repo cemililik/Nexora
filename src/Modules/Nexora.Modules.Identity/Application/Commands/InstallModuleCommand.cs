@@ -6,7 +6,9 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -35,6 +37,7 @@ public sealed class InstallModuleValidator : AbstractValidator<InstallModuleComm
 public sealed class InstallModuleHandler(
     PlatformDbContext platformDb,
     IEnumerable<IModule> registeredModules,
+    IOutbox outbox,
     ILogger<InstallModuleHandler> logger) : ICommandHandler<InstallModuleCommand, TenantModuleDto>
 {
     public async Task<Result<TenantModuleDto>> Handle(
@@ -93,6 +96,13 @@ public sealed class InstallModuleHandler(
         var tenantModule = TenantModule.Create(tenantId, request.ModuleName);
         await platformDb.TenantModules.AddAsync(tenantModule, cancellationToken);
         await platformDb.SaveChangesAsync(cancellationToken);
+
+        await outbox.EnqueueAsync(new ModuleInstalledIntegrationEvent
+        {
+            TenantId = request.TenantId.ToString(),
+            ModuleName = request.ModuleName,
+            TenantIdGuid = request.TenantId
+        }, cancellationToken);
 
         var dto = new TenantModuleDto(
             tenantModule.Id.Value, tenantModule.ModuleName,

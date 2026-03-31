@@ -4,10 +4,14 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Nexora.Host;
 using Nexora.Host.Endpoints;
 using Nexora.Infrastructure;
+using Nexora.Infrastructure.Caching;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.SharedKernel.Authorization;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -165,18 +169,46 @@ try
     }
 
     app.UseSerilogRequestLogging();
+    app.UseCloudEvents();
     app.UseAuthentication();
     app.UseMiddleware<TenantMiddleware>(); // Must run before Authorization — PermissionAuthorizationHandler needs tenant context for DB queries
     app.UseAuthorization();
 
     // Health checks — liveness, readiness, startup
     app.MapGet("/health/live", () => Results.Ok(new { status = "healthy" }));
-    app.MapGet("/health/ready", () => Results.Ok(new { status = "ready" }));
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready"),
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+            var result = new
+            {
+                status = report.Status.ToString().ToLowerInvariant(),
+                checks = report.Entries.Select(e => new
+                {
+                    name = e.Key,
+                    status = e.Value.Status.ToString().ToLowerInvariant(),
+                    description = e.Value.Description,
+                    data = e.Value.Data
+                }),
+                totalDuration = report.TotalDuration.TotalMilliseconds
+            };
+            await context.Response.WriteAsJsonAsync(result);
+        }
+    });
     app.MapGet("/health/startup", () => Results.Ok(new { status = "started" }));
     app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
+    // Dapr pub/sub subscriptions
+    app.MapSubscribeHandler();
+    app.MapCacheInvalidationSubscription();
+
     // Platform endpoints (localization — not module-scoped)
     app.MapLocalizationEndpoints();
+
+    // Outbox admin endpoints
+    app.MapOutboxStatusEndpoints();
 
     // Module endpoints
     app.MapNexoraModuleEndpoints();
@@ -192,6 +224,9 @@ try
 
     // Development tenant provisioning — creates schema, tables, seed data
     await DevelopmentSeed.SeedAsync(app);
+
+    // Infrastructure-level recurring jobs (outbox/inbox cleanup)
+    InfrastructureServiceRegistration.ConfigureInfrastructureJobs();
 
     // Module startup hooks
     await app.RunModuleStartupAsync();

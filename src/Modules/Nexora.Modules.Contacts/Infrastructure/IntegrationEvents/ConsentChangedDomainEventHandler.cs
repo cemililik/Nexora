@@ -7,9 +7,9 @@ using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles ConsentChangedEvent and publishes integration event.</summary>
+/// <summary>Handles ConsentChangedEvent and enqueues integration event to the outbox.</summary>
 public sealed class ConsentChangedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ConsentChangedDomainEventHandler> logger) : INotificationHandler<ConsentChangedEvent>
 {
@@ -34,6 +34,9 @@ public sealed class ConsentChangedDomainEventHandler(
             Granted = notification.Granted
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(ConsentChangedIntegrationEvent), integrationEvent.TenantId);
     }
 }

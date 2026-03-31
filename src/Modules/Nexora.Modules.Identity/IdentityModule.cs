@@ -2,13 +2,17 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Identity.Api;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Identity.Infrastructure.Authorization;
+using Nexora.Modules.Identity.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Identity.Infrastructure.Keycloak;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Authorization;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity;
@@ -56,12 +60,17 @@ public sealed class IdentityModule : IModule
             var kcOptions = configuration.GetSection(KeycloakOptions.SectionName).Get<KeycloakOptions>()!;
             client.BaseAddress = new Uri(kcOptions.BaseUrl);
         });
+
+        // Register inbox guard for idempotent integration event consumption
+        services.AddScoped<IInboxGuard, InboxGuard<IdentityDbContext>>();
     }
 
     /// <inheritdoc />
     public void ConfigureEventHandlers(IServiceCollection services)
     {
-        // Identity module is the event source, not consumer — no handlers to register yet
+        // Self-consuming handler for cross-instance permission cache invalidation
+        services.AddScoped<IIntegrationEventHandler<UserRolesChangedIntegrationEvent>,
+            UserRolesChangedEventHandler>();
     }
 
     /// <inheritdoc />

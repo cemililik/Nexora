@@ -9,6 +9,7 @@ using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.Modules.Reporting.Infrastructure;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Npgsql;
 using Serilog;
@@ -42,6 +43,9 @@ public static class DevelopmentSeed
         {
             // Step 1: Ensure platform tables exist (public schema)
             await EnsurePlatformTablesAsync(app.Services, connectionString);
+
+            // Step 1b: Ensure outbox table exists (public schema)
+            await EnsureOutboxTableAsync(app.Services, connectionString);
 
             // Step 2: Insert dev tenant record
             await EnsureDevTenantAsync(connectionString);
@@ -95,6 +99,26 @@ public static class DevelopmentSeed
         await creator.CreateTablesAsync();
 
         Log.Information("[DevSeed] Platform tables created");
+    }
+
+    private static async Task EnsureOutboxTableAsync(IServiceProvider rootSp, string connectionString)
+    {
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync();
+
+        var exists = await TableExistsAsync(conn, "public", "outbox_messages");
+        if (exists)
+        {
+            Log.Information("[DevSeed] Outbox table already exists");
+            return;
+        }
+
+        using var scope = rootSp.CreateScope();
+        var outboxDb = scope.ServiceProvider.GetRequiredService<OutboxDbContext>();
+        var creator = outboxDb.GetService<IRelationalDatabaseCreator>();
+        await creator.CreateTablesAsync();
+
+        Log.Information("[DevSeed] Outbox table created in public schema");
     }
 
     private static async Task EnsureDevTenantAsync(string connectionString)
@@ -422,6 +446,15 @@ public static class DevelopmentSeed
 
         var alterStatements = new[]
         {
+            // Inbox table for idempotent integration event consumption (used by all consumer modules)
+            """
+            CREATE TABLE IF NOT EXISTS inbox_messages (
+                "EventId" uuid PRIMARY KEY,
+                "EventType" varchar(500) NOT NULL,
+                "ProcessedAt" timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_inbox_messages_ProcessedAt\" ON inbox_messages (\"ProcessedAt\")",
             // OrganizationUser.JoinedAt — added for member join date tracking
             "ALTER TABLE identity_organization_users ADD COLUMN IF NOT EXISTS \"JoinedAt\" timestamptz DEFAULT now()",
             // UserRole.AssignedAt — added for role assignment date tracking

@@ -9,6 +9,7 @@ using Nexora.Modules.Contacts.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Events;
+using NSubstitute;
 
 namespace Nexora.Modules.Contacts.Tests.Infrastructure;
 
@@ -16,14 +17,14 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
 {
     private readonly ContactsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
-    private readonly TestEventBus _eventBus;
+    private readonly IOutbox _outbox;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
     public ContactDomainEventHandlerTests()
     {
         _tenantAccessor = TestTenantAccessor.Create(_tenantId, _orgId);
-        _eventBus = new TestEventBus();
+        _outbox = Substitute.For<IOutbox>();
         var options = new DbContextOptionsBuilder<ContactsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -39,17 +40,17 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new ContactCreatedDomainEventHandler(
-            _eventBus, _dbContext, _tenantAccessor, NullLogger<ContactCreatedDomainEventHandler>.Instance);
+            _outbox, _dbContext, _tenantAccessor, NullLogger<ContactCreatedDomainEventHandler>.Instance);
 
         // Act
         await handler.Handle(new ContactCreatedEvent(contact.Id, ContactType.Individual, "john@test.com"), CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        _eventBus.PublishedEvents[0].Should().BeOfType<ContactCreatedIntegrationEvent>();
-        var evt = (ContactCreatedIntegrationEvent)_eventBus.PublishedEvents[0];
-        evt.ContactId.Should().Be(contact.Id.Value);
-        evt.DisplayName.Should().Be("John Doe");
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<ContactCreatedIntegrationEvent>(e =>
+                e.ContactId == contact.Id.Value &&
+                e.DisplayName == "John Doe"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -57,15 +58,16 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new ContactUpdatedDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<ContactUpdatedDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<ContactUpdatedDomainEventHandler>.Instance);
 
         // Act
         var contactId = ContactId.New();
         await handler.Handle(new ContactUpdatedEvent(contactId), CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        _eventBus.PublishedEvents[0].Should().BeOfType<ContactUpdatedIntegrationEvent>();
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Any<ContactUpdatedIntegrationEvent>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -73,15 +75,16 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new ContactArchivedDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<ContactArchivedDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<ContactArchivedDomainEventHandler>.Instance);
 
         // Act
         var contactId = ContactId.New();
         await handler.Handle(new ContactArchivedEvent(contactId), CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        _eventBus.PublishedEvents[0].Should().BeOfType<ContactArchivedIntegrationEvent>();
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Any<ContactArchivedIntegrationEvent>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -89,7 +92,7 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new ContactMergedDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<ContactMergedDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<ContactMergedDomainEventHandler>.Instance);
 
         // Act
         var primaryId = ContactId.New();
@@ -97,10 +100,11 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
         await handler.Handle(new ContactMergedEvent(primaryId, secondaryId), CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        var evt = (ContactMergedIntegrationEvent)_eventBus.PublishedEvents[0];
-        evt.PrimaryContactId.Should().Be(primaryId.Value);
-        evt.SecondaryContactId.Should().Be(secondaryId.Value);
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<ContactMergedIntegrationEvent>(e =>
+                e.PrimaryContactId == primaryId.Value &&
+                e.SecondaryContactId == secondaryId.Value),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -108,18 +112,19 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new ConsentChangedDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<ConsentChangedDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<ConsentChangedDomainEventHandler>.Instance);
 
         // Act
         var contactId = ContactId.New();
         await handler.Handle(new ConsentChangedEvent(contactId, ConsentType.EmailMarketing, true), CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        var evt = (ConsentChangedIntegrationEvent)_eventBus.PublishedEvents[0];
-        evt.ContactId.Should().Be(contactId.Value);
-        evt.ConsentType.Should().Be("EmailMarketing");
-        evt.Granted.Should().BeTrue();
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<ConsentChangedIntegrationEvent>(e =>
+                e.ContactId == contactId.Value &&
+                e.ConsentType == "EmailMarketing" &&
+                e.Granted == true),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -127,26 +132,16 @@ public sealed class ContactDomainEventHandlerTests : IDisposable
     {
         // Arrange
         var handler = new ContactCreatedDomainEventHandler(
-            _eventBus, _dbContext, _tenantAccessor, NullLogger<ContactCreatedDomainEventHandler>.Instance);
+            _outbox, _dbContext, _tenantAccessor, NullLogger<ContactCreatedDomainEventHandler>.Instance);
 
         // Act
         await handler.Handle(new ContactCreatedEvent(ContactId.New(), ContactType.Individual, "test@test.com"), CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().BeEmpty();
+        await _outbox.DidNotReceive().EnqueueAsync(
+            Arg.Any<ContactCreatedIntegrationEvent>(),
+            Arg.Any<CancellationToken>());
     }
 
     public void Dispose() => _dbContext.Dispose();
-
-    private sealed class TestEventBus : IEventBus
-    {
-        public List<IIntegrationEvent> PublishedEvents { get; } = [];
-
-        public Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
-            where TEvent : IIntegrationEvent
-        {
-            PublishedEvents.Add(@event);
-            return Task.CompletedTask;
-        }
-    }
 }

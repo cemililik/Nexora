@@ -3,8 +3,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
+using Nexora.SharedKernel.Abstractions.Caching;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -29,6 +32,8 @@ public sealed class RemoveUserFromRoleValidator : AbstractValidator<RemoveUserFr
 public sealed class RemoveUserFromRoleHandler(
     IdentityDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
+    IOutbox outbox,
+    ICacheService cacheService,
     ILogger<RemoveUserFromRoleHandler> logger) : ICommandHandler<RemoveUserFromRoleCommand>
 {
     public async Task<Result> Handle(RemoveUserFromRoleCommand request, CancellationToken ct)
@@ -65,6 +70,26 @@ public sealed class RemoveUserFromRoleHandler(
 
         dbContext.UserRoles.RemoveRange(userRoles);
         await dbContext.SaveChangesAsync(ct);
+
+        // Load user to get KeycloakUserId for cache invalidation
+        var user = await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+
+        if (user is not null)
+        {
+            // Immediate local cache invalidation
+            await cacheService.RemoveAsync($"auth:permissions:{user.KeycloakUserId}", ct);
+
+            // Cross-instance invalidation via integration event
+            await outbox.EnqueueAsync(new UserRolesChangedIntegrationEvent
+            {
+                TenantId = tenantContextAccessor.Current.TenantId,
+                UserId = request.UserId,
+                KeycloakUserId = user.KeycloakUserId,
+                ChangeType = "Removed"
+            }, ct);
+        }
 
         logger.LogInformation("User {UserId} removed from role {RoleId}, {Count} assignment(s) deleted",
             request.UserId, request.RoleId, userRoles.Count);

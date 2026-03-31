@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Contacts.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -24,12 +25,14 @@ public sealed class ContactsDbContext(
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<ContactActivity> ContactActivities => Set<ContactActivity>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ContactsDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
         ApplySoftDeleteFilters(modelBuilder);
     }
 }

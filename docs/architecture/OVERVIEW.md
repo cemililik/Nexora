@@ -204,6 +204,18 @@ Nexora.Modules.CRM/
 - **Cross-service**: Dapr pub/sub over Kafka (integration events)
 - **Sync calls**: Dapr service invocation (when eventual consistency won't work)
 
+### Transactional Outbox/Inbox Pattern
+
+All cross-module event publishing uses the **Transactional Outbox** pattern for reliable delivery. Domain events are persisted to the Outbox table within the same database transaction as the entity change. The OutboxProcessor BackgroundService polls the table and publishes events to Kafka. On the consumer side, the **Inbox** pattern ensures idempotent processing by deduplicating events based on EventId.
+
+**Event flow:**
+```text
+Entity → Domain Event → Handler → IOutbox.EnqueueAsync() → Outbox Table
+  → OutboxProcessor (polling) → Kafka → Consumer → IInboxGuard (dedup) → Business Logic
+```
+
+This guarantees at-least-once delivery even if Kafka is temporarily unavailable or the application crashes after SaveChanges.
+
 ## 6. Cross-Cutting Concerns
 
 | Concern | Implementation |
@@ -212,7 +224,7 @@ Nexora.Modules.CRM/
 | Authorization | Permission-based RBAC with organization scope |
 | Audit Logging | Kafka event stream → audit log consumer |
 | Multi-tenancy | Tenant resolution middleware → schema switching |
-| Caching | Redis with tenant-prefixed keys |
+| Caching | Redis with tenant-prefixed keys, cross-instance invalidation via Dapr pub/sub |
 | Rate Limiting | APISIX plugin (per-tenant, per-API) |
 | File Storage | MinIO with tenant-isolated buckets |
 | Search | PostgreSQL full-text search (→ Elasticsearch when needed) |

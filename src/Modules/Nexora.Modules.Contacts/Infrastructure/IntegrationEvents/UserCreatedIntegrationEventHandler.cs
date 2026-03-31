@@ -13,6 +13,7 @@ namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 /// </summary>
 public sealed class UserCreatedIntegrationEventHandler(
     ContactsDbContext dbContext,
+    IInboxGuard inboxGuard,
     ILogger<UserCreatedIntegrationEventHandler> logger) : IIntegrationEventHandler<UserCreatedIntegrationEvent>
 {
     /// <summary>
@@ -20,6 +21,12 @@ public sealed class UserCreatedIntegrationEventHandler(
     /// </summary>
     public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationToken ct)
     {
+        if (await inboxGuard.IsAlreadyProcessedAsync(@event.EventId, ct))
+        {
+            logger.LogDebug("Skipping duplicate event {EventId} of type {EventType}", @event.EventId, @event.GetType().Name);
+            return;
+        }
+
         if (!Guid.TryParse(@event.TenantId, out var tenantId))
         {
             logger.LogError("Invalid TenantId {TenantId} in UserCreatedIntegrationEvent", @event.TenantId);
@@ -52,6 +59,7 @@ public sealed class UserCreatedIntegrationEventHandler(
             source: ContactSource.Api);
 
         await dbContext.Contacts.AddAsync(contact, ct);
+        inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
 
         logger.LogInformation(

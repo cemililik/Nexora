@@ -12,10 +12,17 @@ namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 /// </summary>
 public sealed class ConsentChangedIntegrationEventHandler(
     NotificationsDbContext dbContext,
+    IInboxGuard inboxGuard,
     ILogger<ConsentChangedIntegrationEventHandler> logger) : IIntegrationEventHandler<ConsentChangedIntegrationEvent>
 {
     public async Task HandleAsync(ConsentChangedIntegrationEvent @event, CancellationToken ct)
     {
+        if (await inboxGuard.IsAlreadyProcessedAsync(@event.EventId, ct))
+        {
+            logger.LogDebug("Skipping duplicate event {EventId} of type {EventType}", @event.EventId, @event.GetType().Name);
+            return;
+        }
+
         if (@event.Granted)
         {
             logger.LogDebug("Consent granted for contact {ContactId}, type {ConsentType} — no action needed",
@@ -52,6 +59,7 @@ public sealed class ConsentChangedIntegrationEventHandler(
             schedule.Cancel();
         }
 
+        inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
 
         logger.LogInformation("Cancelled {Count} pending scheduled notifications for contact {ContactId} due to consent revocation ({ConsentType})",

@@ -6,9 +6,9 @@ using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles ContactUpdatedEvent and publishes integration event.</summary>
+/// <summary>Handles ContactUpdatedEvent and enqueues integration event to the outbox.</summary>
 public sealed class ContactUpdatedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ContactUpdatedDomainEventHandler> logger) : INotificationHandler<ContactUpdatedEvent>
 {
@@ -31,6 +31,9 @@ public sealed class ContactUpdatedDomainEventHandler(
             ContactId = notification.ContactId.Value
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(ContactUpdatedIntegrationEvent), integrationEvent.TenantId);
     }
 }

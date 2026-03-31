@@ -5,7 +5,10 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Caching;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using NSubstitute;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -41,7 +44,7 @@ public sealed class AssignUserRolesTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new AssignUserRolesHandler(
-            _dbContext, _tenantAccessor, NullLogger<AssignUserRolesHandler>.Instance);
+            _dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AssignUserRolesHandler>.Instance);
 
         var result = await handler.Handle(
             new AssignUserRolesCommand(user.Id.Value, orgId.Value,
@@ -60,7 +63,7 @@ public sealed class AssignUserRolesTests : IDisposable
     public async Task AssignUserRoles_WithUserNotInOrganization_ReturnsFailure()
     {
         var handler = new AssignUserRolesHandler(
-            _dbContext, _tenantAccessor, NullLogger<AssignUserRolesHandler>.Instance);
+            _dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AssignUserRolesHandler>.Instance);
 
         var result = await handler.Handle(
             new AssignUserRolesCommand(Guid.NewGuid(), Guid.NewGuid(), [Guid.NewGuid()]),
@@ -82,7 +85,7 @@ public sealed class AssignUserRolesTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new AssignUserRolesHandler(
-            _dbContext, _tenantAccessor, NullLogger<AssignUserRolesHandler>.Instance);
+            _dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AssignUserRolesHandler>.Instance);
 
         var result = await handler.Handle(
             new AssignUserRolesCommand(user.Id.Value, orgId.Value, [Guid.NewGuid()]),
@@ -108,7 +111,7 @@ public sealed class AssignUserRolesTests : IDisposable
 
         // First assign roleA
         var handler = new AssignUserRolesHandler(
-            _dbContext, _tenantAccessor, NullLogger<AssignUserRolesHandler>.Instance);
+            _dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AssignUserRolesHandler>.Instance);
 
         await handler.Handle(
             new AssignUserRolesCommand(user.Id.Value, orgId.Value, [roleA.Id.Value]),
@@ -142,7 +145,7 @@ public sealed class AssignUserRolesTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new AssignUserRolesHandler(
-            _dbContext, _tenantAccessor, NullLogger<AssignUserRolesHandler>.Instance);
+            _dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<AssignUserRolesHandler>.Instance);
 
         // First assign a role
         await handler.Handle(

@@ -20,7 +20,20 @@ public sealed class DaprCacheService(
     ILogger<DaprCacheService> logger) : ICacheService
 {
     private const string StateStoreName = "statestore";
+    private const string PubSubName = "pubsub";
     private static readonly ConcurrentDictionary<string, DateTimeOffset> _trackedKeys = new();
+
+    /// <summary>
+    /// Unique identifier for this process instance, used to skip self-published
+    /// cache invalidation events in multi-instance deployments.
+    /// </summary>
+    internal static readonly string InstanceId = Guid.NewGuid().ToString("N");
+
+    /// <summary>
+    /// Exposes tracked keys for the <see cref="CacheInvalidationHandler"/> to clear
+    /// on cross-instance invalidation events.
+    /// </summary>
+    internal static ConcurrentDictionary<string, DateTimeOffset> TrackedKeys => _trackedKeys;
 
     /// <summary>
     /// Prefixes the cache key with the current tenant ID to ensure tenant isolation.
@@ -161,9 +174,10 @@ public sealed class DaprCacheService(
 
     /// <inheritdoc />
     /// <remarks>
-    /// This method only removes keys tracked by this process instance. Keys set by other
-    /// instances or platform-level callers (without tenant context) may not be tracked and
-    /// therefore will not be removed. For cross-instance invalidation, use Dapr pub/sub events.
+    /// Removes keys tracked by this process instance and publishes a
+    /// <see cref="CacheInvalidationEvent"/> via Dapr pub/sub so other instances
+    /// clear matching keys from their local L1 caches. The pub/sub notification
+    /// is best-effort — if it fails, other instances' L1 entries will still expire via TTL.
     /// </remarks>
     public async Task RemoveByPrefixAsync(string prefix, CancellationToken ct = default)
     {
@@ -174,7 +188,12 @@ public sealed class DaprCacheService(
             .ToList();
 
         if (keysToRemove.Count == 0)
+        {
+            // Even if no local keys match, other instances may have cached keys with this prefix.
+            // Publish the invalidation event so they can clear their L1 caches.
+            await PublishInvalidationEventAsync(prefixedPrefix, ct);
             return;
+        }
 
         logger.LogDebug("Removing {Count} cached keys with prefix '{Prefix}'", keysToRemove.Count, prefixedPrefix);
 
@@ -183,6 +202,32 @@ public sealed class DaprCacheService(
             memoryCache.Remove(key);
             _trackedKeys.TryRemove(key, out _);
             await daprClient.DeleteStateAsync(StateStoreName, key, cancellationToken: ct);
+        }
+
+        // Notify other instances to clear their L1 caches for this prefix
+        await PublishInvalidationEventAsync(prefixedPrefix, ct);
+    }
+
+    /// <summary>
+    /// Publishes a cache invalidation event via Dapr pub/sub so other instances
+    /// can clear matching keys from their local L1 caches.
+    /// </summary>
+    private async Task PublishInvalidationEventAsync(string prefixedPrefix, CancellationToken ct)
+    {
+        try
+        {
+            var invalidationEvent = new CacheInvalidationEvent(prefixedPrefix, InstanceId);
+            await daprClient.PublishEventAsync(
+                PubSubName,
+                CacheInvalidationHandler.TopicName,
+                invalidationEvent,
+                ct);
+        }
+        catch (Exception ex)
+        {
+            // Cache invalidation is best-effort — don't fail the caller if pub/sub is unavailable.
+            // Other instances will eventually expire stale L1 entries via TTL.
+            logger.LogWarning(ex, "Failed to publish cache invalidation event for prefix '{Prefix}'", prefixedPrefix);
         }
     }
 }

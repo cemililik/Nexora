@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Notifications.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -18,12 +19,14 @@ public sealed class NotificationsDbContext(
     public DbSet<NotificationRecipient> NotificationRecipients => Set<NotificationRecipient>();
     public DbSet<NotificationProvider> NotificationProviders => Set<NotificationProvider>();
     public DbSet<NotificationSchedule> NotificationSchedules => Set<NotificationSchedule>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(NotificationsDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
         ApplySoftDeleteFilters(modelBuilder);
     }
 }

@@ -6,19 +6,20 @@ using Nexora.Modules.Notifications.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Events;
+using NSubstitute;
 
 namespace Nexora.Modules.Notifications.Tests.Infrastructure;
 
 public sealed class NotificationDomainEventHandlerTests
 {
     private readonly ITenantContextAccessor _tenantAccessor;
-    private readonly TestEventBus _eventBus;
+    private readonly IOutbox _outbox;
     private readonly Guid _tenantId = Guid.NewGuid();
 
     public NotificationDomainEventHandlerTests()
     {
         _tenantAccessor = TestTenantAccessor.Create(_tenantId, Guid.NewGuid());
-        _eventBus = new TestEventBus();
+        _outbox = Substitute.For<IOutbox>();
     }
 
     [Fact]
@@ -26,7 +27,7 @@ public sealed class NotificationDomainEventHandlerTests
     {
         // Arrange
         var handler = new NotificationSentDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<NotificationSentDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<NotificationSentDomainEventHandler>.Instance);
         var notificationId = NotificationId.New();
         var domainEvent = new NotificationSentEvent(notificationId, NotificationChannel.Email, 5);
 
@@ -34,12 +35,13 @@ public sealed class NotificationDomainEventHandlerTests
         await handler.Handle(domainEvent, CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        var evt = _eventBus.PublishedEvents[0].Should().BeOfType<NotificationSentIntegrationEvent>().Subject;
-        evt.NotificationId.Should().Be(notificationId.Value);
-        evt.Channel.Should().Be("Email");
-        evt.RecipientCount.Should().Be(5);
-        evt.TenantId.Should().Be(_tenantId.ToString());
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<NotificationSentIntegrationEvent>(e =>
+                e.NotificationId == notificationId.Value &&
+                e.Channel == "Email" &&
+                e.RecipientCount == 5 &&
+                e.TenantId == _tenantId.ToString()),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -47,7 +49,7 @@ public sealed class NotificationDomainEventHandlerTests
     {
         // Arrange
         var handler = new NotificationDeliveredDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<NotificationDeliveredDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<NotificationDeliveredDomainEventHandler>.Instance);
         var notificationId = NotificationId.New();
         var recipientId = NotificationRecipientId.New();
         var contactId = Guid.NewGuid();
@@ -57,11 +59,12 @@ public sealed class NotificationDomainEventHandlerTests
         await handler.Handle(domainEvent, CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        var evt = _eventBus.PublishedEvents[0].Should().BeOfType<NotificationDeliveredIntegrationEvent>().Subject;
-        evt.NotificationId.Should().Be(notificationId.Value);
-        evt.RecipientId.Should().Be(recipientId.Value);
-        evt.ContactId.Should().Be(contactId);
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<NotificationDeliveredIntegrationEvent>(e =>
+                e.NotificationId == notificationId.Value &&
+                e.RecipientId == recipientId.Value &&
+                e.ContactId == contactId),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -69,7 +72,7 @@ public sealed class NotificationDomainEventHandlerTests
     {
         // Arrange
         var handler = new NotificationBouncedDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<NotificationBouncedDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<NotificationBouncedDomainEventHandler>.Instance);
         var notificationId = NotificationId.New();
         var contactId = Guid.NewGuid();
         var domainEvent = new NotificationBouncedEvent(notificationId, contactId, "bounced@test.com");
@@ -78,11 +81,12 @@ public sealed class NotificationDomainEventHandlerTests
         await handler.Handle(domainEvent, CancellationToken.None);
 
         // Assert
-        _eventBus.PublishedEvents.Should().HaveCount(1);
-        var evt = _eventBus.PublishedEvents[0].Should().BeOfType<NotificationBouncedIntegrationEvent>().Subject;
-        evt.NotificationId.Should().Be(notificationId.Value);
-        evt.ContactId.Should().Be(contactId);
-        evt.Email.Should().Be("bounced@test.com");
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<NotificationBouncedIntegrationEvent>(e =>
+                e.NotificationId == notificationId.Value &&
+                e.ContactId == contactId &&
+                e.Email == "bounced@test.com"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -90,15 +94,17 @@ public sealed class NotificationDomainEventHandlerTests
     {
         // Arrange
         var handler = new NotificationSentDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<NotificationSentDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<NotificationSentDomainEventHandler>.Instance);
         var domainEvent = new NotificationSentEvent(NotificationId.New(), NotificationChannel.Sms, 1);
 
         // Act
         await handler.Handle(domainEvent, CancellationToken.None);
 
         // Assert
-        var evt = (NotificationSentIntegrationEvent)_eventBus.PublishedEvents[0];
-        evt.TenantId.Should().Be(_tenantId.ToString());
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<NotificationSentIntegrationEvent>(e =>
+                e.TenantId == _tenantId.ToString()),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -106,15 +112,17 @@ public sealed class NotificationDomainEventHandlerTests
     {
         // Arrange
         var handler = new NotificationDeliveredDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<NotificationDeliveredDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<NotificationDeliveredDomainEventHandler>.Instance);
         var domainEvent = new NotificationDeliveredEvent(NotificationId.New(), NotificationRecipientId.New(), Guid.NewGuid());
 
         // Act
         await handler.Handle(domainEvent, CancellationToken.None);
 
         // Assert
-        var evt = (NotificationDeliveredIntegrationEvent)_eventBus.PublishedEvents[0];
-        evt.TenantId.Should().Be(_tenantId.ToString());
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<NotificationDeliveredIntegrationEvent>(e =>
+                e.TenantId == _tenantId.ToString()),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -122,27 +130,17 @@ public sealed class NotificationDomainEventHandlerTests
     {
         // Arrange
         var handler = new NotificationBouncedDomainEventHandler(
-            _eventBus, _tenantAccessor, NullLogger<NotificationBouncedDomainEventHandler>.Instance);
+            _outbox, _tenantAccessor, NullLogger<NotificationBouncedDomainEventHandler>.Instance);
         var domainEvent = new NotificationBouncedEvent(NotificationId.New(), Guid.NewGuid(), "test@test.com");
 
         // Act
         await handler.Handle(domainEvent, CancellationToken.None);
 
         // Assert
-        var evt = (NotificationBouncedIntegrationEvent)_eventBus.PublishedEvents[0];
-        evt.EventId.Should().NotBe(Guid.Empty);
-        evt.OccurredAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-    }
-
-    private sealed class TestEventBus : IEventBus
-    {
-        public List<IIntegrationEvent> PublishedEvents { get; } = [];
-
-        public Task PublishAsync<TEvent>(TEvent @event, CancellationToken ct = default)
-            where TEvent : IIntegrationEvent
-        {
-            PublishedEvents.Add(@event);
-            return Task.CompletedTask;
-        }
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<NotificationBouncedIntegrationEvent>(e =>
+                e.EventId != Guid.Empty &&
+                e.OccurredAt <= DateTime.UtcNow),
+            Arg.Any<CancellationToken>());
     }
 }

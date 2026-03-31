@@ -9,10 +9,10 @@ namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 
 /// <summary>
 /// Bridges domain events to integration events for cross-module consumption.
-/// Publishes NotificationSent, NotificationDelivered, and NotificationBounced events via the event bus.
+/// Enqueues NotificationSentIntegrationEvent to the outbox for reliable publishing.
 /// </summary>
 public sealed class NotificationSentDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<NotificationSentDomainEventHandler> logger) : INotificationHandler<NotificationSentEvent>
 {
@@ -37,6 +37,9 @@ public sealed class NotificationSentDomainEventHandler(
             RecipientCount = notification.RecipientCount
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(NotificationSentIntegrationEvent), integrationEvent.TenantId);
     }
 }

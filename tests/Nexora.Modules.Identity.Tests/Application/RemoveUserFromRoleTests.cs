@@ -5,8 +5,11 @@ using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Caching;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -48,7 +51,7 @@ public sealed class RemoveUserFromRoleTests : IDisposable
         _dbContext.UserRoles.Add(userRole);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, NullLogger<RemoveUserFromRoleHandler>.Instance);
+        var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<RemoveUserFromRoleHandler>.Instance);
         var command = new RemoveUserFromRoleCommand(_role.Id.Value, _user.Id.Value);
 
         // Act
@@ -64,7 +67,7 @@ public sealed class RemoveUserFromRoleTests : IDisposable
     public async Task Handle_UserNotFound_ReturnsFailure()
     {
         // Non-existent user ID supplied, handler returns user_not_found
-        var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, NullLogger<RemoveUserFromRoleHandler>.Instance);
+        var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<RemoveUserFromRoleHandler>.Instance);
         var command = new RemoveUserFromRoleCommand(_role.Id.Value, Guid.NewGuid());
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -81,7 +84,7 @@ public sealed class RemoveUserFromRoleTests : IDisposable
         _dbContext.OrganizationUsers.Add(orgUser);
         await _dbContext.SaveChangesAsync();
 
-        var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, NullLogger<RemoveUserFromRoleHandler>.Instance);
+        var handler = new RemoveUserFromRoleHandler(_dbContext, _tenantAccessor, Substitute.For<IOutbox>(), Substitute.For<ICacheService>(), NullLogger<RemoveUserFromRoleHandler>.Instance);
         var command = new RemoveUserFromRoleCommand(_role.Id.Value, _user.Id.Value);
 
         // Act

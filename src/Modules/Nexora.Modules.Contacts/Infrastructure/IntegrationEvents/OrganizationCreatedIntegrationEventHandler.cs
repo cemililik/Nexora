@@ -13,6 +13,7 @@ namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 /// </summary>
 public sealed class OrganizationCreatedIntegrationEventHandler(
     ContactsDbContext dbContext,
+    IInboxGuard inboxGuard,
     ILogger<OrganizationCreatedIntegrationEventHandler> logger) : IIntegrationEventHandler<OrganizationCreatedIntegrationEvent>
 {
     private static readonly (string Name, TagCategory Category, string Color)[] DefaultTags =
@@ -30,6 +31,12 @@ public sealed class OrganizationCreatedIntegrationEventHandler(
     /// </summary>
     public async Task HandleAsync(OrganizationCreatedIntegrationEvent @event, CancellationToken ct)
     {
+        if (await inboxGuard.IsAlreadyProcessedAsync(@event.EventId, ct))
+        {
+            logger.LogDebug("Skipping duplicate event {EventId} of type {EventType}", @event.EventId, @event.GetType().Name);
+            return;
+        }
+
         if (!Guid.TryParse(@event.TenantId, out var tenantId))
         {
             logger.LogError("Invalid TenantId {TenantId} in OrganizationCreatedIntegrationEvent", @event.TenantId);
@@ -50,6 +57,7 @@ public sealed class OrganizationCreatedIntegrationEventHandler(
 
         var tags = DefaultTags.Select(t => Tag.Create(tenantId, t.Name, t.Category, t.Color)).ToList();
         await dbContext.Tags.AddRangeAsync(tags, ct);
+        inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
 
         logger.LogInformation(
