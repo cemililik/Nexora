@@ -2,14 +2,24 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
+import { Users } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { cn } from '@/shared/lib/utils';
 import { useSignature, useSendSignatureRequest, useCancelSignatureRequest } from '../hooks/useSignatures';
 import { SignatureRequestStatusBadge, SignatureRecipientStatusBadge } from '../components/SignatureStatusBadge';
+
+const TABS = [
+  { id: 'overview', labelKey: 'lockey_documents_signatures_tab_overview' },
+  { id: 'recipients', labelKey: 'lockey_documents_signatures_tab_recipients' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
 
 export default function SignatureDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +28,7 @@ export default function SignatureDetailPage() {
   const { hasPermission } = usePermissions();
   const canCreate = hasPermission('documents.signature.create');
   const { handleApiError } = useApiError();
+  const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   const { data: request, isPending } = useSignature(id ?? '');
   const sendRequest = useSendSignatureRequest();
@@ -29,10 +40,15 @@ export default function SignatureDetailPage() {
   useEffect(() => {
     setBreadcrumbs([
       { label: 'lockey_documents_module_name' },
-      { label: 'lockey_documents_signatures_title' },
+      { label: 'lockey_documents_signatures_title', path: '/documents/signatures' },
       { label: request?.title ?? '...' },
     ]);
   }, [setBreadcrumbs, request?.title]);
+
+  function handleTabChange(tab: TabId) {
+    setActiveTab(tab);
+    window.scrollTo(0, 0);
+  }
 
   if (isPending) return <LoadingSkeleton />;
   if (!request) return null;
@@ -44,6 +60,7 @@ export default function SignatureDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">{request.title}</h1>
@@ -68,64 +85,101 @@ export default function SignatureDetailPage() {
         </div>
       </div>
 
-      {/* Request info */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4">
-        <div>
-          <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_col_document')}</p>
-          <p className="text-sm font-medium">{request.documentId}</p>
+      {/* Tab navigation */}
+      <div className="border-b">
+        <div role="tablist" className="-mb-px flex gap-6">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              id={`${tab.id}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`${tab.id}-panel`}
+              onClick={() => handleTabChange(tab.id)}
+              className={cn(
+                'pb-3 text-sm font-medium transition-colors border-b-2',
+                activeTab === tab.id
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t(tab.labelKey)}
+            </button>
+          ))}
         </div>
-        {request.expiresAt && (
-          <div>
-            <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_col_expires_at')}</p>
-            <p className="text-sm font-medium">{new Date(request.expiresAt).toLocaleDateString(i18n.language)}</p>
-          </div>
-        )}
-        {request.completedAt && (
-          <div>
-            <p className="text-sm text-muted-foreground">{t('lockey_documents_col_updated_at')}</p>
-            <p className="text-sm font-medium">{new Date(request.completedAt).toLocaleDateString(i18n.language)}</p>
-          </div>
-        )}
       </div>
 
-      {/* Recipients table */}
-      <div>
-        <h2 className="mb-3 text-lg font-semibold">{t('lockey_documents_signatures_col_recipients')}</h2>
-        {request.recipients.length > 0 ? (
-          <div className="rounded-lg border">
-            <table className="w-full text-sm" aria-label={t('lockey_documents_signatures_col_recipients')}>
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_form_signing_order')}</th>
-                  <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_form_recipient_name')}</th>
-                  <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_form_recipient_email')}</th>
-                  <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_col_status')}</th>
-                  <th className="px-4 py-2 text-start">{t('lockey_documents_col_updated_at')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {request.recipients.map((r) => (
-                  <tr key={r.id} className="border-b last:border-0">
-                    <td className="px-4 py-2">{r.signingOrder}</td>
-                    <td className="px-4 py-2">{r.name}</td>
-                    <td className="px-4 py-2">{r.email}</td>
-                    <td className="px-4 py-2">
-                      <SignatureRecipientStatusBadge status={r.status} />
-                    </td>
-                    <td className="px-4 py-2">
-                      {r.signedAt
-                        ? new Date(r.signedAt).toLocaleDateString(i18n.language)
-                        : t('lockey_documents_signatures_not_signed')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div
+          id="overview-panel"
+          role="tabpanel"
+          aria-labelledby="overview-tab"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4"
+        >
+          <div>
+            <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_col_document')}</p>
+            <p className="text-sm font-medium">{request.documentId}</p>
           </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_empty')}</p>
-        )}
-      </div>
+          {request.expiresAt && (
+            <div>
+              <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_col_expires_at')}</p>
+              <p className="text-sm font-medium">{new Date(request.expiresAt).toLocaleDateString(i18n.language)}</p>
+            </div>
+          )}
+          {request.completedAt && (
+            <div>
+              <p className="text-sm text-muted-foreground">{t('lockey_documents_col_updated_at')}</p>
+              <p className="text-sm font-medium">{new Date(request.completedAt).toLocaleDateString(i18n.language)}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recipients Tab */}
+      {activeTab === 'recipients' && (
+        <div id="recipients-panel" role="tabpanel" aria-labelledby="recipients-tab">
+          {request.recipients.length > 0 ? (
+            <div className="rounded-lg border">
+              <table className="w-full text-sm" aria-label={t('lockey_documents_signatures_col_recipients')}>
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_form_signing_order')}</th>
+                    <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_form_recipient_name')}</th>
+                    <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_form_recipient_email')}</th>
+                    <th className="px-4 py-2 text-start">{t('lockey_documents_signatures_col_status')}</th>
+                    <th className="px-4 py-2 text-start">{t('lockey_documents_col_updated_at')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {request.recipients.map((r) => (
+                    <tr key={r.id} className="border-b last:border-0">
+                      <td className="px-4 py-2">{r.signingOrder}</td>
+                      <td className="px-4 py-2">{r.name}</td>
+                      <td className="px-4 py-2">{r.email}</td>
+                      <td className="px-4 py-2">
+                        <SignatureRecipientStatusBadge status={r.status} />
+                      </td>
+                      <td className="px-4 py-2">
+                        {r.signedAt
+                          ? new Date(r.signedAt).toLocaleDateString(i18n.language)
+                          : t('lockey_documents_signatures_not_signed')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState
+              icon={Users}
+              title={t('lockey_documents_signatures_empty_title')}
+              description={t('lockey_documents_signatures_empty')}
+            />
+          )}
+        </div>
+      )}
 
       {/* Send Confirm */}
       <ConfirmDialog

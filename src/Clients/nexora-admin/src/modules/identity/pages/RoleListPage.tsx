@@ -48,6 +48,7 @@ export default function RoleListPage() {
     (value: string) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
+        next.delete('page');
         if (value) {
           next.set('search', value);
         } else {

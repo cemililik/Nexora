@@ -24,6 +24,7 @@ public sealed class GetAuditLogDetailQueryTests
     [Fact]
     public async Task Handle_ExistingEntry_ShouldReturnFullDetail()
     {
+        // Arrange
         var userId = Guid.NewGuid();
         var timestamp = DateTimeOffset.UtcNow;
 
@@ -39,9 +40,12 @@ public sealed class GetAuditLogDetailQueryTests
 
         var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
             NullLogger<GetAuditLogDetailHandler>.Instance);
+
+        // Act
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(entry.Id.Value), CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         var detail = result.Value!;
         detail.Id.Should().Be(entry.Id.Value);
@@ -67,15 +71,19 @@ public sealed class GetAuditLogDetailQueryTests
     [Fact]
     public async Task Handle_NonExistentEntry_ShouldReturnFailure()
     {
+        // Arrange
         var id = Guid.NewGuid();
         _repository.GetByIdAsync(AuditEntryId.From(id), _tenantId, Arg.Any<CancellationToken>())
             .Returns((AuditEntry?)null);
 
         var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
             NullLogger<GetAuditLogDetailHandler>.Instance);
+
+        // Act
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(id), CancellationToken.None);
 
+        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Key.Should().Be("lockey_audit_error_entry_not_found");
     }
@@ -83,20 +91,23 @@ public sealed class GetAuditLogDetailQueryTests
     [Fact]
     public async Task Handle_EntryFromDifferentTenant_ShouldReturnFailure()
     {
+        // Arrange — repository filters by tenant, so it returns null for our tenant
         var entry = AuditEntry.Create(
             "other-tenant", "Contacts", "CreateContact", "Command",
             null, null, null, null, null, true, null, null, null,
             null, null, null, null, DateTimeOffset.UtcNow);
 
-        // Repository filters by tenant, so it returns null for our tenant
         _repository.GetByIdAsync(entry.Id, _tenantId, Arg.Any<CancellationToken>())
             .Returns((AuditEntry?)null);
 
         var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
             NullLogger<GetAuditLogDetailHandler>.Instance);
+
+        // Act
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(entry.Id.Value), CancellationToken.None);
 
+        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Key.Should().Be("lockey_audit_error_entry_not_found");
     }
@@ -104,6 +115,7 @@ public sealed class GetAuditLogDetailQueryTests
     [Fact]
     public async Task Handle_FailedEntry_ShouldReturnErrorKey()
     {
+        // Arrange
         var entry = AuditEntry.Create(
             _tenantId, "Identity", "Login", "Command",
             null, "user@test.com", "10.0.0.1", null, null,
@@ -115,9 +127,12 @@ public sealed class GetAuditLogDetailQueryTests
 
         var handler = new GetAuditLogDetailHandler(_repository, _tenantAccessor,
             NullLogger<GetAuditLogDetailHandler>.Instance);
+
+        // Act
         var result = await handler.Handle(
             new GetAuditLogDetailQuery(entry.Id.Value), CancellationToken.None);
 
+        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.IsSuccess.Should().BeFalse();
         result.Value.ErrorKey.Should().Be("lockey_identity_error_invalid_credentials");

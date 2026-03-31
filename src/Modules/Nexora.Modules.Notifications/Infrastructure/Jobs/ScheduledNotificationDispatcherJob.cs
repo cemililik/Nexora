@@ -31,7 +31,7 @@ public sealed class ScheduledNotificationDispatcherJob(
 
         var dueSchedules = await (from s in dbContext.NotificationSchedules
                                   where s.Status == ScheduleStatus.Pending
-                                        && s.ScheduledAt <= DateTime.UtcNow
+                                        && s.ScheduledAt <= DateTimeOffset.UtcNow
                                   select s)
             .ToListAsync(ct);
 

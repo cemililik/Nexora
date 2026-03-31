@@ -8,22 +8,24 @@ import type { PagedResult, PaginationParams } from '@/shared/types/api';
 import type {
   NotificationScheduleDto,
   ScheduleNotificationRequest,
+  ScheduleStatus,
 } from '../types';
 import { notificationKeys } from './useNotifications';
 
 export const scheduleKeys = {
   all: ['notifications', 'schedule'] as const,
-  list: (params: PaginationParams) =>
+  list: (params: PaginationParams & { status?: ScheduleStatus }) =>
     [...scheduleKeys.all, 'list', params] as const,
 };
 
-export function useScheduledNotifications(params: PaginationParams) {
+export function useScheduledNotifications(params: PaginationParams & { status?: ScheduleStatus }) {
   return useQuery({
     queryKey: scheduleKeys.list(params),
     queryFn: () =>
       api.get<PagedResult<NotificationScheduleDto>>('/notifications/schedule', {
         page: params.page,
         pageSize: params.pageSize,
+        status: params.status,
       }),
   });
 }

@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { FileText } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -32,6 +35,7 @@ export default function TemplateListPage() {
   const { handleApiError } = useApiError();
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? undefined;
   const rawCategory = searchParams.get('category');
   const category = CATEGORIES.includes(rawCategory as TemplateCategory)
     ? (rawCategory as TemplateCategory)
@@ -51,7 +55,39 @@ export default function TemplateListPage() {
     page,
     pageSize,
     category,
+    search,
   });
+
+  const hasActiveFilters = !!(search || category);
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={FileText}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams((prev) => {
+              const next = new URLSearchParams();
+              if (prev.has('pageSize')) next.set('pageSize', prev.get('pageSize')!);
+              return next;
+            }),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={FileText}
+        title={t('lockey_documents_templates_empty')}
+        action={
+          canManage
+            ? { label: t('lockey_documents_templates_create'), onClick: () => navigate('/documents/templates/create') }
+            : undefined
+        }
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams, canManage]);
 
   const columns: ColumnDef<DocumentTemplateDto>[] = [
     {
@@ -140,7 +176,20 @@ export default function TemplateListPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={search ?? ''}
+          onChange={(value) => {
+            setSearchParams((prev: URLSearchParams) => {
+              const next = new URLSearchParams(prev);
+              if (value) { next.set('search', value); } else { next.delete('search'); }
+              next.set('page', '1');
+              return next;
+            });
+          }}
+          placeholder={t('lockey_documents_templates_search_placeholder')}
+          className="w-64"
+        />
         <Select
           value={category ?? '__all__'}
           onValueChange={(v) => {
@@ -179,7 +228,7 @@ export default function TemplateListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_documents_templates_empty')}
+        emptyState={emptyStateNode}
         keyExtractor={(row) => row.id}
       />
     </div>

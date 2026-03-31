@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Reporting.Domain.ValueObjects;
@@ -11,8 +12,10 @@ using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Reporting.Infrastructure.Jobs;
 
+/// <summary>Parameters for the report execution Hangfire job.</summary>
 public sealed record ReportExecutionJobParams : JobParams
 {
+    /// <summary>Gets the ID of the report execution to process.</summary>
     public required Guid ExecutionId { get; init; }
 }
 
@@ -48,7 +51,7 @@ public sealed class ReportExecutionJob(
 
         if (definition is null)
         {
-            execution.MarkFailed("Report definition not found", 0);
+            execution.MarkFailed("lockey_reporting_error_definition_not_found", 0);
             await dbContext.SaveChangesAsync(ct);
             return;
         }
@@ -56,7 +59,7 @@ public sealed class ReportExecutionJob(
         execution.MarkRunning();
         await dbContext.SaveChangesAsync(ct);
 
-        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
 
         try
         {
@@ -101,13 +104,14 @@ public sealed class ReportExecutionJob(
                 "Report execution {ExecutionId} completed: {RowCount} rows in {DurationMs}ms",
                 execution.Id, rows.Count, sw.ElapsedMilliseconds);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             sw.Stop();
-            execution.MarkFailed(ex.Message, sw.ElapsedMilliseconds);
-            logger.LogError(ex, "Report execution {ExecutionId} failed", execution.Id);
+            execution.MarkFailed("lockey_reporting_error_execution_failed", sw.ElapsedMilliseconds);
+            // Use CancellationToken.None so a late cancellation signal does not
+            // prevent persisting the failure state before re-throwing.
             await dbContext.SaveChangesAsync(CancellationToken.None);
-            throw;
+            throw; // NexoraJob base class handles logging and telemetry
         }
 
         await dbContext.SaveChangesAsync(ct);

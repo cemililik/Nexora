@@ -18,16 +18,6 @@ public sealed record GetRoleUsersQuery(
     int PageSize = 20)
     : IQuery<PagedResult<RoleUserDto>>;
 
-/// <summary>User assigned to a role with assignment context.</summary>
-public sealed record RoleUserDto(
-    Guid UserId,
-    string Email,
-    string FirstName,
-    string LastName,
-    Guid OrganizationId,
-    string OrganizationName,
-    DateTimeOffset AssignedAt);
-
 /// <summary>Handles retrieving users assigned to a specific role.</summary>
 public sealed class GetRoleUsersHandler(
     IdentityDbContext dbContext,

@@ -72,4 +72,4 @@ For details on the subsequent fix that resolves atomicity issues and introduces 
 
 ## Related
 - [ADR-010: Notification Delivery via Kafka](./ADR-010-notification-delivery-kafka.md)
-- Outbox implementation: `src/Nexora.Infrastructure/Messaging/OutboxProcessor.cs`
+- Outbox implementation: `src/Nexora.Infrastructure/Persistence/Outbox/OutboxProcessor.cs`

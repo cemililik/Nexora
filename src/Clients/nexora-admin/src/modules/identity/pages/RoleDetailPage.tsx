@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { RoleStatusBadge } from '../components/RoleStatusBadge';
@@ -34,18 +35,28 @@ export default function RoleDetailPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('details');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data: role, isLoading } = useRole(id ?? '');
+  const { data: role, isPending } = useRole(id ?? '');
   const { hasPermission } = usePermissions();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
 
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
-    useUnsavedChangesGuard(editing);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPermissionIds, setEditPermissionIds] = useState<string[]>([]);
+
+  const isDirty = editing && (() => {
+    const rolePermIds = new Set(role?.permissions.map((p) => p.id) ?? []);
+    return (
+      editName !== (role?.name ?? '') ||
+      editDescription !== (role?.description ?? '') ||
+      editPermissionIds.length !== rolePermIds.size ||
+      editPermissionIds.some((permId) => !rolePermIds.has(permId))
+    );
+  })();
+  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
+    useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -62,8 +73,8 @@ export default function RoleDetailPage() {
     }
   }, [role]);
 
-  if (isLoading || !role) {
-    return <p className="text-muted-foreground">{t('lockey_identity_loading')}</p>;
+  if (isPending || !role) {
+    return <LoadingSkeleton />;
   }
 
   const handleSave = () => {

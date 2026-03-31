@@ -12,9 +12,6 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Audit.Application.Commands;
 
-/// <summary>Single setting item within a bulk update request.</summary>
-public sealed record AuditSettingItem(string Module, string Operation, bool IsEnabled, int RetentionDays);
-
 /// <summary>Command to bulk-update multiple audit settings in a single transaction.</summary>
 public sealed record BulkUpdateAuditSettingsCommand(
     List<AuditSettingItem> Settings) : ICommand<List<AuditSettingDto>>;
@@ -63,6 +60,7 @@ public sealed class BulkUpdateAuditSettingsHandler(
         var tenantId = tenantContextAccessor.Current.TenantId;
         var userId = tenantContextAccessor.Current.UserId ?? "system";
         var results = new List<AuditSettingDto>();
+        var newSettingCount = 0;
 
         // Batch load all existing settings for this tenant to avoid N+1 queries
         var existingSettings = await auditSettingRepository.GetAllByTenantAsync(tenantId, cancellationToken);
@@ -86,11 +84,18 @@ public sealed class BulkUpdateAuditSettingsHandler(
             {
                 existing = AuditSetting.Create(tenantId, item.Module, item.Operation, item.IsEnabled, item.RetentionDays);
                 auditSettingRepository.Add(existing);
+                newSettingCount++;
             }
 
             results.Add(new AuditSettingDto(
                 existing.Id.Value, existing.Module, existing.Operation,
                 existing.IsEnabled, existing.RetentionDays));
+        }
+
+        if (newSettingCount > 0)
+        {
+            logger.LogWarning("Creating {NewCount} new audit settings for tenant {TenantId} — ensure module/operation keys are correct",
+                newSettingCount, tenantId);
         }
 
         await auditSettingRepository.SaveChangesAsync(cancellationToken);

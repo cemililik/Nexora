@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.Modules.Documents.Infrastructure;
 using Nexora.Modules.Identity.Domain.Entities;
@@ -12,7 +13,6 @@ using Nexora.Modules.Reporting.Infrastructure;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Npgsql;
-using Serilog;
 
 namespace Nexora.Host;
 
@@ -34,7 +34,9 @@ public static class DevelopmentSeed
         if (!app.Environment.IsDevelopment())
             return;
 
-        Log.Information("[DevSeed] Starting development tenant provisioning...");
+        var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(DevelopmentSeed));
+
+        logger.LogInformation("[DevSeed] Starting development tenant provisioning...");
 
         var connectionString = app.Configuration.GetConnectionString("Default")
             ?? throw new InvalidOperationException("Missing 'Default' connection string in configuration");
@@ -42,44 +44,44 @@ public static class DevelopmentSeed
         try
         {
             // Step 1: Ensure platform tables exist (public schema)
-            await EnsurePlatformTablesAsync(app.Services, connectionString);
+            await EnsurePlatformTablesAsync(app.Services, connectionString, logger);
 
             // Step 1b: Ensure outbox table exists (public schema)
-            await EnsureOutboxTableAsync(app.Services, connectionString);
+            await EnsureOutboxTableAsync(app.Services, connectionString, logger);
 
             // Step 2: Insert dev tenant record
-            await EnsureDevTenantAsync(connectionString);
+            await EnsureDevTenantAsync(connectionString, logger);
 
             // Step 3: Create tenant schema
-            await EnsureTenantSchemaAsync(connectionString);
+            await EnsureTenantSchemaAsync(connectionString, logger);
 
             // Step 4: Create all module tables in tenant schema
-            await EnsureIdentityTablesAsync(app.Services, connectionString);
-            await EnsureModuleTablesAsync<ContactsDbContext>(app.Services, connectionString, "contacts_contacts");
-            await EnsureModuleTablesAsync<DocumentsDbContext>(app.Services, connectionString, "documents_documents");
-            await EnsureModuleTablesAsync<NotificationsDbContext>(app.Services, connectionString, "notifications_templates");
-            await EnsureModuleTablesAsync<ReportingDbContext>(app.Services, connectionString, "reporting_report_definitions");
-            await EnsureModuleTablesAsync<AuditDbContext>(app.Services, connectionString, "audit_entries");
+            await EnsureIdentityTablesAsync(app.Services, connectionString, logger);
+            await EnsureModuleTablesAsync<ContactsDbContext>(app.Services, connectionString, "contacts_contacts", logger);
+            await EnsureModuleTablesAsync<DocumentsDbContext>(app.Services, connectionString, "documents_documents", logger);
+            await EnsureModuleTablesAsync<NotificationsDbContext>(app.Services, connectionString, "notifications_templates", logger);
+            await EnsureModuleTablesAsync<ReportingDbContext>(app.Services, connectionString, "reporting_report_definitions", logger);
+            await EnsureModuleTablesAsync<AuditDbContext>(app.Services, connectionString, "audit_entries", logger);
 
             // Step 5: Apply incremental schema changes (new columns added after initial table creation)
-            await ApplySchemaUpdatesAsync(connectionString);
+            await ApplySchemaUpdatesAsync(connectionString, logger);
 
             // Step 6: Seed permissions, roles, organization, tenant record
-            await SeedIdentityDataAsync(app.Services, connectionString);
+            await SeedIdentityDataAsync(app.Services, connectionString, app.Configuration, logger);
 
             // Step 7: Register all modules for the dev tenant
-            await EnsureTenantModulesAsync(connectionString);
+            await EnsureTenantModulesAsync(connectionString, logger);
 
-            Log.Information("[DevSeed] Development tenant provisioning complete");
+            logger.LogInformation("[DevSeed] Development tenant provisioning complete");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[DevSeed] Failed to provision development tenant");
+            logger.LogError(ex, "[DevSeed] Failed to provision development tenant");
             throw;
         }
     }
 
-    private static async Task EnsurePlatformTablesAsync(IServiceProvider rootSp, string connectionString)
+    private static async Task EnsurePlatformTablesAsync(IServiceProvider rootSp, string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -88,7 +90,7 @@ public static class DevelopmentSeed
         var exists = await TableExistsAsync(conn, "public", "platform_tenants");
         if (exists)
         {
-            Log.Information("[DevSeed] Platform tables already exist");
+            logger.LogInformation("[DevSeed] Platform tables already exist");
             return;
         }
 
@@ -98,10 +100,10 @@ public static class DevelopmentSeed
         var creator = platformDb.GetService<IRelationalDatabaseCreator>();
         await creator.CreateTablesAsync();
 
-        Log.Information("[DevSeed] Platform tables created");
+        logger.LogInformation("[DevSeed] Platform tables created");
     }
 
-    private static async Task EnsureOutboxTableAsync(IServiceProvider rootSp, string connectionString)
+    private static async Task EnsureOutboxTableAsync(IServiceProvider rootSp, string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -109,7 +111,7 @@ public static class DevelopmentSeed
         var exists = await TableExistsAsync(conn, "public", "outbox_messages");
         if (exists)
         {
-            Log.Information("[DevSeed] Outbox table already exists");
+            logger.LogInformation("[DevSeed] Outbox table already exists");
             return;
         }
 
@@ -118,10 +120,10 @@ public static class DevelopmentSeed
         var creator = outboxDb.GetService<IRelationalDatabaseCreator>();
         await creator.CreateTablesAsync();
 
-        Log.Information("[DevSeed] Outbox table created in public schema");
+        logger.LogInformation("[DevSeed] Outbox table created in public schema");
     }
 
-    private static async Task EnsureDevTenantAsync(string connectionString)
+    private static async Task EnsureDevTenantAsync(string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -140,10 +142,10 @@ public static class DevelopmentSeed
         cmd.Parameters.AddWithValue("created", DateTimeOffset.UtcNow);
 
         var rows = await cmd.ExecuteNonQueryAsync();
-        Log.Information("[DevSeed] Dev tenant: {Status}", rows > 0 ? "created" : "already exists");
+        logger.LogInformation("[DevSeed] Dev tenant: {Status}", rows > 0 ? "created" : "already exists");
     }
 
-    private static async Task EnsureTenantSchemaAsync(string connectionString)
+    private static async Task EnsureTenantSchemaAsync(string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -153,10 +155,10 @@ public static class DevelopmentSeed
         cmd.CommandText = $"""CREATE SCHEMA IF NOT EXISTS "{SchemaName}" """;
         await cmd.ExecuteNonQueryAsync();
 
-        Log.Information("[DevSeed] Tenant schema ensured: {Schema}", SchemaName);
+        logger.LogInformation("[DevSeed] Tenant schema ensured: {Schema}", SchemaName);
     }
 
-    private static async Task EnsureIdentityTablesAsync(IServiceProvider rootSp, string connectionString)
+    private static async Task EnsureIdentityTablesAsync(IServiceProvider rootSp, string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -165,7 +167,7 @@ public static class DevelopmentSeed
         var exists = await TableExistsAsync(conn, SchemaName, "identity_users");
         if (exists)
         {
-            Log.Information("[DevSeed] Identity tables already exist in tenant schema");
+            logger.LogInformation("[DevSeed] Identity tables already exist in tenant schema");
             return;
         }
 
@@ -182,10 +184,10 @@ public static class DevelopmentSeed
         var creator = dbContext.GetService<IRelationalDatabaseCreator>();
         await creator.CreateTablesAsync();
 
-        Log.Information("[DevSeed] Identity tables created in tenant schema");
+        logger.LogInformation("[DevSeed] Identity tables created in tenant schema");
     }
 
-    private static async Task SeedIdentityDataAsync(IServiceProvider rootSp, string connectionString)
+    private static async Task SeedIdentityDataAsync(IServiceProvider rootSp, string connectionString, IConfiguration configuration, ILogger logger)
     {
         using var scope = rootSp.CreateScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
@@ -215,7 +217,7 @@ public static class DevelopmentSeed
             cmd.Parameters.AddWithValue("realm", "nexora-dev");
             cmd.Parameters.AddWithValue("created", DateTimeOffset.UtcNow);
             await cmd.ExecuteNonQueryAsync();
-            Log.Information("[DevSeed] Seeded tenant record in identity schema");
+            logger.LogInformation("[DevSeed] Seeded tenant record in identity schema");
         }
 
         // Seed default organization with the known GUID (matches Keycloak org_id claim)
@@ -239,7 +241,7 @@ public static class DevelopmentSeed
             cmd.Parameters.AddWithValue("active", true);
             cmd.Parameters.AddWithValue("created", DateTimeOffset.UtcNow);
             await cmd.ExecuteNonQueryAsync();
-            Log.Information("[DevSeed] Seeded default organization: {OrgId}", DevOrgGuid);
+            logger.LogInformation("[DevSeed] Seeded default organization: {OrgId}", DevOrgGuid);
         }
 
         // Seed permissions (incremental — adds any missing permissions)
@@ -256,14 +258,14 @@ public static class DevelopmentSeed
         {
             await dbContext.Permissions.AddRangeAsync(newPermissions);
             await dbContext.SaveChangesAsync();
-            Log.Information("[DevSeed] Seeded {NewCount} new permissions (total: {TotalCount})",
+            logger.LogInformation("[DevSeed] Seeded {NewCount} new permissions (total: {TotalCount})",
                 newPermissions.Length, existingKeys.Count + newPermissions.Length);
         }
         else if (existingKeys.Count == 0)
         {
             await dbContext.Permissions.AddRangeAsync(allDefaultPermissions);
             await dbContext.SaveChangesAsync();
-            Log.Information("[DevSeed] Seeded {Count} permissions", allDefaultPermissions.Length);
+            logger.LogInformation("[DevSeed] Seeded {Count} permissions", allDefaultPermissions.Length);
         }
 
         // Seed Platform Admin role with all permissions (or update if new permissions added)
@@ -282,7 +284,7 @@ public static class DevelopmentSeed
 
             await dbContext.Roles.AddAsync(adminRole);
             await dbContext.SaveChangesAsync();
-            Log.Information("[DevSeed] Seeded Platform Admin role with {Count} permissions", allPermissions.Count);
+            logger.LogInformation("[DevSeed] Seeded Platform Admin role with {Count} permissions", allPermissions.Count);
         }
         else if (newPermissions.Length > 0)
         {
@@ -298,14 +300,14 @@ public static class DevelopmentSeed
                 adminRole.AssignPermission(permission);
 
             await dbContext.SaveChangesAsync();
-            Log.Information("[DevSeed] Assigned {Count} new permissions to Platform Admin", unassigned.Count);
+            logger.LogInformation("[DevSeed] Assigned {Count} new permissions to Platform Admin", unassigned.Count);
         }
 
         // Seed admin user (matches Keycloak test user)
-        await SeedAdminUserAsync(dbContext, connectionString);
+        await SeedAdminUserAsync(dbContext, connectionString, configuration, logger);
     }
 
-    private static async Task SeedAdminUserAsync(IdentityDbContext dbContext, string connectionString)
+    private static async Task SeedAdminUserAsync(IdentityDbContext dbContext, string connectionString, IConfiguration configuration, ILogger logger)
     {
         // Query Keycloak for the admin user's UUID (sub claim)
         string? keycloakUserId = null;
@@ -313,18 +315,22 @@ public static class DevelopmentSeed
         {
             using var http = new HttpClient();
 
+            var keycloakUsername = configuration["DevSeed:KeycloakAdminUsername"] ?? "admin";
+            var keycloakPassword = configuration["DevSeed:KeycloakAdminPassword"]
+                ?? throw new InvalidOperationException("DevSeed:KeycloakAdminPassword is not configured");
+
             // Get admin token from Keycloak master realm
             var tokenForm = new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["client_id"] = "admin-cli",
-                ["username"] = "admin",
-                ["password"] = "admin",
+                ["username"] = keycloakUsername,
+                ["password"] = keycloakPassword,
                 ["grant_type"] = "password",
             });
             var tokenResp = await http.PostAsync("http://keycloak:8080/realms/master/protocol/openid-connect/token", tokenForm);
             if (!tokenResp.IsSuccessStatusCode)
             {
-                Log.Warning("[DevSeed] Cannot reach Keycloak admin API — skipping admin user seed");
+                logger.LogWarning("[DevSeed] Cannot reach Keycloak admin API — skipping admin user seed");
                 return;
             }
 
@@ -339,7 +345,7 @@ public static class DevelopmentSeed
 
             if (!usersResp.IsSuccessStatusCode)
             {
-                Log.Warning("[DevSeed] Keycloak user lookup failed — skipping admin user seed");
+                logger.LogWarning("[DevSeed] Keycloak user lookup failed — skipping admin user seed");
                 return;
             }
 
@@ -347,15 +353,15 @@ public static class DevelopmentSeed
             if (usersJson.GetArrayLength() > 0)
                 keycloakUserId = usersJson[0].GetProperty("id").GetString();
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            Log.Warning(ex, "[DevSeed] Keycloak not reachable — skipping admin user seed");
+            logger.LogWarning(ex, "[DevSeed] Keycloak not reachable — skipping admin user seed");
             return;
         }
 
         if (string.IsNullOrEmpty(keycloakUserId))
         {
-            Log.Warning("[DevSeed] Keycloak user admin@nexora.dev not found — skipping admin user seed");
+            logger.LogWarning("[DevSeed] Keycloak user admin@nexora.dev not found — skipping admin user seed");
             return;
         }
 
@@ -365,7 +371,7 @@ public static class DevelopmentSeed
 
         if (existingUser is not null)
         {
-            Log.Information("[DevSeed] Admin user already exists: {UserId}", existingUser.Id);
+            logger.LogInformation("[DevSeed] Admin user already exists: {UserId}", existingUser.Id);
             return;
         }
 
@@ -389,12 +395,11 @@ public static class DevelopmentSeed
         }
 
         await dbContext.SaveChangesAsync();
-        Log.Information("[DevSeed] Seeded admin user {Email} (Keycloak: {KeycloakId})",
-            "admin@nexora.dev", keycloakUserId);
+        logger.LogInformation("[DevSeed] Seeded admin user (Keycloak: {KeycloakId})", keycloakUserId);
     }
 
     private static async Task EnsureModuleTablesAsync<TContext>(
-        IServiceProvider rootSp, string connectionString, string checkTable)
+        IServiceProvider rootSp, string connectionString, string checkTable, ILogger logger)
         where TContext : DbContext
     {
         await using var conn = new NpgsqlConnection(connectionString);
@@ -403,7 +408,7 @@ public static class DevelopmentSeed
         var exists = await TableExistsAsync(conn, SchemaName, checkTable);
         if (exists)
         {
-            Log.Information("[DevSeed] {Module} tables already exist in tenant schema", typeof(TContext).Name);
+            logger.LogInformation("[DevSeed] {Module} tables already exist in tenant schema", typeof(TContext).Name);
             return;
         }
 
@@ -420,7 +425,7 @@ public static class DevelopmentSeed
         var creator = dbContext.GetService<IRelationalDatabaseCreator>();
         await creator.CreateTablesAsync();
 
-        Log.Information("[DevSeed] {Module} tables created in tenant schema", typeof(TContext).Name);
+        logger.LogInformation("[DevSeed] {Module} tables created in tenant schema", typeof(TContext).Name);
     }
 
     /// <summary>
@@ -432,7 +437,7 @@ public static class DevelopmentSeed
     /// In production, these changes MUST be managed via EF Core migrations.
     /// See: docs/standards/INFRASTRUCTURE_STANDARDS.md for migration guidelines.
     /// </remarks>
-    private static async Task ApplySchemaUpdatesAsync(string connectionString)
+    private static async Task ApplySchemaUpdatesAsync(string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -510,14 +515,14 @@ public static class DevelopmentSeed
             catch (PostgresException ex) when (ex.SqlState == "23505")
             {
                 // Unique index creation may fail if duplicate data exists — skip gracefully
-                Log.Warning("[DevSeed] Skipped schema update due to existing data conflict: {Message}", ex.MessageText);
+                logger.LogWarning("[DevSeed] Skipped schema update due to existing data conflict: {Message}", ex.MessageText);
             }
         }
 
-        Log.Information("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);
+        logger.LogInformation("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);
     }
 
-    private static async Task EnsureTenantModulesAsync(string connectionString)
+    private static async Task EnsureTenantModulesAsync(string connectionString, ILogger logger)
     {
         await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
@@ -540,7 +545,7 @@ public static class DevelopmentSeed
             await cmd.ExecuteNonQueryAsync();
         }
 
-        Log.Information("[DevSeed] Tenant modules registered: {Modules}", string.Join(", ", moduleNames));
+        logger.LogInformation("[DevSeed] Tenant modules registered: {Modules}", string.Join(", ", moduleNames));
     }
 
     private static async Task<bool> TableExistsAsync(NpgsqlConnection conn, string schema, string table)

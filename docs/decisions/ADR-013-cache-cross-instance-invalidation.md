@@ -1,9 +1,11 @@
 # ADR-013: Cache Cross-Instance Invalidation
 
 ## Status
+
 Accepted
 
 ## Date
+
 2026-03-31
 
 ## Context
@@ -44,11 +46,13 @@ sequenceDiagram
 - **No additional infrastructure**: No dedicated cache bus or Redis pub/sub channel needed
 
 ### Negative
+
 - **Eventual consistency**: ~50ms window where other instances may serve stale L1 data
 - **Pub/sub overhead**: One additional message per cache invalidation operation
 - **Broadcast to all instances**: Every instance receives every invalidation event, even if it has no matching L1 keys
 
 ### Risks
+
 - **High invalidation volume**: A bulk operation invalidating many cache prefixes could flood the pub/sub topic. Mitigation: batch invalidation events, debounce rapid successive invalidations.
 - **Instance ID collision**: If `InstanceId` is not unique (e.g., reused container ID), self-filtering may fail. Mitigation: use `Guid.NewGuid()` generated at startup.
 

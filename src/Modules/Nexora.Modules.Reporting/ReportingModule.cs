@@ -23,6 +23,7 @@ public sealed class ReportingModule : IModule
     public string Version => "1.0.0";
     public IReadOnlyList<string> Dependencies => ["identity"];
 
+    /// <inheritdoc />
     public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<ReportingDbContext>((sp, options) =>
@@ -46,11 +47,13 @@ public sealed class ReportingModule : IModule
         services.AddScoped<IOutbox, OutboxService<ReportingDbContext>>();
     }
 
+    /// <inheritdoc />
     public void ConfigureEventHandlers(IServiceCollection services)
     {
         // No cross-module integration events consumed at this time.
     }
 
+    /// <inheritdoc />
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         endpoints.MapReportDefinitionEndpoints();
@@ -59,6 +62,7 @@ public sealed class ReportingModule : IModule
         endpoints.MapDashboardEndpoints();
     }
 
+    /// <inheritdoc />
     public void ConfigureJobs(IJobScheduler scheduler)
     {
         scheduler.AddOrUpdate<ScheduledReportDispatcherJob>(
@@ -68,22 +72,26 @@ public sealed class ReportingModule : IModule
             "default");
     }
 
+    /// <inheritdoc />
     public Task<HealthCheckResult> CheckHealthAsync(CancellationToken ct)
     {
         return Task.FromResult(HealthCheckResult.Healthy());
     }
 
+    /// <inheritdoc />
     public Task OnStartupAsync(CancellationToken ct)
     {
         // Reporting permissions are seeded centrally in IdentityModuleMigration.SeedAsync().
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task OnInstallAsync(TenantInstallContext context, CancellationToken ct)
     {
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc />
     public Task OnUninstallAsync(TenantInstallContext context, CancellationToken ct)
     {
         return Task.CompletedTask;

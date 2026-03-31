@@ -6,7 +6,11 @@ import { z } from 'zod';
 
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
+import { FolderOpen } from 'lucide-react';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { useApiError } from '@/shared/hooks/useApiError';
 import {
   Dialog,
@@ -146,7 +150,7 @@ export default function FolderManagementPage() {
 
       {/* Folder list */}
       {isPending ? (
-        <div className="text-sm text-muted-foreground">{t('lockey_common_loading', { ns: 'common' })}</div>
+        <LoadingSkeleton lines={4} />
       ) : folders && folders.length > 0 ? (
         <div className="rounded-lg border">
           <table className="w-full text-sm" aria-label={t('lockey_documents_folders_title')}>
@@ -220,7 +224,15 @@ export default function FolderManagementPage() {
           </table>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">{t('lockey_documents_folders_empty')}</p>
+        <EmptyState
+          icon={FolderOpen}
+          title={t('lockey_documents_folders_empty')}
+          action={
+            canManage
+              ? { label: t('lockey_documents_folders_create'), onClick: openCreateDialog }
+              : undefined
+          }
+        />
       )}
 
       {/* Create/Rename Dialog */}
@@ -241,11 +253,10 @@ export default function FolderManagementPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label htmlFor="folder-name" className="text-sm font-medium">{t('lockey_documents_folders_form_name')}</label>
-              <input
+              <Input
                 id="folder-name"
-                type="text"
                 {...form.register('name')}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="mt-1"
               />
               {form.formState.errors.name?.message && (
                 <p className="mt-1 text-sm text-destructive">
@@ -271,14 +282,12 @@ export default function FolderManagementPage() {
       </Dialog>
 
       {/* Folder Access Dialog */}
-      {accessFolder && (
-        <FolderAccessDialog
-          folderId={accessFolder.id}
-          folderName={accessFolder.name}
-          open
-          onOpenChange={(open) => { if (!open) setAccessFolder(null); }}
-        />
-      )}
+      <FolderAccessDialog
+        folderId={accessFolder?.id ?? ''}
+        folderName={accessFolder?.name ?? ''}
+        open={accessFolder !== null}
+        onOpenChange={(isOpen) => { if (!isOpen) setAccessFolder(null); }}
+      />
 
       {/* Delete Confirm */}
       <ConfirmDialog

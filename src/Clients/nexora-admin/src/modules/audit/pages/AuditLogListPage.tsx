@@ -5,6 +5,7 @@ import { FileSearch } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
+import { SearchInput } from '@/shared/components/data/SearchInput';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -30,6 +31,7 @@ export default function AuditLogListPage() {
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? undefined;
   const module = searchParams.get('module') ?? undefined;
   const rawIsSuccess = searchParams.get('isSuccess');
   const isSuccess = rawIsSuccess === 'true' ? true : rawIsSuccess === 'false' ? false : undefined;
@@ -43,7 +45,7 @@ export default function AuditLogListPage() {
     ]);
   }, [setBreadcrumbs]);
 
-  const { data, isPending } = useAuditLogs({ page, pageSize, module, isSuccess, dateFrom, dateTo });
+  const { data, isPending } = useAuditLogs({ page, pageSize, module, isSuccess, dateFrom, dateTo, search });
   const { data: auditableModules } = useAuditableOperations();
 
   const moduleNames = useMemo(() => {
@@ -64,7 +66,7 @@ export default function AuditLogListPage() {
     });
   };
 
-  const hasActiveFilters = !!(module || rawIsSuccess || dateFrom || dateTo);
+  const hasActiveFilters = !!(search || module || rawIsSuccess || dateFrom || dateTo);
   const handleResetFilters = () => {
     setSearchParams(new URLSearchParams());
   };
@@ -131,6 +133,12 @@ export default function AuditLogListPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={search ?? ''}
+          onChange={(value) => updateFilter('search', value)}
+          placeholder={t('lockey_audit_search_placeholder')}
+          className="w-64"
+        />
         <Select
           value={module ?? '__all__'}
           onValueChange={(v) => updateFilter('module', v === '__all__' ? '' : v)}

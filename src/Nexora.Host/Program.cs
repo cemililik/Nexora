@@ -41,13 +41,10 @@ try
             .Enrich.WithProperty("Application", "Nexora")
             .WriteTo.Console();
 
-        if (context.HostingEnvironment.IsDevelopment())
+        config.WriteTo.OpenTelemetry(options =>
         {
-            config.WriteTo.OpenTelemetry(options =>
-            {
-                options.Endpoint = otlpEndpoint;
-            });
-        }
+            options.Endpoint = otlpEndpoint;
+        });
     });
 
     // OpenTelemetry — traces + metrics
@@ -101,7 +98,7 @@ try
             {
                 OnAuthenticationFailed = context =>
                 {
-                    Log.Warning(context.Exception, "JWT authentication failed: {Message}", context.Exception.Message);
+                    Log.Warning(context.Exception, "JWT authentication failed");
                     return Task.CompletedTask;
                 },
                 OnTokenValidated = context =>

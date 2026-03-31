@@ -8,6 +8,7 @@ using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Reporting.Infrastructure;
 
+/// <summary>EF Core DbContext for the Reporting module. Scoped to the current tenant's schema.</summary>
 public sealed class ReportingDbContext(
     DbContextOptions<ReportingDbContext> options,
     ITenantContextAccessor tenantContextAccessor,

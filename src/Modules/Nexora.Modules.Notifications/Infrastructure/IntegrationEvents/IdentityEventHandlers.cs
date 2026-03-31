@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Domain.Events;
@@ -15,6 +16,8 @@ public sealed class UserCreatedIntegrationEventHandler(
     INotificationService notificationService,
     ILogger<UserCreatedIntegrationEventHandler> logger) : IIntegrationEventHandler<UserCreatedIntegrationEvent>
 {
+    private const string WelcomeTemplateCode = "welcome";
+
     public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationToken ct)
     {
         if (await inboxGuard.IsAlreadyProcessedAsync(@event.EventId, ct))
@@ -24,8 +27,8 @@ public sealed class UserCreatedIntegrationEventHandler(
         }
 
         var request = new SendNotificationRequest(
-            TemplateCode: "welcome",
-            Channel: "Email",
+            TemplateCode: WelcomeTemplateCode,
+            Channel: NotificationChannel.Email.ToString(),
             ContactId: @event.UserId,
             RecipientAddress: @event.Email,
             Variables: new Dictionary<string, string>

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+
 namespace Nexora.Infrastructure.Persistence.Outbox;
 
 /// <summary>
@@ -19,4 +21,47 @@ public sealed class OutboxOptions
 
     /// <summary>Number of days after which processed messages are eligible for cleanup.</summary>
     public int CleanupAfterDays { get; set; } = 7;
+
+    /// <summary>Pending message count above which the outbox is considered degraded.</summary>
+    public int DegradedThreshold { get; set; } = 100;
+
+    /// <summary>Pending message count above which the outbox is considered unhealthy.</summary>
+    public int UnhealthyThreshold { get; set; } = 1000;
+
+    /// <summary>PostgreSQL connection string used by the outbox processor for direct Npgsql access.</summary>
+    public string ConnectionString { get; set; } = string.Empty;
+}
+
+/// <summary>Validates <see cref="OutboxOptions"/> on startup to catch misconfiguration early.</summary>
+public sealed class OutboxOptionsValidator : IValidateOptions<OutboxOptions>
+{
+    public ValidateOptionsResult Validate(string? name, OutboxOptions options)
+    {
+        var errors = new List<string>();
+
+        if (options.PollingIntervalSeconds <= 0)
+            errors.Add($"{nameof(OutboxOptions.PollingIntervalSeconds)} must be greater than 0.");
+
+        if (options.BatchSize <= 0)
+            errors.Add($"{nameof(OutboxOptions.BatchSize)} must be greater than 0.");
+
+        if (options.MaxRetryCount <= 0)
+            errors.Add($"{nameof(OutboxOptions.MaxRetryCount)} must be greater than 0.");
+
+        if (options.CleanupAfterDays <= 0)
+            errors.Add($"{nameof(OutboxOptions.CleanupAfterDays)} must be greater than 0.");
+
+        if (options.DegradedThreshold <= 0)
+            errors.Add($"{nameof(OutboxOptions.DegradedThreshold)} must be greater than 0.");
+
+        if (options.UnhealthyThreshold <= options.DegradedThreshold)
+            errors.Add($"{nameof(OutboxOptions.UnhealthyThreshold)} must be greater than {nameof(OutboxOptions.DegradedThreshold)}.");
+
+        if (string.IsNullOrWhiteSpace(options.ConnectionString))
+            errors.Add($"{nameof(OutboxOptions.ConnectionString)} must be configured.");
+
+        return errors.Count > 0
+            ? ValidateOptionsResult.Fail(errors)
+            : ValidateOptionsResult.Success;
+    }
 }

@@ -93,11 +93,15 @@ export function setAuthToken(token: string | null): void {
 }
 
 function unwrapEnvelope<T>(data: ApiEnvelope<T>): T {
+  // Guard against null/undefined envelope (e.g. empty 204 body parsed as null)
+  if (data == null) {
+    return undefined as unknown as T;
+  }
   // data.data can be null for void responses (PUT/DELETE with no body)
   if (data.data === undefined || data.data === null) {
     return undefined as unknown as T;
   }
-  return data.data as T;
+  return data.data;
 }
 
 /** Typed API helpers that unwrap ApiEnvelope automatically. */

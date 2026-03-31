@@ -188,6 +188,7 @@
   "lockey_identity_empty_tenants": "Kiracı bulunamadı.",
   "lockey_identity_empty_audit": "Denetim kaydı bulunamadı.",
   "lockey_identity_empty_modules": "Yüklü modül yok.",
+  "lockey_identity_empty_modules_description": "Bu kiracı için özellikleri etkinleştirmek amacıyla bir modül yükleyin.",
   "lockey_identity_empty_members": "Bu organizasyonda üye yok.",
 
   "lockey_identity_tab_profile": "Profil",
