@@ -171,6 +171,7 @@
 
   "lockey_contacts_gdpr_title": "KVKK / GDPR",
   "lockey_contacts_gdpr_export": "Kişisel Verileri Dışa Aktar",
+  "lockey_contacts_gdpr_export_completed": "Kişisel veriler başarıyla dışa aktarıldı.",
   "lockey_contacts_gdpr_delete": "Kişisel Verileri Sil",
   "lockey_contacts_gdpr_delete_reason": "Silme Nedeni",
   "lockey_contacts_gdpr_confirm_delete": "Bu kişiye ait tüm kişisel verileri kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",

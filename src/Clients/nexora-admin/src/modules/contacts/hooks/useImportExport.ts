@@ -12,6 +12,7 @@ import type {
   ConfirmImportRequest,
   StartExportRequest,
   GdprDeleteRequest,
+  GdprExportDto,
 } from '../types';
 
 export const importKeys = {
@@ -75,13 +76,28 @@ export function useStartExport() {
 }
 
 export function useGdprExport(contactId: string) {
+  const { t } = useTranslation('contacts');
   const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: () =>
-      api.post<void>(
+      api.post<GdprExportDto>(
         `/contacts/contacts/${encodeURIComponent(contactId)}/gdpr/export`,
       ),
+    onSuccess: (data) => {
+      // Download personal data as JSON file
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `gdpr-export-${contactId}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success(t('lockey_contacts_gdpr_export_completed'));
+    },
     onError: (err) => handleApiError(err),
   });
 }

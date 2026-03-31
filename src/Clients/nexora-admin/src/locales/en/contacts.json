@@ -171,6 +171,7 @@
 
   "lockey_contacts_gdpr_title": "GDPR",
   "lockey_contacts_gdpr_export": "Export Personal Data",
+  "lockey_contacts_gdpr_export_completed": "Personal data exported successfully.",
   "lockey_contacts_gdpr_delete": "Delete Personal Data",
   "lockey_contacts_gdpr_delete_reason": "Reason for Deletion",
   "lockey_contacts_gdpr_confirm_delete": "Are you sure you want to permanently delete all personal data for this contact? This action cannot be undone.",
