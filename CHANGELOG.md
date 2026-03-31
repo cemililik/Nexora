@@ -9,15 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Transactional Outbox pattern for reliable event publishing (12 handlers migrated)
-- Inbox pattern for idempotent event consumption (4 handlers protected)
+- Transactional Outbox pattern with per-module DbContext atomicity (OutboxService<TContext>)
+- Inbox pattern for idempotent event consumption (InboxGuard<TContext>)
 - OutboxProcessor BackgroundService (polling-based, configurable)
-- Outbox health check + OpenTelemetry metrics + admin status API
-- Cache cross-instance invalidation via Dapr pub/sub
-- Email/SMS delivery via Kafka (replaces per-notification Hangfire jobs)
+- Email/SMS delivery via Kafka (NotificationDeliveryRequestedIntegrationEvent)
 - 5 new integration events: UserRolesChanged, ContactImportCompleted, ReportExecuted, FolderAccessGranted/Revoked, ModuleInstalled/Uninstalled
+- Cache cross-instance invalidation via Dapr pub/sub
+- Outbox monitoring: health check, OpenTelemetry metrics, admin status API
+- OutboxCleanupJob (7d retention) and InboxCleanupJob (30d retention)
+- ContactGdprDeletedIntegrationEvent for cross-module PII cleanup
+- ADR-005 through ADR-012 documenting architectural decisions
 - Permission cache invalidation on role changes (inline + event-driven)
-- OutboxCleanupJob (7d) + InboxCleanupJob (30d) recurring jobs
 - Audit module: standalone audit logging with configurable settings per module/operation
 - Documents module: folder access control with time-limited permissions
 - Documents module: drag-and-drop file upload with presigned URL flow
@@ -28,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- OutboxProcessor: reflection caching, immediate retry on full batch, tenant-schema iteration
+- FileDropZone: progress/isUploading props wired to callers
+- OrganizationListPage, RoleListPage: server-side/URL-backed search
+- ContactDetailPage: useUnsavedChangesGuard tracks actual form dirty state
+- DataTable: controlled page-jump, select-all aria-label
+- DashboardPage: uses useAuditLogs hook instead of inline API call
 - DaprCacheService: fixed value-type caching bug for GetOrSetAsync
 - AuditCacheKeys: removed double tenant ID prefix from cache keys
 - FolderAccess: DateTime → DateTimeOffset for ExpiresAt
@@ -36,6 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- OutboxService atomicity: messages saved in caller's transaction (not separate)
+- ConfirmDialog race conditions in RoleDetailPage, DocumentDetailPage
+- Redundant isPending checks in ContactDetailPage tabs
+- GDPR export: IgnoreQueryFilters on all related entity queries
+- InboxCleanupJob SQL injection schema validation
 - Keycloak user delete: GET→modify→PUT full representation
 - LastLoginAt connection pool corruption: await instead of fire-and-forget
 - API unwrapEnvelope null data handling for void responses

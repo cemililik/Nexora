@@ -984,15 +984,18 @@ Tenant admins can override feature flags via admin panel (stored in DB).
 
 ### 5.1 Outbox Pattern (Reliable Event Publishing)
 
-All domain event handlers that publish integration events MUST use `IOutbox.EnqueueAsync()` instead of `IEventBus.PublishAsync()`. The outbox record is persisted within the same database transaction as the entity change, guaranteeing at-least-once delivery even if Kafka is unavailable or the application crashes.
+All domain event handlers that publish integration events MUST use `OutboxService<TContext>` (via `IOutbox.EnqueueAsync()`) instead of `IEventBus.PublishAsync()`. The `OutboxService<TContext>` is generic and scoped to the caller's module-specific `DbContext` — this ensures the outbox record is persisted within the **same database transaction** as the entity change, guaranteeing at-least-once delivery even if Kafka is unavailable or the application crashes.
+
+**Critical**: `EnqueueAsync` does **NOT** call `SaveChangesAsync` internally. The outbox message is added to the `DbContext` change tracker and is saved when the caller (command handler) calls `SaveChangesAsync`. This ensures true atomicity — the outbox record and the domain entity change are committed in a single transaction.
 
 ```csharp
-// DOGRU — IOutbox ile
+// DOGRU — OutboxService<TContext> ile (generic, per-module DbContext)
 public sealed class UserCreatedDomainEventHandler(IOutbox outbox)
     : INotificationHandler<UserCreatedDomainEvent>
 {
     public async Task Handle(UserCreatedDomainEvent notification, CancellationToken ct)
     {
+        // EnqueueAsync adds to DbContext change tracker — no SaveChangesAsync here
         await outbox.EnqueueAsync(new UserCreatedIntegrationEvent(
             notification.UserId, notification.TenantId), ct);
     }
@@ -1002,7 +1005,7 @@ public sealed class UserCreatedDomainEventHandler(IOutbox outbox)
 // public sealed class BadHandler(IEventBus bus) { ... }  // YASAK
 ```
 
-The `OutboxProcessor` BackgroundService polls the outbox table at a configurable interval and publishes pending events to Kafka.
+The `OutboxProcessor` BackgroundService polls the outbox table at a configurable interval, iterating across all tenant schemas, and publishes pending events to Kafka via Dapr pub/sub.
 
 **Configuration:**
 ```jsonc
@@ -1015,7 +1018,7 @@ The `OutboxProcessor` BackgroundService polls the outbox table at a configurable
 
 ### 5.2 Inbox Pattern (Idempotent Consumption)
 
-Integration event handlers that must be idempotent MUST use `IInboxGuard`. The inbox guard checks whether an event with the same `EventId` has already been processed and skips duplicates.
+Integration event handlers that must be idempotent MUST use `InboxGuard<TContext>` (via `IInboxGuard`). The inbox guard is generic and scoped to the consumer's module-specific `DbContext`. It checks whether an event with the same `EventId` has already been processed and skips duplicates.
 
 ```csharp
 public sealed class UserCreatedContactHandler(

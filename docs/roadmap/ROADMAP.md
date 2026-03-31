@@ -505,6 +505,20 @@ Phase 2 introduces financial modules (Finance) and heavy cross-module event flow
 
 **Summary**: Outbox/Inbox pattern provides reliable, at-least-once event delivery with idempotent consumption. All domain event handlers now use `IOutbox.EnqueueAsync` instead of `IEventBus.PublishAsync`. The OutboxProcessor polls the outbox table and publishes to Kafka. Consumers use `IInboxGuard` for deduplication. Monitoring via health check, OTel metrics, and admin API. Cache cross-instance invalidation ensures L1 cache consistency across pods via Dapr pub/sub.
 
+**Implementation details:**
+- Outbox infrastructure: `OutboxService<TContext>` (generic, per-module DbContext), `OutboxProcessor` BackgroundService, `OutboxMessage` entity in tenant schema
+- Inbox infrastructure: `InboxGuard<TContext>` (generic), `InboxMessage` entity
+- 12 domain event handlers migrated to outbox (`IOutbox.EnqueueAsync`)
+- 4 integration event handlers protected with inbox guard (`IInboxGuard`)
+- Email/SMS delivery migrated to Kafka via `NotificationDeliveryRequestedIntegrationEvent`
+- 5 new integration events: `UserRolesChanged`, `ContactImportCompleted`, `ReportExecuted`, `FolderAccessGranted`/`Revoked`, `ModuleInstalled`/`Uninstalled`
+- Cache cross-instance invalidation via Dapr pub/sub (prefix invalidation broadcast)
+- Outbox monitoring: health check, OpenTelemetry metrics (queue depth, processing latency), admin status API, cleanup jobs (OutboxCleanupJob 7d, InboxCleanupJob 30d)
+- OutboxService atomicity fix: `EnqueueAsync` no longer calls `SaveChangesAsync` — outbox messages are saved in the caller's transaction via the generic per-module `DbContext` pattern, ensuring true atomicity
+- PR-69 review: 57 files reviewed, outbox performance optimizations (reflection caching, immediate retry on full batch, tenant-schema iteration), UI consistency fixes
+- `ContactGdprDeletedIntegrationEvent` for cross-module PII cleanup
+- ADR-005 through ADR-012 documenting architectural decisions
+
 ### 1.5.2 Tenant Permission Isolation — Backend Only (Weeks 2-4)
 
 Platform-level vs tenant-level permission separation is required before multi-tenant production deployment and is a prerequisite for NMP.
