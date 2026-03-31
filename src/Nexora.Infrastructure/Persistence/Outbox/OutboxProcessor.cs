@@ -110,6 +110,7 @@ public sealed class OutboxProcessor(
             WHERE "ProcessedAt" IS NULL AND "RetryCount" < @maxRetry
             ORDER BY "CreatedAt"
             LIMIT @batchSize
+            FOR UPDATE SKIP LOCKED
             """;
 
         await using var selectCmd = new NpgsqlCommand(selectSql, connection);

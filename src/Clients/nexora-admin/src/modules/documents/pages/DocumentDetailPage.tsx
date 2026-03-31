@@ -858,7 +858,7 @@ export default function DocumentDetailPage() {
       {/* Unsaved Changes Guard */}
       <ConfirmDialog
         open={isMetadataBlocked}
-        onOpenChange={(open) => { if (open) resetMetadata(); }}
+        onOpenChange={(open) => { if (!open) resetMetadata(); }}
         title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
         description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
         onConfirm={proceedMetadata}

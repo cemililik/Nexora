@@ -70,11 +70,14 @@ export default function ReportDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'executions' | 'parameters'>('overview');
 
-  const parameters = useMemo(() =>
-    definition?.parameters
-      ? (JSON.parse(definition.parameters) as Array<{ name: string; type: string; required: boolean; defaultValue?: string }>)
-      : [],
-    [definition?.parameters]);
+  const parameters = useMemo(() => {
+    if (!definition?.parameters) return [];
+    try {
+      return JSON.parse(definition.parameters) as Array<{ name: string; type: string; required: boolean; defaultValue?: string }>;
+    } catch {
+      return [];
+    }
+  }, [definition?.parameters]);
 
   useEffect(() => {
     if (activeTab === 'parameters' && (!parameters || parameters.length === 0)) {

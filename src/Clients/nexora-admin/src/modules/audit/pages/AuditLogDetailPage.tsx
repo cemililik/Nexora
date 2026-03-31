@@ -55,9 +55,9 @@ export default function AuditLogDetailPage() {
     setBreadcrumbs([
       { label: 'lockey_audit_module_name' },
       { label: 'lockey_audit_nav_logs', path: '/audit/logs' },
-      { label: log ? `${log.module} / ${log.operation}` : '...' },
+      { label: log ? `${t('lockey_audit_module_' + log.module, { defaultValue: log.module })} / ${t('lockey_audit_operation_' + log.operation.toLowerCase(), { defaultValue: log.operation })}` : '...' },
     ]);
-  }, [setBreadcrumbs, log]);
+  }, [setBreadcrumbs, log, t]);
 
   if (isPending) return <LoadingSkeleton lines={8} />;
   if (!log) return null;
@@ -78,11 +78,11 @@ export default function AuditLogDetailPage() {
             <dl className="space-y-3">
               <div>
                 <dt className="text-sm text-muted-foreground">{t('lockey_audit_col_module')}</dt>
-                <dd>{log.module}</dd>
+                <dd>{t('lockey_audit_module_' + log.module, { defaultValue: log.module })}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">{t('lockey_audit_col_operation')}</dt>
-                <dd>{log.operation}</dd>
+                <dd>{t('lockey_audit_operation_' + log.operation.toLowerCase(), { defaultValue: log.operation })}</dd>
               </div>
               <div>
                 <dt className="text-sm text-muted-foreground">{t('lockey_audit_col_type')}</dt>

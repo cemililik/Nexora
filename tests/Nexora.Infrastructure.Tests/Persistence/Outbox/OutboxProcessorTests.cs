@@ -46,7 +46,8 @@ public sealed class OutboxProcessorTests : IDisposable
             NullLogger<OutboxProcessor>.Instance);
     }
 
-    [Fact(Skip = "OutboxProcessor now uses raw Npgsql — requires real PostgreSQL for integration testing")]
+    [Fact]
+    [Trait("Category", "Integration")]
     public async Task ProcessPendingMessages_WithPendingMessage_PublishesAndMarksProcessed()
     {
         // Arrange
@@ -71,7 +72,8 @@ public sealed class OutboxProcessorTests : IDisposable
         processed.ProcessedAt.Should().NotBeNull();
     }
 
-    [Fact(Skip = "OutboxProcessor now uses raw Npgsql — requires real PostgreSQL for integration testing")]
+    [Fact]
+    [Trait("Category", "Integration")]
     public async Task ProcessPendingMessages_AlreadyProcessed_DoesNotPublishAgain()
     {
         // Arrange — create a message that is already processed
@@ -94,7 +96,8 @@ public sealed class OutboxProcessorTests : IDisposable
             Arg.Any<TestProcessorEvent>(), Arg.Any<CancellationToken>());
     }
 
-    [Fact(Skip = "OutboxProcessor now uses raw Npgsql — requires real PostgreSQL for integration testing")]
+    [Fact]
+    [Trait("Category", "Integration")]
     public async Task ProcessPendingMessages_WhenPublishFails_RecordsErrorAndIncrementsRetryCount()
     {
         // Arrange
@@ -121,7 +124,8 @@ public sealed class OutboxProcessorTests : IDisposable
         failed.ProcessedAt.Should().BeNull();
     }
 
-    [Fact(Skip = "OutboxProcessor now uses raw Npgsql — requires real PostgreSQL for integration testing")]
+    [Fact]
+    [Trait("Category", "Integration")]
     public async Task ProcessPendingMessages_MaxRetryExceeded_SkipsMessage()
     {
         // Arrange — create a message already at max retry

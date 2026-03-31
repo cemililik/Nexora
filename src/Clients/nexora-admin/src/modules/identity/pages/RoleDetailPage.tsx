@@ -241,7 +241,7 @@ export default function RoleDetailPage() {
       {/* Unsaved Changes Guard */}
       <ConfirmDialog
         open={isEditBlocked}
-        onOpenChange={(open) => { if (open) resetEdit(); }}
+        onOpenChange={(open) => { if (!open) resetEdit(); }}
         title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
         description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
         onConfirm={proceedEdit}

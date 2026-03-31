@@ -66,17 +66,9 @@ sequenceDiagram
 | Direct Kafka publish after DB commit | Simplest code path | Event loss on Kafka outage or app crash | Unacceptable reliability gap |
 | CDC-based outbox (Debezium) | Fully atomic, lower latency | Operational complexity, WAL access required, additional infrastructure | Over-engineering for current scale |
 
-## Update (2026-03-31): Atomicity Fix — OutboxService\<TContext\>
+## Update (2026-03-31): Atomicity Fix
 
-The initial implementation used a non-generic `OutboxService` that called `SaveChangesAsync` internally within `EnqueueAsync`. This created a **separate transaction** for the outbox record, breaking the atomicity guarantee described above — if the caller's transaction rolled back after `EnqueueAsync` succeeded, the outbox message would still be persisted and eventually published as a phantom event.
-
-**Fix**: `OutboxService<TContext>` is now generic, parameterized by the caller's module-specific `DbContext`. `EnqueueAsync` adds the `OutboxMessage` to the `DbContext` change tracker but does **not** call `SaveChangesAsync`. The outbox record is committed only when the caller's command handler calls `SaveChangesAsync`, ensuring true single-transaction atomicity.
-
-Additional improvements in this update:
-- `OutboxProcessor` iterates tenant schemas (multi-tenant aware)
-- Reflection caching for event type resolution (performance)
-- Immediate retry when a full batch is processed (reduced latency)
-- `InboxGuard<TContext>` follows the same generic per-module `DbContext` pattern
+For details on the subsequent fix that resolves atomicity issues and introduces generic `OutboxService<TContext>`, refer to [ADR-011: Outbox Service Atomicity Fix](./ADR-011-outbox-service-atomicity.md).
 
 ## Related
 - [ADR-010: Notification Delivery via Kafka](./ADR-010-notification-delivery-kafka.md)
