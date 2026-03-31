@@ -9,6 +9,7 @@ import { Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
@@ -16,6 +17,7 @@ import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import {
   Dialog,
   DialogContent,
@@ -75,6 +77,9 @@ export default function OrganizationDetailPage() {
     resolver: zodResolver(updateOrgSchema),
   });
 
+  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
+    useUnsavedChangesGuard(isEditing && form.formState.isDirty);
+
   useEffect(() => {
     setBreadcrumbs([
       { label: 'lockey_identity_module_name' },
@@ -93,6 +98,11 @@ export default function OrganizationDetailPage() {
       });
     }
   }, [org, isEditing, form]);
+
+  function handleTabChange(tab: TabKey) {
+    setActiveTab(tab);
+    window.scrollTo(0, 0);
+  }
 
   if (isPending) return <LoadingSkeleton lines={8} />;
   if (!org) {
@@ -179,7 +189,7 @@ export default function OrganizationDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => handleTabChange(tab.key)}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -271,16 +281,20 @@ export default function OrganizationDetailPage() {
               </Button>
             </div>
           )}
-          <DataTable
-            columns={memberColumns}
-            data={membersData?.items ?? []}
-            totalCount={membersData?.totalCount ?? 0}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            isLoading={membersLoading}
-            emptyMessage={t('lockey_identity_empty_members')}
-          />
+          {membersLoading ? (
+            <TabContentSkeleton />
+          ) : (
+            <DataTable
+              columns={memberColumns}
+              data={membersData?.items ?? []}
+              totalCount={membersData?.totalCount ?? 0}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              isLoading={membersLoading}
+              emptyMessage={t('lockey_identity_empty_members')}
+            />
+          )}
         </div>
       )}
 
@@ -326,6 +340,15 @@ export default function OrganizationDetailPage() {
         }}
         isPending={addMember.isPending}
         existingMemberIds={membersData?.items.map((m) => m.userId) ?? []}
+      />
+
+      <ConfirmDialog
+        open={isEditBlocked}
+        onOpenChange={(open) => { if (!open) resetEdit(); }}
+        title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
+        description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
+        onConfirm={proceedEdit}
+        confirmLabel={t('lockey_common_leave', { ns: 'common' })}
       />
     </div>
   );

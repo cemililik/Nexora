@@ -1,49 +1,71 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.SharedKernel.Abstractions.Messaging;
-using Nexora.SharedKernel.Domain.Events;
+using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using Testcontainers.PostgreSql;
 
 namespace Nexora.Infrastructure.Tests.Persistence.Outbox;
 
-public sealed class OutboxProcessorTests : IDisposable
+public sealed class OutboxProcessorTests : IAsyncLifetime
 {
-    private readonly OutboxDbContext _dbContext;
-    private readonly IEventBus _eventBus;
-    private readonly OutboxOptions _options;
-    private readonly OutboxProcessor _processor;
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:17-alpine")
+        .Build();
 
-    public OutboxProcessorTests()
+    private OutboxDbContext _dbContext = null!;
+    private IEventBus _eventBus = null!;
+    private OutboxProcessor _processor = null!;
+    private OutboxOptions _options = null!;
+
+    public async Task InitializeAsync()
     {
+        await _postgres.StartAsync();
+
         var dbOptions = new DbContextOptionsBuilder<OutboxDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .UseNpgsql(_postgres.GetConnectionString())
             .Options;
 
         _dbContext = new OutboxDbContext(dbOptions);
-        _eventBus = Substitute.For<IEventBus>();
-        _options = new OutboxOptions
-        {
-            PollingIntervalSeconds = 1,
-            BatchSize = 100,
-            MaxRetryCount = 3
-        };
+        await _dbContext.Database.EnsureCreatedAsync();
 
-        // Build a real IServiceScopeFactory that resolves our test instances
+        _eventBus = Substitute.For<IEventBus>();
+        _options = new OutboxOptions { PollingIntervalSeconds = 1, BatchSize = 100, MaxRetryCount = 3 };
+
+        var tenantProvider = Substitute.For<IActiveTenantProvider>();
+        tenantProvider.GetActiveTenantsAsync(Arg.Any<CancellationToken>())
+            .Returns([new ActiveTenantInfo("tenant-1", "public")]);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = _postgres.GetConnectionString()
+            })
+            .Build();
+
         var services = new ServiceCollection();
         services.AddSingleton(_dbContext);
-        services.AddSingleton<OutboxDbContext>(_ => _dbContext);
         services.AddSingleton(_eventBus);
+        services.AddSingleton(tenantProvider);
+        services.AddSingleton<IConfiguration>(config);
+
         var provider = services.BuildServiceProvider();
 
         _processor = new OutboxProcessor(
             provider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(_options),
             NullLogger<OutboxProcessor>.Instance);
+    }
+
+    public async Task DisposeAsync()
+    {
+        _dbContext.Dispose();
+        await _postgres.DisposeAsync();
     }
 
     [Fact]
@@ -58,11 +80,11 @@ public sealed class OutboxProcessorTests : IDisposable
         _dbContext.OutboxMessages.Add(message);
         await _dbContext.SaveChangesAsync();
 
-        // Act — execute one cycle by starting and cancelling quickly
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        try { await _processor.StartAsync(cts.Token); await Task.Delay(500, cts.Token); }
-        catch (OperationCanceledException) { }
-        finally { await _processor.StopAsync(CancellationToken.None); }
+        // Act — start the processor; poll until the message is processed or timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        await _processor.StartAsync(cts.Token);
+        await WaitUntilProcessedAsync(message.Id, TimeSpan.FromSeconds(5));
+        await _processor.StopAsync(CancellationToken.None);
 
         // Assert
         await _eventBus.Received(1).PublishAsync(
@@ -86,7 +108,7 @@ public sealed class OutboxProcessorTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try { await _processor.StartAsync(cts.Token); await Task.Delay(500, cts.Token); }
         catch (OperationCanceledException) { }
         finally { await _processor.StopAsync(CancellationToken.None); }
@@ -111,13 +133,14 @@ public sealed class OutboxProcessorTests : IDisposable
         _eventBus.PublishAsync(Arg.Any<TestProcessorEvent>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Broker unavailable"));
 
-        // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        try { await _processor.StartAsync(cts.Token); await Task.Delay(500, cts.Token); }
-        catch (OperationCanceledException) { }
-        finally { await _processor.StopAsync(CancellationToken.None); }
+        // Act — let processor attempt once
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await _processor.StartAsync(cts.Token);
+        await WaitUntilRetryIncrementedAsync(message.Id, TimeSpan.FromSeconds(4));
+        await _processor.StopAsync(CancellationToken.None);
 
         // Assert
+        _dbContext.ChangeTracker.Clear();
         var failed = await _dbContext.OutboxMessages.SingleAsync();
         failed.RetryCount.Should().BeGreaterThanOrEqualTo(1);
         failed.Error.Should().Contain("Broker unavailable");
@@ -139,7 +162,7 @@ public sealed class OutboxProcessorTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         // Act
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try { await _processor.StartAsync(cts.Token); await Task.Delay(500, cts.Token); }
         catch (OperationCanceledException) { }
         finally { await _processor.StopAsync(CancellationToken.None); }
@@ -148,19 +171,35 @@ public sealed class OutboxProcessorTests : IDisposable
         await _eventBus.DidNotReceive().PublishAsync(
             Arg.Any<TestProcessorEvent>(), Arg.Any<CancellationToken>());
 
+        _dbContext.ChangeTracker.Clear();
         var skipped = await _dbContext.OutboxMessages.SingleAsync();
         skipped.ProcessedAt.Should().BeNull();
         skipped.RetryCount.Should().Be(_options.MaxRetryCount);
     }
 
-    public void Dispose() => _dbContext.Dispose();
-}
+    /// <summary>Polls until the given outbox message has a non-null ProcessedAt, or the timeout elapses.</summary>
+    private async Task WaitUntilProcessedAsync(Guid messageId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            _dbContext.ChangeTracker.Clear();
+            var msg = await _dbContext.OutboxMessages.FindAsync(messageId);
+            if (msg?.ProcessedAt is not null) return;
+            await Task.Delay(100);
+        }
+    }
 
-/// <summary>
-/// Test integration event used by OutboxProcessor tests.
-/// Must be public so Type.GetType can resolve it and JSON deserialization works.
-/// </summary>
-public sealed record TestProcessorEvent : IntegrationEventBase
-{
-    public string Data { get; init; } = "test";
+    /// <summary>Polls until the given outbox message RetryCount is > 0, or the timeout elapses.</summary>
+    private async Task WaitUntilRetryIncrementedAsync(Guid messageId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow.Add(timeout);
+        while (DateTime.UtcNow < deadline)
+        {
+            _dbContext.ChangeTracker.Clear();
+            var msg = await _dbContext.OutboxMessages.FindAsync(messageId);
+            if (msg?.RetryCount > 0) return;
+            await Task.Delay(100);
+        }
+    }
 }

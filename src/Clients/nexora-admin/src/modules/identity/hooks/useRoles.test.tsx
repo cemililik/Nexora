@@ -50,7 +50,7 @@ describe('roleKeys', () => {
   });
 
   it('should return list key', () => {
-    expect(roleKeys.list()).toEqual(['identity', 'roles', 'list']);
+    expect(roleKeys.list()).toEqual(['identity', 'roles', 'list', undefined]);
   });
 
   it('should include module in permissions key when module is provided', () => {
@@ -85,7 +85,7 @@ describe('useRoles', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/identity/roles');
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/roles', undefined);
   });
 });
 

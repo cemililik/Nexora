@@ -103,6 +103,12 @@ public sealed class OutboxProcessor(
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(ct);
 
+        // FOR UPDATE SKIP LOCKED requires an explicit transaction to hold row locks until
+        // the UPDATE (MarkProcessed / RecordFailure) completes. Without a transaction the
+        // lock is released as soon as the SELECT statement finishes, allowing another
+        // processor instance to pick up the same rows concurrently.
+        await using var tx = await connection.BeginTransactionAsync(ct);
+
         // Fetch pending messages
         var selectSql = $"""
             SELECT "Id", "EventType", "EventPayload", "TenantId", "CreatedAt", "RetryCount"
@@ -113,7 +119,7 @@ public sealed class OutboxProcessor(
             FOR UPDATE SKIP LOCKED
             """;
 
-        await using var selectCmd = new NpgsqlCommand(selectSql, connection);
+        await using var selectCmd = new NpgsqlCommand(selectSql, connection, tx);
         selectCmd.Parameters.AddWithValue("maxRetry", _options.MaxRetryCount);
         selectCmd.Parameters.AddWithValue("batchSize", _options.BatchSize);
 
@@ -149,7 +155,7 @@ public sealed class OutboxProcessor(
                     logger.LogError(
                         "OutboxProcessor could not resolve event type {EventType} (MessageId: {MessageId}, TenantId: {TenantId})",
                         message.EventType, message.Id, message.TenantId);
-                    await RecordFailureAsync(connection, schemaName, message.Id, $"Could not resolve type: {message.EventType}", message.RetryCount, ct);
+                    await RecordFailureAsync(connection, tx, schemaName, message.Id, $"Could not resolve type: {message.EventType}", message.RetryCount, ct);
                     continue;
                 }
 
@@ -159,7 +165,7 @@ public sealed class OutboxProcessor(
                     logger.LogError(
                         "OutboxProcessor failed to deserialize event {EventType} (MessageId: {MessageId}, TenantId: {TenantId})",
                         message.EventType, message.Id, message.TenantId);
-                    await RecordFailureAsync(connection, schemaName, message.Id, "Deserialization returned null", message.RetryCount, ct);
+                    await RecordFailureAsync(connection, tx, schemaName, message.Id, "Deserialization returned null", message.RetryCount, ct);
                     continue;
                 }
 
@@ -169,7 +175,7 @@ public sealed class OutboxProcessor(
                 var task = (Task)publishMethod.Invoke(eventBus, [integrationEvent, ct])!;
                 await task;
 
-                await MarkProcessedAsync(connection, schemaName, message.Id, ct);
+                await MarkProcessedAsync(connection, tx, schemaName, message.Id, ct);
 
                 var latencyMs = (DateTimeOffset.UtcNow - message.CreatedAt).TotalMilliseconds;
                 OutboxMetrics.MessagesPublished.Add(1);
@@ -201,15 +207,16 @@ public sealed class OutboxProcessor(
                         message.Id, message.EventType, message.TenantId, newRetryCount);
                 }
 
-                await RecordFailureAsync(connection, schemaName, message.Id, ex.Message, message.RetryCount, ct);
+                await RecordFailureAsync(connection, tx, schemaName, message.Id, ex.Message, message.RetryCount, ct);
             }
         }
 
+        await tx.CommitAsync(ct);
         return messages.Count;
     }
 
     private static async Task MarkProcessedAsync(
-        NpgsqlConnection connection, string schemaName, Guid messageId, CancellationToken ct)
+        NpgsqlConnection connection, NpgsqlTransaction tx, string schemaName, Guid messageId, CancellationToken ct)
     {
         var sql = $"""
             UPDATE "{schemaName}".outbox_messages
@@ -217,14 +224,14 @@ public sealed class OutboxProcessor(
             WHERE "Id" = @id
             """;
 
-        await using var cmd = new NpgsqlCommand(sql, connection);
+        await using var cmd = new NpgsqlCommand(sql, connection, tx);
         cmd.Parameters.AddWithValue("now", DateTimeOffset.UtcNow);
         cmd.Parameters.AddWithValue("id", messageId);
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
     private static async Task RecordFailureAsync(
-        NpgsqlConnection connection, string schemaName, Guid messageId, string error, int currentRetryCount, CancellationToken ct)
+        NpgsqlConnection connection, NpgsqlTransaction tx, string schemaName, Guid messageId, string error, int currentRetryCount, CancellationToken ct)
     {
         var sql = $"""
             UPDATE "{schemaName}".outbox_messages
@@ -232,7 +239,7 @@ public sealed class OutboxProcessor(
             WHERE "Id" = @id
             """;
 
-        await using var cmd = new NpgsqlCommand(sql, connection);
+        await using var cmd = new NpgsqlCommand(sql, connection, tx);
         cmd.Parameters.AddWithValue("retryCount", currentRetryCount + 1);
         cmd.Parameters.AddWithValue("error", error);
         cmd.Parameters.AddWithValue("id", messageId);
