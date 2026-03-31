@@ -339,7 +339,10 @@
   "lockey_contacts_export_status_pending": "Beklemede",
   "lockey_contacts_export_status_processing": "İşleniyor",
   "lockey_contacts_export_status_completed": "Tamamlandı",
+  "lockey_contacts_export_status_queued": "Sırada",
   "lockey_contacts_export_status_failed": "Başarısız",
+
+  "lockey_contacts_error_tag_name_duplicate": "Bu isimde bir etiket zaten mevcut.",
 
   "lockey_contacts_action_find_duplicates": "Yinelenenleri Bul",
 

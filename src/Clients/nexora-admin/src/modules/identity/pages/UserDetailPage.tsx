@@ -4,11 +4,11 @@ import { Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUser, useUpdateProfile, useUpdateUserStatus, useDeleteUser, useUserRoles, useAssignUserRoles } from '../hooks/useUsers';
@@ -27,10 +27,13 @@ import { UserStatusBadge } from '../components/UserStatusBadge';
 import { UserForm } from '../components/UserForm';
 import type { RoleDto, OrganizationDto, UserOrganizationDto } from '../types';
 
+type TabKey = 'profile' | 'organizations' | 'roles';
+
 export default function UserDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation('identity');
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabKey>('profile');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const { handleApiError } = useApiError();
   const { hasPermission } = usePermissions();
@@ -57,14 +60,24 @@ export default function UserDetailPage() {
   if (isPending) return <LoadingSkeleton lines={8} />;
   if (!user) return null;
 
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: 'profile', label: t('lockey_identity_tab_profile') },
+    { key: 'organizations', label: t('lockey_identity_tab_organizations') },
+    { key: 'roles', label: t('lockey_identity_tab_roles') },
+  ];
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">
             {user.firstName} {user.lastName}
           </h1>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
+          <div className="flex items-center gap-2 mt-1">
+            <UserStatusBadge status={user.status} />
+            <span className="text-sm text-muted-foreground">{user.email}</span>
+          </div>
         </div>
         <div className="flex gap-2">
           {hasPermission('identity.users.update') && (
@@ -111,80 +124,90 @@ export default function UserDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('lockey_identity_tab_profile')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isEditing ? (
-              <UserForm
-                mode="edit"
-                defaultValues={{
-                  firstName: user.firstName,
-                  lastName: user.lastName,
-                  phone: user.phone,
-                }}
-                onSubmit={(data) => {
-                  updateProfile.mutate(data, {
-                    onSuccess: () => setIsEditing(false),
-                    onError: (err) => handleApiError(err),
-                  });
-                }}
-                isPending={updateProfile.isPending}
-              />
-            ) : (
-              <dl className="space-y-3">
-                <div>
-                  <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_status')}</dt>
-                  <dd><UserStatusBadge status={user.status} /></dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_phone')}</dt>
-                  <dd>{user.phone ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_last_login')}</dt>
-                  <dd>
-                    {user.lastLoginAt
-                      ? new Date(user.lastLoginAt).toLocaleString(i18n.language)
-                      : t('lockey_identity_never')}
-                  </dd>
-                </div>
-              </dl>
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
+              activeTab === tab.key
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             )}
-          </CardContent>
-        </Card>
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{t('lockey_identity_tab_organizations')}</CardTitle>
+      {/* Tab content */}
+      {activeTab === 'profile' && (
+        <div className="mt-4">
+          {isEditing ? (
+            <UserForm
+              mode="edit"
+              defaultValues={{
+                firstName: user.firstName,
+                lastName: user.lastName,
+                phone: user.phone,
+              }}
+              onSubmit={(data) => {
+                updateProfile.mutate(data, {
+                  onSuccess: () => setIsEditing(false),
+                  onError: (err) => handleApiError(err),
+                });
+              }}
+              isPending={updateProfile.isPending}
+            />
+          ) : (
+            <dl className="space-y-3">
+              <div>
+                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_status')}</dt>
+                <dd><UserStatusBadge status={user.status} /></dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_phone')}</dt>
+                <dd>{user.phone ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_last_login')}</dt>
+                <dd>
+                  {user.lastLoginAt
+                    ? new Date(user.lastLoginAt).toLocaleString(i18n.language)
+                    : t('lockey_identity_never')}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'organizations' && (
+        <div className="mt-4 space-y-4">
+          <div className="flex justify-end">
             <Button size="sm" onClick={() => setAddOrgOpen(true)}>
               {t('lockey_identity_action_join_org')}
             </Button>
-          </CardHeader>
-          <CardContent>
-            {user.organizations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t('lockey_identity_empty_orgs')}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {user.organizations.map((org) => (
-                  <UserOrgRow key={org.organizationId} userId={id} org={org} />
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          {user.organizations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t('lockey_identity_empty_orgs')}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {user.organizations.map((org) => (
+                <UserOrgRow key={org.organizationId} userId={id} org={org} />
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
-      {/* Roles per organization */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('lockey_identity_tab_roles')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {activeTab === 'roles' && (
+        <div className="mt-4 space-y-4">
           {user.organizations.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               {t('lockey_identity_roles_need_org')}
@@ -200,8 +223,8 @@ export default function UserDetailPage() {
               />
             ))
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmAction !== null}

@@ -339,7 +339,10 @@
   "lockey_contacts_export_status_pending": "Pending",
   "lockey_contacts_export_status_processing": "Processing",
   "lockey_contacts_export_status_completed": "Completed",
+  "lockey_contacts_export_status_queued": "Queued",
   "lockey_contacts_export_status_failed": "Failed",
+
+  "lockey_contacts_error_tag_name_duplicate": "A tag with this name already exists.",
 
   "lockey_contacts_action_find_duplicates": "Find Duplicates",
 

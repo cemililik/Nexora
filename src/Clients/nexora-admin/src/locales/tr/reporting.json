@@ -73,5 +73,9 @@
   "lockey_reporting_duration": "{{ms}}ms",
   "lockey_reporting_module_placeholder": "ör. contacts",
   "lockey_reporting_query_placeholder": "SELECT id, name FROM contacts_contacts",
-  "lockey_reporting_null": "boş"
+  "lockey_reporting_null": "boş",
+
+  "lockey_reporting_tab_overview": "Genel Bakış",
+  "lockey_reporting_tab_executions": "Çalıştırmalar",
+  "lockey_reporting_tab_parameters": "Parametreler"
 }
