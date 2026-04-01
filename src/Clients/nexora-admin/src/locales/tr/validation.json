@@ -5,5 +5,10 @@
   "lockey_validation_max_length": "{{field}} en fazla {{max}} karakter olmalıdır.",
   "lockey_validation_failed": "Lütfen aşağıdaki hataları düzeltin.",
   "lockey_validation_invalid_json": "Geçersiz JSON formatı",
-  "lockey_validation_password_min": "Şifre en az {{min}} karakter olmalıdır."
+  "lockey_validation_password_min": "Şifre en az {{min}} karakter olmalıdır.",
+  "lockey_validation_id_required": "ID zorunludur.",
+  "lockey_validation_page_invalid": "Geçersiz sayfa numarası.",
+  "lockey_validation_page_must_be_positive": "Sayfa numarası sıfırdan büyük olmalıdır.",
+  "lockey_validation_page_size_invalid": "Geçersiz sayfa boyutu.",
+  "lockey_validation_page_size_range": "Sayfa boyutu 1 ile 100 arasında olmalıdır."
 }

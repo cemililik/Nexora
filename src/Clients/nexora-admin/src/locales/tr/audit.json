@@ -71,5 +71,25 @@
   "lockey_audit_empty_title": "Denetim kaydı yok",
   "lockey_audit_empty_description": "İşlemler gerçekleştirildikçe denetim kayıtları burada görünecek.",
   "lockey_audit_filter_from_date": "Başlangıç tarihi",
-  "lockey_audit_filter_to_date": "Bitiş tarihi"
+  "lockey_audit_filter_to_date": "Bitiş tarihi",
+
+  "lockey_audit_module_display_name": "Denetim",
+  "lockey_audit_permission_logs_read": "Denetim kayıtlarını görüntüle",
+  "lockey_audit_permission_logs_export": "Denetim kayıtlarını dışa aktar",
+  "lockey_audit_permission_settings_read": "Denetim ayarlarını görüntüle",
+  "lockey_audit_permission_settings_manage": "Denetim ayarlarını yönet",
+
+  "lockey_audit_logs_listed": "Denetim kayıtları getirildi.",
+  "lockey_audit_log_detail_retrieved": "Denetim kaydı detayı getirildi.",
+  "lockey_audit_settings_listed": "Denetim ayarları getirildi.",
+  "lockey_audit_setting_updated": "Denetim ayarları güncellendi.",
+
+  "lockey_audit_error_entry_not_found": "Denetim kaydı bulunamadı.",
+
+  "lockey_audit_validation_settings_required": "En az bir ayar zorunludur.",
+  "lockey_audit_validation_module_required": "Modül zorunludur.",
+  "lockey_audit_validation_operation_required": "İşlem zorunludur.",
+  "lockey_audit_validation_retention_days_must_be_positive": "Saklama süresi pozitif bir sayı olmalıdır.",
+  "lockey_audit_validation_retention_days_max_exceeded": "Saklama süresi izin verilen maksimum değeri aşamaz.",
+  "lockey_audit_validation_duplicate_settings": "Yinelenen ayarlar tespit edildi."
 }

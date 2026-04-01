@@ -84,5 +84,13 @@
   "lockey_common_no_results_filtered": "No results match your filters.",
   "lockey_common_required_field": "Required",
   "lockey_common_select_all": "Select all",
-  "lockey_common_restore_failed": "Restore failed"
+  "lockey_common_restore_failed": "Restore failed",
+  "lockey_common_unknown": "An unknown error occurred.",
+
+  "lockey_shared_daterange_end_before_start": "End date must be after start date.",
+  "lockey_shared_email_invalid": "Invalid email address.",
+  "lockey_shared_money_currency_mismatch": "Currency mismatch.",
+  "lockey_shared_money_invalid_currency": "Invalid currency code.",
+  "lockey_shared_phone_country_code_required": "Country code is required.",
+  "lockey_shared_phone_number_required": "Phone number is required."
 }
