@@ -384,6 +384,70 @@ flowchart LR
 
 ---
 
+## 6.1 Transactional Outbox/Inbox Pattern
+
+All integration events are published via the **Transactional Outbox** pattern. Domain event handlers no longer call `IEventBus.PublishAsync()` directly. Instead, they call `IOutbox.EnqueueAsync()`, which persists the event to the Outbox table within the same database transaction.
+
+```mermaid
+---
+title: Outbox/Inbox Event Flow
+---
+sequenceDiagram
+    participant CMD as Command Handler
+    participant DB as PostgreSQL
+    participant OBX as OutboxProcessor<br/>(BackgroundService)
+    participant KFK as Kafka
+    participant CSM as Consumer
+    participant IBX as InboxGuard
+    participant BL as Business Logic
+
+    CMD->>DB: SaveChanges (entity + outbox record)
+    Note over CMD,DB: Single transaction — atomic
+
+    loop Polling (configurable interval)
+        OBX->>DB: SELECT unprocessed outbox entries
+        OBX->>KFK: Publish to Kafka topic
+        OBX->>DB: Mark as processed
+    end
+
+    KFK->>CSM: Deliver event
+    CSM->>IBX: Check EventId in inbox table
+    alt New event
+        IBX-->>CSM: Not seen — proceed
+        CSM->>BL: Execute business logic
+        CSM->>DB: Record EventId in inbox
+    else Duplicate
+        IBX-->>CSM: Already processed — skip
+    end
+```
+
+### Kafka Topics (14 published events + 1 cache invalidation)
+
+| # | Topic | Events | Source Module |
+|---|-------|--------|--------------|
+| 1 | `nexora.identity.tenants` | TenantCreated, TenantSuspended | Identity |
+| 2 | `nexora.identity.organizations` | OrganizationCreated | Identity |
+| 3 | `nexora.identity.users` | UserCreated, UserDeactivated | Identity |
+| 4 | `nexora.identity.roles` | RoleChanged, **UserRolesChanged** | Identity |
+| 5 | `nexora.identity.modules` | **ModuleInstalled, ModuleUninstalled** | Identity |
+| 6 | `nexora.contacts` | ContactMerged, ContactArchived, ContactGdprDeleted, **ContactImportCompleted** | Contacts |
+| 7 | `nexora.documents` | DocumentUploaded, DocumentArchived, DocumentSigned, SignatureCompleted, **FolderAccessGranted, FolderAccessRevoked** | Documents |
+| 8 | `nexora.notifications` | NotificationSent, NotificationDelivered, NotificationBounced, **NotificationDeliveryRequested** | Notifications |
+| 9 | `nexora.reporting` | **ReportExecuted** | Reporting |
+| 10 | `nexora.cache.invalidation` | CacheInvalidation (cross-instance L1 cache sync) | Infrastructure |
+
+### Consumers (4 inbox-protected + 1 Kafka delivery)
+
+| Consumer | Inbox Protected | Description |
+|----------|:-:|-------------|
+| Contacts — UserCreated handler | Yes | Links/creates contact on user creation |
+| Contacts — OrgCreated handler | Yes | Seeds default tags for new org |
+| Notifications — Consent revocation handler | Yes | Cancels pending schedules on opt-out |
+| Identity — UserRolesChanged handler | Yes | Invalidates permission cache |
+| Notifications — Delivery consumer | No (Kafka-based) | Email/SMS delivery via Kafka (replaces Hangfire jobs) |
+
+---
+
 ## 7. Observability Akisi
 
 ```mermaid

@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Trash2 } from 'lucide-react';
+import { FileText, Trash2 } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -82,6 +83,27 @@ export default function DocumentListPage() {
 
   const { data: folders } = useFolders();
   const archiveDoc = useArchiveDocument();
+
+  const hasActiveFilters = !!(search || status || folderId);
+
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={FileText}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={FileText}
+        title={t('lockey_documents_empty_title')}
+        description={t('lockey_documents_empty_description')}
+        action={{ label: t('lockey_documents_empty_upload'), onClick: () => navigate('/documents/documents/upload') }}
+      />
+    );
+  }, [hasActiveFilters, t, navigate]);
 
   const columns: ColumnDef<DocumentDto>[] = [
     {
@@ -215,7 +237,7 @@ export default function DocumentListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_documents_empty_documents')}
+        emptyState={emptyStateNode}
         onRowClick={(row) => navigate(`/documents/documents/${row.id}`)}
         keyExtractor={(row) => row.id}
       />

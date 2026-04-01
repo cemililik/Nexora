@@ -21,30 +21,27 @@ All entity detail pages MUST use the tab-based layout. Card-based side-by-side l
 
 **Standard Template:**
 
-```
-┌─────────────────────────────────────────────┐
-│ Breadcrumb > Module > Resource > Name       │
-├─────────────────────────────────────────────┤
-│ [Icon] Entity Name              [Actions ▼] │
-│ Status Badge · Metadata · Metadata          │
-├─────────────────────────────────────────────┤
-│ [Tab 1] [Tab 2] [Tab 3] [Tab 4]           │
-├─────────────────────────────────────────────┤
-│                                             │
-│  Tab Content Area                           │
-│  (Cards, Tables, Forms as needed)           │
-│                                             │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph DetailPage["Detail Page Layout"]
+        B["Breadcrumb: Module > Resource > Name"]
+        H["Header: Entity Name + Status Badge + Actions"]
+        T["Tabs: Tab1 | Tab2 | Tab3 | ..."]
+        C["Tab Content Area"]
+    end
+    B --> H --> T --> C
 ```
 
 **Rules:**
 
 - Use tabs when a detail page has 2 or more content sections — never cards side by side.
-- Maximum **6 tabs** per page. If you need more, consolidate related sections.
+- Maximum **5 tabs** per page. If you need more, consolidate related sections into the Overview tab (e.g., Tags and Custom Fields are sections within Overview, not separate tabs).
 - First tab is always **"Overview"** or **"Details"** (the primary information).
 - Tab labels MUST use translation keys (`t('lockey_module_tab_overview')`).
 - Each tab loads content lazily — do not fetch data for inactive tabs.
 - Tab state uses `useState` (not URL params — keep URL clean).
+- Tab content MUST show `TabContentSkeleton` while data is loading (see §3.5).
+- Tab switch MUST reset scroll position: `window.scrollTo({ top: 0, behavior: 'smooth' })`.
 
 **Implementation pattern** (custom underline tabs — consistent with ContactDetailPage/DocumentDetailPage):
 
@@ -84,7 +81,7 @@ export default function EntityDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -111,17 +108,15 @@ export default function EntityDetailPage() {
 
 **Standard Template:**
 
-```
-┌─────────────────────────────────────────────┐
-│ Breadcrumb > Module > Resources             │
-├─────────────────────────────────────────────┤
-│ [Search...] [Filter ▼] [Filter ▼] [+Create]│
-├─────────────────────────────────────────────┤
-│ DataTable with sortable columns             │
-│ Clickable rows → navigate to detail         │
-├─────────────────────────────────────────────┤
-│ [◄ Prev] Page 1 of 5 [Next ►] [10▼/page]  │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph ListPage["List Page Layout"]
+        B2["Breadcrumb: Module > Resources"]
+        TL["Toolbar: Search + Filters + Create Button"]
+        TB["DataTable: Sortable Columns + Clickable Rows"]
+        P["Pagination: Page Size + Page Navigation"]
+    end
+    B2 --> TL --> TB --> P
 ```
 
 **Rules:**
@@ -130,9 +125,13 @@ export default function EntityDetailPage() {
 - Row click navigates to the detail page.
 - **Actions column** is always the last (rightmost) column.
 - **Create button** is top-right, `variant="default"` (primary).
-- Search input is debounced at **300ms**.
+- Use `SearchInput` component (debounced at **300ms**, includes clear button).
+- Filter dropdowns MUST use shadcn `Select` — never native `<select>`.
 - Page size options: `[10, 20, 50]`.
 - Default sort must be deterministic (e.g., `createdAt desc`).
+- **Every list page MUST have a search field** — even if it's client-side filtering.
+- Empty state MUST use the `EmptyState` component with contextual icon, title, description, and CTA (see §3.4).
+- When filters are active and no results found, show a different empty state message ("No results match your filters").
 
 ### 2.3 Create/Edit Pages
 
@@ -145,10 +144,14 @@ export default function EntityDetailPage() {
 
 - All forms use **React Hook Form + Zod** (see FRONTEND_STANDARDS.md §6.4).
 - Labels are **above inputs** — never use placeholder text as the only label.
+- Required fields MUST show a red `*` asterisk next to the label.
+- Optional hint text below the label in `text-xs text-muted-foreground`.
 - Error messages display **below the field** in `text-destructive` color.
+- Use `FormField` wrapper component (`shared/components/data/FormField.tsx`) for consistent label + required + hint + error layout.
 - Cancel and Submit buttons at the **bottom-right** of the form.
 - Submit button shows a spinner and is disabled during `isPending`.
-- Cancel navigates back (or closes modal) without prompting unless the form is dirty.
+- Dirty form navigation MUST be guarded with `useUnsavedChangesGuard` hook — shows a `ConfirmDialog` before navigating away.
+- Textarea fields with character limits MUST use `TextareaWithCounter` component.
 
 ## 3. Component Standards
 
@@ -171,9 +174,10 @@ export default function EntityDetailPage() {
 | Context | Pattern |
 |---------|---------|
 | Page-level primary actions | Top-right of page header (Button or DropdownMenu) |
-| Destructive actions (delete, revoke) | Require `ConfirmDialog` with explicit confirmation |
+| Destructive actions (delete, revoke) | Require `ConfirmDialog` with explicit confirmation. Use `useUndoableDelete` for soft-delete entities to show an "Undo" toast with 5-second restore window. |
 | Inline table actions | Icon buttons in the Actions column (last column) |
-| Edit mode toggle | Edit icon button switches content to Save/Cancel mode |
+| Edit mode toggle | Edit icon button switches content to Save/Cancel mode. Use a bordered Card section for edit fields (not inline header replacement). |
+| Logout | Requires `ConfirmDialog` (destructive variant) |
 
 ### 3.3 Navigation
 
@@ -184,33 +188,69 @@ export default function EntityDetailPage() {
 
 ### 3.4 Empty States
 
-- Centered layout with an icon, descriptive text, and a call-to-action.
-- All strings use translation keys.
+Use the **`EmptyState` component** (`shared/components/feedback/EmptyState.tsx`) — never build empty states inline.
+
+**Props:** `icon?: LucideIcon`, `title: string`, `description?: string`, `action?: { label, onClick } | ReactNode`
+
+**Usage in DataTable:** Pass via `emptyState` prop — DataTable also accepts `emptyMessage` as a simpler fallback.
+
+**Two empty state variants per list page:**
+1. **No data at all:** Show entity-specific icon + "No items yet" + CTA button to create.
+2. **Filters active, no match:** Show search icon + "No results match your filters" message (use `lockey_common_no_results_filtered`).
 
 ```tsx
-<div className="flex flex-col items-center justify-center py-12 text-center">
-  <UsersIcon className="h-12 w-12 text-muted-foreground" />
-  <h3 className="mt-4 text-lg font-semibold">
-    {t('lockey_contacts_empty_title')}
-  </h3>
-  <p className="mt-2 text-sm text-muted-foreground">
-    {t('lockey_contacts_empty_description')}
-  </p>
-  <Button className="mt-6" onClick={onCreate}>
-    {t('lockey_contacts_empty_action')}
-  </Button>
-</div>
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
+import { Contact } from 'lucide-react';
+
+// In list page:
+const emptyStateNode = useMemo(() => {
+  if (hasActiveFilters) {
+    return (
+      <EmptyState
+        icon={Contact}
+        title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+      />
+    );
+  }
+  return (
+    <EmptyState
+      icon={Contact}
+      title={t('lockey_contacts_empty_title')}
+      description={t('lockey_contacts_empty_description')}
+      action={{ label: t('lockey_contacts_empty_create'), onClick: () => navigate('/contacts/create') }}
+    />
+  );
+}, [hasActiveFilters, t, navigate]);
+
+// Pass to DataTable:
+<DataTable emptyState={emptyStateNode} ... />
 ```
 
 ### 3.5 Loading States
 
-| Scenario | Pattern |
-|----------|---------|
-| Initial page/tab load | Skeleton loader (shadcn `Skeleton`) matching content shape |
-| Mutation in progress | Spinner inside the submit button + button disabled |
-| Navigation / route change | Top progress bar or `Suspense` fallback |
+| Scenario | Component | Details |
+|----------|-----------|---------|
+| Initial page load | `LoadingSkeleton` | Used in `Suspense` fallback and detail page initial load |
+| Tab content loading | **`TabContentSkeleton`** | Variants: `list` (5 rows), `form` (4 label+input pairs), `cards` (2x2 grid). Every tab with async data MUST use this. |
+| Table data loading | `DataTable isLoading` | Built-in 5-row skeleton in DataTable |
+| Mutation in progress | Spinner inside button | Button text changes + `disabled` |
+| Navigation / route change | `Suspense` fallback | `LoadingSkeleton` in `AppLayout` |
+| Modal dropdown search | `SearchableDropdown isLoading` | Built-in spinner + "Searching..." text |
 
-- Never show a blank page — always show a skeleton or spinner.
+```tsx
+import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
+
+// In a tab sub-component:
+function NotesTab({ contactId }: { contactId: string }) {
+  const { data: notes, isPending } = useNotes(contactId);
+
+  if (isPending) return <TabContentSkeleton variant="list" />;
+
+  return ( /* actual content */ );
+}
+```
+
+- Never show a blank page or tab — always show a skeleton or spinner.
 - Disable interactive elements while mutations are pending.
 
 ## 4. Spacing & Typography
@@ -240,10 +280,14 @@ export default function EntityDetailPage() {
 |-------------|----------------|
 | ARIA labels | All interactive elements (`button`, `input`, `link`) must have `aria-label` or visible label text |
 | Keyboard navigation | `Tab` to move focus, `Enter`/`Space` to activate, `Escape` to close modals/dropdowns |
-| Focus indicators | Visible focus ring (`focus-visible:ring-2 focus-visible:ring-ring`) on all focusable elements |
+| Focus indicators | Visible focus ring (`focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-background`) on all focusable elements |
 | Color + icon | Status and errors must use icon/text alongside color — never color alone |
 | Screen readers | Use `sr-only` class for visually hidden but screen-reader-accessible text |
 | Semantic HTML | Use `<nav>`, `<main>`, `<section>`, `<article>` — not generic `<div>` for structural elements |
+| Skip link | `AppLayout` MUST include a skip-to-content link (`<a href="#main-content">`) as the first focusable element |
+| Table ARIA | `DataTable` accepts `aria-label` prop; sortable columns render `aria-sort` attribute |
+| Pagination ARIA | Previous/Next buttons MUST have `aria-label` (e.g., `lockey_common_previous_page`) |
+| Combobox pattern | `SearchableDropdown` implements `role="combobox"` + `role="listbox"` + `role="option"` with `aria-expanded` and `aria-activedescendant` |
 
 ## 7. Internationalization (i18n)
 
@@ -268,3 +312,46 @@ Existing detail pages that use a card-based layout (e.g., `UserDetailPage`, `Rol
 7. Update translation files with new tab label keys.
 
 **Completed:** Identity module pages (UserDetailPage, RoleDetailPage, OrganizationDetailPage, TenantDetailPage), Notifications TemplateDetailPage, Reporting ReportDetailPage — all migrated.
+
+## 9. Shared Component Inventory
+
+All reusable UI components live in `shared/components/`. Use these instead of building inline.
+
+### 9.1 Data Components (`shared/components/data/`)
+
+| Component | Purpose | Key Props |
+|-----------|---------|-----------|
+| `DataTable<T>` | Generic table with pagination, sorting, bulk select, loading, empty state | `columns`, `data`, `emptyState`, `sortBy`, `sortDirection`, `onSortChange`, `selectable`, `selectedKeys`, `onSelectionChange`, `aria-label` |
+| `SearchInput` | Debounced search with clear button | `value`, `onChange`, `debounceMs` (default 300), `placeholder` |
+| `SearchableDropdown<T>` | Searchable dropdown for modal forms with loading/empty/keyboard nav | `items`, `isLoading`, `searchValue`, `onSearchChange`, `renderItem`, `keyExtractor`, `label` |
+| `FormField` | Form field wrapper with label, required `*`, hint, error | `label`, `htmlFor`, `required`, `hint`, `error`, `children` |
+| `TextareaWithCounter` | Textarea with live character counter | `maxLength` + all textarea props |
+
+### 9.2 Feedback Components (`shared/components/feedback/`)
+
+| Component | Purpose | Key Props |
+|-----------|---------|-----------|
+| `EmptyState` | Centered empty state with icon, title, description, CTA | `icon`, `title`, `description`, `action` |
+| `TabContentSkeleton` | Skeleton loader for tab content areas | `variant: 'list' \| 'form' \| 'cards'` |
+| `LoadingSkeleton` | Generic line-based skeleton loader | `lines`, `className` |
+| `ConfirmDialog` | Confirmation dialog for destructive/significant actions | `title`, `description`, `variant`, `onConfirm`, `isPending` |
+| `ErrorBoundary` | Class component error boundary with telemetry | `children`, `fallback` |
+
+### 9.3 Shared Hooks (`shared/hooks/`)
+
+| Hook | Purpose | Returns |
+|------|---------|---------|
+| `useUnsavedChangesGuard(isDirty)` | Blocks navigation when form is dirty (React Router `useBlocker` + `beforeunload`) | `{ isBlocked, proceed, reset }` |
+| `useUndoableDelete({ deleteMutation, restoreMutation, getEntityName })` | Wraps soft-delete with 5s undo toast | `{ handleDelete, isPending }` |
+| `usePagination(defaultPageSize)` | URL-based pagination state | `{ page, pageSize, setPage, setPageSize }` |
+| `useApiError()` | Uniform API error handling (toast + form field errors) | `{ handleApiError }` |
+| `usePermissions()` | Permission checking | `{ hasPermission, hasAnyPermission }` |
+
+### 9.4 Layout (`shared/components/layout/`)
+
+| Component | Notes |
+|-----------|-------|
+| `AppLayout` | Includes skip-to-content link, `<main id="main-content">`, ErrorBoundary + Suspense |
+| `Topbar` | User menu shows email below name, logout requires ConfirmDialog |
+| `Sidebar` | Collapse state persisted to localStorage via Zustand |
+| `Breadcrumbs` | RTL-safe (ChevronRight rotates 180°) |

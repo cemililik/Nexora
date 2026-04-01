@@ -125,7 +125,7 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - **Dev Tools Port Map**: Nexora API `:5100`, APISIX Gateway `:9080`, APISIX Metrics `:9091`, Keycloak `:8080`, PostgreSQL `:5433`, Redis `:6380`, Kafka `:9092`, MinIO API `:9000`, MinIO Console `:9001`, Vault `:8200`, Grafana `:3300`, Tempo `:3200`, Loki `:3100`, OTel gRPC `:4327`, OTel HTTP `:4328`, Prometheus `:8889`, pgAdmin `:5051`, RedisInsight `:5541`, Kafka UI `:8085`, Dapr Placement `:50006`, Admin Dashboard `:3001` (dev), Portal `:3000` (dev)
 - **Observability foundation**: OBSERVABILITY_STANDARDS.md (logging, tracing, metrics, exception handling, health checks), GlobalExceptionHandler middleware (DomainException→422, Validation→400, NotFound→404, HttpRequest→502, Cancelled→499, Default→500 — all with `TraceId` in response + log message), TraceIdEndpointFilter (endpoint-level business errors get TraceId via reflection), OTel Collector Loki exporter with `default_labels_enabled` (job label), structured logging in all Identity command handlers (ILogger<T>, LogWarning for failures, LogInformation for success)
 - **Standards compliance**: 7 rounds of audit + PR-39 code review (61 inline comments, 8 critical/4 major/11 minor fixes) + PR-39 follow-up review (ValidationException instead of InvalidOperationException, Guid.TryParse + ILogger in ReportingDbContext, descriptive ArgumentException message, 14 new SqlQueryValidator tests) + PR-39 final review (11 verified fixes: LogWarning before all Result.Failure returns in Reporting commands, DomainException with lockey_ in TenantModule, LocalizedMessage on Result.Success in TestReportQueryHandler, SaveChangesAsync(bool) override + domain event dispatch in sync SaveChanges in BaseDbContext, SELECT INTO + FOR UPDATE/SHARE clause checks in SqlQueryValidator, duplicate query param in Bruno, widgets JSON interpolation fix, error logging in Bruno post-response scripts, Dockerfile comment correction, ReportingDbContext exception logging) — all violations found and fixed
-- **Tests**: 1374 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 213, Reporting: 70, SharedKernel: 64, Architecture: 62, Infrastructure: 48) + 358 admin frontend tests (47 suites) + 65 portal frontend tests (9 suites)
+- **Tests**: 1,808 backend tests passing (Contacts: 397, Notifications: 239, Documents: 281, Identity: 213, Reporting: 70, SharedKernel: 64, Architecture: 62, Infrastructure: 48, Audit: 67, Platform: 11, plus Phase 1.5 additions) + 358 admin frontend tests (47 suites) + 65 portal frontend tests (9 suites)
 - **Contact Management module**: 11 domain entities (Contact, ContactAddress, Tag, ContactTag, ContactRelationship, CommunicationPreference, ContactNote, CustomFieldDefinition, ContactCustomField, ConsentRecord, ContactActivity), strongly-typed IDs, 9 domain events, EF configurations, ContactsDbContext
 - **Contact CQRS Commands**: CreateContact, UpdateContact, ArchiveContact, RestoreContact, CreateTag, UpdateTag, DeleteTag, AddTagToContact, RemoveTagFromContact, AddContactAddress, UpdateContactAddress, RemoveContactAddress, AddContactRelationship, RemoveContactRelationship, UpdateCommunicationPreferences, AddContactNote, UpdateContactNote, DeleteContactNote, PinContactNote, RecordConsent, LogContactActivity, CreateCustomFieldDefinition, UpdateCustomFieldDefinition, DeleteCustomFieldDefinition, SetContactCustomField, MergeContacts, StartContactImport, StartContactExport, RequestGdprExport, RequestGdprDelete — all with validators + lockey_ keys
 - **Contact Queries**: GetContacts (paginated, filtered), GetContactById, GetContact360 (aggregated view), GetTags, GetContactAddresses, GetContactRelationships, GetCommunicationPreferences, GetContactNotes, GetContactConsents, GetContactActivities, GetCustomFieldDefinitions, GetContactCustomFields, GetDuplicateContacts, GetImportJobStatus
@@ -481,6 +481,49 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] All existing tests updated for: repository pattern, ILogger injection, strongly-typed IDs
 - [x] Tests: 1,808 total, 0 failures, 1 skipped (SlowQuery in-memory DB limitation)
 
+### 1.14 UX Standards Enforcement & Test Hardening (2026-04-01)
+
+> 22 implementation batches (B1–B22) — UX/UI standards, test quality, and infrastructure improvements applied across all modules.
+
+**UX/UI Standards — Detail Pages:**
+- [x] AuditLogDetailPage: tab layout (Overview + Changes), breadcrumb path set
+- [x] SignatureDetailPage: tab layout (Overview + Recipients), breadcrumb path set
+- [x] RoleDetailPage: `isPending` (TanStack Query v5), TabContentSkeleton, `useUnsavedChangesGuard(isDirty)`
+- [x] UserDetailPage: `useUnsavedChangesGuard(isDirty)` on edit forms
+- [x] TenantDetailPage: `TabContentSkeleton`, `EmptyState` for modules tab, `handleTabChange` with scroll reset
+- [x] OrganizationDetailPage: `TabContentSkeleton`, `useUnsavedChangesGuard`, `handleTabChange` with scroll reset
+- [x] DocumentDetailPage: breadcrumb path fixed (`/documents` link)
+
+**UX/UI Standards — List Pages (SearchInput):**
+- [x] UserListPage: `SearchInput` replaces raw `<Input>` (built-in debounce, `onChange: (value: string) => void`)
+- [x] AuditLogListPage: `SearchInput` + `search` URL param wired to `useAuditLogs` hook
+- [x] SignatureListPage: `SearchInput` + `search` URL param, `EmptyState` with filtered/empty CTA
+- [x] TemplateListPage: `SearchInput` + `search` URL param, `EmptyState` with filtered/empty CTA
+- [x] NotificationListPage: `SearchInput` + `search` URL param
+- [x] ScheduleListPage: status Select filter added (no text search — `NotificationScheduleDto` has no searchable text field)
+- [x] TenantListPage: `SearchInput` + `EmptyState` (filtered reset CTA / empty create CTA), removed raw JS error display
+- [x] All filter bars: `flex flex-wrap` (responsive at narrow widths)
+
+**UX/UI Standards — Components & Hooks:**
+- [x] FolderManagementPage: `LoadingSkeleton`, `EmptyState` with icon+CTA, shadcn `<Input>` replaces raw `<input>`
+- [x] FolderAccessDialog: `SearchableDropdown` replaces custom combobox (keyboard nav, outside-click, `role="listbox"`)
+- [x] FolderAccessDialog: `grid-cols-1 sm:grid-cols-2` / `sm:grid-cols-3` responsive grids
+- [x] DocumentUploadPage: progress bar via CSS custom property (`--upload-progress`) + `[width:var(--upload-progress)]` (no inline style)
+- [x] DocumentUploadPage: `{t(error)}` — error key translated before display
+- [x] AuditSettingsPage: `t('lockey_audit_operation_...')` replaces regex capitalization; `t('lockey_audit_module_...')` replaces CSS capitalize
+- [x] DashboardListPage: `isPending` (TanStack v5), `LoadingSkeleton` replaces loading `<p>`
+- [x] `useFileUpload`: `import type { AxiosError }` (type-only), duck-typed `.isAxiosError === true` check
+
+**Test Quality:**
+- [x] `QueryHandlerTests.cs` split: 5 individual files (`GetTenantsQueryTests`, `GetTenantByIdQueryTests`, `GetUsersQueryTests`, `GetRolesQueryTests`, `GetPermissionsQueryTests`) with correct using-directive order (`Microsoft.*` first)
+- [x] `// Arrange / // Act / // Assert` comments added to `GetAuditLogsQueryTests` (9 tests), `GetAuditLogDetailQueryTests` (4 tests), `KeycloakAdminServiceTests` (8 tests)
+- [x] `useImportExport.test.tsx`: all `it('should ...')` renamed to `Method_Scenario_ExpectedResult` format
+
+**Infrastructure — OutboxProcessorTests → Testcontainers:**
+- [x] `Testcontainers.PostgreSql`, `Microsoft.Extensions.Configuration.InMemory`, `NSubstitute.ExceptionExtensions` added to `Nexora.Infrastructure.Tests.csproj`
+- [x] `TestIntegrationEvent` + `TestProcessorEvent` merged into shared `OutboxTestDbContext.cs`; private duplicate removed from `OutboxServiceTests.cs`
+- [x] `OutboxProcessorTests` rewritten: `PostgreSqlContainer` + `IAsyncLifetime`, proper `IActiveTenantProvider` mock (schema "public"), `IConfiguration` with real connection string, `WaitUntilProcessedAsync` / `WaitUntilRetryIncrementedAsync` poll helpers replace fixed `Task.Delay`
+
 ---
 
 ## Phase 1.5: Bridge
@@ -494,11 +537,30 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 Phase 2 introduces financial modules (Finance) and heavy cross-module event flows (CRM). Event reliability infrastructure must be completed before Phase 2.
 
-- [ ] **Transactional Outbox Pattern** — Domain event → integration event publish atomically with DB transaction. Prevents event loss (Kafka down, app crash). Migrate 12 domain event handlers to outbox. OutboxProcessor BackgroundService (polling-based).
-- [ ] **Inbox Pattern (Idempotent Consumer)** — EventId-based dedup in integration event handlers. Prevents duplication during Kafka consumer rebalance and retries. 4 integration event handlers protected with inbox guard.
-- [ ] **Outbox/Inbox Monitoring** — Grafana dashboard panel (queue depth, processing latency, duplicate hit rate)
-- [ ] **Cleanup Jobs** — OutboxCleanupJob (7 days), InboxCleanupJob (30 days)
-- [ ] **Cache Cross-Instance Invalidation** — `DaprCacheService.RemoveByPrefixAsync` currently only removes keys tracked in-process via `_trackedKeys`; L2 (Redis) entries on other instances remain stale. Implement Dapr pub/sub invalidation: publish prefix-invalidation event from `RemoveByPrefixAsync`, subscribe in all instances to remove matching keys from local `memoryCache` and `_trackedKeys`. Required before horizontal scaling in production.
+- [x] **Transactional Outbox Pattern** — Domain event → integration event publish atomically with DB transaction. Prevents event loss (Kafka down, app crash). 12 domain event handlers migrated to outbox (`IOutbox.EnqueueAsync`). OutboxProcessor BackgroundService (polling-based, configurable via `Outbox:PollingIntervalSeconds`).
+- [x] **Inbox Pattern (Idempotent Consumer)** — EventId-based dedup in integration event handlers. Prevents duplication during Kafka consumer rebalance and retries. 4 integration event handlers protected with `IInboxGuard`.
+- [x] **Outbox/Inbox Monitoring** — Outbox health check, OpenTelemetry metrics (queue depth, processing latency), admin status API endpoint.
+- [x] **Cleanup Jobs** — OutboxCleanupJob (7 days), InboxCleanupJob (30 days) recurring Hangfire jobs.
+- [x] **Cache Cross-Instance Invalidation** — Dapr pub/sub invalidation: `RemoveByPrefixAsync` publishes prefix-invalidation event, all instances subscribe and remove matching keys from local `memoryCache` and `_trackedKeys`. Ready for horizontal scaling.
+- [x] **Email/SMS Kafka Migration** — Email and SMS delivery via Kafka replaces per-notification Hangfire jobs.
+- [x] **5 New Integration Events** — UserRolesChangedIntegrationEvent, ContactImportCompletedIntegrationEvent, ReportExecutedIntegrationEvent, FolderAccessGranted/RevokedIntegrationEvent, ModuleInstalled/UninstalledIntegrationEvent.
+- [x] **Permission Cache Invalidation** — Inline + event-driven permission cache invalidation on role changes via UserRolesChangedIntegrationEvent.
+
+**Summary**: Outbox/Inbox pattern provides reliable, at-least-once event delivery with idempotent consumption. All domain event handlers now use `IOutbox.EnqueueAsync` instead of `IEventBus.PublishAsync`. The OutboxProcessor polls the outbox table and publishes to Kafka. Consumers use `IInboxGuard` for deduplication. Monitoring via health check, OTel metrics, and admin API. Cache cross-instance invalidation ensures L1 cache consistency across pods via Dapr pub/sub.
+
+**Implementation details:**
+- Outbox infrastructure: `OutboxService<TContext>` (generic, per-module DbContext), `OutboxProcessor` BackgroundService, `OutboxMessage` entity in tenant schema
+- Inbox infrastructure: `InboxGuard<TContext>` (generic), `InboxMessage` entity
+- 12 domain event handlers migrated to outbox (`IOutbox.EnqueueAsync`)
+- 4 integration event handlers protected with inbox guard (`IInboxGuard`)
+- Email/SMS delivery migrated to Kafka via `NotificationDeliveryRequestedIntegrationEvent`
+- 5 new integration events: `UserRolesChanged`, `ContactImportCompleted`, `ReportExecuted`, `FolderAccessGranted`/`Revoked`, `ModuleInstalled`/`Uninstalled`
+- Cache cross-instance invalidation via Dapr pub/sub (prefix invalidation broadcast)
+- Outbox monitoring: health check, OpenTelemetry metrics (queue depth, processing latency), admin status API, cleanup jobs (OutboxCleanupJob 7d, InboxCleanupJob 30d)
+- OutboxService atomicity fix: `EnqueueAsync` no longer calls `SaveChangesAsync` — outbox messages are saved in the caller's transaction via the generic per-module `DbContext` pattern, ensuring true atomicity
+- PR-69 review: 57 files reviewed, outbox performance optimizations (reflection caching, immediate retry on full batch, tenant-schema iteration), UI consistency fixes
+- `ContactGdprDeletedIntegrationEvent` for cross-module PII cleanup
+- ADR-005 through ADR-012 documenting architectural decisions
 
 ### 1.5.2 Tenant Permission Isolation — Backend Only (Weeks 2-4)
 

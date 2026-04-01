@@ -1,10 +1,19 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Contact } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { SearchInput } from '@/shared/components/data/SearchInput';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { formatRelativeTime } from '@/shared/lib/date';
@@ -64,6 +73,27 @@ export default function ContactListPage() {
     ]);
   }, [setBreadcrumbs]);
 
+  const hasActiveFilters = !!(search || statusFilter || typeFilter);
+
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={Contact}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={Contact}
+        title={t('lockey_contacts_empty_title')}
+        description={t('lockey_contacts_empty_description')}
+        action={{ label: t('lockey_contacts_empty_create'), onClick: () => navigate('/contacts/contacts/create') }}
+      />
+    );
+  }, [hasActiveFilters, t, navigate]);
+
   const handleSearchChange = useCallback(
     (value: string) => {
       updateFilter('search', value);
@@ -72,15 +102,15 @@ export default function ContactListPage() {
   );
 
   const handleStatusChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      updateFilter('status', e.target.value);
+    (value: string) => {
+      updateFilter('status', value === '__all__' ? '' : value);
     },
     [updateFilter],
   );
 
   const handleTypeChange = useCallback(
-    (e: React.ChangeEvent<HTMLSelectElement>) => {
-      updateFilter('type', e.target.value);
+    (value: string) => {
+      updateFilter('type', value === '__all__' ? '' : value);
     },
     [updateFilter],
   );
@@ -141,27 +171,27 @@ export default function ContactListPage() {
           placeholder={t('lockey_contacts_list_search')}
           className="w-72"
         />
-        <select
-          value={statusFilter ?? ''}
-          onChange={handleStatusChange}
-          aria-label={t('lockey_contacts_filter_all_statuses')}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="">{t('lockey_contacts_filter_all_statuses')}</option>
-          <option value="Active">{t('lockey_contacts_status_active')}</option>
-          <option value="Archived">{t('lockey_contacts_status_archived')}</option>
-          <option value="Merged">{t('lockey_contacts_status_merged')}</option>
-        </select>
-        <select
-          value={typeFilter ?? ''}
-          onChange={handleTypeChange}
-          aria-label={t('lockey_contacts_filter_all_types')}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="">{t('lockey_contacts_filter_all_types')}</option>
-          <option value="Individual">{t('lockey_contacts_type_individual')}</option>
-          <option value="Organization">{t('lockey_contacts_type_organization')}</option>
-        </select>
+        <Select value={statusFilter ?? '__all__'} onValueChange={handleStatusChange}>
+          <SelectTrigger className="w-48" aria-label={t('lockey_contacts_filter_all_statuses')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t('lockey_contacts_filter_all_statuses')}</SelectItem>
+            <SelectItem value="Active">{t('lockey_contacts_status_active')}</SelectItem>
+            <SelectItem value="Archived">{t('lockey_contacts_status_archived')}</SelectItem>
+            <SelectItem value="Merged">{t('lockey_contacts_status_merged')}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={typeFilter ?? '__all__'} onValueChange={handleTypeChange}>
+          <SelectTrigger className="w-48" aria-label={t('lockey_contacts_filter_all_types')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">{t('lockey_contacts_filter_all_types')}</SelectItem>
+            <SelectItem value="Individual">{t('lockey_contacts_type_individual')}</SelectItem>
+            <SelectItem value="Organization">{t('lockey_contacts_type_organization')}</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <DataTable
@@ -173,7 +203,7 @@ export default function ContactListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_contacts_empty_contacts')}
+        emptyState={emptyStateNode}
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/contacts/contacts/${row.id}`)}
       />

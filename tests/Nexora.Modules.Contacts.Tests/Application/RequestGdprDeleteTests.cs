@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.SharedKernel.Abstractions.Messaging;
+using NSubstitute;
 using Nexora.Modules.Contacts.Application.Commands;
 using Nexora.Modules.Contacts.Domain.Entities;
 using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.Modules.Contacts.Infrastructure;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Contacts.Tests.Application;
 
@@ -13,12 +16,14 @@ public sealed class RequestGdprDeleteTests : IDisposable
 {
     private readonly ContactsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
+    private readonly IOutbox _outbox;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
 
     public RequestGdprDeleteTests()
     {
         _tenantAccessor = CreateTenantAccessor(_tenantId, _orgId);
+        _outbox = Substitute.For<IOutbox>();
         var options = new DbContextOptionsBuilder<ContactsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -43,12 +48,18 @@ public sealed class RequestGdprDeleteTests : IDisposable
         var updated = await _dbContext.Contacts
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == contact.Id);
+        updated.Should().NotBeNull();
         updated!.FirstName.Should().Be("[REDACTED]");
         updated.LastName.Should().Be("[REDACTED]");
         updated.Email.Should().BeNull();
         updated.Phone.Should().BeNull();
         updated.IsDeleted.Should().BeTrue();
         updated.DeletedAt.Should().NotBeNull();
+
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<ContactGdprDeletedIntegrationEvent>(e =>
+                e.ContactId == contact.Id.Value && e.Reason == "User request"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -74,6 +85,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
             .FirstOrDefaultAsync(c => c.Id == contact.Id);
         auditRecord.Should().NotBeNull();
         auditRecord!.IsDeleted.Should().BeTrue();
+
     }
 
     [Fact]
@@ -183,7 +195,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
     }
 
     private RequestGdprDeleteHandler CreateHandler() =>
-        new(_dbContext, _tenantAccessor, NullLogger<RequestGdprDeleteHandler>.Instance);
+        new(_dbContext, _tenantAccessor, _outbox, NullLogger<RequestGdprDeleteHandler>.Instance);
 
     private async Task<Contact> SeedContact()
     {

@@ -178,7 +178,7 @@ export default function ImportPage() {
               </div>
             </div>
 
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <dt className="text-muted-foreground">{t('lockey_contacts_import_col_total_rows')}</dt>
                 <dd className="font-medium">{jobStatus.totalRows}</dd>

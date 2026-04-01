@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Domain.Events;
@@ -10,14 +11,24 @@ namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 /// Sends a welcome notification to newly created users.
 /// </summary>
 public sealed class UserCreatedIntegrationEventHandler(
+    NotificationsDbContext dbContext,
+    IInboxGuard inboxGuard,
     INotificationService notificationService,
     ILogger<UserCreatedIntegrationEventHandler> logger) : IIntegrationEventHandler<UserCreatedIntegrationEvent>
 {
+    private const string WelcomeTemplateCode = "welcome";
+
     public async Task HandleAsync(UserCreatedIntegrationEvent @event, CancellationToken ct)
     {
+        if (await inboxGuard.IsAlreadyProcessedAsync(@event.EventId, ct))
+        {
+            logger.LogDebug("Skipping duplicate event {EventId} of type {EventType}", @event.EventId, @event.GetType().Name);
+            return;
+        }
+
         var request = new SendNotificationRequest(
-            TemplateCode: "welcome",
-            Channel: "Email",
+            TemplateCode: WelcomeTemplateCode,
+            Channel: NotificationChannel.Email.ToString(),
             ContactId: @event.UserId,
             RecipientAddress: @event.Email,
             Variables: new Dictionary<string, string>
@@ -26,6 +37,9 @@ public sealed class UserCreatedIntegrationEventHandler(
             });
 
         var notificationId = await notificationService.SendAsync(request, ct);
+
+        inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
+        await dbContext.SaveChangesAsync(ct);
 
         if (notificationId != Guid.Empty)
         {

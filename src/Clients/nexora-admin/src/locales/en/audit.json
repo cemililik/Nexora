@@ -58,5 +58,18 @@
   "lockey_audit_module_documents": "Documents",
   "lockey_audit_module_notifications": "Notifications",
   "lockey_audit_module_reporting": "Reporting",
-  "lockey_audit_module_audit": "Audit"
+  "lockey_audit_module_audit": "Audit",
+  "lockey_audit_operation_created": "Created",
+  "lockey_audit_operation_updated": "Updated",
+  "lockey_audit_operation_deleted": "Deleted",
+  "lockey_audit_operation_read": "Read",
+  "lockey_audit_operation_login": "Login",
+  "lockey_audit_operation_logout": "Logout",
+  "lockey_audit_operation_uploaded": "Uploaded",
+  "lockey_audit_operation_downloaded": "Downloaded",
+
+  "lockey_audit_empty_title": "No audit logs",
+  "lockey_audit_empty_description": "Audit logs will appear here as actions are performed.",
+  "lockey_audit_filter_from_date": "From date",
+  "lockey_audit_filter_to_date": "To date"
 }

@@ -4,19 +4,18 @@ using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Domain.Events;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
-using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles ContactCreatedEvent and publishes integration event.</summary>
+/// <summary>Handles ContactCreatedEvent and enqueues integration event to the outbox.</summary>
 public sealed class ContactCreatedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     ContactsDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<ContactCreatedDomainEventHandler> logger) : INotificationHandler<ContactCreatedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="ContactCreatedEvent"/> by publishing a <see cref="ContactCreatedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="ContactCreatedEvent"/> by enqueuing a <see cref="ContactCreatedIntegrationEvent"/> to the transactional outbox.
     /// Logs a warning and skips if the contact is not found in the database.
     /// </summary>
     public async Task Handle(ContactCreatedEvent notification, CancellationToken cancellationToken)
@@ -49,6 +48,9 @@ public sealed class ContactCreatedDomainEventHandler(
             DisplayName = contact.DisplayName
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(ContactCreatedIntegrationEvent), integrationEvent.TenantId);
     }
 }

@@ -1,12 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Reporting.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Reporting.Infrastructure;
 
+/// <summary>EF Core DbContext for the Reporting module. Scoped to the current tenant's schema.</summary>
 public sealed class ReportingDbContext(
     DbContextOptions<ReportingDbContext> options,
     ITenantContextAccessor tenantContextAccessor,
@@ -20,6 +22,7 @@ public sealed class ReportingDbContext(
     public DbSet<ReportExecution> ReportExecutions => Set<ReportExecution>();
     public DbSet<ReportSchedule> ReportSchedules => Set<ReportSchedule>();
     public DbSet<Dashboard> Dashboards => Set<Dashboard>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     /// <summary>
     /// Gets the current OrganizationId from the tenant context.
@@ -49,6 +52,7 @@ public sealed class ReportingDbContext(
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ReportingDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new OutboxMessageConfiguration());
         ApplySoftDeleteFilters(modelBuilder);
         ApplyOrganizationQueryFilters(modelBuilder);
     }

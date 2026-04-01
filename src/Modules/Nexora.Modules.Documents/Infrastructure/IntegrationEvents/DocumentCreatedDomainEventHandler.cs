@@ -6,14 +6,14 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 
 namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles DocumentCreatedEvent and publishes integration event.</summary>
+/// <summary>Handles DocumentCreatedEvent and enqueues integration event to the outbox.</summary>
 public sealed class DocumentCreatedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     DocumentsDbContext dbContext,
     ILogger<DocumentCreatedDomainEventHandler> logger) : INotificationHandler<DocumentCreatedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="DocumentCreatedEvent"/> by publishing a <see cref="DocumentUploadedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="DocumentCreatedEvent"/> by enqueuing a <see cref="DocumentUploadedIntegrationEvent"/> to the transactional outbox.
     /// Logs a warning and skips if the document is not found in the database.
     /// </summary>
     public async Task Handle(DocumentCreatedEvent notification, CancellationToken cancellationToken)
@@ -39,6 +39,9 @@ public sealed class DocumentCreatedDomainEventHandler(
             LinkedEntityType = document.LinkedEntityType
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(DocumentUploadedIntegrationEvent), integrationEvent.TenantId);
     }
 }

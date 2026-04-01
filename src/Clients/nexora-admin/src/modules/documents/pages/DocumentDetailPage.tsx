@@ -21,6 +21,9 @@ import {
 } from '@/shared/components/ui/dialog';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
+import { SearchableDropdown } from '@/shared/components/data/SearchableDropdown';
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
@@ -99,15 +102,15 @@ export default function DocumentDetailPage() {
   const updateMetadata = useUpdateDocumentMetadata(id ?? '');
   const archiveDoc = useArchiveDocument();
   const restoreDoc = useRestoreDocument();
-  const { data: versions } = useDocumentVersions(id ?? '');
+  const { data: versions, isPending: isVersionsPending } = useDocumentVersions(id ?? '');
   // addVersion replaced by useFileUpload (FileDropZone-based upload in version dialog)
-  const { data: accessList } = useDocumentAccess(id ?? '');
+  const { data: accessList, isPending: isAccessPending } = useDocumentAccess(id ?? '');
   const grantAccess = useGrantDocumentAccess(id ?? '');
   const revokeAccess = useRevokeDocumentAccess(id ?? '');
   const { refetch: fetchDownloadUrl } = useDocumentDownloadUrl(id ?? '');
 
   // Signatures for this document
-  const { data: signaturesData } = useSignatures({
+  const { data: signaturesData, isPending: isSignaturesPending } = useSignatures({
     page: 1,
     pageSize: 50,
     documentId: id,
@@ -116,14 +119,14 @@ export default function DocumentDetailPage() {
   // User / role resolution for access tab
   const [userSearch, setUserSearch] = useState('');
   const [debouncedUserSearch, setDebouncedUserSearch] = useState('');
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedUserSearch(userSearch), 300);
     return () => clearTimeout(timer);
   }, [userSearch]);
 
-  const { data: usersData } = useUsers({
+  const { data: usersData, isPending: isUserSearchPending } = useUsers({
     page: 1,
     pageSize: 100,
     search: debouncedUserSearch || undefined,
@@ -177,6 +180,9 @@ export default function DocumentDetailPage() {
     defaultValues: { name: '', description: '', tags: '' },
   });
 
+  const { isBlocked: isMetadataBlocked, proceed: proceedMetadata, reset: resetMetadata } =
+    useUnsavedChangesGuard(editOpen && metadataForm.formState.isDirty);
+
   const versionSchema = useMemo(() => createVersionSchema(), []);
   const versionForm = useForm<VersionFormValues>({
     resolver: zodResolver(versionSchema),
@@ -192,7 +198,7 @@ export default function DocumentDetailPage() {
   useEffect(() => {
     setBreadcrumbs([
       { label: 'lockey_documents_module_name' },
-      { label: 'lockey_documents_list_title' },
+      { label: 'lockey_documents_list_title', path: '/documents' },
       { label: doc?.name ?? '...' },
     ]);
   }, [setBreadcrumbs, doc?.name]);
@@ -289,7 +295,7 @@ export default function DocumentDetailPage() {
                 ? 'border-b-2 border-primary text-primary'
                 : 'text-muted-foreground hover:text-foreground',
             )}
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           >
             {tab.label}
           </button>
@@ -299,7 +305,7 @@ export default function DocumentDetailPage() {
       {/* Details Tab */}
       {activeTab === 'details' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-lg border p-4">
             <div>
               <p className="text-sm text-muted-foreground">{t('lockey_documents_col_folder')}</p>
               <p className="text-sm font-medium">{doc.folderName}</p>
@@ -362,6 +368,7 @@ export default function DocumentDetailPage() {
 
       {/* Versions Tab */}
       {activeTab === 'versions' && (
+        isVersionsPending ? <TabContentSkeleton variant="list" /> : (
         <div className="space-y-4">
           {hasPermission('documents.document.upload') && (
             <Button type="button" onClick={() => setAddVersionOpen(true)}>
@@ -395,10 +402,12 @@ export default function DocumentDetailPage() {
             <p className="text-sm text-muted-foreground">{t('lockey_documents_empty_versions')}</p>
           )}
         </div>
+        )
       )}
 
       {/* Signatures Tab */}
       {activeTab === 'signatures' && (
+        isSignaturesPending ? <TabContentSkeleton variant="list" /> : (
         <div className="space-y-4">
           {signaturesData?.items && signaturesData.items.length > 0 ? (
             <div className="rounded-lg border">
@@ -442,10 +451,12 @@ export default function DocumentDetailPage() {
             <p className="text-sm text-muted-foreground">{t('lockey_documents_signatures_empty')}</p>
           )}
         </div>
+        )
       )}
 
       {/* Access Tab */}
       {activeTab === 'access' && (
+        isAccessPending ? <TabContentSkeleton variant="list" /> : (
         <div className="space-y-4">
           {/* Default access info banner */}
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
@@ -516,6 +527,7 @@ export default function DocumentDetailPage() {
             <p className="text-sm text-muted-foreground">{t('lockey_documents_empty_access')}</p>
           )}
         </div>
+        )
       )}
 
       {/* Preview Dialog */}
@@ -620,6 +632,8 @@ export default function DocumentDetailPage() {
             <FileDropZone
               onFileSelect={setVersionFile}
               disabled={versionUpload.state !== 'idle'}
+              isUploading={versionUpload.state === 'uploading'}
+              progress={versionUpload.progress}
             />
             <div>
               <label htmlFor="version-change-note" className="text-sm font-medium">
@@ -695,7 +709,7 @@ export default function DocumentDetailPage() {
                     setGrantAccessOpen(false);
                     accessForm.reset();
                     setUserSearch('');
-                    setShowUserDropdown(false);
+                    setSelectedUser(null);
                   },
                   onError: (err) => handleApiError(err),
                 },
@@ -703,40 +717,29 @@ export default function DocumentDetailPage() {
             })}
             className="space-y-4"
           >
-            <div className="relative">
-              <label htmlFor="access-user-search" className="text-sm font-medium">{t('lockey_documents_access_form_user_search')}</label>
-              <input
-                id="access-user-search"
-                type="text"
-                value={userSearch}
-                onChange={(e) => {
-                  setUserSearch(e.target.value);
-                  setShowUserDropdown(true);
+            <div>
+              <SearchableDropdown
+                value={selectedUser}
+                onSelect={(u) => {
+                  setSelectedUser(u);
+                  accessForm.setValue('userId', u.id);
+                  setUserSearch(`${u.firstName} ${u.lastName} (${u.email})`);
                 }}
-                onFocus={() => setShowUserDropdown(true)}
+                items={usersData?.items ?? []}
+                isLoading={isUserSearchPending && debouncedUserSearch.length > 0}
+                searchValue={userSearch}
+                onSearchChange={setUserSearch}
+                keyExtractor={(u) => u.id}
+                renderItem={(u) => (
+                  <>
+                    <span className="font-medium">{u.firstName} {u.lastName}</span>
+                    <span className="text-xs text-muted-foreground">{u.email}</span>
+                  </>
+                )}
+                renderSelected={(u) => `${u.firstName} ${u.lastName} (${u.email})`}
+                label={t('lockey_documents_access_form_user_search')}
                 placeholder={t('lockey_documents_access_form_user_search_placeholder')}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                autoComplete="off"
               />
-              {showUserDropdown && usersData?.items && usersData.items.length > 0 && (
-                <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-popover shadow-md">
-                  {usersData.items.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      className="flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-muted"
-                      onClick={() => {
-                        accessForm.setValue('userId', u.id);
-                        setUserSearch(`${u.firstName} ${u.lastName} (${u.email})`);
-                        setShowUserDropdown(false);
-                      }}
-                    >
-                      <span className="font-medium">{u.firstName} {u.lastName}</span>
-                      <span className="text-xs text-muted-foreground">{u.email}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
               {accessForm.formState.errors.userId?.message && (
                 <p className="mt-1 text-sm text-destructive">
                   {accessForm.formState.errors.userId.message}
@@ -850,6 +853,18 @@ export default function DocumentDetailPage() {
           }
         }}
         isPending={revokeAccess.isPending}
+      />
+
+      {/* Unsaved Changes Guard */}
+      <ConfirmDialog
+        open={isMetadataBlocked}
+        onOpenChange={(open) => { if (!open) resetMetadata(); }}
+        title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
+        description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
+        onConfirm={proceedMetadata}
+        confirmLabel={t('lockey_common_leave', { ns: 'common' })}
+        cancelLabel={t('lockey_common_stay', { ns: 'common' })}
+        variant="destructive"
       />
     </div>
   );

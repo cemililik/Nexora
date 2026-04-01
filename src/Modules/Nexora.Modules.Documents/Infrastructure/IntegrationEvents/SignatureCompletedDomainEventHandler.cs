@@ -6,14 +6,14 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 
 namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles SignatureCompletedEvent and publishes integration event.</summary>
+/// <summary>Handles SignatureCompletedEvent and enqueues integration event to the outbox.</summary>
 public sealed class SignatureCompletedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     DocumentsDbContext dbContext,
     ILogger<SignatureCompletedDomainEventHandler> logger) : INotificationHandler<SignatureCompletedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="SignatureCompletedEvent"/> by publishing a <see cref="SignatureCompletedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="SignatureCompletedEvent"/> by enqueuing a <see cref="SignatureCompletedIntegrationEvent"/> to the transactional outbox.
     /// Reads TenantId from the signature request entity (same transaction scope as the domain event).
     /// </summary>
     public async Task Handle(SignatureCompletedEvent notification, CancellationToken cancellationToken)
@@ -35,6 +35,9 @@ public sealed class SignatureCompletedDomainEventHandler(
             DocumentId = notification.DocumentId.Value
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(SignatureCompletedIntegrationEvent), integrationEvent.TenantId);
     }
 }

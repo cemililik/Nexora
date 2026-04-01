@@ -211,7 +211,8 @@
   "lockey_documents_signatures_toast_created": "Signature request created.",
   "lockey_documents_signatures_toast_sent": "Signature request sent.",
   "lockey_documents_signatures_toast_cancelled": "Signature request cancelled.",
-  "lockey_documents_signatures_empty": "No signature requests found.",
+  "lockey_documents_signatures_empty": "No recipients have been added to this signature request.",
+  "lockey_documents_signatures_empty_title": "No recipients",
   "lockey_documents_signatures_status_draft": "Draft",
   "lockey_documents_signatures_status_sent": "Sent",
   "lockey_documents_signatures_status_partially_signed": "Partially Signed",
@@ -293,5 +294,9 @@
   "lockey_documents_signatures_recipients_required": "At least one recipient is required.",
 
   "lockey_documents_upload_clear": "Clear files",
-  "lockey_documents_version_prefix": "v{{version}}"
+  "lockey_documents_version_prefix": "v{{version}}",
+
+  "lockey_documents_empty_title": "No documents yet",
+  "lockey_documents_empty_description": "Upload your first document to get started.",
+  "lockey_documents_empty_upload": "Upload document"
 }

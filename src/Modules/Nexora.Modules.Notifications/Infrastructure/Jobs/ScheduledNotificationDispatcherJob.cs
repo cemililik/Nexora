@@ -3,7 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Notifications.Infrastructure.Jobs;
 
@@ -29,7 +31,7 @@ public sealed class ScheduledNotificationDispatcherJob(
 
         var dueSchedules = await (from s in dbContext.NotificationSchedules
                                   where s.Status == ScheduleStatus.Pending
-                                        && s.ScheduledAt <= DateTime.UtcNow
+                                        && s.ScheduledAt <= DateTimeOffset.UtcNow
                                   select s)
             .ToListAsync(ct);
 
@@ -39,6 +41,7 @@ public sealed class ScheduledNotificationDispatcherJob(
             return;
         }
 
+        var outbox = scopedServices.GetRequiredService<IOutbox>();
         var dispatchedCount = 0;
 
         foreach (var schedule in dueSchedules)
@@ -56,11 +59,21 @@ public sealed class ScheduledNotificationDispatcherJob(
             }
 
             notification.MarkSending();
+
+            var deliveryEvent = new NotificationDeliveryRequestedIntegrationEvent
+            {
+                TenantId = tenant.TenantId,
+                NotificationId = notification.Id.Value,
+                Channel = notification.Channel.ToString(),
+                IsBulk = notification.TriggeredBy == TriggerSource.BulkApi
+            };
+
+            await outbox.EnqueueAsync(deliveryEvent, ct);
             dispatchedCount++;
         }
 
         await dbContext.SaveChangesAsync(ct);
 
-        logger.LogInformation("Dispatched {Count} scheduled notifications", dispatchedCount);
+        logger.LogInformation("Dispatched {Count} scheduled notifications via outbox", dispatchedCount);
     }
 }

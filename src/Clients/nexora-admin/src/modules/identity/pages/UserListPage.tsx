@@ -1,9 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Users } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
+import { SearchInput } from '@/shared/components/data/SearchInput';
 import {
   Select,
   SelectContent,
@@ -59,6 +61,31 @@ export default function UserListPage() {
     ]);
   }, [setBreadcrumbs]);
 
+  const hasActiveFilters = !!(search || organizationId || roleId);
+
+  const emptyStateNode = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={Users}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams(new URLSearchParams()),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={Users}
+        title={t('lockey_identity_empty_users_title')}
+        description={t('lockey_identity_empty_users_description')}
+        action={{ label: t('lockey_identity_users_create'), onClick: () => navigate('/identity/users/create') }}
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams]);
+
   const handleOrganizationChange = useCallback(
     (value: string) => {
       updateFilter('organizationId', value === '__all__' ? '' : value);
@@ -74,8 +101,8 @@ export default function UserListPage() {
   );
 
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      updateFilter('search', e.target.value);
+    (value: string) => {
+      updateFilter('search', value);
     },
     [updateFilter],
   );
@@ -116,8 +143,7 @@ export default function UserListPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <Input
-          type="text"
+        <SearchInput
           value={search ?? ''}
           onChange={handleSearchChange}
           placeholder={t('lockey_identity_search_users')}
@@ -166,7 +192,7 @@ export default function UserListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_identity_empty_users')}
+        emptyState={emptyStateNode}
         keyExtractor={(row) => row.id}
         onRowClick={(row) => navigate(`/identity/users/${row.id}`)}
       />

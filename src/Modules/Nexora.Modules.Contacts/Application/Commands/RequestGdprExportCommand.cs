@@ -58,6 +58,7 @@ public sealed class RequestGdprExportHandler(
                 t.Id.Value, t.Name, t.Category.ToString(), t.Color)).ToList());
 
         var notes = await dbContext.ContactNotes
+            .IgnoreQueryFilters()
             .Where(n => n.ContactId == contactId)
             .AsNoTracking()
             .Select(n => new ContactNoteDto(
@@ -66,6 +67,7 @@ public sealed class RequestGdprExportHandler(
             .ToListAsync(cancellationToken);
 
         var consents = await dbContext.ConsentRecords
+            .IgnoreQueryFilters()
             .Where(c => c.ContactId == contactId)
             .AsNoTracking()
             .Select(c => new ConsentRecordDto(
@@ -74,6 +76,7 @@ public sealed class RequestGdprExportHandler(
             .ToListAsync(cancellationToken);
 
         var activities = await dbContext.ContactActivities
+            .IgnoreQueryFilters()
             .Where(a => a.ContactId == contactId)
             .AsNoTracking()
             .Select(a => new ContactActivityDto(
@@ -82,6 +85,7 @@ public sealed class RequestGdprExportHandler(
             .ToListAsync(cancellationToken);
 
         var customFields = await dbContext.ContactCustomFields
+            .IgnoreQueryFilters()
             .Where(f => f.ContactId == contactId)
             .Join(dbContext.CustomFieldDefinitions,
                 f => f.FieldDefinitionId, d => d.Id,

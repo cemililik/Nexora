@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence.Inbox;
+using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Notifications.Api;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
@@ -43,6 +45,10 @@ public sealed class NotificationsModule : IModule
 
         // Register cross-module notification service
         services.AddScoped<INotificationService, NotificationService>();
+
+        // Register inbox guard for idempotent integration event consumption
+        services.AddScoped<IInboxGuard, InboxGuard<NotificationsDbContext>>();
+        services.AddScoped<IOutbox, OutboxService<NotificationsDbContext>>();
     }
 
     /// <inheritdoc />
@@ -56,6 +62,10 @@ public sealed class NotificationsModule : IModule
             UserCreatedIntegrationEventHandler>();
         services.AddScoped<IIntegrationEventHandler<ConsentChangedIntegrationEvent>,
             ConsentChangedIntegrationEventHandler>();
+
+        // Notification delivery via Kafka (replaces direct Hangfire job enqueuing):
+        services.AddScoped<IIntegrationEventHandler<NotificationDeliveryRequestedIntegrationEvent>,
+            NotificationDeliveryRequestedEventHandler>();
     }
 
     /// <inheritdoc />

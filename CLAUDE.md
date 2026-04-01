@@ -79,13 +79,15 @@ Before writing ANY code or documentation, you MUST read and strictly follow:
    - Module UI loaded dynamically based on tenant's installed modules
 
 9. **UX/UI Design Standards**: `docs/standards/UX_UI_STANDARDS.md`
-   - Tab-based layout mandatory for all detail pages (not card-based)
+   - Tab-based layout mandatory for all detail pages (not card-based), max 5 tabs
    - Consistent page templates: Detail, List, Create/Edit
    - Status badge color scheme: green=active, gray=inactive, red=error, yellow=pending
-   - Breadcrumb required on every page
-   - Accessibility: ARIA labels, keyboard nav, focus indicators, color+icon
-   - Empty states with icon, text, and call-to-action
-   - Skeleton loaders for initial load, spinners for mutations
+   - Breadcrumb required on every page, skip-to-content link in AppLayout
+   - Accessibility: ARIA labels, keyboard nav, focus indicators, color+icon, skip link
+   - Empty states via `EmptyState` component (icon, text, CTA) — never inline
+   - Loading: `TabContentSkeleton` for tabs, `LoadingSkeleton` for pages, DataTable built-in skeleton
+   - Unsaved changes guard (`useUnsavedChangesGuard`) mandatory on all edit forms
+   - Shared component inventory in §9 — use existing components, don't rebuild
 
 ## Solution Structure
 ```
@@ -114,11 +116,14 @@ nexora-admin/src/                   # (same pattern for nexora-portal)
 │   ├── notifications/
 │   └── documents/
 ├── shared/                         # Shared across all modules
-│   ├── components/ui/              # shadcn/ui primitives
-│   ├── hooks/                      # useAuth, usePermissions, usePagination
-│   ├── lib/                        # api client, i18n config, utils
+│   ├── components/
+│   │   ├── ui/                     # shadcn/ui primitives (Button, Input, Dialog, Select...)
+│   │   ├── data/                   # DataTable, SearchInput, SearchableDropdown, FormField, TextareaWithCounter
+│   │   ├── feedback/               # EmptyState, TabContentSkeleton, LoadingSkeleton, ConfirmDialog, ErrorBoundary
+│   │   └── layout/                 # AppLayout, Sidebar, Topbar, Breadcrumbs
+│   ├── hooks/                      # useAuth, usePermissions, usePagination, useUnsavedChangesGuard, useUndoableDelete
+│   ├── lib/                        # api client, i18n config, utils, stores (Zustand)
 │   └── types/                      # ApiEnvelope, PagedResult, auth types
-├── layouts/                        # AppLayout, Sidebar, Topbar
 └── locales/{en,tr}/                # Translation files per module
 ```
 
@@ -242,10 +247,16 @@ Nexora.Modules.{ModuleName}/
 ### UX/UI Layout Rules
 - Detail pages MUST use **custom underline tab layout** (`<button>` with `border-b-2`) — NOT shadcn/Radix Tabs, NOT card-based side-by-side
 - Tab state via `useState` (not URL params). See ContactDetailPage/DocumentDetailPage as reference.
+- **Max 5 tabs** per detail page. Consolidate small sections into Overview tab (e.g., Tags, Custom Fields).
+- Tab content MUST show `TabContentSkeleton` while loading. Tab switch MUST reset scroll position.
 - Header: entity name + badges grouped left, actions right. Keep related info close — don't spread across full width.
 - List pages: filters/search/pagination in URL params, DataTable with clickable rows
-- Breadcrumb on every page, status badges with consistent colors, empty states with CTA
-- Refer to `UX_UI_STANDARDS.md` for full templates and component rules
+- **Every list page MUST have SearchInput** + shadcn Select filters (never native `<select>`)
+- Empty states MUST use `EmptyState` component (icon + title + description + CTA)
+- Edit forms MUST use `useUnsavedChangesGuard(isDirty)` to prevent accidental navigation
+- Form fields MUST use `FormField` wrapper (label + required `*` + hint + error)
+- Grid layouts MUST use responsive breakpoints: `grid-cols-1 sm:grid-cols-2` (never bare `grid-cols-2`)
+- Refer to `UX_UI_STANDARDS.md` §9 for full shared component inventory
 
 ### Pre-Commit Checklist: ALWAYS Run Linter Before Committing
 **CRITICAL**: Any changes in `src/Clients/` (nexora-admin or nexora-portal) MUST pass linting before commit.

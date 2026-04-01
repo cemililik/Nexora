@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
@@ -48,6 +49,9 @@ export default function UserDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'activate' | 'deactivate' | 'delete' | null>(null);
   const [addOrgOpen, setAddOrgOpen] = useState(false);
+
+  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
+    useUnsavedChangesGuard(isEditing);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -130,7 +134,7 @@ export default function UserDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -271,6 +275,18 @@ export default function UserDetailPage() {
         existingOrgIds={user.organizations.map((o) => o.organizationId)}
         allOrgs={allOrgs?.items ?? []}
       />
+
+      {/* Unsaved Changes Guard */}
+      <ConfirmDialog
+        open={isEditBlocked}
+        onOpenChange={() => resetEdit()}
+        title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
+        description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
+        onConfirm={proceedEdit}
+        confirmLabel={t('lockey_common_leave', { ns: 'common' })}
+        cancelLabel={t('lockey_common_stay', { ns: 'common' })}
+        variant="destructive"
+      />
     </div>
   );
 }
@@ -392,7 +408,7 @@ function UserOrgRoles({
   allRoles: RoleDto[];
 }) {
   const { t } = useTranslation('identity');
-  const { data: userRoles, isLoading } = useUserRoles(userId, organizationId);
+  const { data: userRoles, isPending: isRolesPending } = useUserRoles(userId, organizationId);
   const assignRoles = useAssignUserRoles(userId);
   const [editing, setEditing] = useState(false);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
@@ -436,7 +452,7 @@ function UserOrgRoles({
         )}
       </div>
 
-      {isLoading ? (
+      {isRolesPending ? (
         <p className="text-xs text-muted-foreground">{t('lockey_identity_loading')}</p>
       ) : editing ? (
         <div className="space-y-1">

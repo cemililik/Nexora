@@ -211,7 +211,8 @@
   "lockey_documents_signatures_toast_created": "İmza talebi oluşturuldu.",
   "lockey_documents_signatures_toast_sent": "İmza talebi gönderildi.",
   "lockey_documents_signatures_toast_cancelled": "İmza talebi iptal edildi.",
-  "lockey_documents_signatures_empty": "İmza talebi bulunamadı.",
+  "lockey_documents_signatures_empty": "Bu imza talebine henüz alıcı eklenmemiş.",
+  "lockey_documents_signatures_empty_title": "Alıcı yok",
   "lockey_documents_signatures_status_draft": "Taslak",
   "lockey_documents_signatures_status_sent": "Gönderildi",
   "lockey_documents_signatures_status_partially_signed": "Kısmen İmzalandı",
@@ -293,5 +294,9 @@
   "lockey_documents_signatures_recipients_required": "En az bir alıcı gereklidir.",
 
   "lockey_documents_upload_clear": "Dosyaları temizle",
-  "lockey_documents_version_prefix": "v{{version}}"
+  "lockey_documents_version_prefix": "v{{version}}",
+
+  "lockey_documents_empty_title": "Henüz belge yok",
+  "lockey_documents_empty_description": "Başlamak için ilk belgenizi yükleyin.",
+  "lockey_documents_empty_upload": "Belge yükle"
 }

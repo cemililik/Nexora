@@ -17,13 +17,13 @@ import type {
 
 export const notificationKeys = {
   all: ['notifications', 'notifications'] as const,
-  list: (params: PaginationParams & { channel?: NotificationChannel; status?: NotificationStatus }) =>
+  list: (params: PaginationParams & { channel?: NotificationChannel; status?: NotificationStatus; search?: string }) =>
     [...notificationKeys.all, 'list', params] as const,
   detail: (id: string) => [...notificationKeys.all, 'detail', id] as const,
 };
 
 export function useNotifications(
-  params: PaginationParams & { channel?: NotificationChannel; status?: NotificationStatus },
+  params: PaginationParams & { channel?: NotificationChannel; status?: NotificationStatus; search?: string },
 ) {
   return useQuery({
     queryKey: notificationKeys.list(params),
@@ -33,6 +33,7 @@ export function useNotifications(
         pageSize: params.pageSize,
         channel: params.channel,
         status: params.status,
+        search: params.search,
       }),
   });
 }

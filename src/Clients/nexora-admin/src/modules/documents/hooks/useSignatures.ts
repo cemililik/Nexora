@@ -14,13 +14,13 @@ import type {
 
 export const signatureKeys = {
   all: ['documents', 'signatures'] as const,
-  list: (params: PaginationParams & { documentId?: string; status?: SignatureRequestStatus }) =>
+  list: (params: PaginationParams & { documentId?: string; status?: SignatureRequestStatus; search?: string }) =>
     [...signatureKeys.all, 'list', params] as const,
   detail: (id: string) => [...signatureKeys.all, 'detail', id] as const,
 };
 
 export function useSignatures(
-  params: PaginationParams & { documentId?: string; status?: SignatureRequestStatus },
+  params: PaginationParams & { documentId?: string; status?: SignatureRequestStatus; search?: string },
 ) {
   return useQuery({
     queryKey: signatureKeys.list(params),
@@ -30,6 +30,7 @@ export function useSignatures(
         pageSize: params.pageSize,
         documentId: params.documentId,
         status: params.status,
+        search: params.search,
       }),
   });
 }

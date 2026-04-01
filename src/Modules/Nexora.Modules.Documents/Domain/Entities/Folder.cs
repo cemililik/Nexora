@@ -122,6 +122,7 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
 
         var access = FolderAccess.Create(Id, userId, roleId, permission, expiresAt);
         _accessList.Add(access);
+        AddDomainEvent(new FolderAccessGrantedEvent(Id, access.Id, userId, roleId, permission));
         return access;
     }
 
@@ -131,5 +132,6 @@ public sealed class Folder : AuditableEntity<FolderId>, IAggregateRoot
         var access = _accessList.FirstOrDefault(a => a.Id == accessId)
             ?? throw new DomainException("lockey_documents_error_access_not_found");
         _accessList.Remove(access);
+        AddDomainEvent(new FolderAccessRevokedEvent(Id, accessId));
     }
 }

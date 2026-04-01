@@ -188,6 +188,7 @@
   "lockey_identity_empty_tenants": "Kiracı bulunamadı.",
   "lockey_identity_empty_audit": "Denetim kaydı bulunamadı.",
   "lockey_identity_empty_modules": "Yüklü modül yok.",
+  "lockey_identity_empty_modules_description": "Bu kiracı için özellikleri etkinleştirmek amacıyla bir modül yükleyin.",
   "lockey_identity_empty_members": "Bu organizasyonda üye yok.",
 
   "lockey_identity_tab_profile": "Profil",
@@ -243,5 +244,18 @@
   "lockey_identity_toast_user_added_to_role": "Kullanıcı role eklendi.",
   "lockey_identity_toast_user_removed_from_role": "Kullanıcı rolden çıkarıldı.",
   "lockey_identity_error_user_not_in_role": "Kullanıcı bu role sahip değil.",
-  "lockey_identity_error_user_already_has_role": "Kullanıcı zaten bu role sahip."
+  "lockey_identity_error_user_already_has_role": "Kullanıcı zaten bu role sahip.",
+
+  "lockey_identity_empty_users_title": "Henüz kullanıcı yok",
+  "lockey_identity_empty_users_description": "Kullanıcılar oluşturuldukça burada görünecek.",
+  "lockey_identity_empty_roles_title": "Henüz rol yok",
+  "lockey_identity_empty_roles_description": "İzinleri yönetmek için ilk rolünüzü oluşturun.",
+  "lockey_identity_empty_roles_create": "Rol oluştur",
+  "lockey_identity_empty_orgs_title": "Henüz organizasyon yok",
+  "lockey_identity_empty_orgs_description": "İlk organizasyonunuzu oluşturun.",
+  "lockey_identity_empty_orgs_create": "Organizasyon oluştur",
+  "lockey_identity_search_roles": "Rolleri ara...",
+  "lockey_identity_search_organizations": "Organizasyonları ara...",
+  "lockey_identity_hint_role_name": "Bu rol için benzersiz bir ad.",
+  "lockey_identity_hint_role_description": "Bu rolün amacını ve kapsamını tanımlayın."
 }

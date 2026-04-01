@@ -332,7 +332,7 @@ export default function SignatureCreatePage() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-medium">{t('lockey_documents_signatures_form_recipient_name')}</label>
                 <input

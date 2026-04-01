@@ -6,14 +6,14 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 
 namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 
-/// <summary>Handles DocumentArchivedEvent and publishes integration event.</summary>
+/// <summary>Handles DocumentArchivedEvent and enqueues integration event to the outbox.</summary>
 public sealed class DocumentArchivedDomainEventHandler(
-    IEventBus eventBus,
+    IOutbox outbox,
     DocumentsDbContext dbContext,
     ILogger<DocumentArchivedDomainEventHandler> logger) : INotificationHandler<DocumentArchivedEvent>
 {
     /// <summary>
-    /// Handles a <see cref="DocumentArchivedEvent"/> by publishing a <see cref="DocumentArchivedIntegrationEvent"/> to the event bus.
+    /// Handles a <see cref="DocumentArchivedEvent"/> by enqueuing a <see cref="DocumentArchivedIntegrationEvent"/> to the transactional outbox.
     /// Reads TenantId from the document entity (same transaction scope as the domain event).
     /// </summary>
     public async Task Handle(DocumentArchivedEvent notification, CancellationToken cancellationToken)
@@ -37,6 +37,9 @@ public sealed class DocumentArchivedDomainEventHandler(
             DocumentId = notification.DocumentId.Value
         };
 
-        await eventBus.PublishAndLogAsync(integrationEvent, logger, cancellationToken);
+        await outbox.EnqueueAsync(integrationEvent, cancellationToken);
+
+        logger.LogInformation("Enqueued {EventType} for tenant {TenantId}",
+            nameof(DocumentArchivedIntegrationEvent), integrationEvent.TenantId);
     }
 }

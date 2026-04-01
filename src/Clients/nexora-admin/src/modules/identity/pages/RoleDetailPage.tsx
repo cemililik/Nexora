@@ -6,6 +6,10 @@ import { Pencil, Trash2, Save, X, Shield, UserMinus, UserPlus } from 'lucide-rea
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
+import { ConfirmDialog } from '@/shared/components/feedback/ConfirmDialog';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
+import { TabContentSkeleton } from '@/shared/components/feedback/TabContentSkeleton';
+import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { RoleStatusBadge } from '../components/RoleStatusBadge';
 import {
   Dialog,
@@ -31,7 +35,7 @@ export default function RoleDetailPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('details');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data: role, isLoading } = useRole(id ?? '');
+  const { data: role, isPending } = useRole(id ?? '');
   const { hasPermission } = usePermissions();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
@@ -41,6 +45,18 @@ export default function RoleDetailPage() {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPermissionIds, setEditPermissionIds] = useState<string[]>([]);
+
+  const isDirty = editing && (() => {
+    const rolePermIds = new Set(role?.permissions.map((p) => p.id) ?? []);
+    return (
+      editName !== (role?.name ?? '') ||
+      editDescription !== (role?.description ?? '') ||
+      editPermissionIds.length !== rolePermIds.size ||
+      editPermissionIds.some((permId) => !rolePermIds.has(permId))
+    );
+  })();
+  const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
+    useUnsavedChangesGuard(isDirty);
 
   useEffect(() => {
     setBreadcrumbs([
@@ -57,8 +73,8 @@ export default function RoleDetailPage() {
     }
   }, [role]);
 
-  if (isLoading || !role) {
-    return <p className="text-muted-foreground">{t('lockey_identity_loading')}</p>;
+  if (isPending || !role) {
+    return <LoadingSkeleton />;
   }
 
   const handleSave = () => {
@@ -89,15 +105,7 @@ export default function RoleDetailPage() {
         <div className="flex items-center gap-3">
           <Shield className="h-6 w-6 text-muted-foreground" />
           <div>
-            {editing ? (
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="text-xl font-bold"
-              />
-            ) : (
-              <h1 className="text-2xl font-semibold">{role.name}</h1>
-            )}
+            <h1 className="text-2xl font-semibold">{role.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <RoleStatusBadge isActive={role.isActive} />
               {role.isSystemRole && (
@@ -138,13 +146,24 @@ export default function RoleDetailPage() {
       </div>
 
       {editing && (
-        <div className="space-y-2">
-          <label className="text-sm font-medium">{t('lockey_identity_role_description')}</label>
-          <Input
-            value={editDescription}
-            onChange={(e) => setEditDescription(e.target.value)}
-            placeholder={t('lockey_identity_role_description')}
-          />
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="edit-role-name" className="text-sm font-medium">{t('lockey_identity_form_role_name')}</label>
+            <Input
+              id="edit-role-name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="edit-role-desc" className="text-sm font-medium">{t('lockey_identity_role_description')}</label>
+            <Input
+              id="edit-role-desc"
+              value={editDescription}
+              onChange={(e) => setEditDescription(e.target.value)}
+              placeholder={t('lockey_identity_role_description')}
+            />
+          </div>
         </div>
       )}
 
@@ -158,7 +177,7 @@ export default function RoleDetailPage() {
           <button
             key={tab.key}
             type="button"
-            onClick={() => setActiveTab(tab.key)}
+            onClick={() => { setActiveTab(tab.key); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 transition-colors',
               activeTab === tab.key
@@ -229,6 +248,18 @@ export default function RoleDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unsaved Changes Guard */}
+      <ConfirmDialog
+        open={isEditBlocked}
+        onOpenChange={(open) => { if (!open) resetEdit(); }}
+        title={t('lockey_common_unsaved_changes_title', { ns: 'common' })}
+        description={t('lockey_common_unsaved_changes_description', { ns: 'common' })}
+        onConfirm={proceedEdit}
+        confirmLabel={t('lockey_common_leave', { ns: 'common' })}
+        cancelLabel={t('lockey_common_stay', { ns: 'common' })}
+        variant="destructive"
+      />
     </div>
   );
 }
@@ -269,9 +300,7 @@ function RoleUsersPanel({
 
       <div className="space-y-1">
         {isPending ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
-            {t('lockey_identity_loading')}
-          </p>
+          <TabContentSkeleton variant="list" />
         ) : roleUsersData?.items.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
             {t('lockey_identity_role_no_users')}

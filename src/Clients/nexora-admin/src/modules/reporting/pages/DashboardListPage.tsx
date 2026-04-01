@@ -3,11 +3,12 @@ import { Link } from 'react-router';
 
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { useDashboards } from '../hooks/useDashboards';
 
 export default function DashboardListPage() {
   const { t } = useTranslation('reporting');
-  const { data, isLoading } = useDashboards({ page: 1, pageSize: 50 });
+  const { data, isPending } = useDashboards({ page: 1, pageSize: 50 });
 
   return (
     <div className="space-y-6">
@@ -22,9 +23,7 @@ export default function DashboardListPage() {
         </Button>
       </div>
 
-      {isLoading && (
-        <p className="text-muted-foreground">{t('lockey_reporting_loading')}</p>
-      )}
+      {isPending && <LoadingSkeleton lines={3} />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {data?.items.map((dashboard) => (

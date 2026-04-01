@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
+import { Bell } from 'lucide-react';
 
 import { Button } from '@/shared/components/ui/button';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
+import { SearchInput } from '@/shared/components/data/SearchInput';
 import { DataTable, type ColumnDef } from '@/shared/components/data/DataTable';
 import { usePagination } from '@/shared/hooks/usePagination';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -30,6 +33,7 @@ export default function NotificationListPage() {
   const canSend = hasPermission('notifications.notification.send');
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? undefined;
   const rawChannel = searchParams.get('channel');
   const channel = CHANNELS.includes(rawChannel as NotificationChannel) ? (rawChannel as NotificationChannel) : undefined;
   const rawStatus = searchParams.get('status');
@@ -42,7 +46,38 @@ export default function NotificationListPage() {
     ]);
   }, [setBreadcrumbs]);
 
-  const { data, isPending } = useNotifications({ page, pageSize, channel, status });
+  const { data, isPending } = useNotifications({ page, pageSize, channel, status, search });
+
+  const hasActiveFilters = !!(search || channel || status);
+  const emptyState = useMemo(() => {
+    if (hasActiveFilters) {
+      return (
+        <EmptyState
+          icon={Bell}
+          title={t('lockey_common_no_results_filtered', { ns: 'common' })}
+          action={{
+            label: t('lockey_common_reset_filters', { ns: 'common' }),
+            onClick: () => setSearchParams((prev) => {
+              const next = new URLSearchParams();
+              if (prev.has('pageSize')) next.set('pageSize', prev.get('pageSize')!);
+              return next;
+            }),
+          }}
+        />
+      );
+    }
+    return (
+      <EmptyState
+        icon={Bell}
+        title={t('lockey_notifications_empty_notifications')}
+        action={
+          canSend
+            ? { label: t('lockey_notifications_send_notification'), onClick: () => navigate('/notifications/send') }
+            : undefined
+        }
+      />
+    );
+  }, [hasActiveFilters, t, navigate, setSearchParams, canSend]);
 
   const updateFilter = (key: string, value: string) => {
     setSearchParams((prev: URLSearchParams) => {
@@ -125,7 +160,13 @@ export default function NotificationListPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <SearchInput
+          value={search ?? ''}
+          onChange={(value) => updateFilter('search', value)}
+          placeholder={t('lockey_notifications_search_placeholder')}
+          className="w-64"
+        />
         <Select
           value={channel ?? '__all__'}
           onValueChange={(v) => updateFilter('channel', v === '__all__' ? '' : v)}
@@ -169,7 +210,7 @@ export default function NotificationListPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
         isLoading={isPending}
-        emptyMessage={t('lockey_notifications_empty_notifications')}
+        emptyState={emptyState}
         keyExtractor={(row) => row.id}
       />
     </div>

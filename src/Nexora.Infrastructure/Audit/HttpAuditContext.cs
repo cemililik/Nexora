@@ -38,8 +38,12 @@ public sealed class HttpAuditContext(
             var forwarded = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
             if (!string.IsNullOrWhiteSpace(forwarded))
             {
-                // X-Forwarded-For can contain multiple IPs; take the first (client)
-                return forwarded.Split(',', StringSplitOptions.TrimEntries)[0];
+                // X-Forwarded-For can contain multiple IPs; take the first (originating client).
+                // Validate format to prevent header-injection — only accept well-formed IP addresses.
+                // Full spoofing mitigation requires configuring ForwardedHeadersMiddleware with KnownProxies.
+                var firstIp = forwarded.Split(',', StringSplitOptions.TrimEntries)[0];
+                if (System.Net.IPAddress.TryParse(firstIp, out var parsedIp))
+                    return parsedIp.ToString();
             }
 
             return context.Connection.RemoteIpAddress?.ToString();

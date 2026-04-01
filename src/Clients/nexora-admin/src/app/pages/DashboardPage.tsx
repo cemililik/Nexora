@@ -1,13 +1,16 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Users, Contact, FileText, Bell, BarChart3, Activity } from 'lucide-react';
+import { Users, Contact, FileText, Bell, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { formatRelativeTime } from '@/shared/lib/date';
 import type { PagedResult } from '@/shared/types/api';
+import { useAuditLogs } from '@/modules/audit/hooks/useAuditLogs';
 
 interface StatsCard {
   label: string;
@@ -70,35 +73,17 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('common:lockey_common_recent_activity')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {t('common:lockey_common_no_recent_activity')}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-2 pb-2">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('common:lockey_common_quick_stats')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {t('common:lockey_common_stats_coming_soon')}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+          <Activity className="h-4 w-4 text-muted-foreground" />
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t('common:lockey_common_recent_activity')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentActivityList />
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -128,5 +113,34 @@ function StatsCardItem({ card }: { card: StatsCard }) {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+function RecentActivityList() {
+  const { t } = useTranslation(['common', 'audit']);
+  const { data, isLoading } = useAuditLogs({ page: 1, pageSize: 5 });
+
+  if (isLoading) {
+    return <LoadingSkeleton lines={3} />;
+  }
+
+  if (!data?.items?.length) {
+    return <p className="text-sm text-muted-foreground">{t('common:lockey_common_no_recent_activity')}</p>;
+  }
+
+  return (
+    <ul className="space-y-2">
+      {data.items.map((log) => (
+        <li key={log.id} className="flex items-center justify-between text-sm">
+          <div>
+            <span className="font-medium">{t('audit:lockey_audit_operation_' + log.operation.toLowerCase(), { defaultValue: log.operation })}</span>
+            <span className="text-muted-foreground ms-2">{t('audit:lockey_audit_module_' + log.module, { defaultValue: log.module })}</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {log.userEmail} · {formatRelativeTime(log.timestamp)}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

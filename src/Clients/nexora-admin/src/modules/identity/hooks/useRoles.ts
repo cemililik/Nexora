@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
@@ -16,7 +16,7 @@ import type {
 
 export const roleKeys = {
   all: ['identity', 'roles'] as const,
-  list: () => [...roleKeys.all, 'list'] as const,
+  list: (params?: PaginationParams & { search?: string }) => [...roleKeys.all, 'list', params] as const,
   detail: (id: string) => [...roleKeys.all, 'detail', id] as const,
   users: (id: string, params: PaginationParams) =>
     [...roleKeys.all, 'users', id, params] as const,
@@ -24,10 +24,21 @@ export const roleKeys = {
     ['identity', 'permissions', module ?? 'all'] as const,
 };
 
-export function useRoles() {
+export interface RoleFilterParams extends PaginationParams {
+  search?: string;
+}
+
+export function useRoles(): UseQueryResult<RoleDto[], Error>;
+export function useRoles(params: RoleFilterParams): UseQueryResult<PagedResult<RoleDto>, Error>;
+export function useRoles(params?: RoleFilterParams): UseQueryResult<RoleDto[] | PagedResult<RoleDto>, Error> {
   return useQuery({
-    queryKey: roleKeys.list(),
-    queryFn: () => api.get<RoleDto[]>('/identity/roles'),
+    queryKey: roleKeys.list(params),
+    queryFn: () =>
+      api.get<RoleDto[] | PagedResult<RoleDto>>('/identity/roles', params ? {
+        page: params.page,
+        pageSize: params.pageSize,
+        ...(params.search ? { search: params.search } : {})
+      } : undefined),
   });
 }
 
