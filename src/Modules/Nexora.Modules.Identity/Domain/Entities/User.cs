@@ -17,6 +17,9 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
     public UserStatus Status { get; private set; }
     public DateTimeOffset? LastLoginAt { get; private set; }
 
+    /// <summary>BCP 47 language tag preferred by this user for UI display (e.g. "en", "tr"). Null means use tenant default.</summary>
+    public string? PreferredLanguage { get; private set; }
+
     private readonly List<OrganizationUser> _organizationUsers = [];
     public IReadOnlyList<OrganizationUser> OrganizationUsers => _organizationUsers.AsReadOnly();
 
@@ -60,6 +63,16 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
     public void Deactivate() { Status = UserStatus.Inactive; AddDomainEvent(new UserDeactivatedEvent(Id)); }
     /// <summary>Activates the user account.</summary>
     public void Activate() => Status = UserStatus.Active;
+
+    /// <summary>
+    /// Updates the user's locale preference. Pass <see langword="null"/> to clear (falls back to tenant default).
+    /// </summary>
+    public void UpdatePreferences(string? preferredLanguage)
+    {
+        PreferredLanguage = string.IsNullOrWhiteSpace(preferredLanguage)
+            ? null
+            : preferredLanguage.Trim().ToLowerInvariant();
+    }
 }
 
 /// <summary>Represents the status of a user account.</summary>

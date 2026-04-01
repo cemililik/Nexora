@@ -21,12 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
-import { useTenant, useUpdateTenantStatus } from '../hooks/useTenants';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { SUPPORTED_LOCALES, SUPPORTED_CURRENCIES, SUPPORTED_TIMEZONES, SUPPORTED_LANGUAGES } from '@/shared/lib/localeConstants';
+import { useTenant, useUpdateTenantSettings, useUpdateTenantStatus } from '../hooks/useTenants';
 import { useTenantModules, useInstallModule, useActivateModule, useDeactivateModule, useUninstallModule, useRegisteredModules } from '../hooks/useModuleManagement';
 import type { RegisteredModuleDto } from '../hooks/useModuleManagement';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
 
-type TabKey = 'details' | 'modules';
+type TabKey = 'details' | 'modules' | 'settings';
 
 export default function TenantDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -38,6 +40,12 @@ export default function TenantDetailPage() {
 
   const { data: tenant, isPending } = useTenant(id);
   const updateStatus = useUpdateTenantStatus(id);
+  const updateSettings = useUpdateTenantSettings(id);
+
+  const [settingsLocale, setSettingsLocale] = useState('');
+  const [settingsCurrency, setSettingsCurrency] = useState('');
+  const [settingsTimezone, setSettingsTimezone] = useState('');
+  const [settingsDocLang, setSettingsDocLang] = useState('');
   const { data: modules, isPending: isModulesPending } = useTenantModules(id);
   const { data: registeredModules } = useRegisteredModules();
   const installModule = useInstallModule(id);
@@ -56,6 +64,15 @@ export default function TenantDetailPage() {
       { label: tenant?.name ?? '...' },
     ]);
   }, [setBreadcrumbs, tenant]);
+
+  useEffect(() => {
+    if (tenant) {
+      setSettingsLocale(tenant.defaultLocale);
+      setSettingsCurrency(tenant.defaultCurrency);
+      setSettingsTimezone(tenant.defaultTimezone);
+      setSettingsDocLang(tenant.defaultDocumentLanguage);
+    }
+  }, [tenant]);
 
   function handleTabChange(tab: TabKey) {
     setActiveTab(tab);
@@ -112,6 +129,7 @@ export default function TenantDetailPage() {
         {([
           { key: 'details' as const, label: t('lockey_identity_tab_details') },
           { key: 'modules' as const, label: t('lockey_identity_tab_modules') },
+          { key: 'settings' as const, label: t('lockey_identity_tab_settings') },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -233,6 +251,79 @@ export default function TenantDetailPage() {
                 </li>
               ))}
             </ul>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="mt-4 max-w-md space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('lockey_identity_form_tenant_locale')}</label>
+            <Select value={settingsLocale} onValueChange={setSettingsLocale}>
+              <SelectTrigger aria-label={t('lockey_identity_form_tenant_locale')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LOCALES.map((l) => (
+                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('lockey_identity_form_tenant_currency')}</label>
+            <Select value={settingsCurrency} onValueChange={setSettingsCurrency}>
+              <SelectTrigger aria-label={t('lockey_identity_form_tenant_currency')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('lockey_identity_form_tenant_timezone')}</label>
+            <Select value={settingsTimezone} onValueChange={setSettingsTimezone}>
+              <SelectTrigger aria-label={t('lockey_identity_form_tenant_timezone')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_TIMEZONES.map((tz) => (
+                  <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t('lockey_identity_form_tenant_doc_language')}</label>
+            <Select value={settingsDocLang} onValueChange={setSettingsDocLang}>
+              <SelectTrigger aria-label={t('lockey_identity_form_tenant_doc_language')}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <SelectItem key={l} value={l}>{l}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {hasPermission('identity.tenants.update') && (
+            <Button
+              type="button"
+              disabled={updateSettings.isPending}
+              onClick={() => {
+                updateSettings.mutate({
+                  defaultLocale: settingsLocale,
+                  defaultCurrency: settingsCurrency,
+                  defaultTimezone: settingsTimezone,
+                  defaultDocumentLanguage: settingsDocLang,
+                });
+              }}
+            >
+              {t('lockey_identity_action_save_settings')}
+            </Button>
           )}
         </div>
       )}

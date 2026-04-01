@@ -1,19 +1,16 @@
 {
   "lockey_identity_module_name": "Identity & Access",
-
   "lockey_identity_nav_users": "Users",
   "lockey_identity_nav_roles": "Roles",
   "lockey_identity_nav_organizations": "Organizations",
   "lockey_identity_nav_tenants": "Tenants",
   "lockey_identity_nav_audit_logs": "Audit Logs",
   "lockey_identity_nav_modules": "Modules",
-
   "lockey_identity_users_title": "Users",
   "lockey_identity_users_description": "Manage user accounts, profiles, and access.",
   "lockey_identity_users_create": "Create User",
   "lockey_identity_users_search": "Search users...",
   "lockey_identity_user_detail_title": "User Details",
-
   "lockey_identity_col_email": "Email",
   "lockey_identity_col_name": "Name",
   "lockey_identity_col_first_name": "First Name",
@@ -43,14 +40,12 @@
   "lockey_identity_col_installed_at": "Installed",
   "lockey_identity_col_installed_by": "Installed By",
   "lockey_identity_col_joined_at": "Joined",
-
   "lockey_identity_status_active": "Active",
   "lockey_identity_status_inactive": "Inactive",
   "lockey_identity_status_locked": "Locked",
   "lockey_identity_status_trial": "Trial",
   "lockey_identity_status_suspended": "Suspended",
   "lockey_identity_status_terminated": "Terminated",
-
   "lockey_identity_action_activate": "Activate",
   "lockey_identity_action_deactivate": "Deactivate",
   "lockey_identity_action_suspend": "Suspend",
@@ -62,7 +57,6 @@
   "lockey_identity_action_uninstall": "Uninstall",
   "lockey_identity_action_add_member": "Add Member",
   "lockey_identity_action_remove_member": "Remove Member",
-
   "lockey_identity_form_email": "Email Address",
   "lockey_identity_form_first_name": "First Name",
   "lockey_identity_form_last_name": "Last Name",
@@ -81,33 +75,27 @@
   "lockey_identity_form_select_permissions": "Select Permissions",
   "lockey_identity_form_select_user": "Select User",
   "lockey_identity_form_select_module": "Select Module",
-
   "lockey_identity_roles_title": "Roles",
   "lockey_identity_roles_description": "Manage roles and permission assignments.",
   "lockey_identity_roles_create": "Create Role",
-
   "lockey_identity_orgs_title": "Organizations",
   "lockey_identity_orgs_description": "Manage organizations and their members.",
   "lockey_identity_orgs_create": "Create Organization",
   "lockey_identity_org_detail_title": "Organization Details",
   "lockey_identity_org_members_title": "Members",
-
   "lockey_identity_tenants_title": "Tenants",
   "lockey_identity_tenants_description": "Manage tenant accounts and their modules.",
   "lockey_identity_tenants_create": "Create Tenant",
   "lockey_identity_tenant_detail_title": "Tenant Details",
   "lockey_identity_tenant_modules_title": "Installed Modules",
-
   "lockey_identity_audit_title": "Audit Logs",
   "lockey_identity_audit_description": "View system activity and security events.",
   "lockey_identity_audit_filter_user": "Filter by User",
   "lockey_identity_audit_filter_action": "Filter by Action",
   "lockey_identity_audit_filter_from": "From Date",
   "lockey_identity_audit_filter_to": "To Date",
-
   "lockey_identity_modules_title": "Module Management",
   "lockey_identity_modules_description": "Install or remove modules for this tenant.",
-
   "lockey_identity_confirm_activate_user": "Are you sure you want to activate this user?",
   "lockey_identity_confirm_deactivate_user": "Are you sure you want to deactivate this user? They will lose access to the system.",
   "lockey_identity_confirm_delete_org": "Are you sure you want to delete this organization? This action cannot be undone.",
@@ -115,7 +103,6 @@
   "lockey_identity_confirm_terminate_tenant": "Are you sure you want to terminate this tenant? This action is permanent and cannot be reversed.",
   "lockey_identity_confirm_uninstall_module": "Are you sure you want to uninstall this module? All module data may be lost.",
   "lockey_identity_confirm_remove_member": "Are you sure you want to remove this member from the organization?",
-
   "lockey_identity_user_created": "User created successfully.",
   "lockey_identity_user_updated": "User profile updated.",
   "lockey_identity_user_status_updated": "User status updated.",
@@ -181,10 +168,8 @@
   "lockey_identity_tenant_status_updated": "Tenant status updated.",
   "lockey_identity_module_installed": "Module installed successfully.",
   "lockey_identity_module_uninstalled": "Module uninstalled.",
-
   "lockey_identity_filter_all_organizations": "All Organizations",
   "lockey_identity_filter_all_roles": "All Roles",
-
   "lockey_identity_empty_users": "No users found.",
   "lockey_identity_empty_roles": "No roles found.",
   "lockey_identity_empty_orgs": "No organizations found.",
@@ -193,7 +178,6 @@
   "lockey_identity_empty_modules": "No modules installed.",
   "lockey_identity_empty_modules_description": "Install a module to enable its features for this tenant.",
   "lockey_identity_empty_members": "No members in this organization.",
-
   "lockey_identity_tab_profile": "Profile",
   "lockey_identity_tab_organizations": "Organizations",
   "lockey_identity_tab_roles": "Roles",
@@ -203,11 +187,9 @@
   "lockey_identity_tab_permissions": "Permissions",
   "lockey_identity_tab_users": "Users",
   "lockey_identity_tab_members": "Members",
-
   "lockey_identity_yes": "Yes",
   "lockey_identity_no": "No",
   "lockey_identity_never": "Never",
-
   "lockey_identity_validation_role_name_required": "Role name is required",
   "lockey_identity_validation_role_name_max": "Role name must be at most 100 characters",
   "lockey_identity_validation_role_description_max": "Description must be at most 500 characters",
@@ -219,7 +201,6 @@
   "lockey_identity_validation_org_name_required": "Organization name is required",
   "lockey_identity_validation_org_name_max": "Organization name must be at most 200 characters",
   "lockey_identity_validation_org_description_max": "Description must be at most 500 characters",
-
   "lockey_identity_permission_tenants_read": "View tenants",
   "lockey_identity_permission_tenants_manage": "Manage tenants",
   "lockey_identity_permission_organizations_read": "View organizations",
@@ -236,9 +217,7 @@
   "lockey_identity_permission_roles_delete": "Delete roles",
   "lockey_identity_permission_modules_read": "View modules",
   "lockey_identity_permission_modules_manage": "Manage modules",
-
   "lockey_identity_no_permissions": "No permissions assigned",
-
   "lockey_identity_role_users_title": "Users with role: {{roleName}}",
   "lockey_identity_role_add_user": "Add User",
   "lockey_identity_role_remove_user": "Remove User",
@@ -248,7 +227,6 @@
   "lockey_identity_toast_user_removed_from_role": "User removed from role.",
   "lockey_identity_error_user_not_in_role": "User does not have this role.",
   "lockey_identity_error_user_already_has_role": "User already has this role.",
-
   "lockey_identity_empty_users_title": "No users yet",
   "lockey_identity_empty_users_description": "Users will appear here once they are created.",
   "lockey_identity_empty_roles_title": "No roles yet",
@@ -264,9 +242,7 @@
   "lockey_identity_error_platform_permission_denied": "Platform-level permissions cannot be assigned to tenant roles.",
   "lockey_identity_permission_scope_platform": "Platform",
   "lockey_identity_permission_scope_tenant": "Tenant",
-
   "lockey_identity_module_display_name": "Identity & Access",
-
   "lockey_identity_users_listed": "Users retrieved.",
   "lockey_identity_user_retrieved": "User retrieved.",
   "lockey_identity_user_profile_updated": "User profile updated.",
@@ -285,11 +261,9 @@
   "lockey_identity_modules_listed": "Modules retrieved.",
   "lockey_identity_audit_logs_listed": "Audit logs retrieved.",
   "lockey_identity_audit_log_recorded": "Audit log recorded.",
-
   "lockey_identity_permission_tenants_create": "Create tenants",
   "lockey_identity_permission_tenants_update": "Update tenants",
   "lockey_identity_permission_tenants_delete": "Delete tenants",
-
   "lockey_identity_error_user_email_taken": "A user with this email address already exists.",
   "lockey_identity_error_user_not_member": "User is not a member of this organization.",
   "lockey_identity_error_user_already_member": "User is already a member of this organization.",
@@ -307,7 +281,6 @@
   "lockey_identity_keycloak_deserialize_failed": "Failed to process identity provider response.",
   "lockey_identity_keycloak_missing_location_header": "Identity provider returned an unexpected response.",
   "lockey_identity_keycloak_token_deserialize_failed": "Failed to process authentication token.",
-
   "lockey_identity_validation_email_required": "Email is required.",
   "lockey_identity_validation_email_format": "Please enter a valid email address.",
   "lockey_identity_validation_first_name_required": "First name is required.",
@@ -339,5 +312,21 @@
   "lockey_identity_validation_invalid_user_action": "Invalid user action.",
   "lockey_identity_validation_invalid_tenant_action": "Invalid tenant action.",
   "lockey_identity_validation_audit_action_required": "Audit action is required.",
-  "lockey_identity_validation_audit_action_max_length": "Audit action must be at most {{max}} characters."
+  "lockey_identity_validation_audit_action_max_length": "Audit action must be at most {{max}} characters.",
+  "lockey_identity_tenant_settings_updated": "Tenant settings updated.",
+  "lockey_identity_user_preferences_updated": "Preferences saved.",
+  "lockey_identity_form_tenant_locale": "Default Locale",
+  "lockey_identity_form_tenant_currency": "Default Currency",
+  "lockey_identity_form_tenant_timezone": "Default Timezone",
+  "lockey_identity_form_tenant_doc_language": "Default Document Language",
+  "lockey_identity_action_save_settings": "Save Settings",
+  "lockey_identity_validation_locale_required": "Locale is required.",
+  "lockey_identity_validation_locale_unsupported": "Locale is not supported.",
+  "lockey_identity_validation_currency_required": "Currency is required.",
+  "lockey_identity_validation_currency_unsupported": "Currency is not supported.",
+  "lockey_identity_validation_timezone_required": "Timezone is required.",
+  "lockey_identity_validation_timezone_unsupported": "Timezone is not supported.",
+  "lockey_identity_validation_document_language_required": "Document language is required.",
+  "lockey_identity_validation_document_language_unsupported": "Document language is not supported.",
+  "lockey_identity_validation_language_unsupported": "Language is not supported."
 }

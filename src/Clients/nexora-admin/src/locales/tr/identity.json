@@ -1,19 +1,16 @@
 {
   "lockey_identity_module_name": "Kimlik ve Erişim",
-
   "lockey_identity_nav_users": "Kullanıcılar",
   "lockey_identity_nav_roles": "Roller",
   "lockey_identity_nav_organizations": "Organizasyonlar",
   "lockey_identity_nav_tenants": "Kiracılar",
   "lockey_identity_nav_audit_logs": "Denetim Kayıtları",
   "lockey_identity_nav_modules": "Modüller",
-
   "lockey_identity_users_title": "Kullanıcılar",
   "lockey_identity_users_description": "Kullanıcı hesaplarını, profillerini ve erişimlerini yönetin.",
   "lockey_identity_users_create": "Kullanıcı Oluştur",
   "lockey_identity_users_search": "Kullanıcı ara...",
   "lockey_identity_user_detail_title": "Kullanıcı Detayları",
-
   "lockey_identity_col_email": "E-posta",
   "lockey_identity_col_name": "Ad",
   "lockey_identity_col_first_name": "Ad",
@@ -43,14 +40,12 @@
   "lockey_identity_col_installed_at": "Yükleme Tarihi",
   "lockey_identity_col_installed_by": "Yükleyen",
   "lockey_identity_col_joined_at": "Katılım",
-
   "lockey_identity_status_active": "Aktif",
   "lockey_identity_status_inactive": "Pasif",
   "lockey_identity_status_locked": "Kilitli",
   "lockey_identity_status_trial": "Deneme",
   "lockey_identity_status_suspended": "Askıya Alınmış",
   "lockey_identity_status_terminated": "Sonlandırılmış",
-
   "lockey_identity_action_activate": "Etkinleştir",
   "lockey_identity_action_deactivate": "Devre Dışı Bırak",
   "lockey_identity_action_suspend": "Askıya Al",
@@ -62,7 +57,6 @@
   "lockey_identity_action_uninstall": "Kaldır",
   "lockey_identity_action_add_member": "Üye Ekle",
   "lockey_identity_action_remove_member": "Üyeyi Çıkar",
-
   "lockey_identity_form_email": "E-posta Adresi",
   "lockey_identity_form_first_name": "Ad",
   "lockey_identity_form_last_name": "Soyad",
@@ -81,33 +75,27 @@
   "lockey_identity_form_select_permissions": "İzinleri Seçin",
   "lockey_identity_form_select_user": "Kullanıcı Seçin",
   "lockey_identity_form_select_module": "Modül Seçin",
-
   "lockey_identity_roles_title": "Roller",
   "lockey_identity_roles_description": "Rolleri ve izin atamalarını yönetin.",
   "lockey_identity_roles_create": "Rol Oluştur",
-
   "lockey_identity_orgs_title": "Organizasyonlar",
   "lockey_identity_orgs_description": "Organizasyonları ve üyelerini yönetin.",
   "lockey_identity_orgs_create": "Organizasyon Oluştur",
   "lockey_identity_org_detail_title": "Organizasyon Detayları",
   "lockey_identity_org_members_title": "Üyeler",
-
   "lockey_identity_tenants_title": "Kiracılar",
   "lockey_identity_tenants_description": "Kiracı hesaplarını ve modüllerini yönetin.",
   "lockey_identity_tenants_create": "Kiracı Oluştur",
   "lockey_identity_tenant_detail_title": "Kiracı Detayları",
   "lockey_identity_tenant_modules_title": "Yüklü Modüller",
-
   "lockey_identity_audit_title": "Denetim Kayıtları",
   "lockey_identity_audit_description": "Sistem etkinliğini ve güvenlik olaylarını görüntüleyin.",
   "lockey_identity_audit_filter_user": "Kullanıcıya Göre Filtrele",
   "lockey_identity_audit_filter_action": "İşleme Göre Filtrele",
   "lockey_identity_audit_filter_from": "Başlangıç Tarihi",
   "lockey_identity_audit_filter_to": "Bitiş Tarihi",
-
   "lockey_identity_modules_title": "Modül Yönetimi",
   "lockey_identity_modules_description": "Bu kiracı için modül yükleyin veya kaldırın.",
-
   "lockey_identity_confirm_activate_user": "Bu kullanıcıyı etkinleştirmek istediğinizden emin misiniz?",
   "lockey_identity_confirm_deactivate_user": "Bu kullanıcıyı devre dışı bırakmak istediğinizden emin misiniz? Sisteme erişimini kaybedecek.",
   "lockey_identity_confirm_delete_org": "Bu organizasyonu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -115,7 +103,6 @@
   "lockey_identity_confirm_terminate_tenant": "Bu kiracıyı sonlandırmak istediğinizden emin misiniz? Bu işlem kalıcıdır ve geri alınamaz.",
   "lockey_identity_confirm_uninstall_module": "Bu modülü kaldırmak istediğinizden emin misiniz? Tüm modül verileri kaybolabilir.",
   "lockey_identity_confirm_remove_member": "Bu üyeyi organizasyondan çıkarmak istediğinizden emin misiniz?",
-
   "lockey_identity_user_created": "Kullanıcı başarıyla oluşturuldu.",
   "lockey_identity_user_updated": "Kullanıcı profili güncellendi.",
   "lockey_identity_user_status_updated": "Kullanıcı durumu güncellendi.",
@@ -181,10 +168,8 @@
   "lockey_identity_tenant_status_updated": "Kiracı durumu güncellendi.",
   "lockey_identity_module_installed": "Modül başarıyla yüklendi.",
   "lockey_identity_module_uninstalled": "Modül kaldırıldı.",
-
   "lockey_identity_filter_all_organizations": "Tüm Organizasyonlar",
   "lockey_identity_filter_all_roles": "Tüm Roller",
-
   "lockey_identity_empty_users": "Kullanıcı bulunamadı.",
   "lockey_identity_empty_roles": "Rol bulunamadı.",
   "lockey_identity_empty_orgs": "Organizasyon bulunamadı.",
@@ -193,7 +178,6 @@
   "lockey_identity_empty_modules": "Yüklü modül yok.",
   "lockey_identity_empty_modules_description": "Bu kiracı için özellikleri etkinleştirmek amacıyla bir modül yükleyin.",
   "lockey_identity_empty_members": "Bu organizasyonda üye yok.",
-
   "lockey_identity_tab_profile": "Profil",
   "lockey_identity_tab_organizations": "Organizasyonlar",
   "lockey_identity_tab_roles": "Roller",
@@ -203,11 +187,9 @@
   "lockey_identity_tab_permissions": "İzinler",
   "lockey_identity_tab_users": "Kullanıcılar",
   "lockey_identity_tab_members": "Üyeler",
-
   "lockey_identity_yes": "Evet",
   "lockey_identity_no": "Hayır",
   "lockey_identity_never": "Hiçbir zaman",
-
   "lockey_identity_validation_role_name_required": "Rol adı zorunludur",
   "lockey_identity_validation_role_name_max": "Rol adı en fazla 100 karakter olmalıdır",
   "lockey_identity_validation_role_description_max": "Açıklama en fazla 500 karakter olmalıdır",
@@ -219,7 +201,6 @@
   "lockey_identity_validation_org_name_required": "Organizasyon adı zorunludur",
   "lockey_identity_validation_org_name_max": "Organizasyon adı en fazla 200 karakter olmalıdır",
   "lockey_identity_validation_org_description_max": "Açıklama en fazla 500 karakter olmalıdır",
-
   "lockey_identity_permission_tenants_read": "Kiracıları görüntüle",
   "lockey_identity_permission_tenants_manage": "Kiracıları yönet",
   "lockey_identity_permission_organizations_read": "Organizasyonları görüntüle",
@@ -236,9 +217,7 @@
   "lockey_identity_permission_roles_delete": "Rolleri sil",
   "lockey_identity_permission_modules_read": "Modülleri görüntüle",
   "lockey_identity_permission_modules_manage": "Modülleri yönet",
-
   "lockey_identity_no_permissions": "Atanmış izin yok",
-
   "lockey_identity_role_users_title": "Role sahip kullanıcılar: {{roleName}}",
   "lockey_identity_role_add_user": "Kullanıcı Ekle",
   "lockey_identity_role_remove_user": "Kullanıcıyı Çıkar",
@@ -248,7 +227,6 @@
   "lockey_identity_toast_user_removed_from_role": "Kullanıcı rolden çıkarıldı.",
   "lockey_identity_error_user_not_in_role": "Kullanıcı bu role sahip değil.",
   "lockey_identity_error_user_already_has_role": "Kullanıcı zaten bu role sahip.",
-
   "lockey_identity_empty_users_title": "Henüz kullanıcı yok",
   "lockey_identity_empty_users_description": "Kullanıcılar oluşturuldukça burada görünecek.",
   "lockey_identity_empty_roles_title": "Henüz rol yok",
@@ -264,9 +242,7 @@
   "lockey_identity_error_platform_permission_denied": "Platform düzeyindeki izinler kiracı rollerine atanamaz.",
   "lockey_identity_permission_scope_platform": "Platform",
   "lockey_identity_permission_scope_tenant": "Kiracı",
-
   "lockey_identity_module_display_name": "Kimlik ve Erişim",
-
   "lockey_identity_users_listed": "Kullanıcılar getirildi.",
   "lockey_identity_user_retrieved": "Kullanıcı getirildi.",
   "lockey_identity_user_profile_updated": "Kullanıcı profili güncellendi.",
@@ -285,11 +261,9 @@
   "lockey_identity_modules_listed": "Modüller getirildi.",
   "lockey_identity_audit_logs_listed": "Denetim kayıtları getirildi.",
   "lockey_identity_audit_log_recorded": "Denetim kaydı oluşturuldu.",
-
   "lockey_identity_permission_tenants_create": "Kiracı oluştur",
   "lockey_identity_permission_tenants_update": "Kiracı güncelle",
   "lockey_identity_permission_tenants_delete": "Kiracı sil",
-
   "lockey_identity_error_user_email_taken": "Bu e-posta adresine sahip bir kullanıcı zaten mevcut.",
   "lockey_identity_error_user_not_member": "Kullanıcı bu organizasyonun üyesi değil.",
   "lockey_identity_error_user_already_member": "Kullanıcı zaten bu organizasyonun üyesi.",
@@ -307,7 +281,6 @@
   "lockey_identity_keycloak_deserialize_failed": "Kimlik sağlayıcı yanıtı işlenemedi.",
   "lockey_identity_keycloak_missing_location_header": "Kimlik sağlayıcı beklenmeyen bir yanıt döndürdü.",
   "lockey_identity_keycloak_token_deserialize_failed": "Kimlik doğrulama tokeni işlenemedi.",
-
   "lockey_identity_validation_email_required": "E-posta zorunludur.",
   "lockey_identity_validation_email_format": "Lütfen geçerli bir e-posta adresi girin.",
   "lockey_identity_validation_first_name_required": "Ad zorunludur.",
@@ -339,5 +312,21 @@
   "lockey_identity_validation_invalid_user_action": "Geçersiz kullanıcı eylemi.",
   "lockey_identity_validation_invalid_tenant_action": "Geçersiz kiracı eylemi.",
   "lockey_identity_validation_audit_action_required": "Denetim eylemi zorunludur.",
-  "lockey_identity_validation_audit_action_max_length": "Denetim eylemi en fazla {{max}} karakter olmalıdır."
+  "lockey_identity_validation_audit_action_max_length": "Denetim eylemi en fazla {{max}} karakter olmalıdır.",
+  "lockey_identity_tenant_settings_updated": "Kiracı ayarları güncellendi.",
+  "lockey_identity_user_preferences_updated": "Tercihler kaydedildi.",
+  "lockey_identity_form_tenant_locale": "Varsayılan Yerel",
+  "lockey_identity_form_tenant_currency": "Varsayılan Para Birimi",
+  "lockey_identity_form_tenant_timezone": "Varsayılan Saat Dilimi",
+  "lockey_identity_form_tenant_doc_language": "Varsayılan Belge Dili",
+  "lockey_identity_action_save_settings": "Ayarları Kaydet",
+  "lockey_identity_validation_locale_required": "Yerel zorunludur.",
+  "lockey_identity_validation_locale_unsupported": "Bu yerel desteklenmiyor.",
+  "lockey_identity_validation_currency_required": "Para birimi zorunludur.",
+  "lockey_identity_validation_currency_unsupported": "Bu para birimi desteklenmiyor.",
+  "lockey_identity_validation_timezone_required": "Saat dilimi zorunludur.",
+  "lockey_identity_validation_timezone_unsupported": "Bu saat dilimi desteklenmiyor.",
+  "lockey_identity_validation_document_language_required": "Belge dili zorunludur.",
+  "lockey_identity_validation_document_language_unsupported": "Bu belge dili desteklenmiyor.",
+  "lockey_identity_validation_language_unsupported": "Bu dil desteklenmiyor."
 }

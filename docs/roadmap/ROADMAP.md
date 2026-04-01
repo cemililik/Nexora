@@ -560,6 +560,40 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 ---
 
+### 1.16 Localization Infrastructure — Phase 1.5.3 Partial (2026-04-01)
+
+**2-Tier Locale Model (User UI language + Tenant regional settings):**
+
+- [x] `TenantSettings` value object — `DefaultLocale` (IETF, e.g. `en-US`), `DefaultCurrency` (ISO 4217), `DefaultTimezone` (IANA), `DefaultDocumentLanguage` (BCP 47); serialized as JSONB in `Tenant.Settings` column; `FromJson` falls back to platform defaults (`en-US` / `USD` / `UTC` / `en`) on null or invalid JSON
+- [x] `ILocaleContext` (SharedKernel) — scoped interface providing resolved `Language`, `Locale`, `Currency`, `Timezone`, `DocumentLanguage` for the current request; used by reporting, documents, and notification modules for culture-aware rendering
+- [x] `LocaleContextResolver` (Identity module Infrastructure) — lazy-initialized scoped implementation; resolution order: `User.PreferredLanguage` → `TenantSettings.DefaultLocale` → platform defaults; safe fallback on missing tenant context (anonymous endpoints, system jobs)
+- [x] `LocaleConstants` — `SupportedLocales`, `SupportedCurrencies`, `SupportedTimezones`, `SupportedLanguages` lists used by validators and frontend dropdowns
+- [x] `User.PreferredLanguage` — BCP 47 tag (e.g. `"tr"`), nullable (null = use tenant default); stored in `identity_users."PreferredLanguage"` varchar(10); schema migration via `DevelopmentSeed.ApplySchemaUpdatesAsync`
+- [x] `Tenant.UpdateSettings` / `Tenant.GetSettings` — domain methods to serialize/deserialize `TenantSettings` from the `Settings` JSONB column
+- [x] `UpdateTenantSettingsCommand` — validator (supported values only), handler, `PUT /identity/tenants/{id}/settings` endpoint (requires `identity.tenants.update`)
+- [x] `UpdateUserPreferencesCommand` — validator, handler, `PATCH /identity/users/me/preferences` endpoint (any authenticated user)
+- [x] `TenantDetailDto` — replaced raw `Settings: string?` with 4 typed locale fields (`DefaultLocale`, `DefaultCurrency`, `DefaultTimezone`, `DefaultDocumentLanguage`)
+- [x] `UserDetailDto` — added `PreferredLanguage: string?`
+- [x] Query handler updates — `GetTenantByIdHandler`, `GetCurrentUserHandler`, `GetUserByIdHandler` project locale fields into DTOs
+- [x] Backend tests — `TenantSettingsTests` (round-trip, null/invalid JSON → Default), `UpdateTenantSettingsTests`, `UpdateUserPreferencesTests`, `GetTenantByIdQueryTests` locale assertions, `GetCurrentUserHandlerTests` PreferredLanguage, `UserTests` `UpdatePreferences` domain methods
+- [x] Frontend types — `TenantDetailDto` updated, `UserDetailDto` + `UserInfo` gain `preferredLanguage?`, new request types `UpdateTenantSettingsRequest` / `UpdateUserPreferencesRequest`
+- [x] `localeConstants.ts` (SharedKernel) — `SUPPORTED_LOCALES`, `SUPPORTED_CURRENCIES`, `SUPPORTED_TIMEZONES`, `SUPPORTED_LANGUAGES`
+- [x] `useUpdateTenantSettings` hook — `PUT /identity/tenants/{id}/settings`, invalidates tenant detail cache
+- [x] `useUpdateCurrentUserPreferences` hook (`useCurrentUser.ts`, shared) — `PATCH /identity/users/me/preferences`
+- [x] `TenantDetailPage` — Settings tab with locale/currency/timezone/document-language selects; save button requires `identity.tenants.update`
+- [x] Topbar language switch — now persists choice to backend via `useUpdateCurrentUserPreferences`; fire-and-forget, does not block UI change
+- [x] `useAuth` — applies `userInfo.preferredLanguage` via `i18n.changeLanguage()` immediately after `/me` response on login
+- [x] Translation keys — 16 new `lockey_identity_*` keys added to `en/identity.json` + `tr/identity.json` (settings labels, toast messages, validation messages)
+- [x] `LOCALIZATION_STANDARDS.md` — §8 Locale Context System documents the 2-tier model, `ILocaleContext`, `TenantSettings`, and frontend integration
+
+**Deferred (remaining 1.5.3 items):**
+- [ ] Locale-aware number/currency/date formatting utilities in admin frontend (`formatDate`, `formatCurrency`, `formatNumber` using `Intl` API with tenant locale)
+- [ ] US locale support in reporting module (US date format, US tax receipt template)
+- [ ] TR locale support in reporting module (Turkish bağış makbuzu, TL currency formatting)
+- [ ] Translation coverage audit for all existing modules
+
+---
+
 ## Phase 1.5: Bridge
 
 > **Goal**: Critical infrastructure and tooling needed before business modules.
@@ -626,9 +660,13 @@ Platform-level vs tenant-level permission separation is required before multi-te
 
 ### 1.5.3 Localization (Weeks 3-6)
 
-- [ ] US locale support (USD currency, US date format, US tax receipt template)
-- [ ] TR locale support (TL currency, TR date format, Turkish bağış makbuzu)
-- [ ] Locale-aware number/currency/date formatting in both admin and portal
+- [x] 2-tier locale model: `User.PreferredLanguage` (UI language) + `TenantSettings` JSONB (regional defaults) — see §1.16
+- [x] `ILocaleContext` scoped service — resolved per-request, used by reporting/documents/notifications
+- [x] Tenant locale settings UI (admin Settings tab) and API (`PUT /identity/tenants/{id}/settings`)
+- [x] User language preference persisted to backend on Topbar switch (`PATCH /identity/users/me/preferences`), restored on login
+- [ ] Locale-aware number/currency/date formatting utilities in admin frontend (`Intl` API)
+- [ ] US locale support in reporting module (US date format, US tax receipt template)
+- [ ] TR locale support in reporting module (Turkish bağış makbuzu, TL currency formatting)
 - [ ] Translation coverage audit for all existing modules (en + tr files)
 
 ### 1.5.4 Portal UI Extension Points (Weeks 4-7)

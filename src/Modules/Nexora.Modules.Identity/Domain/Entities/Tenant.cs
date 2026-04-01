@@ -98,6 +98,18 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
 
         RealmId = realmId.Trim();
     }
+
+    /// <summary>Persists the given <see cref="TenantSettings"/> to the JSONB Settings column.</summary>
+    public void UpdateSettings(TenantSettings settings)
+    {
+        Settings = settings.ToJson();
+    }
+
+    /// <summary>
+    /// Deserializes and returns the current <see cref="TenantSettings"/>.
+    /// Returns <see cref="TenantSettings.Default"/> when Settings is null or malformed.
+    /// </summary>
+    public TenantSettings GetSettings() => TenantSettings.FromJson(Settings);
 }
 
 /// <summary>Represents the lifecycle status of a tenant.</summary>

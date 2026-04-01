@@ -61,7 +61,8 @@ public sealed class GetCurrentUserHandler(
 
         var dto = new UserDetailDto(
             user.Id.Value, user.Email, user.FirstName, user.LastName,
-            user.Phone, user.Status.ToString(), user.LastLoginAt, orgs, permissions);
+            user.Phone, user.Status.ToString(), user.LastLoginAt, orgs, permissions,
+            user.PreferredLanguage);
 
         return Result<UserDetailDto>.Success(dto,
             LocalizedMessage.Of("lockey_identity_user_retrieved"));

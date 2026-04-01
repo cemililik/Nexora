@@ -24,13 +24,13 @@ public sealed class GetUserByIdHandler(
         var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
         var userId = UserId.From(request.UserId);
 
-        var user = await dbContext.Users
+        var user = await dbContext.Users.AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId, cancellationToken);
 
         if (user is null)
             return Result<UserDetailDto>.Failure("lockey_identity_error_user_not_found");
 
-        var orgs = await dbContext.OrganizationUsers
+        var orgs = await dbContext.OrganizationUsers.AsNoTracking()
             .Where(ou => ou.UserId == userId)
             .Join(dbContext.Organizations,
                 ou => ou.OrganizationId,
@@ -40,7 +40,8 @@ public sealed class GetUserByIdHandler(
 
         var dto = new UserDetailDto(
             user.Id.Value, user.Email, user.FirstName, user.LastName,
-            user.Phone, user.Status.ToString(), user.LastLoginAt, orgs);
+            user.Phone, user.Status.ToString(), user.LastLoginAt, orgs,
+            PreferredLanguage: user.PreferredLanguage);
 
         return Result<UserDetailDto>.Success(dto,
             new LocalizedMessage("lockey_identity_user_retrieved"));

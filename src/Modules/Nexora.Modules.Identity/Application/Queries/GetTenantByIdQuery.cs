@@ -51,15 +51,20 @@ public sealed class GetTenantByIdHandler(
                 stopwatch.ElapsedMilliseconds, request.TenantId);
         }
 
+        var settings = tenant.GetSettings();
+
         var dto = new TenantDetailDto(
             tenant.Id.Value,
             tenant.Name,
             tenant.Slug,
             tenant.Status.ToString(),
             tenant.RealmId,
-            tenant.Settings,
             tenant.CreatedAt,
-            installedModules);
+            installedModules,
+            settings.DefaultLocale,
+            settings.DefaultCurrency,
+            settings.DefaultTimezone,
+            settings.DefaultDocumentLanguage);
 
         return Result<TenantDetailDto>.Success(dto,
             LocalizedMessage.Of("lockey_identity_tenant_retrieved"));

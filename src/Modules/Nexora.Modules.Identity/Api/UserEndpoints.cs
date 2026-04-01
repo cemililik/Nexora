@@ -82,6 +82,24 @@ public static class UserEndpoints
                 : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));
         });
 
+        group.MapPatch("/me/preferences", async (HttpContext httpContext, UpdatePreferencesRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var keycloakUserId = httpContext.User.GetKeycloakUserId();
+            if (string.IsNullOrEmpty(keycloakUserId))
+                return Results.Unauthorized();
+
+            var command = new UpdateUserPreferencesCommand(keycloakUserId, request.PreferredLanguage);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
+        })
+        .WithSummary("Update current user's locale preferences")
+        .WithDescription("Sets the preferred UI language for the authenticated user. Pass null to clear (falls back to tenant default).")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized);
+
         group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new GetUserByIdQuery(id), ct);
@@ -164,3 +182,6 @@ public sealed record UpdateUserStatusRequest(string Action);
 
 /// <summary>Request body for assigning roles to a user within an organization.</summary>
 public sealed record AssignRolesRequest(Guid OrganizationId, List<Guid> RoleIds);
+
+/// <summary>Request body for updating current user's locale preferences.</summary>
+public sealed record UpdatePreferencesRequest(string? PreferredLanguage);

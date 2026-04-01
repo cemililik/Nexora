@@ -12,6 +12,8 @@ export interface UserDto {
 /** User detail from GET /identity/users/:id. */
 export interface UserDetailDto extends UserDto {
   organizations: UserOrganizationDto[];
+  permissions?: string[];
+  preferredLanguage?: string;
 }
 
 /** Organization membership within a user response. */
@@ -125,8 +127,24 @@ export interface TenantDto {
 
 /** Tenant detail from GET /identity/tenants/:id. */
 export interface TenantDetailDto extends TenantDto {
-  settings?: string;
   installedModules: string[];
+  defaultLocale: string;
+  defaultCurrency: string;
+  defaultTimezone: string;
+  defaultDocumentLanguage: string;
+}
+
+/** Request body for PUT /identity/tenants/:id/settings. */
+export interface UpdateTenantSettingsRequest {
+  defaultLocale: string;
+  defaultCurrency: string;
+  defaultTimezone: string;
+  defaultDocumentLanguage: string;
+}
+
+/** Request body for PATCH /identity/users/me/preferences. */
+export interface UpdateUserPreferencesRequest {
+  preferredLanguage: string | null;
 }
 
 /** Request body for POST /identity/tenants. */

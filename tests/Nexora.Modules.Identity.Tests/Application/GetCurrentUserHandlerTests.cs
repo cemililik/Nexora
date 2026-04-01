@@ -137,6 +137,27 @@ public sealed class GetCurrentUserHandlerTests : IDisposable
         result.Error!.Message.Key.Should().Be("lockey_identity_error_user_not_found");
     }
 
+    [Fact]
+    public async Task Handle_UserWithPreferredLanguage_ReturnsLanguageInDto()
+    {
+        // Arrange
+        var user = User.Create(_tenantId, KeycloakUserId, "lang@example.com", "Lang", "User");
+        user.UpdatePreferences("tr");
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = new GetCurrentUserHandler(_dbContext, _tenantAccessor,
+            NullLogger<GetCurrentUserHandler>.Instance);
+        var query = new GetCurrentUserQuery(KeycloakUserId);
+
+        // Act
+        var result = await handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.PreferredLanguage.Should().Be("tr");
+    }
+
     [Fact(Skip = "Cannot simulate >500ms with in-memory DB")]
     public async Task Handle_SlowQuery_LogsWarning()
     {

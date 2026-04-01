@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
+import i18n from '@/shared/lib/i18n';
 
 import axios from 'axios';
 import { api, setAuthToken } from '@/shared/lib/api';
@@ -74,6 +75,11 @@ export function useAuth() {
           }
           // 404 (tenant not provisioned), network errors, 5xx — fall back to token claims
           if (import.meta.env.DEV) console.warn('[useAuth] /me failed, falling back to token claims', err);
+        }
+
+        // Apply user's stored language preference so the UI renders in their language immediately.
+        if (userInfo?.preferredLanguage) {
+          void i18n.changeLanguage(userInfo.preferredLanguage);
         }
 
         setSession({
