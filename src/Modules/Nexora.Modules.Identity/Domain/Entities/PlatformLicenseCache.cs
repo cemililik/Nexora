@@ -1,3 +1,5 @@
+using Nexora.Modules.Identity.Domain.ValueObjects;
+
 namespace Nexora.Modules.Identity.Domain.Entities;
 
 /// <summary>
@@ -8,7 +10,7 @@ namespace Nexora.Modules.Identity.Domain.Entities;
 public sealed class PlatformLicenseCache
 {
     /// <summary>Tenant the license entry belongs to.</summary>
-    public Guid TenantId { get; private set; }
+    public TenantId TenantId { get; private set; } = default!;
 
     /// <summary>Module name (e.g. "contacts", "crm").</summary>
     public string ModuleName { get; private set; } = default!;
@@ -26,7 +28,7 @@ public sealed class PlatformLicenseCache
 
     /// <summary>Creates a new cache entry from an NMP verification response.</summary>
     public static PlatformLicenseCache Create(
-        Guid tenantId,
+        TenantId tenantId,
         string moduleName,
         bool isLicensed,
         DateTimeOffset expiresAt)

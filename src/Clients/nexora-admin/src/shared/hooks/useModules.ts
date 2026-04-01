@@ -5,12 +5,10 @@ import { api } from '@/shared/lib/api';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { allAdminModules } from '@/modules/_registry';
 import type { TenantModuleDto } from '@/shared/types/module';
-
 import { UUID_REGEX } from '@/shared/lib/utils';
 
 const moduleKeys = {
-  installed: (tenantId: string) =>
-    ['identity', 'modules', tenantId] as const,
+  installed: () => ['identity', 'modules'] as const,
 };
 
 /**
@@ -22,16 +20,9 @@ export function useModules() {
   const token = useAuthStore((s) => s.token);
 
   const query = useQuery({
-    queryKey: moduleKeys.installed(tenantId ?? ''),
-    queryFn: () =>
-      api.get<TenantModuleDto[]>(
-        `/identity/tenants/${encodeURIComponent(tenantId!)}/modules`,
-      ),
-    enabled:
-      typeof token === 'string' &&
-      token.length > 0 &&
-      !!tenantId &&
-      UUID_REGEX.test(tenantId),
+    queryKey: moduleKeys.installed(),
+    queryFn: () => api.get<TenantModuleDto[]>('/identity/tenants/modules'),
+    enabled: typeof token === 'string' && token.length > 0 && !!tenantId && UUID_REGEX.test(tenantId),
     staleTime: 5 * 60 * 1000,
   });
 

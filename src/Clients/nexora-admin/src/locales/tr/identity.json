@@ -145,7 +145,10 @@
   "lockey_identity_action_install_module": "Modül Yükle",
   "lockey_identity_all_modules_installed": "Tüm modüller zaten yüklü.",
   "lockey_identity_error_tenant_slug_taken": "Bu kiracı kodu zaten kullanımda. Lütfen farklı bir kod seçin.",
+  "lockey_identity_error_tenant_create_failed": "Kiracı oluşturulamadı. Lütfen tekrar deneyin.",
   "lockey_identity_error_tenant_realm_not_configured": "Kiracı realm'i Keycloak'ta yapılandırılmamış.",
+  "lockey_identity_error_email_already_exists": "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten mevcut.",
+  "lockey_identity_error_user_create_failed": "Kullanıcı oluşturulamadı. Lütfen tekrar deneyin.",
   "lockey_identity_error_role_not_found": "Rol bulunamadı.",
   "lockey_identity_error_system_role_immutable": "Sistem rolleri değiştirilemez veya silinemez.",
   "lockey_identity_error_role_name_taken": "Bu isimde bir rol zaten mevcut.",
@@ -258,9 +261,9 @@
   "lockey_identity_search_organizations": "Organizasyonları ara...",
   "lockey_identity_hint_role_name": "Bu rol için benzersiz bir ad.",
   "lockey_identity_hint_role_description": "Bu rolün amacını ve kapsamını tanımlayın.",
-  "lockey_identity_error_platform_permission_denied": "Platform düzeyindeki izinler tenant rollerine atanamaz.",
+  "lockey_identity_error_platform_permission_denied": "Platform düzeyindeki izinler kiracı rollerine atanamaz.",
   "lockey_identity_permission_scope_platform": "Platform",
-  "lockey_identity_permission_scope_tenant": "Tenant",
+  "lockey_identity_permission_scope_tenant": "Kiracı",
 
   "lockey_identity_module_display_name": "Kimlik ve Erişim",
 

@@ -330,7 +330,7 @@
   "lockey_documents_template_updated": "Şablon güncellendi.",
   "lockey_documents_template_activated": "Şablon etkinleştirildi.",
   "lockey_documents_template_deactivated": "Şablon devre dışı bırakıldı.",
-  "lockey_documents_template_rendered": "Şablon oluşturuldu.",
+  "lockey_documents_template_rendered": "Şablondan belge oluşturuldu.",
   "lockey_documents_signature_request_created": "İmza talebi oluşturuldu.",
   "lockey_documents_signature_request_sent": "İmza talebi gönderildi.",
   "lockey_documents_signature_request_cancelled": "İmza talebi iptal edildi.",

@@ -82,6 +82,7 @@ public static class InfrastructureServiceRegistration
         // Outbox (reliable event publishing)
         services.Configure<OutboxOptions>(
             configuration.GetSection(OutboxOptions.SectionName));
+        services.AddSingleton<IValidateOptions<OutboxOptions>, OutboxOptionsValidator>();
         services.AddDbContext<OutboxDbContext>((_, options) =>
         {
             var connStr = configuration.GetConnectionString("Default");
@@ -147,7 +148,12 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<OutboxCleanupJob>();
         services.AddScoped<InboxCleanupJob>();
 
-        // License verification — NullLicenseVerifier (always allowed) until NMP track is implemented
+        // TODO(NMP): Replace NullLicenseVerifier with a real implementation when the NMP track is built.
+        // The "Nexora:DeploymentMode" setting in appsettings.json ("OnPrem" | "SaaS") should be used
+        // here to conditionally register the on-prem verifier vs the SaaS/NMP verifier:
+        //   var mode = configuration["Nexora:DeploymentMode"];
+        //   if (mode == "SaaS") services.AddSingleton<ILicenseVerifier, NmpLicenseVerifier>();
+        //   else                services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
         services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
 
         // Audit context (requires IHttpContextAccessor)

@@ -132,6 +132,20 @@ describe('usePermissions', () => {
 
     expect(mockApiGet).toHaveBeenCalledWith('/identity/permissions', { module: 'contacts' });
   });
+
+  it('should pass scope filter when provided', async () => {
+    mockApiGet.mockResolvedValue([]);
+
+    const { result } = renderHook(() => usePermissions(undefined, 'Tenant'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/permissions', { scope: 'Tenant' });
+  });
 });
 
 describe('useCreateRole', () => {

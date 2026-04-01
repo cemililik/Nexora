@@ -339,6 +339,9 @@ services:
       Observability__Logging__OtlpEndpoint: http://otel-collector:4317
       Vault__Address: http://vault:8200
       Vault__Token: ${VAULT_DEV_ROOT_TOKEN_ID:-nexora-dev-token}
+      DevSeed__KeycloakAdminUsername: ${KEYCLOAK_ADMIN:-admin}
+      DevSeed__KeycloakAdminPassword: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      Outbox__ConnectionString: "Host=postgres;Port=5432;Database=nexora;Username=nexora;Password=${POSTGRES_PASSWORD:-nexora_dev}"
     ports:
       - "5100:5000"
     depends_on:

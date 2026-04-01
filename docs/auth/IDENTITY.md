@@ -242,7 +242,7 @@ For full details on license verification and NMP integration, see [MANAGEMENT_PO
 
 `ModuleEndpoints` routes were changed from `/api/v1/identity/tenants/{tenantId:guid}/modules` to `/api/v1/identity/tenants/modules`. The tenant ID is now sourced exclusively from the authenticated JWT claim via `ITenantContextAccessor`, eliminating the cross-tenant targeting risk where a malicious caller could supply any `{tenantId}` in the URL.
 
-```
+```http
 # Before (SEC-12 finding)
 GET /api/v1/identity/tenants/{tenantId:guid}/modules   ← tenant ID from URL
 

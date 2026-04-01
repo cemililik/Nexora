@@ -335,7 +335,6 @@ export default function OrganizationDetailPage() {
         onAdd={(userId) => {
           addMember.mutate({ userId }, {
             onSuccess: () => setAddMemberOpen(false),
-            onError: (err) => handleApiError(err),
           });
         }}
         isPending={addMember.isPending}

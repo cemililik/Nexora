@@ -203,7 +203,22 @@ public sealed record GetDonationsByDonorQuery(
     int PageSize = 20) : IRequest<PagedResult<DonationSummary>>;
 ```
 
-## 5. API Conventions
+## 5. Distributed Consistency in Command Handlers
+
+When a command handler writes to **both a local DB and an external service** (Keycloak, MinIO,
+Stripe, etc.), a failure at any step can leave the system inconsistent. Before writing such a
+handler you **must** determine its consistency tier and follow the mandatory pattern for that tier.
+
+**Quick rule**:
+- Payment gateway (Stripe, iyzico, bank)? → **Tier 3** — idempotency key + pending-first + webhook confirmation.
+- External service returns an ID you must store? → **Tier 2B** — external-first + compensating delete on DB failure.
+- External service is a mirror of DB state? → **Tier 2A** — DB-first, external call after, failure is non-fatal.
+- No external calls? → **Tier 1** — standard EF Core, nothing extra.
+
+Full specification, code patterns, and decision checklist: **[CONSISTENCY_STANDARDS.md](./CONSISTENCY_STANDARDS.md)**
+Architectural decision record: [ADR-014](../decisions/ADR-014-distributed-consistency-patterns.md)
+
+## 6. API Conventions
 
 ### Endpoint Structure
 ```
@@ -258,7 +273,7 @@ GET    /api/v1/donations/campaigns/{id}/progress
 | 422 | Business rule violation |
 | 500 | Unexpected server error |
 
-## 6. Testing Standards
+## 7. Testing Standards
 
 ### Test Naming
 ```csharp

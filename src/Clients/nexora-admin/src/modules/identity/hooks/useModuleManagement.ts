@@ -30,9 +30,7 @@ export function useTenantModules(tenantId: string) {
   return useQuery({
     queryKey: moduleKeys.all(tenantId),
     queryFn: () =>
-      api.get<TenantModuleDto[]>(
-        `/identity/tenants/${encodeURIComponent(tenantId)}/modules`,
-      ),
+      api.get<TenantModuleDto[]>('/identity/tenants/modules'),
     enabled: !!tenantId,
   });
 }
@@ -44,10 +42,7 @@ export function useInstallModule(tenantId: string) {
 
   return useMutation({
     mutationFn: (moduleName: string) =>
-      api.post<TenantModuleDto>(
-        `/identity/tenants/${encodeURIComponent(tenantId)}/modules`,
-        { moduleName },
-      ),
+      api.post<TenantModuleDto>('/identity/tenants/modules', { moduleName }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: moduleKeys.all(tenantId),
@@ -65,9 +60,7 @@ export function useActivateModule(tenantId: string) {
 
   return useMutation({
     mutationFn: (moduleName: string) =>
-      api.patch<void>(
-        `/identity/tenants/${encodeURIComponent(tenantId)}/modules/${encodeURIComponent(moduleName)}/activate`,
-      ),
+      api.patch<void>(`/identity/tenants/modules/${encodeURIComponent(moduleName)}/activate`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: moduleKeys.all(tenantId) });
       toast.success(t('lockey_identity_module_activated'));
@@ -83,9 +76,7 @@ export function useDeactivateModule(tenantId: string) {
 
   return useMutation({
     mutationFn: (moduleName: string) =>
-      api.patch<void>(
-        `/identity/tenants/${encodeURIComponent(tenantId)}/modules/${encodeURIComponent(moduleName)}/deactivate`,
-      ),
+      api.patch<void>(`/identity/tenants/modules/${encodeURIComponent(moduleName)}/deactivate`),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: moduleKeys.all(tenantId) });
       toast.success(t('lockey_identity_module_deactivated'));
@@ -101,9 +92,7 @@ export function useUninstallModule(tenantId: string) {
 
   return useMutation({
     mutationFn: (moduleName: string) =>
-      api.delete(
-        `/identity/tenants/${encodeURIComponent(tenantId)}/modules/${encodeURIComponent(moduleName)}`,
-      ),
+      api.delete(`/identity/tenants/modules/${encodeURIComponent(moduleName)}`),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: moduleKeys.all(tenantId),
