@@ -1,3 +1,5 @@
+using Nexora.SharedKernel.Authorization;
+
 namespace Nexora.Modules.Identity.Application.DTOs;
 
 /// <summary>
@@ -9,4 +11,5 @@ public sealed record PermissionDto(
     string Resource,
     string Action,
     string Key,
-    string? Description);
+    string? Description,
+    PermissionScope Scope);

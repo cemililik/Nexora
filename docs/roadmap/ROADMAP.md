@@ -580,15 +580,15 @@ Platform-level vs tenant-level permission separation is required before multi-te
 - `platform_license_cache` table (see [MANAGEMENT_PORTAL.md](../architecture/MANAGEMENT_PORTAL.md) for schema)
 
 **Implementation items:**
-- [ ] Separate Platform Admin role from tenant-scoped roles
-- [ ] `PermissionScope` enum (`Platform` | `Tenant`) on Permission entity
-- [ ] `ILicenseVerifier` interface + `NullLicenseVerifier` (SharedKernel)
-- [ ] `platform_license_cache` table (PlatformDbContext)
-- [ ] `SaaS` vs `OnPrem` deployment flag in configuration (`DeploymentMode` setting)
-- [ ] Platform-scope permissions hidden from tenant admin UI
-- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants
-- [ ] License-based limits (max users, max organizations per tenant)
-- [ ] **CR-01 (SEC-12)**: Refactor `ModuleEndpoints` to source tenant ID from `ITenantContextAccessor` (JWT claim) instead of route parameter. Currently `tenantId` comes from URL `/tenants/{tenantId:guid}/modules` — must be scoped through PermissionScope (Platform operators can manage any tenant, tenant users can only manage their own). Deferred from Phase 1 code review because it depends on the Platform vs Tenant permission separation.
+- [ ] Separate Platform Admin role from tenant-scoped roles (deferred — requires Keycloak realm changes, tracked for NMP)
+- [x] `PermissionScope` enum (`Platform` | `Tenant`) on Permission entity
+- [x] `ILicenseVerifier` interface + `NullLicenseVerifier` (SharedKernel)
+- [x] `platform_license_cache` table (PlatformDbContext)
+- [x] `SaaS` vs `OnPrem` deployment flag in configuration (`DeploymentMode` setting)
+- [x] Platform-scope permissions hidden from tenant admin UI (`GetPermissionsQuery` scope filter; `PermissionSelector` passes `scope=Tenant`)
+- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants (enforcement relies on existing tenant schema isolation — Keycloak realm-per-tenant already enforces this; no additional backend work needed at this stage)
+- [ ] License-based limits (max users, max organizations per tenant) (deferred — requires NMP license enforcement)
+- [x] **CR-01 (SEC-12)**: `ModuleEndpoints` refactored — tenant ID now sourced from `ITenantContextAccessor` (JWT claim). Route changed from `/tenants/{tenantId:guid}/modules` → `/tenants/modules`.
 
 ### 1.5.3 Localization (Weeks 3-6)
 

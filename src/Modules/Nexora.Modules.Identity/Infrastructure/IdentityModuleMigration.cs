@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.Modules.Identity.Infrastructure;
 
@@ -46,8 +47,12 @@ public sealed class IdentityModuleMigration(
         {
             var defaultPermissions = new[]
             {
-                Permission.Create("identity", "tenants", "read", "lockey_identity_permission_tenants_read"),
-                Permission.Create("identity", "tenants", "manage", "lockey_identity_permission_tenants_manage"),
+                // Platform-scope: only Nexora platform operators may hold these permissions.
+                // They are never assignable to tenant roles via the admin UI or API.
+                Permission.Create("identity", "tenants", "read",   "lockey_identity_permission_tenants_read",   PermissionScope.Platform),
+                Permission.Create("identity", "tenants", "manage", "lockey_identity_permission_tenants_manage", PermissionScope.Platform),
+
+                // Tenant-scope: assignable by tenant administrators within their own tenant.
                 Permission.Create("identity", "organizations", "read", "lockey_identity_permission_organizations_read"),
                 Permission.Create("identity", "organizations", "create", "lockey_identity_permission_organizations_create"),
                 Permission.Create("identity", "organizations", "update", "lockey_identity_permission_organizations_update"),
@@ -121,6 +126,17 @@ public sealed class IdentityModuleMigration(
 
             await dbContext.Permissions.AddRangeAsync(defaultPermissions, ct);
         }
+
+        // Idempotent scope migration: ensure platform-scope permissions are correctly classified.
+        // This handles tenants seeded before Phase 1.5.2 where Scope defaulted to Tenant.
+        var platformKeys = new[] { "identity.tenants.read", "identity.tenants.manage" };
+        var misclassified = await dbContext.Permissions
+            .Where(p => platformKeys.Contains(p.Module + "." + p.Resource + "." + p.Action)
+                        && p.Scope != PermissionScope.Platform)
+            .ToListAsync(ct);
+
+        foreach (var p in misclassified)
+            p.SetScope(PermissionScope.Platform);
 
         // Seed platform-admin role if not exist
         if (!await dbContext.Roles.AnyAsync(r => r.IsSystemRole, ct))

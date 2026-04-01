@@ -108,6 +108,7 @@ export interface PermissionDto {
   action: string;
   key: string;
   description?: string;
+  scope: 'Platform' | 'Tenant';
 }
 
 // ─── Tenants ────────────────────────────────────────────────

@@ -6,6 +6,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
@@ -89,6 +90,17 @@ public sealed class UpdateRoleHandler(
                 var permissions = await dbContext.Permissions
                     .Where(p => toAssign.Contains(p.Id))
                     .ToListAsync(ct);
+
+                // Platform-scope permissions can never be assigned to tenant roles.
+                var platformPerm = permissions.FirstOrDefault(p => p.Scope == PermissionScope.Platform);
+                if (platformPerm is not null)
+                {
+                    logger.LogWarning(
+                        "Role update rejected: platform-scope permission {PermissionKey} cannot be assigned to a tenant role",
+                        platformPerm.Key);
+                    return Result<RoleDto>.Failure(
+                        LocalizedMessage.Of("lockey_identity_error_platform_permission_denied"));
+                }
 
                 foreach (var perm in permissions)
                     role.AssignPermission(perm);

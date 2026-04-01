@@ -6,6 +6,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -69,6 +70,26 @@ public sealed class CreateRoleTests : IDisposable
 
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Key.Should().Be("lockey_identity_error_role_name_taken");
+    }
+
+    [Fact]
+    public async Task CreateRole_WithPlatformScopePermission_ReturnsFailure()
+    {
+        // Arrange
+        var platformPermission = Permission.Create(
+            "identity", "tenants", "read", scope: PermissionScope.Platform);
+        await _dbContext.Permissions.AddAsync(platformPermission);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = new CreateRoleHandler(_dbContext, _tenantAccessor, NullLogger<CreateRoleHandler>.Instance);
+        var command = new CreateRoleCommand("TenantRole", null, [platformPermission.Id.Value]);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_platform_permission_denied");
     }
 
     public void Dispose() => _dbContext.Dispose();

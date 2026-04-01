@@ -51,7 +51,7 @@ public sealed class GetRoleByIdHandler(
         var permissions = await dbContext.Permissions
             .AsNoTracking()
             .Where(p => permissionIds.Contains(p.Id))
-            .Select(p => new PermissionDto(p.Id.Value, p.Module, p.Resource, p.Action, p.Key, p.Description))
+            .Select(p => new PermissionDto(p.Id.Value, p.Module, p.Resource, p.Action, p.Key, p.Description, p.Scope))
             .ToListAsync(ct);
 
         // Count assigned users

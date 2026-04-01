@@ -257,5 +257,8 @@
   "lockey_identity_search_roles": "Search roles...",
   "lockey_identity_search_organizations": "Search organizations...",
   "lockey_identity_hint_role_name": "A unique name for this role.",
-  "lockey_identity_hint_role_description": "Describe the purpose and scope of this role."
+  "lockey_identity_hint_role_description": "Describe the purpose and scope of this role.",
+  "lockey_identity_error_platform_permission_denied": "Platform-level permissions cannot be assigned to tenant roles.",
+  "lockey_identity_permission_scope_platform": "Platform",
+  "lockey_identity_permission_scope_tenant": "Tenant"
 }

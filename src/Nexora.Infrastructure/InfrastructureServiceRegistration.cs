@@ -26,11 +26,13 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Licensing;
 using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Secrets;
 using Nexora.SharedKernel.Abstractions.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Nexora.Infrastructure.Licensing;
 
 namespace Nexora.Infrastructure;
 
@@ -144,6 +146,9 @@ public static class InfrastructureServiceRegistration
         // Infrastructure cleanup jobs
         services.AddScoped<OutboxCleanupJob>();
         services.AddScoped<InboxCleanupJob>();
+
+        // License verification — NullLicenseVerifier (always allowed) until NMP track is implemented
+        services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
 
         // Audit context (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
