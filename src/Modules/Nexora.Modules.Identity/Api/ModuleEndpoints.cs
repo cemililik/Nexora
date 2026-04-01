@@ -32,10 +32,12 @@ public static class ModuleEndpoints
         var group = endpoints.MapGroup("/tenants/modules")
             .RequireAuthorization("identity.modules.manage");
 
+        static Guid GetTenantId(ITenantContextAccessor accessor) =>
+            TenantId.Parse(accessor.Current.TenantId).Value;
+
         group.MapGet("/", async (ITenantContextAccessor tenantAccessor, ISender sender, CancellationToken ct) =>
         {
-            var tenantId = TenantId.Parse(tenantAccessor.Current.TenantId).Value;
-            var result = await sender.Send(new GetTenantModulesQuery(tenantId), ct);
+            var result = await sender.Send(new GetTenantModulesQuery(GetTenantId(tenantAccessor)), ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<List<TenantModuleDto>>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<List<TenantModuleDto>>.Fail(result.Error!));
@@ -43,20 +45,18 @@ public static class ModuleEndpoints
 
         group.MapPost("/", async (ITenantContextAccessor tenantAccessor, InstallModuleRequest request, ISender sender, CancellationToken ct) =>
         {
-            var tenantId = TenantId.Parse(tenantAccessor.Current.TenantId).Value;
-            var command = new InstallModuleCommand(tenantId, request.ModuleName);
+            var command = new InstallModuleCommand(GetTenantId(tenantAccessor), request.ModuleName);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    "/api/v1/identity/tenants/modules",
+                    $"/api/v1/identity/tenants/modules/{result.Value!.ModuleName}",
                     ApiEnvelope<TenantModuleDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<TenantModuleDto>.Fail(result.Error!));
         });
 
         group.MapPatch("/{moduleName}/activate", async (ITenantContextAccessor tenantAccessor, string moduleName, ISender sender, CancellationToken ct) =>
         {
-            var tenantId = TenantId.Parse(tenantAccessor.Current.TenantId).Value;
-            var result = await sender.Send(new ActivateModuleCommand(tenantId, moduleName), ct);
+            var result = await sender.Send(new ActivateModuleCommand(GetTenantId(tenantAccessor), moduleName), ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
@@ -64,8 +64,7 @@ public static class ModuleEndpoints
 
         group.MapPatch("/{moduleName}/deactivate", async (ITenantContextAccessor tenantAccessor, string moduleName, ISender sender, CancellationToken ct) =>
         {
-            var tenantId = TenantId.Parse(tenantAccessor.Current.TenantId).Value;
-            var result = await sender.Send(new DeactivateModuleCommand(tenantId, moduleName), ct);
+            var result = await sender.Send(new DeactivateModuleCommand(GetTenantId(tenantAccessor), moduleName), ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
@@ -73,7 +72,7 @@ public static class ModuleEndpoints
 
         group.MapDelete("/{moduleName}", async (ITenantContextAccessor tenantAccessor, string moduleName, ISender sender, CancellationToken ct) =>
         {
-            var tenantId = TenantId.Parse(tenantAccessor.Current.TenantId).Value;
+            var tenantId = GetTenantId(tenantAccessor);
             var result = await sender.Send(new UninstallModuleCommand(tenantId, moduleName), ct);
 
             if (result.IsSuccess)

@@ -129,9 +129,10 @@ public sealed class IdentityModuleMigration(
 
         // Idempotent scope migration: ensure platform-scope permissions are correctly classified.
         // This handles tenants seeded before Phase 1.5.2 where Scope defaulted to Tenant.
-        var platformKeys = new[] { "identity.tenants.read", "identity.tenants.manage" };
+        // Filtering by individual columns allows EF to use indexes on Module, Resource, and Action.
         var misclassified = await dbContext.Permissions
-            .Where(p => platformKeys.Contains(p.Module + "." + p.Resource + "." + p.Action)
+            .Where(p => p.Module == "identity" && p.Resource == "tenants"
+                        && (p.Action == "read" || p.Action == "manage")
                         && p.Scope != PermissionScope.Platform)
             .ToListAsync(ct);
 
