@@ -217,17 +217,38 @@ Roles are **tenant-defined** (not hardcoded). Default roles are seeded but can b
 
 ### Permission Scopes (Phase 1.5.2)
 
-Permissions have two scopes, controlled by the `PermissionScope` enum on each Permission entity:
+Permissions have two scopes, controlled by the `PermissionScope` enum on each `Permission` entity (stored as a `VARCHAR(20)` `scope` column in the `identity_permissions` table):
 
-- **Platform**: `identity.tenants.manage`, `identity.modules.manage` — NMP operators only (SaaS) or local Platform Admin (on-prem)
-- **Tenant**: All other permissions (`identity.users.*`, `contacts.contact.read`, `contacts.contact.write`, etc.) — tenant admins and users
+| Scope | Examples | Who can hold |
+|-------|----------|--------------|
+| `Platform` | `identity.tenants.read`, `identity.tenants.manage` | Platform Admin only |
+| `Tenant` | `identity.users.*`, `contacts.contact.read`, `crm.leads.write` | Tenant admins and users |
+
+**Enforcement rules:**
+- `CreateRoleHandler` and `UpdateRoleHandler` reject any permission with `Scope == Platform` when assigning to a tenant role. Returns `lockey_identity_error_platform_permission_denied`.
+- `GetPermissionsQuery` accepts an optional `Scope` filter. The tenant admin UI passes `scope=Tenant` so Platform-scope permissions are never shown in role management.
+- Idempotent seed migration ensures `identity.tenants.*` permissions are always classified as `Platform` scope even on upgraded databases.
 
 Platform-scope permissions are hidden from the tenant admin UI.
 In SaaS mode: managed via NMP. In on-prem mode: managed by the local Platform Admin.
 
 The deployment model is determined by the `DeploymentMode` configuration flag (`SaaS` | `OnPrem`).
 
+**License verification:** `ILicenseVerifier` (SharedKernel) provides a `IsLicensedAsync(tenantId, moduleName)` contract. `NullLicenseVerifier` (Infrastructure) always returns `true` — active until NMP implements real license checks. `platform_license_cache` table in `PlatformDbContext` stores cached license results with `(TenantId, ModuleName)` composite PK.
+
 For full details on license verification and NMP integration, see [MANAGEMENT_PORTAL.md — Integration Points with CRM](../architecture/MANAGEMENT_PORTAL.md#9-integration-points-with-crm).
+
+### Module Endpoint Tenant Isolation (CR-01 / SEC-12)
+
+`ModuleEndpoints` routes were changed from `/api/v1/identity/tenants/{tenantId:guid}/modules` to `/api/v1/identity/tenants/modules`. The tenant ID is now sourced exclusively from the authenticated JWT claim via `ITenantContextAccessor`, eliminating the cross-tenant targeting risk where a malicious caller could supply any `{tenantId}` in the URL.
+
+```http
+# Before (SEC-12 finding)
+GET /api/v1/identity/tenants/{tenantId:guid}/modules   ← tenant ID from URL
+
+# After (Phase 1.5.2 fix)
+GET /api/v1/identity/tenants/modules                   ← tenant ID from JWT claim
+```
 
 ### Organization-Scoped Access
 Users can have different roles in different organizations:

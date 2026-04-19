@@ -524,6 +524,40 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] `TestIntegrationEvent` + `TestProcessorEvent` merged into shared `OutboxTestDbContext.cs`; private duplicate removed from `OutboxServiceTests.cs`
 - [x] `OutboxProcessorTests` rewritten: `PostgreSqlContainer` + `IAsyncLifetime`, proper `IActiveTenantProvider` mock (schema "public"), `IConfiguration` with real connection string, `WaitUntilProcessedAsync` / `WaitUntilRetryIncrementedAsync` poll helpers replace fixed `Task.Delay`
 
+### 1.15 Distributed Consistency & Code Review Fixes (2026-04-01)
+
+**Distributed Consistency Architecture:**
+- [x] `docs/standards/CONSISTENCY_STANDARDS.md` — 4-tier model: Tier 1 (single DB TX), Tier 2A (DB-first mirror), Tier 2B (external-first + compensation), Tier 3 (payment gateway — Phase 2.3+), Tier 4 (Saga — deferred)
+- [x] `docs/decisions/ADR-014-distributed-consistency-patterns.md` — rationale: why Saga deferred (only 4 handlers, one module), why outbox-deferred Keycloak rejected (Pending state ripples through UI/API), why compensating transactions are sufficient now
+- [x] `CODING_STANDARDS.md` §5 — "Distributed Consistency in Command Handlers": quick-rule table + links to CONSISTENCY_STANDARDS.md + ADR-014
+- [x] `CreateTenantCommand` — collapsed 4× `SaveChangesAsync` to 1×; Keycloak realm created first (Tier 2B), schema creation with compensation, all DB entities committed atomically; full compensation on DB failure (DeleteRealmAsync)
+- [x] `CreateUserCommand` — DB write failure triggers Keycloak user deletion (Tier 2B compensation); 409 Conflict on Keycloak → `lockey_identity_error_email_already_exists`
+- [x] `UpdateUserStatusCommand` — DB-first ordering (Tier 2A); Keycloak sync after `SaveChangesAsync`; Keycloak failure is non-fatal (LogWarning)
+- [x] `DeleteUserCommand` — DB-first soft-delete then Keycloak disable (Tier 2A); reverted from hard-delete to disable (audit preservation, email reuse prevention)
+- [x] `StartContactImportCommand` — enqueue-in-same-transaction: `Hangfire.Enqueue()` returns jobId synchronously, `SetHangfireJobId()` before single `SaveChangesAsync`
+- [x] `IKeycloakAdminService` + `KeycloakAdminService` — added `DeleteRealmAsync` and `DeleteUserAsync` for compensation flows (both with OpenTelemetry spans, 404-tolerant)
+
+**Locale & Translation Fixes:**
+- [x] `en/identity.json` + `tr/identity.json` — added: `lockey_identity_error_tenant_create_failed`, `lockey_identity_error_user_create_failed`, `lockey_identity_error_email_already_exists`
+- [x] `tr/identity.json` — "tenant" → "kiracı" terminology fix in `lockey_identity_error_platform_permission_denied` and `lockey_identity_permission_scope_tenant`
+- [x] `tr/documents.json` — `lockey_documents_template_rendered`: "Şablon oluşturuldu" → "Şablondan belge oluşturuldu" (clearer meaning)
+- [x] `en/notifications.json` + `tr/notifications.json` — removed duplicate `lockey_notifications_empty_notifications` entry
+
+**Authorization Granularity:**
+- [x] `RoleEndpoints` — `identity.roles.manage` → granular `identity.roles.create` / `identity.roles.update` / `identity.roles.delete`
+- [x] `UserEndpoints` — `identity.users.manage` → `identity.users.create` on POST endpoint
+- [x] `RoleEndpoints` `/permissions` — `PermissionScope?` query parameter support (forwarded to `GetPermissionsQuery`)
+
+**Frontend Bug Fixes:**
+- [x] `useCreateUser` / `useUsers` hooks duplicate toast — removed redundant `onError: handleApiError` from `UserCreatePage`, `UserDetailPage`, `TenantDetailPage`, `OrganizationDetailPage` mutate callbacks (hook-level `onError` is sufficient; page-level callback was firing toast twice)
+- [x] `useRoles.test.tsx` — new test: `usePermissions` passes `scope` filter when provided
+- [x] `UserForm.test.tsx` — updated assertions: `lockey_validation_required` → field-specific `lockey_identity_validation_first_name_required` / `lockey_identity_validation_last_name_required`
+- [x] `useModuleManagement.ts` + `useModules.ts` — URL updated to match SEC-12 route change (`/tenants/modules`, tenantId removed from path)
+- [x] `useModuleManagement.test.tsx` — test assertions updated to match new routes
+
+**Documentation:**
+- [x] `docs/auth/IDENTITY.md` — SEC-12 code fence: added `http` language tag
+
 ---
 
 ## Phase 1.5: Bridge
@@ -580,15 +614,15 @@ Platform-level vs tenant-level permission separation is required before multi-te
 - `platform_license_cache` table (see [MANAGEMENT_PORTAL.md](../architecture/MANAGEMENT_PORTAL.md) for schema)
 
 **Implementation items:**
-- [ ] Separate Platform Admin role from tenant-scoped roles
-- [ ] `PermissionScope` enum (`Platform` | `Tenant`) on Permission entity
-- [ ] `ILicenseVerifier` interface + `NullLicenseVerifier` (SharedKernel)
-- [ ] `platform_license_cache` table (PlatformDbContext)
-- [ ] `SaaS` vs `OnPrem` deployment flag in configuration (`DeploymentMode` setting)
-- [ ] Platform-scope permissions hidden from tenant admin UI
-- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants
-- [ ] License-based limits (max users, max organizations per tenant)
-- [ ] **CR-01 (SEC-12)**: Refactor `ModuleEndpoints` to source tenant ID from `ITenantContextAccessor` (JWT claim) instead of route parameter. Currently `tenantId` comes from URL `/tenants/{tenantId:guid}/modules` — must be scoped through PermissionScope (Platform operators can manage any tenant, tenant users can only manage their own). Deferred from Phase 1 code review because it depends on the Platform vs Tenant permission separation.
+- [ ] Separate Platform Admin role from tenant-scoped roles (deferred — requires Keycloak realm changes, tracked for NMP)
+- [x] `PermissionScope` enum (`Platform` | `Tenant`) on Permission entity
+- [x] `ILicenseVerifier` interface + `NullLicenseVerifier` (SharedKernel)
+- [x] `platform_license_cache` table (PlatformDbContext)
+- [x] `SaaS` vs `OnPrem` deployment flag in configuration (`DeploymentMode` setting)
+- [x] Platform-scope permissions hidden from tenant admin UI (`GetPermissionsQuery` scope filter; `PermissionSelector` passes `scope=Tenant`)
+- [ ] Tenant admin can manage users/orgs/roles within their tenant but cannot see other tenants (enforcement relies on existing tenant schema isolation — Keycloak realm-per-tenant already enforces this; no additional backend work needed at this stage)
+- [ ] License-based limits (max users, max organizations per tenant) (deferred — requires NMP license enforcement)
+- [x] **CR-01 (SEC-12)**: `ModuleEndpoints` refactored — tenant ID now sourced from `ITenantContextAccessor` (JWT claim). Route changed from `/tenants/{tenantId:guid}/modules` → `/tenants/modules`.
 
 ### 1.5.3 Localization (Weeks 3-6)
 

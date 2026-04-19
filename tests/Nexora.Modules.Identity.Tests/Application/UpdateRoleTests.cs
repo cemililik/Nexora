@@ -7,6 +7,7 @@ using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.Modules.Identity.Tests.Application;
 
@@ -128,6 +129,28 @@ public sealed class UpdateRoleTests : IDisposable
         result.IsSuccess.Should().BeTrue();
         result.Value!.Permissions.Should().NotContain("crm.contacts.read");
         result.Value.Permissions.Should().Contain("crm.contacts.write");
+    }
+
+    [Fact]
+    public async Task UpdateRole_AssigningPlatformScopePermission_ReturnsFailure()
+    {
+        // Arrange
+        var role = Role.Create(_tenantId, "TenantRole", "desc");
+        var platformPermission = Permission.Create(
+            "identity", "tenants", "read", scope: PermissionScope.Platform);
+        await _dbContext.Permissions.AddAsync(platformPermission);
+        await _dbContext.Roles.AddAsync(role);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = new UpdateRoleHandler(_dbContext, _tenantAccessor, NullLogger<UpdateRoleHandler>.Instance);
+        var command = new UpdateRoleCommand(role.Id.Value, "TenantRole", "desc", [platformPermission.Id.Value]);
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_platform_permission_denied");
     }
 
     public void Dispose() => _dbContext.Dispose();

@@ -5,5 +5,10 @@
   "lockey_validation_max_length": "{{field}} must be at most {{max}} characters.",
   "lockey_validation_failed": "Please correct the errors below.",
   "lockey_validation_invalid_json": "Invalid JSON format",
-  "lockey_validation_password_min": "Password must be at least {{min}} characters."
+  "lockey_validation_password_min": "Password must be at least {{min}} characters.",
+  "lockey_validation_id_required": "ID is required.",
+  "lockey_validation_page_invalid": "Invalid page number.",
+  "lockey_validation_page_must_be_positive": "Page number must be greater than zero.",
+  "lockey_validation_page_size_invalid": "Invalid page size.",
+  "lockey_validation_page_size_range": "Page size must be between 1 and 100."
 }

@@ -80,21 +80,57 @@ public sealed class CreateUserHandler(
             return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_realm_not_configured"));
         }
 
-        // Create user in Keycloak
-        var keycloakUserId = await keycloakAdmin.CreateUserAsync(
-            tenant.RealmId,
-            request.Email,
-            request.Email,
-            request.FirstName,
-            request.LastName,
-            request.TemporaryPassword,
-            cancellationToken);
+        // CONSISTENCY: Tier 2B — External-First + Compensation.
+        // Keycloak must be called first because it returns the keycloakUserId we store.
+        // If the subsequent DB write fails we compensate by deleting the Keycloak user.
+        string keycloakUserId;
+        try
+        {
+            keycloakUserId = await keycloakAdmin.CreateUserAsync(
+                tenant.RealmId,
+                request.Email,
+                request.Email,
+                request.FirstName,
+                request.LastName,
+                request.TemporaryPassword,
+                cancellationToken);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            logger.LogWarning("User creation rejected: email {Email} already exists in realm {Realm}", request.Email, tenant.RealmId);
+            return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_email_already_exists"));
+        }
 
         var user = User.Create(tenantId, keycloakUserId, request.Email,
             request.FirstName, request.LastName);
 
-        await dbContext.Users.AddAsync(user, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.Users.AddAsync(user, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception dbEx)
+        {
+            logger.LogError(dbEx,
+                "DB write failed after Keycloak user creation for {Email} in realm {Realm}; compensating",
+                request.Email, tenant.RealmId);
+
+            try
+            {
+                await keycloakAdmin.DeleteUserAsync(tenant.RealmId, keycloakUserId, cancellationToken);
+                logger.LogInformation(
+                    "Compensation succeeded: Keycloak user {KeycloakUserId} removed from realm {Realm}",
+                    keycloakUserId, tenant.RealmId);
+            }
+            catch (Exception compEx)
+            {
+                logger.LogCritical(compEx,
+                    "COMPENSATION FAILED: Keycloak user {KeycloakUserId} in realm {Realm} is orphaned. Manual cleanup required.",
+                    keycloakUserId, tenant.RealmId);
+            }
+
+            return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_create_failed"));
+        }
 
         var dto = new UserDto(
             user.Id.Value,

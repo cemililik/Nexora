@@ -190,9 +190,7 @@ export default function TenantDetailPage() {
                           size="sm"
                           disabled={deactivateModule.isPending}
                           onClick={() => {
-                            deactivateModule.mutate(mod.moduleName, {
-                              onError: (err) => handleApiError(err),
-                            });
+                            deactivateModule.mutate(mod.moduleName);
                           }}
                         >
                           {t('lockey_identity_action_deactivate_module')}
@@ -215,9 +213,7 @@ export default function TenantDetailPage() {
                           size="sm"
                           disabled={activateModule.isPending}
                           onClick={() => {
-                            activateModule.mutate(mod.moduleName, {
-                              onError: (err) => handleApiError(err),
-                            });
+                            activateModule.mutate(mod.moduleName);
                           }}
                         >
                           {t('lockey_identity_action_activate_module')}

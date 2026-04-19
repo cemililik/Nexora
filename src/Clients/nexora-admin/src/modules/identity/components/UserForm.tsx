@@ -12,24 +12,24 @@ function createUserSchemaFactory(t: (key: string, options?: Record<string, unkno
   return z.object({
     email: z.string().email({ message: t('lockey_validation_email_invalid', { ns: 'validation' }) }),
     firstName: z.string()
-      .min(1, { message: t('lockey_validation_required', { ns: 'validation' }) })
-      .max(100, { message: t('lockey_validation_max_length', { ns: 'validation' }) }),
+      .min(1, { message: t('lockey_identity_validation_first_name_required') })
+      .max(100, { message: t('lockey_identity_validation_first_name_max_length', { max: 100 }) }),
     lastName: z.string()
-      .min(1, { message: t('lockey_validation_required', { ns: 'validation' }) })
-      .max(100, { message: t('lockey_validation_max_length', { ns: 'validation' }) }),
+      .min(1, { message: t('lockey_identity_validation_last_name_required') })
+      .max(100, { message: t('lockey_identity_validation_last_name_max_length', { max: 100 }) }),
     temporaryPassword: z.string()
-      .min(8, { message: t('lockey_validation_password_min', { ns: 'validation' }) }),
+      .min(8, { message: t('lockey_identity_validation_password_min_length', { min: 8 }) }),
   });
 }
 
 function updateProfileSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
   return z.object({
     firstName: z.string()
-      .min(1, { message: t('lockey_validation_required', { ns: 'validation' }) })
-      .max(100, { message: t('lockey_validation_max_length', { ns: 'validation' }) }),
+      .min(1, { message: t('lockey_identity_validation_first_name_required') })
+      .max(100, { message: t('lockey_identity_validation_first_name_max_length', { max: 100 }) }),
     lastName: z.string()
-      .min(1, { message: t('lockey_validation_required', { ns: 'validation' }) })
-      .max(100, { message: t('lockey_validation_max_length', { ns: 'validation' }) }),
+      .min(1, { message: t('lockey_identity_validation_last_name_required') })
+      .max(100, { message: t('lockey_identity_validation_last_name_max_length', { max: 100 }) }),
     phone: z.string().optional(),
   });
 }

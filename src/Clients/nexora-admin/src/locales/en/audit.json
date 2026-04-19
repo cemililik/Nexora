@@ -71,5 +71,25 @@
   "lockey_audit_empty_title": "No audit logs",
   "lockey_audit_empty_description": "Audit logs will appear here as actions are performed.",
   "lockey_audit_filter_from_date": "From date",
-  "lockey_audit_filter_to_date": "To date"
+  "lockey_audit_filter_to_date": "To date",
+
+  "lockey_audit_module_display_name": "Audit",
+  "lockey_audit_permission_logs_read": "View audit logs",
+  "lockey_audit_permission_logs_export": "Export audit logs",
+  "lockey_audit_permission_settings_read": "View audit settings",
+  "lockey_audit_permission_settings_manage": "Manage audit settings",
+
+  "lockey_audit_logs_listed": "Audit logs retrieved.",
+  "lockey_audit_log_detail_retrieved": "Audit log entry retrieved.",
+  "lockey_audit_settings_listed": "Audit settings retrieved.",
+  "lockey_audit_setting_updated": "Audit settings updated.",
+
+  "lockey_audit_error_entry_not_found": "Audit log entry not found.",
+
+  "lockey_audit_validation_settings_required": "At least one setting is required.",
+  "lockey_audit_validation_module_required": "Module is required.",
+  "lockey_audit_validation_operation_required": "Operation is required.",
+  "lockey_audit_validation_retention_days_must_be_positive": "Retention days must be a positive number.",
+  "lockey_audit_validation_retention_days_max_exceeded": "Retention days cannot exceed the maximum allowed.",
+  "lockey_audit_validation_duplicate_settings": "Duplicate settings detected."
 }

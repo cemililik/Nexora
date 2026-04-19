@@ -77,5 +77,40 @@
 
   "lockey_reporting_tab_overview": "Genel Bakış",
   "lockey_reporting_tab_executions": "Çalıştırmalar",
-  "lockey_reporting_tab_parameters": "Parametreler"
+  "lockey_reporting_tab_parameters": "Parametreler",
+
+  "lockey_reporting_definition_created": "Rapor tanımı oluşturuldu.",
+  "lockey_reporting_definition_updated": "Rapor tanımı güncellendi.",
+  "lockey_reporting_definition_deleted": "Rapor tanımı silindi.",
+  "lockey_reporting_dashboard_created": "Gösterge paneli oluşturuldu.",
+  "lockey_reporting_dashboard_updated": "Gösterge paneli güncellendi.",
+  "lockey_reporting_dashboard_deleted": "Gösterge paneli silindi.",
+  "lockey_reporting_execution_queued": "Rapor çalıştırması kuyruğa eklendi.",
+  "lockey_reporting_schedule_created": "Zamanlama oluşturuldu.",
+  "lockey_reporting_schedule_updated": "Zamanlama güncellendi.",
+  "lockey_reporting_schedule_deleted": "Zamanlama silindi.",
+  "lockey_reporting_no_data": "Veri mevcut değil.",
+
+  "lockey_reporting_error_definition_not_found": "Rapor tanımı bulunamadı.",
+  "lockey_reporting_error_definition_already_active": "Rapor tanımı zaten aktif.",
+  "lockey_reporting_error_definition_already_inactive": "Rapor tanımı zaten pasif.",
+  "lockey_reporting_error_dashboard_not_found": "Gösterge paneli bulunamadı.",
+  "lockey_reporting_error_widget_not_found": "Widget bulunamadı.",
+  "lockey_reporting_error_execution_not_found": "Rapor çalıştırması bulunamadı.",
+  "lockey_reporting_error_execution_not_queued": "Yalnızca kuyruktaki çalıştırmalar işlenebilir.",
+  "lockey_reporting_error_execution_not_running": "Çalıştırma şu anda aktif değil.",
+  "lockey_reporting_error_result_not_available": "Rapor sonuçları henüz mevcut değil.",
+  "lockey_reporting_error_execution_failed": "Rapor çalıştırması başarısız oldu.",
+  "lockey_reporting_error_schedule_not_found": "Zamanlama bulunamadı.",
+  "lockey_reporting_error_schedule_already_active": "Zamanlama zaten aktif.",
+  "lockey_reporting_error_schedule_already_inactive": "Zamanlama zaten pasif.",
+  "lockey_reporting_error_invalid_format": "Geçersiz rapor formatı.",
+
+  "lockey_reporting_validation_query_empty": "Sorgu boş olamaz.",
+  "lockey_reporting_validation_query_must_start_select": "Sorgu SELECT ile başlamalıdır.",
+  "lockey_reporting_validation_query_no_semicolons": "Sorgu noktalı virgül içeremez.",
+  "lockey_reporting_validation_query_forbidden_keyword": "Sorgu yasaklı bir anahtar kelime içeriyor.",
+  "lockey_reporting_validation_query_forbidden_function": "Sorgu yasaklı bir fonksiyon içeriyor.",
+  "lockey_reporting_validation_query_locking_forbidden": "Kilitleme ifadelerine izin verilmiyor.",
+  "lockey_reporting_validation_query_select_into_forbidden": "SELECT INTO'ya izin verilmiyor."
 }

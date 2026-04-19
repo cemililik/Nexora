@@ -70,7 +70,7 @@ public sealed class OutboxProcessor(
 
         foreach (var tenant in tenants)
         {
-            if (!Regex.IsMatch(tenant.SchemaName, @"^[a-z0-9_]+$"))
+            if (!Regex.IsMatch(tenant.SchemaName, @"^[a-z0-9_-]+$"))
             {
                 logger.LogWarning("Skipping outbox processing for tenant with invalid schema name: {SchemaName}", tenant.SchemaName);
                 continue;
@@ -84,6 +84,11 @@ public sealed class OutboxProcessor(
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 throw;
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                // Relation does not exist — tenant schema is not yet provisioned. Skip silently.
+                logger.LogDebug("OutboxProcessor skipping tenant {SchemaName}: schema not provisioned yet", tenant.SchemaName);
             }
             catch (Exception ex)
             {

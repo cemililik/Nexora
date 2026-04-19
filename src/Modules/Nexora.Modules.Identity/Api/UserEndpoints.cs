@@ -100,7 +100,7 @@ public static class UserEndpoints
                     ApiEnvelope<UserDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<UserDto>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.create");
 
         group.MapPut("/{id:guid}/profile", async (Guid id, UpdateProfileRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -110,7 +110,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope<UserDto>.Success(result.Value!, result.Message))
                 : Results.NotFound(ApiEnvelope<UserDto>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.update");
 
         group.MapPut("/{id:guid}/status", async (Guid id, UpdateUserStatusRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -120,7 +120,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.update");
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -129,7 +129,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.delete");
 
         group.MapGet("/{id:guid}/roles", async (Guid id, Guid? organizationId, ISender sender, CancellationToken ct) =>
         {
@@ -152,7 +152,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.update");
     }
 }
 

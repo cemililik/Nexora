@@ -502,6 +502,8 @@ public static class DevelopmentSeed
             "CREATE INDEX IF NOT EXISTS \"IX_documents_folder_accesses_ExpiresAt\" ON documents_folder_accesses (\"ExpiresAt\") WHERE \"ExpiresAt\" IS NOT NULL",
             // Unique filtered index: prevents duplicate document names within the same folder (excluding soft-deleted)
             "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_documents_documents_TenantId_FolderId_Name\" ON documents_documents (\"TenantId\", \"FolderId\", \"Name\") WHERE \"IsDeleted\" = false",
+            // Permission.Scope — Phase 1.5.2: classifies permissions as Platform or Tenant scope
+            "ALTER TABLE identity_permissions ADD COLUMN IF NOT EXISTS \"Scope\" varchar(20) NOT NULL DEFAULT 'Tenant'",
         };
 
         foreach (var sql in alterStatements)

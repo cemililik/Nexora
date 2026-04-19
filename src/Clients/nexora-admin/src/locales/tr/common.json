@@ -84,5 +84,13 @@
   "lockey_common_no_results_filtered": "Filtrelerinizle eşleşen sonuç yok.",
   "lockey_common_required_field": "Zorunlu",
   "lockey_common_select_all": "Tümünü seç",
-  "lockey_common_restore_failed": "Geri yükleme başarısız"
+  "lockey_common_restore_failed": "Geri yükleme başarısız",
+  "lockey_common_unknown": "Bilinmeyen bir hata oluştu.",
+
+  "lockey_shared_daterange_end_before_start": "Bitiş tarihi başlangıç tarihinden sonra olmalıdır.",
+  "lockey_shared_email_invalid": "Geçersiz e-posta adresi.",
+  "lockey_shared_money_currency_mismatch": "Para birimi uyuşmazlığı.",
+  "lockey_shared_money_invalid_currency": "Geçersiz para birimi kodu.",
+  "lockey_shared_phone_country_code_required": "Ülke kodu zorunludur.",
+  "lockey_shared_phone_number_required": "Telefon numarası zorunludur."
 }

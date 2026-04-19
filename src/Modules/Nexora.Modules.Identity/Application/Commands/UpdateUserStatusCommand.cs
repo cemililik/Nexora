@@ -60,21 +60,44 @@ public sealed class UpdateUserStatusHandler(
         var tenant = await platformDb.Tenants
             .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
 
+        // CONSISTENCY: Tier 2A — DB-First.
+        // Local DB state is the source of truth for user authorization. Persist the status
+        // change before calling Keycloak. If Keycloak sync fails the user is still correctly
+        // blocked/allowed at our API level. Keycloak divergence is non-fatal and will be
+        // repaired by a future reconciliation job.
         switch (request.Action.ToLowerInvariant())
         {
             case "activate":
                 user.Activate();
-                if (tenant?.RealmId is not null)
-                    await keycloakAdmin.EnableUserAsync(tenant.RealmId, user.KeycloakUserId, cancellationToken);
                 break;
             case "deactivate":
                 user.Deactivate();
-                if (tenant?.RealmId is not null)
-                    await keycloakAdmin.DisableUserAsync(tenant.RealmId, user.KeycloakUserId, cancellationToken);
                 break;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (tenant?.RealmId is not null)
+        {
+            try
+            {
+                switch (request.Action.ToLowerInvariant())
+                {
+                    case "activate":
+                        await keycloakAdmin.EnableUserAsync(tenant.RealmId, user.KeycloakUserId, cancellationToken);
+                        break;
+                    case "deactivate":
+                        await keycloakAdmin.DisableUserAsync(tenant.RealmId, user.KeycloakUserId, cancellationToken);
+                        break;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.LogWarning(ex,
+                    "Keycloak sync failed for user {UserId} after status change to {Action}; state will diverge until reconciled",
+                    user.Id, request.Action);
+            }
+        }
 
         logger.LogInformation("User {UserId} status changed to {Action}", user.Id, request.Action);
 
