@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -72,7 +73,7 @@ public sealed class UpdateCustomFieldDefinitionHandler(
             return Result<CustomFieldDefinitionDto>.Failure(LocalizedMessage.Of("lockey_contacts_error_custom_field_name_duplicate"));
         }
 
-        definition.Update(request.FieldName, request.Options, request.IsRequired, request.DisplayOrder);
+        definition.Update(request.FieldName, ToJsonArray(request.Options), request.IsRequired, request.DisplayOrder);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Custom field definition {DefinitionId} updated for tenant {TenantId}",
@@ -85,5 +86,26 @@ public sealed class UpdateCustomFieldDefinitionHandler(
 
         return Result<CustomFieldDefinitionDto>.Success(dto,
             LocalizedMessage.Of("lockey_contacts_custom_field_definition_updated"));
+    }
+
+    private static string? ToJsonArray(string? options)
+    {
+        if (string.IsNullOrWhiteSpace(options))
+            return null;
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<string[]>(options);
+            if (parsed != null)
+                return options;
+        }
+        catch { }
+
+        var items = options
+            .Split(['\n', '\r', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToArray();
+
+        return JsonSerializer.Serialize(items);
     }
 }

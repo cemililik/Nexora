@@ -9,4 +9,5 @@ public sealed record OrganizationDto(
     string Timezone,
     string DefaultCurrency,
     string DefaultLanguage,
+    string DefaultLocale,
     bool IsActive);

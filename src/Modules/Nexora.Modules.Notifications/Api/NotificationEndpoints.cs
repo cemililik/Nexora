@@ -15,7 +15,7 @@ public static class NotificationEndpoints
     /// <summary>Maps notification send, list, and detail endpoints.</summary>
     public static void MapNotificationEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/notifications")
+        var group = endpoints.MapGroup("/")
             .RequireAuthorization();
 
         group.MapPost("/send", async (SendNotificationCommand command, ISender sender, CancellationToken ct) =>

@@ -9,5 +9,6 @@ public sealed record OrganizationDetailDto(
     string Timezone,
     string DefaultCurrency,
     string DefaultLanguage,
+    string DefaultLocale,
     bool IsActive,
     int MemberCount);

@@ -15,7 +15,7 @@ import type { UserInfo } from '@/shared/types/auth';
  * redirected to Keycloak login page automatically.
  */
 export function useAuth() {
-  const { setSession, clearSession, updateToken, user, isAuthenticated } =
+  const { setSession, clearSession, updateToken, setTenantLocale, user, isAuthenticated } =
     useAuthStore();
   const { t } = useTranslation();
   const tRef = useRef<TFunction>(t);
@@ -97,6 +97,48 @@ export function useAuth() {
           permissions: userInfo?.permissions ?? claims.permissions,
         });
 
+        // Fetch tenant locale settings (non-critical — gracefully degrades)
+        try {
+          const tenant = await api.get<{
+            defaultLocale: string;
+            defaultCurrency: string;
+            defaultTimezone: string;
+            defaultDocumentLanguage: string;
+          }>(`/identity/tenants/${encodeURIComponent(claims.tenant_id)}`);
+
+          // Start with tenant-level locale as the base
+          let resolvedLocale = {
+            locale: tenant.defaultLocale,
+            currency: tenant.defaultCurrency,
+            timezone: tenant.defaultTimezone,
+            documentLanguage: tenant.defaultDocumentLanguage,
+          };
+
+          // Org settings override tenant settings when the user belongs to an org (3-tier model)
+          if (claims.organization_id) {
+            try {
+              const org = await api.get<{
+                defaultLocale: string;
+                defaultCurrency: string;
+                timezone: string;
+                defaultLanguage: string;
+              }>(`/identity/organizations/${encodeURIComponent(claims.organization_id)}`);
+              resolvedLocale = {
+                locale: org.defaultLocale,
+                currency: org.defaultCurrency,
+                timezone: org.timezone,
+                documentLanguage: org.defaultLanguage,
+              };
+            } catch {
+              // Org fetch failed — keep tenant locale
+            }
+          }
+
+          setTenantLocale(resolvedLocale);
+        } catch {
+          // Locale features degrade to i18n.language defaults
+        }
+
         setIsInitializing(false);
       })
       .catch(() => {
@@ -104,7 +146,7 @@ export function useAuth() {
         setIsInitializing(false);
       });
 
-  }, [setSession, clearSession, updateToken]);
+  }, [setSession, clearSession, updateToken, setTenantLocale]);
 
   return { user, isAuthenticated, isLoading: isInitializing };
 }

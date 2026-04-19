@@ -44,12 +44,13 @@ public sealed class OrganizationTests
     {
         var org = Organization.Create(_tenantId, "Old Name", "old");
 
-        org.Update("New Name", "Europe/Istanbul", "TRY", "tr");
+        org.Update("New Name", "Europe/Istanbul", "TRY", "tr", "tr-TR");
 
         org.Name.Should().Be("New Name");
         org.Timezone.Should().Be("Europe/Istanbul");
         org.DefaultCurrency.Should().Be("TRY");
         org.DefaultLanguage.Should().Be("tr");
+        org.DefaultLocale.Should().Be("tr-TR");
     }
 
     [Fact]

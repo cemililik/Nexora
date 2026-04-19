@@ -40,7 +40,7 @@ import type {
   UpdateCustomFieldRequest,
 } from '../types';
 
-const FIELD_TYPES = ['text', 'number', 'date', 'dropdown', 'boolean'] as const;
+const FIELD_TYPES = ['text', 'number', 'date', 'select', 'multiselect', 'boolean'] as const;
 
 function createCustomFieldSchema(t: (key: string, options?: Record<string, unknown>) => string) {
   return z.object({
@@ -50,11 +50,11 @@ function createCustomFieldSchema(t: (key: string, options?: Record<string, unkno
     isRequired: z.boolean(),
     displayOrder: z.number().min(0, t('lockey_validation_required', { ns: 'validation' })),
   }).superRefine((data, ctx) => {
-    if (data.fieldType === 'dropdown' && (!data.options || !data.options.trim())) {
+    if ((data.fieldType === 'select' || data.fieldType === 'multiselect') && (!data.options || !data.options.trim())) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['options'],
-        message: t('lockey_contacts_error_dropdown_options_required', { ns: 'contacts' }),
+        message: t('lockey_contacts_error_options_required', { ns: 'contacts' }),
       });
     }
   });
@@ -129,7 +129,7 @@ export default function CustomFieldManagementPage() {
     if (editingField) {
       const data: UpdateCustomFieldRequest = {
         fieldName: values.fieldName,
-        options: values.fieldType === 'dropdown' ? values.options || undefined : undefined,
+        options: (values.fieldType === 'select' || values.fieldType === 'multiselect') ? values.options || undefined : undefined,
         isRequired: values.isRequired,
         displayOrder: values.displayOrder,
       };
@@ -144,7 +144,7 @@ export default function CustomFieldManagementPage() {
       const data: CreateCustomFieldRequest = {
         fieldName: values.fieldName,
         fieldType: values.fieldType,
-        options: values.fieldType === 'dropdown' ? values.options || undefined : undefined,
+        options: (values.fieldType === 'select' || values.fieldType === 'multiselect') ? values.options || undefined : undefined,
         isRequired: values.isRequired,
         displayOrder: values.displayOrder,
       };
@@ -317,7 +317,7 @@ export default function CustomFieldManagementPage() {
                 )}
               </div>
             )}
-            {watchedFieldType === 'dropdown' && (
+            {(watchedFieldType === 'select' || watchedFieldType === 'multiselect') && (
               <div>
                 <label htmlFor="cf-options" className="text-sm font-medium">{t('lockey_contacts_field_options')}</label>
                 <textarea

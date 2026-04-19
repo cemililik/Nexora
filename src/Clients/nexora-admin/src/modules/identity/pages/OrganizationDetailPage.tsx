@@ -18,6 +18,8 @@ import { cn } from '@/shared/lib/utils';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { SUPPORTED_LOCALES, SUPPORTED_TIMEZONES, SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES } from '@/shared/lib/localeConstants';
 import {
   Dialog,
   DialogContent,
@@ -41,9 +43,10 @@ import type { OrganizationMemberDto, UpdateOrganizationRequest } from '../types'
 function updateOrgSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
   return z.object({
     name: z.string().min(1, { message: t('lockey_identity_validation_org_name_required') }).max(200, { message: t('lockey_identity_validation_org_name_max') }),
-    timezone: z.string().min(1).max(50),
-    defaultCurrency: z.string().length(3),
-    defaultLanguage: z.string().min(1).max(10),
+    timezone: z.string().refine((v) => (SUPPORTED_TIMEZONES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_timezone_required') }),
+    defaultCurrency: z.string().refine((v) => (SUPPORTED_CURRENCIES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_currency_required') }),
+    defaultLanguage: z.string().refine((v) => (SUPPORTED_LANGUAGES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_language_required') }),
+    defaultLocale: z.string().refine((v) => (SUPPORTED_LOCALES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_locale_required') }),
   });
 }
 
@@ -95,6 +98,7 @@ export default function OrganizationDetailPage() {
         timezone: org.timezone,
         defaultCurrency: org.defaultCurrency,
         defaultLanguage: org.defaultLanguage,
+        defaultLocale: org.defaultLocale,
       });
     }
   }, [org, isEditing, form]);
@@ -223,22 +227,68 @@ export default function OrganizationDetailPage() {
                   <Input id="orgName" {...form.register('name')} />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="orgTimezone" className="text-sm font-medium">
-                    {t('lockey_identity_form_org_timezone')}
-                  </label>
-                  <Input id="orgTimezone" {...form.register('timezone')} />
+                  <label className="text-sm font-medium">{t('lockey_identity_form_org_locale')}</label>
+                  <Select
+                    value={form.watch('defaultLocale')}
+                    onValueChange={(v) => form.setValue('defaultLocale', v, { shouldDirty: true })}
+                  >
+                    <SelectTrigger aria-label={t('lockey_identity_form_org_locale')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_LOCALES.map((l) => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="orgCurrency" className="text-sm font-medium">
-                    {t('lockey_identity_form_org_currency')}
-                  </label>
-                  <Input id="orgCurrency" {...form.register('defaultCurrency')} maxLength={3} />
+                  <label className="text-sm font-medium">{t('lockey_identity_form_org_timezone')}</label>
+                  <Select
+                    value={form.watch('timezone')}
+                    onValueChange={(v) => form.setValue('timezone', v, { shouldDirty: true })}
+                  >
+                    <SelectTrigger aria-label={t('lockey_identity_form_org_timezone')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_TIMEZONES.map((tz) => (
+                        <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="orgLanguage" className="text-sm font-medium">
-                    {t('lockey_identity_form_org_language')}
-                  </label>
-                  <Input id="orgLanguage" {...form.register('defaultLanguage')} />
+                  <label className="text-sm font-medium">{t('lockey_identity_form_org_currency')}</label>
+                  <Select
+                    value={form.watch('defaultCurrency')}
+                    onValueChange={(v) => form.setValue('defaultCurrency', v, { shouldDirty: true })}
+                  >
+                    <SelectTrigger aria-label={t('lockey_identity_form_org_currency')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_CURRENCIES.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">{t('lockey_identity_form_org_language')}</label>
+                  <Select
+                    value={form.watch('defaultLanguage')}
+                    onValueChange={(v) => form.setValue('defaultLanguage', v, { shouldDirty: true })}
+                  >
+                    <SelectTrigger aria-label={t('lockey_identity_form_org_language')}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUPPORTED_LANGUAGES.map((lang) => (
+                        <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="flex justify-end gap-2">
@@ -251,6 +301,10 @@ export default function OrganizationDetailPage() {
             </form>
           ) : (
             <dl className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_locale')}</dt>
+                <dd>{org.defaultLocale}</dd>
+              </div>
               <div>
                 <dt className="text-sm text-muted-foreground">{t('lockey_identity_col_timezone')}</dt>
                 <dd>{org.timezone}</dd>

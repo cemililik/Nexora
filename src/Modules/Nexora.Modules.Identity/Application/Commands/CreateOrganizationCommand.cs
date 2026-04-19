@@ -68,6 +68,7 @@ public sealed class CreateOrganizationHandler(
             organization.Timezone,
             organization.DefaultCurrency,
             organization.DefaultLanguage,
+            organization.DefaultLocale,
             organization.IsActive);
 
         logger.LogInformation("Organization {OrganizationId} created with slug {Slug} for tenant {TenantId}", organization.Id, organization.Slug, tenantId);

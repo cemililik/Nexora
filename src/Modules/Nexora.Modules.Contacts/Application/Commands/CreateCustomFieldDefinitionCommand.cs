@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -65,7 +66,7 @@ public sealed class CreateCustomFieldDefinitionHandler(
 
         var definition = CustomFieldDefinition.Create(
             tenantId, request.FieldName, request.FieldType,
-            request.Options, request.IsRequired, request.DisplayOrder);
+            ToJsonArray(request.Options), request.IsRequired, request.DisplayOrder);
 
         await dbContext.CustomFieldDefinitions.AddAsync(definition, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -80,5 +81,26 @@ public sealed class CreateCustomFieldDefinitionHandler(
 
         return Result<CustomFieldDefinitionDto>.Success(dto,
             LocalizedMessage.Of("lockey_contacts_custom_field_definition_created"));
+    }
+
+    private static string? ToJsonArray(string? options)
+    {
+        if (string.IsNullOrWhiteSpace(options))
+            return null;
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<string[]>(options);
+            if (parsed != null)
+                return options;
+        }
+        catch { }
+
+        var items = options
+            .Split(['\n', '\r', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToArray();
+
+        return JsonSerializer.Serialize(items);
     }
 }

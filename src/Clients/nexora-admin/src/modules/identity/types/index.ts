@@ -171,6 +171,7 @@ export interface OrganizationDto {
   timezone: string;
   defaultCurrency: string;
   defaultLanguage: string;
+  defaultLocale: string;
   isActive: boolean;
 }
 
@@ -191,6 +192,7 @@ export interface UpdateOrganizationRequest {
   timezone: string;
   defaultCurrency: string;
   defaultLanguage: string;
+  defaultLocale: string;
 }
 
 /** Organization member from GET /identity/organizations/:id/members. */

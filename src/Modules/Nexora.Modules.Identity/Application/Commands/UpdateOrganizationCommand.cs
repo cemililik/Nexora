@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Application.DTOs;
+using Nexora.Modules.Identity.Domain.Constants;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
@@ -17,7 +18,8 @@ public sealed record UpdateOrganizationCommand(
     string Name,
     string Timezone,
     string DefaultCurrency,
-    string DefaultLanguage) : ICommand<OrganizationDto>;
+    string DefaultLanguage,
+    string DefaultLocale) : ICommand<OrganizationDto>;
 
 /// <summary>Validates organization update input.</summary>
 public sealed class UpdateOrganizationValidator : AbstractValidator<UpdateOrganizationCommand>
@@ -42,6 +44,11 @@ public sealed class UpdateOrganizationValidator : AbstractValidator<UpdateOrgani
         RuleFor(x => x.DefaultLanguage)
             .NotEmpty().WithMessage("lockey_identity_validation_org_language_required")
             .MaximumLength(10).WithMessage("lockey_identity_validation_org_language_max_length");
+
+        RuleFor(x => x.DefaultLocale)
+            .NotEmpty().WithMessage("lockey_identity_validation_org_locale_required")
+            .Must(l => LocaleConstants.SupportedLocales.Contains(l))
+            .WithMessage("lockey_identity_validation_org_locale_invalid");
     }
 }
 
@@ -67,12 +74,12 @@ public sealed class UpdateOrganizationHandler(
             return Result<OrganizationDto>.Failure(LocalizedMessage.Of("lockey_identity_error_org_not_found"));
         }
 
-        org.Update(request.Name, request.Timezone, request.DefaultCurrency, request.DefaultLanguage);
+        org.Update(request.Name, request.Timezone, request.DefaultCurrency, request.DefaultLanguage, request.DefaultLocale);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var dto = new OrganizationDto(
             org.Id.Value, org.Name, org.Slug, org.LogoUrl,
-            org.Timezone, org.DefaultCurrency, org.DefaultLanguage, org.IsActive);
+            org.Timezone, org.DefaultCurrency, org.DefaultLanguage, org.DefaultLocale, org.IsActive);
 
         logger.LogInformation("Organization {OrganizationId} updated for tenant {TenantId}", org.Id, tenantId);
 

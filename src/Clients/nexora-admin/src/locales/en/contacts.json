@@ -238,7 +238,7 @@
   "lockey_contacts_toast_gdpr_exported": "Personal data exported.",
   "lockey_contacts_toast_gdpr_deleted": "Personal data deleted.",
   "lockey_contacts_toast_error_generic": "An error occurred. Please try again.",
-  "lockey_contacts_error_dropdown_options_required": "Dropdown fields require at least one option.",
+  "lockey_contacts_error_options_required": "Select fields require at least one option.",
 
   "lockey_contacts_empty_contacts": "No contacts found.",
   "lockey_contacts_empty_tags": "No tags found.",
@@ -384,6 +384,8 @@
   "lockey_contacts_field_type_number": "Number",
   "lockey_contacts_field_type_date": "Date",
   "lockey_contacts_field_type_dropdown": "Dropdown",
+  "lockey_contacts_field_type_select": "Select (Single)",
+  "lockey_contacts_field_type_multiselect": "Select (Multiple)",
   "lockey_contacts_field_type_boolean": "Boolean",
   "lockey_contacts_field_options": "Options",
   "lockey_contacts_field_options_placeholder": "Enter options, one per line",

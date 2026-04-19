@@ -238,7 +238,7 @@
   "lockey_contacts_toast_gdpr_exported": "Kişisel veriler dışa aktarıldı.",
   "lockey_contacts_toast_gdpr_deleted": "Kişisel veriler silindi.",
   "lockey_contacts_toast_error_generic": "Bir hata oluştu. Lütfen tekrar deneyin.",
-  "lockey_contacts_error_dropdown_options_required": "Açılır liste alanları en az bir seçenek gerektirir.",
+  "lockey_contacts_error_options_required": "Seçim alanları en az bir seçenek gerektirir.",
 
   "lockey_contacts_empty_contacts": "Kişi bulunamadı.",
   "lockey_contacts_empty_tags": "Etiket bulunamadı.",
@@ -384,6 +384,8 @@
   "lockey_contacts_field_type_number": "Sayı",
   "lockey_contacts_field_type_date": "Tarih",
   "lockey_contacts_field_type_dropdown": "Açılır Liste",
+  "lockey_contacts_field_type_select": "Tekli Seçim",
+  "lockey_contacts_field_type_multiselect": "Çoklu Seçim",
   "lockey_contacts_field_type_boolean": "Evet/Hayır",
   "lockey_contacts_field_options": "Seçenekler",
   "lockey_contacts_field_options_placeholder": "Seçenekleri her satıra bir tane olacak şekilde girin",

@@ -32,7 +32,7 @@ public sealed class UpdateOrganizationTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new UpdateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<UpdateOrganizationHandler>.Instance);
-        var command = new UpdateOrganizationCommand(org.Id.Value, "New Name", "Europe/Istanbul", "TRY", "tr");
+        var command = new UpdateOrganizationCommand(org.Id.Value, "New Name", "Europe/Istanbul", "TRY", "tr", "tr-TR");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -47,7 +47,7 @@ public sealed class UpdateOrganizationTests : IDisposable
     public async Task Handle_NonExistentOrg_ShouldReturnFailure()
     {
         var handler = new UpdateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<UpdateOrganizationHandler>.Instance);
-        var command = new UpdateOrganizationCommand(Guid.NewGuid(), "Name", "UTC", "USD", "en");
+        var command = new UpdateOrganizationCommand(Guid.NewGuid(), "Name", "UTC", "USD", "en", "en-US");
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -64,7 +64,7 @@ public sealed class UpdateOrganizationTests : IDisposable
         await _dbContext.SaveChangesAsync();
 
         var handler = new UpdateOrganizationHandler(_dbContext, _tenantAccessor, NullLogger<UpdateOrganizationHandler>.Instance);
-        var command = new UpdateOrganizationCommand(org.Id.Value, "Hijack", "UTC", "USD", "en");
+        var command = new UpdateOrganizationCommand(org.Id.Value, "Hijack", "UTC", "USD", "en", "en-US");
 
         var result = await handler.Handle(command, CancellationToken.None);
 

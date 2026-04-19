@@ -14,6 +14,8 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
     public string Timezone { get; private set; } = "UTC";
     public string DefaultCurrency { get; private set; } = "USD";
     public string DefaultLanguage { get; private set; } = "en";
+    /// <summary>IETF locale tag for number/date formatting (e.g. "en-US", "tr-TR"). Defaults to "en-US".</summary>
+    public string DefaultLocale { get; private set; } = "en-US";
     public bool IsActive { get; private set; } = true;
 
     private readonly List<Department> _departments = [];
@@ -36,12 +38,13 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
     }
 
     /// <summary>Updates the organization's profile settings.</summary>
-    public void Update(string name, string timezone, string currency, string language)
+    public void Update(string name, string timezone, string currency, string language, string locale)
     {
         Name = name;
         Timezone = timezone;
         DefaultCurrency = currency;
         DefaultLanguage = language;
+        DefaultLocale = locale;
     }
 
     /// <summary>Deactivates the organization.</summary>

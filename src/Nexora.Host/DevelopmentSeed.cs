@@ -506,6 +506,8 @@ public static class DevelopmentSeed
             "ALTER TABLE identity_permissions ADD COLUMN IF NOT EXISTS \"Scope\" varchar(20) NOT NULL DEFAULT 'Tenant'",
             // User.PreferredLanguage — Phase 1.5.3: BCP 47 language tag for UI display preference (null = use tenant default)
             "ALTER TABLE identity_users ADD COLUMN IF NOT EXISTS \"PreferredLanguage\" varchar(10)",
+            // Organization.DefaultLocale — Phase 1.5.3: IETF locale tag for org-level number/date formatting (e.g. "en-US", "tr-TR")
+            "ALTER TABLE identity_organizations ADD COLUMN IF NOT EXISTS \"DefaultLocale\" varchar(20) NOT NULL DEFAULT 'en-US'",
         };
 
         foreach (var sql in alterStatements)

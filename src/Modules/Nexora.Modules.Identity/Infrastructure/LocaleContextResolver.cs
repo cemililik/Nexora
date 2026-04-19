@@ -7,7 +7,14 @@ namespace Nexora.Modules.Identity.Infrastructure;
 
 /// <summary>
 /// Resolves the effective <see cref="ILocaleContext"/> for the current request.
-/// Resolution order: User preference → Tenant default → Platform default.
+/// Resolution order (3-tier): User preference → Organization settings → Tenant default → Platform default.
+/// <list type="bullet">
+///   <item>Language: User.PreferredLanguage → Org.DefaultLanguage → Tenant locale language part → "en"</item>
+///   <item>Locale: Org.DefaultLocale → Tenant.DefaultLocale → "en-US"</item>
+///   <item>Currency: Org.DefaultCurrency → Tenant.DefaultCurrency → "USD"</item>
+///   <item>Timezone: Org.Timezone → Tenant.DefaultTimezone → "UTC"</item>
+///   <item>DocumentLanguage: Org.DefaultLanguage → Tenant.DefaultDocumentLanguage → "en"</item>
+/// </list>
 /// Result is lazy-initialized and cached within the scoped DI lifetime (one resolution per request).
 /// </summary>
 public sealed class LocaleContextResolver(
@@ -36,17 +43,21 @@ public sealed class LocaleContextResolver(
 
     private ResolvedLocale Resolve()
     {
-        // Read tenant settings synchronously — resolver is called in property accessors.
-        // Both DbContexts use the connection pool and are fast for single-row reads.
+        // Read settings synchronously — resolver is called in property accessors.
+        // All DbContexts use the connection pool and are fast for single-row reads.
         // Background jobs set tenant context before accessing ILocaleContext, so this is safe.
         TenantSettings tenantSettings;
         string? userPreferredLanguage = null;
+        string? orgTimezone = null;
+        string? orgCurrency = null;
+        string? orgLanguage = null;
+        string? orgLocale = null;
 
         try
         {
             var context = tenantContextAccessor.Current;
 
-            // Tenant settings from public schema
+            // Tier 3: Tenant settings from public schema
             var settingsJson = platformDbContext.Tenants
                 .Where(t => t.Id == TenantId.Parse(context.TenantId))
                 .Select(t => t.Settings)
@@ -54,7 +65,26 @@ public sealed class LocaleContextResolver(
 
             tenantSettings = TenantSettings.FromJson(settingsJson);
 
-            // User language preference from tenant schema
+            // Tier 2: Organization settings (if org context is present)
+            if (!string.IsNullOrEmpty(context.OrganizationId) &&
+                Guid.TryParse(context.OrganizationId, out var orgGuid))
+            {
+                var orgId = OrganizationId.From(orgGuid);
+                var orgData = identityDbContext.Organizations
+                    .Where(o => o.Id == orgId)
+                    .Select(o => new { o.Timezone, o.DefaultCurrency, o.DefaultLanguage, o.DefaultLocale })
+                    .FirstOrDefault();
+
+                if (orgData is not null)
+                {
+                    orgTimezone = orgData.Timezone;
+                    orgCurrency = orgData.DefaultCurrency;
+                    orgLanguage = orgData.DefaultLanguage;
+                    orgLocale = orgData.DefaultLocale;
+                }
+            }
+
+            // Tier 1: User language preference from tenant schema
             if (!string.IsNullOrEmpty(context.UserId))
             {
                 userPreferredLanguage = identityDbContext.Users
@@ -74,11 +104,11 @@ public sealed class LocaleContextResolver(
         var tenantLanguage = tenantSettings.DefaultLocale.Split('-')[0].ToLowerInvariant();
 
         return new ResolvedLocale(
-            Language: userPreferredLanguage ?? tenantLanguage,
-            Locale: tenantSettings.DefaultLocale,
-            Currency: tenantSettings.DefaultCurrency,
-            Timezone: tenantSettings.DefaultTimezone,
-            DocumentLanguage: tenantSettings.DefaultDocumentLanguage
+            Language: userPreferredLanguage ?? orgLanguage ?? tenantLanguage,
+            Locale: orgLocale ?? tenantSettings.DefaultLocale,
+            Currency: orgCurrency ?? tenantSettings.DefaultCurrency,
+            Timezone: orgTimezone ?? tenantSettings.DefaultTimezone,
+            DocumentLanguage: orgLanguage ?? tenantSettings.DefaultDocumentLanguage
         );
     }
 
