@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface Breadcrumb {
   label: string;
@@ -52,6 +52,9 @@ export const useUiStore = create<UiState>()(
     }),
     {
       name: 'ui-store',
+      storage: createJSONStorage(() =>
+        typeof window !== 'undefined' ? window.localStorage : (undefined as unknown as Storage),
+      ),
       partialize: (state) => ({ theme: state.theme, sidebarOpen: state.sidebarOpen }),
       onRehydrateStorage: () => (state) => {
         if (state?.theme) {

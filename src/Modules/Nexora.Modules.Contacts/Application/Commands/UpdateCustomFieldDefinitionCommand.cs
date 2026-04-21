@@ -99,7 +99,10 @@ public sealed class UpdateCustomFieldDefinitionHandler(
             if (parsed != null)
                 return options;
         }
-        catch { }
+        catch (JsonException)
+        {
+            // Not a JSON array — fall through to the delimiter-based fallback below.
+        }
 
         var items = options
             .Split(['\n', '\r', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

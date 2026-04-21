@@ -2,6 +2,24 @@ import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { vi } from 'vitest';
 
+// Polyfill localStorage / sessionStorage for zustand persist in jsdom.
+// Node's jsdom flag parsing can disable the default localStorage with a
+// spurious "--localstorage-file was provided" warning, leaving window.localStorage
+// as an object without setItem/getItem. We replace it with an in-memory Storage.
+function createInMemoryStorage(): Storage {
+  const data = new Map<string, string>();
+  return {
+    get length() { return data.size; },
+    clear: () => data.clear(),
+    getItem: (k: string) => (data.has(k) ? data.get(k)! : null),
+    setItem: (k: string, v: string) => { data.set(k, String(v)); },
+    removeItem: (k: string) => { data.delete(k); },
+    key: (i: number) => Array.from(data.keys())[i] ?? null,
+  };
+}
+Object.defineProperty(window, 'localStorage', { value: createInMemoryStorage(), configurable: true });
+Object.defineProperty(window, 'sessionStorage', { value: createInMemoryStorage(), configurable: true });
+
 // Polyfill DOM methods for Radix UI components in jsdom
 if (typeof Element.prototype.hasPointerCapture !== 'function') {
   Element.prototype.hasPointerCapture = () => false;

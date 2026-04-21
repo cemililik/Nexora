@@ -97,49 +97,13 @@ export function useAuth() {
           permissions: userInfo?.permissions ?? claims.permissions,
         });
 
-        // Fetch tenant locale settings (non-critical — gracefully degrades)
-        try {
-          const tenant = await api.get<{
-            defaultLocale: string;
-            defaultCurrency: string;
-            defaultTimezone: string;
-            defaultDocumentLanguage: string;
-          }>(`/identity/tenants/${encodeURIComponent(claims.tenant_id)}`);
-
-          // Start with tenant-level locale as the base
-          let resolvedLocale = {
-            locale: tenant.defaultLocale,
-            currency: tenant.defaultCurrency,
-            timezone: tenant.defaultTimezone,
-            documentLanguage: tenant.defaultDocumentLanguage,
-          };
-
-          // Org settings override tenant settings when the user belongs to an org (3-tier model)
-          if (claims.organization_id) {
-            try {
-              const org = await api.get<{
-                defaultLocale: string;
-                defaultCurrency: string;
-                timezone: string;
-                defaultLanguage: string;
-              }>(`/identity/organizations/${encodeURIComponent(claims.organization_id)}`);
-              resolvedLocale = {
-                locale: org.defaultLocale,
-                currency: org.defaultCurrency,
-                timezone: org.timezone,
-                documentLanguage: org.defaultLanguage,
-              };
-            } catch {
-              // Org fetch failed — keep tenant locale
-            }
-          }
-
-          setTenantLocale(resolvedLocale);
-        } catch {
-          // Locale features degrade to i18n.language defaults
-        }
-
+        // Session is ready — release the loading gate immediately. Locale resolution runs
+        // in the background so a slow tenant/org fetch cannot keep the user on the spinner.
         setIsInitializing(false);
+
+        void resolveLocale(claims).then(setTenantLocale).catch(() => {
+          // Locale features degrade to i18n.language defaults.
+        });
       })
       .catch(() => {
         clearSession();
@@ -149,4 +113,61 @@ export function useAuth() {
   }, [setSession, clearSession, updateToken, setTenantLocale]);
 
   return { user, isAuthenticated, isLoading: isInitializing };
+}
+
+interface TenantLocaleResponse {
+  defaultLocale: string;
+  defaultCurrency: string;
+  defaultTimezone: string;
+  defaultDocumentLanguage: string;
+}
+
+interface OrganizationLocaleResponse {
+  defaultLocale: string;
+  defaultCurrency: string;
+  timezone: string;
+  defaultLanguage: string;
+}
+
+interface ResolvedTenantLocale {
+  locale: string;
+  currency: string;
+  timezone: string;
+  documentLanguage: string;
+}
+
+async function resolveLocale(claims: {
+  tenant_id: string;
+  organization_id?: string;
+}): Promise<ResolvedTenantLocale> {
+  // Tenant and organization locale reads are independent — fetch both in parallel.
+  const [tenantResult, orgResult] = await Promise.all([
+    api.get<TenantLocaleResponse>(
+      `/identity/tenants/${encodeURIComponent(claims.tenant_id)}`,
+    ),
+    claims.organization_id
+      ? api
+          .get<OrganizationLocaleResponse>(
+            `/identity/organizations/${encodeURIComponent(claims.organization_id)}`,
+          )
+          .catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  // Org settings override tenant settings when the user belongs to an org (3-tier model).
+  if (orgResult) {
+    return {
+      locale: orgResult.defaultLocale,
+      currency: orgResult.defaultCurrency,
+      timezone: orgResult.timezone,
+      documentLanguage: orgResult.defaultLanguage,
+    };
+  }
+
+  return {
+    locale: tenantResult.defaultLocale,
+    currency: tenantResult.defaultCurrency,
+    timezone: tenantResult.defaultTimezone,
+    documentLanguage: tenantResult.defaultDocumentLanguage,
+  };
 }

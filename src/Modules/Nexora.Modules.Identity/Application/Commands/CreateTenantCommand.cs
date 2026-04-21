@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -73,14 +74,14 @@ public sealed class CreateTenantHandler(
         {
             await schemaManager.CreateSchemaAsync(schemaName, cancellationToken);
         }
-        catch (Exception schemaEx)
+        catch (DbException schemaEx)
         {
             logger.LogError(schemaEx,
                 "Schema creation failed for tenant {TenantId}; compensating Keycloak realm {RealmName}",
                 tenant.Id, realmName);
 
             try { await keycloakAdmin.DeleteRealmAsync(realmName, cancellationToken); }
-            catch (Exception compEx)
+            catch (HttpRequestException compEx)
             {
                 logger.LogCritical(compEx,
                     "COMPENSATION FAILED: Keycloak realm {RealmName} is orphaned. Manual cleanup required.",
@@ -102,14 +103,14 @@ public sealed class CreateTenantHandler(
         {
             await platformDb.SaveChangesAsync(cancellationToken);
         }
-        catch (Exception dbEx)
+        catch (DbUpdateException dbEx)
         {
             logger.LogError(dbEx,
                 "DB write failed after provisioning tenant {TenantId}; compensating realm {RealmName} and schema {SchemaName}",
                 tenant.Id, realmName, schemaName);
 
             try { await keycloakAdmin.DeleteRealmAsync(realmName, cancellationToken); }
-            catch (Exception compEx)
+            catch (HttpRequestException compEx)
             {
                 logger.LogCritical(compEx,
                     "COMPENSATION FAILED: Keycloak realm {RealmName} is orphaned. Manual cleanup required.",

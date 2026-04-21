@@ -101,8 +101,14 @@ public static class RoleEndpoints
         // Permissions listing
         endpoints.MapGroup("/permissions")
             .RequireAuthorization("identity.roles.read")
-            .MapGet("/", async (string? module, PermissionScope? scope, ISender sender, CancellationToken ct) =>
+            .MapGet("/", async (string? module, PermissionScope? scope, HttpContext httpContext, ISender sender, CancellationToken ct) =>
             {
+                // Tenant-scoped users must never see Platform permissions — enforce server-side
+                // regardless of the scope query param passed by the client.
+                var tenantId = httpContext.User.FindFirst("tenant_id")?.Value;
+                if (!string.IsNullOrEmpty(tenantId))
+                    scope = PermissionScope.Tenant;
+
                 var result = await sender.Send(new GetPermissionsQuery(module, scope), ct);
                 return result.IsSuccess
                     ? Results.Ok(ApiEnvelope<List<PermissionDto>>.Success(result.Value!, result.Message))

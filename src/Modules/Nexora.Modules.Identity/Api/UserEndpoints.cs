@@ -45,7 +45,9 @@ public static class UserEndpoints
         {
             var keycloakUserId = httpContext.User.GetKeycloakUserId();
             if (string.IsNullOrEmpty(keycloakUserId))
-                return Results.Unauthorized();
+                return Results.Json(
+                    ApiEnvelope.Fail(new Error(LocalizedMessage.Of("lockey_identity_error_unauthorized"))),
+                    statusCode: StatusCodes.Status401Unauthorized);
 
             var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
             if (result.IsSuccess)
@@ -86,7 +88,9 @@ public static class UserEndpoints
         {
             var keycloakUserId = httpContext.User.GetKeycloakUserId();
             if (string.IsNullOrEmpty(keycloakUserId))
-                return Results.Unauthorized();
+                return Results.Json(
+                    ApiEnvelope.Fail(new Error(LocalizedMessage.Of("lockey_identity_error_unauthorized"))),
+                    statusCode: StatusCodes.Status401Unauthorized);
 
             var command = new UpdateUserPreferencesCommand(keycloakUserId, request.PreferredLanguage);
             var result = await sender.Send(command, ct);

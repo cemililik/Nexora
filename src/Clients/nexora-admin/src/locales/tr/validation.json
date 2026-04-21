@@ -10,5 +10,5 @@
   "lockey_validation_page_invalid": "Geçersiz sayfa numarası.",
   "lockey_validation_page_must_be_positive": "Sayfa numarası sıfırdan büyük olmalıdır.",
   "lockey_validation_page_size_invalid": "Geçersiz sayfa boyutu.",
-  "lockey_validation_page_size_range": "Sayfa boyutu 1 ile 100 arasında olmalıdır."
+  "lockey_validation_page_size_range": "Sayfa boyutu {{min}} ile {{max}} arasında olmalıdır."
 }

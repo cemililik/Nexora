@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useMessages, useTranslations } from 'next-intl';
 
 import { useModules } from '@/shared/hooks/useModules';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -45,6 +45,14 @@ export function ModuleTabs({
   const { activeModules } = useModules();
   const { hasPermission } = usePermissions();
   const t = useTranslations(translationNamespace);
+  const messages = useMessages() as Record<string, Record<string, string>>;
+
+  const resolveLabel = (labelKey: string, ns?: string): string => {
+    if (ns && ns !== translationNamespace) {
+      return messages[ns]?.[labelKey] ?? labelKey;
+    }
+    return t(labelKey);
+  };
 
   const moduleTabs = useMemo<(PortalSlotContribution & { moduleName: string })[]>(
     () =>
@@ -66,9 +74,14 @@ export function ModuleTabs({
 
   const [activeId, setActiveId] = useState<string | undefined>(tabIds[0]);
 
-  if (tabIds.length === 0) return null;
+  // When the tenant's active modules or permissions change, the list of available tab ids may
+  // shift; fall back to the first remaining tab if the stored activeId no longer exists.
+  const current = useMemo(() => {
+    if (tabIds.length === 0) return undefined;
+    return activeId && tabIds.includes(activeId) ? activeId : tabIds[0];
+  }, [activeId, tabIds]);
 
-  const current = activeId ?? tabIds[0];
+  if (tabIds.length === 0) return null;
 
   return (
     <div className={className}>
@@ -88,7 +101,7 @@ export function ModuleTabs({
             <TabButton
               key={id}
               id={id}
-              label={t(m.labelKey!)}
+              label={resolveLabel(m.labelKey!, m.translationNamespace)}
               active={current === id}
               onSelect={setActiveId}
             />

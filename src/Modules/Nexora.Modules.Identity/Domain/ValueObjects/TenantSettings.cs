@@ -33,9 +33,20 @@ public sealed record TenantSettings(
 
         try
         {
-            return JsonSerializer.Deserialize<TenantSettings>(json, _jsonOptions) ?? Default;
+            var parsed = JsonSerializer.Deserialize<TenantSettings>(json, _jsonOptions);
+            if (parsed is null)
+                return Default;
+
+            // A syntactically-valid but semantically-empty payload (e.g. "{}") deserializes with
+            // null/empty fields. Fall back to platform defaults for any missing field so locale
+            // resolution never returns blank values.
+            return new TenantSettings(
+                DefaultLocale: string.IsNullOrWhiteSpace(parsed.DefaultLocale) ? Default.DefaultLocale : parsed.DefaultLocale,
+                DefaultCurrency: string.IsNullOrWhiteSpace(parsed.DefaultCurrency) ? Default.DefaultCurrency : parsed.DefaultCurrency,
+                DefaultTimezone: string.IsNullOrWhiteSpace(parsed.DefaultTimezone) ? Default.DefaultTimezone : parsed.DefaultTimezone,
+                DefaultDocumentLanguage: string.IsNullOrWhiteSpace(parsed.DefaultDocumentLanguage) ? Default.DefaultDocumentLanguage : parsed.DefaultDocumentLanguage);
         }
-        catch
+        catch (JsonException)
         {
             return Default;
         }

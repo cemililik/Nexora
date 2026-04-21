@@ -586,12 +586,6 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 - [x] Translation keys — 16 new `lockey_identity_*` keys added to `en/identity.json` + `tr/identity.json` (settings labels, toast messages, validation messages)
 - [x] `LOCALIZATION_STANDARDS.md` — §8 Locale Context System documents the 2-tier model, `ILocaleContext`, `TenantSettings`, and frontend integration
 
-**Deferred (remaining 1.5.3 items):**
-- [ ] Locale-aware number/currency/date formatting utilities in admin frontend (`formatDate`, `formatCurrency`, `formatNumber` using `Intl` API with tenant locale)
-- [ ] US locale support in reporting module (US date format, US tax receipt template)
-- [ ] TR locale support in reporting module (Turkish bağış makbuzu, TL currency formatting)
-- [ ] Translation coverage audit for all existing modules
-
 ---
 
 ## Phase 1.5: Bridge

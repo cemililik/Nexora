@@ -39,6 +39,7 @@ public sealed class UpdateUserPreferencesHandler(
     ITenantContextAccessor tenantContextAccessor,
     ILogger<UpdateUserPreferencesHandler> logger) : ICommandHandler<UpdateUserPreferencesCommand>
 {
+    /// <summary>Persists updated locale preferences for the current user.</summary>
     public async Task<Result> Handle(
         UpdateUserPreferencesCommand request,
         CancellationToken cancellationToken)
@@ -56,7 +57,7 @@ public sealed class UpdateUserPreferencesHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
         }
 
-        user.UpdatePreferences(request.PreferredLanguage);
+        user.UpdatePreferences(request.PreferredLanguage?.Trim().ToLowerInvariant());
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(

@@ -85,7 +85,7 @@ public sealed class KeycloakAdminService(
 
         var token = await EnsureAuthenticatedAsync(ct);
 
-        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/admin/realms/{realmName}");
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/admin/realms/{Uri.EscapeDataString(realmName)}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await httpClient.SendAsync(request, ct);
@@ -133,7 +133,7 @@ public sealed class KeycloakAdminService(
                 ]
             };
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"/admin/realms/{realm}/users");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/admin/realms/{Uri.EscapeDataString(realm)}/users");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             request.Content = JsonContent.Create(user);
 
@@ -189,7 +189,7 @@ public sealed class KeycloakAdminService(
 
             // GET the full user representation first — Keycloak PUT requires the complete object
             using var getRequest = new HttpRequestMessage(HttpMethod.Get,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var getUserResponse = await httpClient.SendAsync(getRequest, ct);
@@ -206,7 +206,7 @@ public sealed class KeycloakAdminService(
             };
 
             using var putRequest = new HttpRequestMessage(HttpMethod.Put,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             putRequest.Content = JsonContent.Create(updatedUser);
 
@@ -243,11 +243,21 @@ public sealed class KeycloakAdminService(
         var token = await EnsureAuthenticatedAsync(ct);
 
         using var request = new HttpRequestMessage(HttpMethod.Delete,
-            $"/admin/realms/{realm}/users/{keycloakUserId}");
+            $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var response = await httpClient.SendAsync(request, ct);
         activity?.SetTag("http.status_code", (int)response.StatusCode);
+
+        // Idempotent compensation: a 404 means the user is already absent — treat as success so
+        // compensation flows (e.g. CreateUserCommand rollback) do not surface spurious failures.
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            logger.LogWarning("Keycloak user {KeycloakUserId} not found in realm {Realm} during deletion (already removed)",
+                keycloakUserId, realm);
+            return;
+        }
+
         response.EnsureSuccessStatusCode();
     }
 
@@ -277,7 +287,7 @@ public sealed class KeycloakAdminService(
 
             // GET the full user representation first — Keycloak PUT requires the complete object
             using var getRequest = new HttpRequestMessage(HttpMethod.Get,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var getUserResponse = await httpClient.SendAsync(getRequest, ct);
@@ -289,7 +299,7 @@ public sealed class KeycloakAdminService(
             var updatedUser = user with { Enabled = enabled };
 
             using var putRequest = new HttpRequestMessage(HttpMethod.Put,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             putRequest.Content = JsonContent.Create(updatedUser);
 

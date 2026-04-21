@@ -55,7 +55,7 @@ public sealed class CreateCustomFieldDefinitionTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Options.Should().Be("Low,Medium,High");
+        result.Value!.Options.Should().Be("[\"Low\",\"Medium\",\"High\"]");
         result.Value.IsRequired.Should().BeTrue();
         result.Value.DisplayOrder.Should().Be(1);
     }

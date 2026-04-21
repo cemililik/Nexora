@@ -1,6 +1,7 @@
 using Nexora.Modules.Identity.Domain.Events;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
+using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Identity.Domain.Entities;
 
@@ -40,6 +41,11 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
     /// <summary>Updates the organization's profile settings.</summary>
     public void Update(string name, string timezone, string currency, string language, string locale)
     {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new DomainException("lockey_identity_error_org_name_required");
+        if (string.IsNullOrWhiteSpace(locale))
+            throw new DomainException("lockey_identity_error_org_locale_required");
+
         Name = name;
         Timezone = timezone;
         DefaultCurrency = currency;

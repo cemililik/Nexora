@@ -1,5 +1,6 @@
 using System.Text;
 using ClosedXML.Excel;
+using FluentAssertions;
 using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Localization;
 
@@ -32,9 +33,8 @@ public sealed class ReportExportServiceTests
         using var stream = service.Export(SampleRows(), "CSV", "test");
         var text = new StreamReader(stream, Encoding.UTF8).ReadToEnd();
 
-        // Invariant: decimal separator is "."
-        Assert.Contains("1234.5", text);
-        Assert.Contains("Alice", text);
+        text.Should().Contain("1234.5");
+        text.Should().Contain("Alice");
     }
 
     [Fact]
@@ -47,8 +47,7 @@ public sealed class ReportExportServiceTests
         var sheet = workbook.Worksheets.First();
 
         // Amount column (col 2) row 2 should be "1234,5" in tr-TR
-        var cell = sheet.Cell(2, 2).GetString();
-        Assert.Equal("1234,5", cell);
+        sheet.Cell(2, 2).GetString().Should().Be("1234,5");
     }
 
     [Fact]
@@ -60,7 +59,7 @@ public sealed class ReportExportServiceTests
         using var workbook = new XLWorkbook(stream);
         var sheet = workbook.Worksheets.First();
 
-        Assert.Equal("1234.5", sheet.Cell(2, 2).GetString());
+        sheet.Cell(2, 2).GetString().Should().Be("1234.5");
     }
 
     [Fact]
@@ -70,20 +69,20 @@ public sealed class ReportExportServiceTests
 
         using var stream = service.Export(SampleRows(), "PDF", "Test Report");
 
-        Assert.True(stream.Length > 0);
-        // PDF magic bytes
+        stream.Length.Should().BeGreaterThan(0);
         var buffer = new byte[4];
         stream.Position = 0;
         _ = stream.Read(buffer, 0, 4);
-        Assert.Equal("%PDF", Encoding.ASCII.GetString(buffer));
+        Encoding.ASCII.GetString(buffer).Should().Be("%PDF");
     }
 
     [Fact]
     public void Export_UnknownFormat_Throws()
     {
         var service = new ReportExportService(new FakeLocaleContext());
+        var act = () => service.Export(SampleRows(), "XML", "test");
 
-        Assert.Throws<ArgumentException>(() => service.Export(SampleRows(), "XML", "test"));
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
@@ -95,7 +94,7 @@ public sealed class ReportExportServiceTests
         using var workbook = new XLWorkbook(stream);
         var sheet = workbook.Worksheets.First();
 
-        Assert.Equal("1234.5", sheet.Cell(2, 2).GetString());
+        sheet.Cell(2, 2).GetString().Should().Be("1234.5");
     }
 
     [Fact]
@@ -105,7 +104,7 @@ public sealed class ReportExportServiceTests
 
         using var stream = service.Export([], "CSV", "test");
 
-        Assert.Equal(0, stream.Length);
+        stream.Length.Should().Be(0);
     }
 
     [Fact]
@@ -116,22 +115,22 @@ public sealed class ReportExportServiceTests
         using var stream = service.Export(SampleRows(), "JSON", "test");
         var text = new StreamReader(stream).ReadToEnd();
 
-        Assert.Contains("Alice", text);
-        Assert.Contains("Bob", text);
+        text.Should().Contain("Alice");
+        text.Should().Contain("Bob");
     }
 
     [Fact]
     public void GetContentType_UnknownFormat_ReturnsOctetStream()
     {
-        Assert.Equal("application/octet-stream", ReportExportService.GetContentType("xml"));
+        ReportExportService.GetContentType("xml").Should().Be("application/octet-stream");
     }
 
     [Fact]
     public void GetFileExtension_KnownFormats_ReturnExpectedExtensions()
     {
-        Assert.Equal(".csv", ReportExportService.GetFileExtension("CSV"));
-        Assert.Equal(".xlsx", ReportExportService.GetFileExtension("EXCEL"));
-        Assert.Equal(".pdf", ReportExportService.GetFileExtension("PDF"));
-        Assert.Equal(".json", ReportExportService.GetFileExtension("JSON"));
+        ReportExportService.GetFileExtension("CSV").Should().Be(".csv");
+        ReportExportService.GetFileExtension("EXCEL").Should().Be(".xlsx");
+        ReportExportService.GetFileExtension("PDF").Should().Be(".pdf");
+        ReportExportService.GetFileExtension("JSON").Should().Be(".json");
     }
 }

@@ -42,15 +42,26 @@ vi.mock('sonner', () => ({
   toast: { error: (...args: unknown[]) => mockToastError(...args) },
 }));
 
+// Mock the shared i18n singleton to avoid real i18next.use(initReactI18next)
+// execution under the globally-mocked react-i18next module.
+vi.mock('@/shared/lib/i18n', () => ({
+  default: {
+    language: 'en',
+    changeLanguage: vi.fn(),
+  },
+}));
+
 // Mock auth store
 const mockSetSession = vi.fn();
 const mockClearSession = vi.fn();
 const mockUpdateTokenStore = vi.fn();
+const mockSetTenantLocale = vi.fn();
 vi.mock('@/shared/lib/stores/authStore', () => ({
   useAuthStore: () => ({
     setSession: mockSetSession,
     clearSession: mockClearSession,
     updateToken: mockUpdateTokenStore,
+    setTenantLocale: mockSetTenantLocale,
     user: null,
     isAuthenticated: false,
     token: null,

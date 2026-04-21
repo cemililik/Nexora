@@ -378,7 +378,7 @@ This table classifies all current and planned external integrations.
 | **Keycloak — CreateUser** | 2B (External-First + Comp.) | Returns `keycloakUserId` needed by DB record |
 | **Keycloak — UpdateUser** | 2A (DB-First) | DB is source of truth; Keycloak is mirror |
 | **Keycloak — EnableUser / DisableUser** | 2A (DB-First) | DB status drives auth; Keycloak is mirror |
-| **Keycloak — DeleteUser** | 2A (DB-First) | Soft-delete DB first; Keycloak hard-delete after |
+| **Keycloak — DeleteUser** | 2A (DB-First) | Soft-delete DB first; Keycloak disable after |
 | **MinIO — GeneratePresignedUrl** | 1 (no mutation) | Read-only; idempotent by nature |
 | **MinIO — ObjectExists** | 1 (no mutation) | Read-only verification only |
 | **MinIO — Upload / Delete** | 2A (DB-First) | DB record drives intent; storage mirrors it |

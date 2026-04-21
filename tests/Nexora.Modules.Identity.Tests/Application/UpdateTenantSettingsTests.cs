@@ -9,15 +9,18 @@ namespace Nexora.Modules.Identity.Tests.Application;
 
 public sealed class UpdateTenantSettingsTests : IDisposable
 {
+    private readonly string _dbName = Guid.NewGuid().ToString();
     private readonly PlatformDbContext _platformDb;
 
     public UpdateTenantSettingsTests()
     {
-        var options = new DbContextOptionsBuilder<PlatformDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _platformDb = new PlatformDbContext(options);
+        _platformDb = CreateContext();
     }
+
+    private PlatformDbContext CreateContext() =>
+        new(new DbContextOptionsBuilder<PlatformDbContext>()
+            .UseInMemoryDatabase(_dbName)
+            .Options);
 
     [Fact]
     public async Task Handle_ValidSettings_PersistsLocaleSettings()
@@ -33,7 +36,8 @@ public sealed class UpdateTenantSettingsTests : IDisposable
 
         result.IsSuccess.Should().BeTrue();
 
-        var updated = await _platformDb.Tenants.FirstAsync();
+        using var verify = CreateContext();
+        var updated = await verify.Tenants.FirstAsync();
         var settings = updated.GetSettings();
         settings.DefaultLocale.Should().Be("tr-TR");
         settings.DefaultCurrency.Should().Be("TRY");
@@ -67,7 +71,9 @@ public sealed class UpdateTenantSettingsTests : IDisposable
         var result = await handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        var updated = await _platformDb.Tenants.FirstAsync();
+
+        using var verify = CreateContext();
+        var updated = await verify.Tenants.FirstAsync();
         updated.GetSettings().DefaultLocale.Should().Be("tr-TR");
     }
 

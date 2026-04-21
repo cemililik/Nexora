@@ -51,6 +51,8 @@ export interface PortalSlotContribution {
   component: LazyExoticComponent<FC>;
   /** Optional lockey_ key for the contribution label (used by `<ModuleTabs />`). */
   labelKey?: string;
+  /** next-intl namespace to resolve `labelKey` in (defaults to the host slot's namespace). */
+  translationNamespace?: string;
 }
 
 /** Installed module info from backend. */

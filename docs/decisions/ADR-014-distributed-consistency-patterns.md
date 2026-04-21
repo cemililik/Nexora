@@ -23,7 +23,7 @@ A codebase-wide audit identified the following consistency categories:
 | Category | Count | Risk |
 |---|---|---|
 | Single DB transaction (no external calls) | Most handlers | Low — already correct |
-| DB + Keycloak (IAM sync) | 5 handlers | Medium–High — no compensation |
+| DB + Keycloak (IAM sync) | 4 handlers | Medium–High — no compensation |
 | DB + MinIO (object storage) | Read-only checks | Low — idempotent |
 | DB + Hangfire enqueue | 1 handler | Medium — two SaveChanges splits atomicity |
 | DB + Payment gateway (planned) | Phase 2.3, 4.4 | Critical — financial data |

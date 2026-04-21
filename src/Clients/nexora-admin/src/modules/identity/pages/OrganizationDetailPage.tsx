@@ -19,6 +19,7 @@ import { useApiError } from '@/shared/hooks/useApiError';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { FormField } from '@/shared/components/data/FormField';
 import { SUPPORTED_LOCALES, SUPPORTED_TIMEZONES, SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES } from '@/shared/lib/localeConstants';
 import {
   Dialog,
@@ -226,13 +227,12 @@ export default function OrganizationDetailPage() {
                   </label>
                   <Input id="orgName" {...form.register('name')} />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('lockey_identity_form_org_locale')}</label>
+                <FormField label={t('lockey_identity_form_org_locale')} htmlFor="orgLocale">
                   <Select
                     value={form.watch('defaultLocale')}
                     onValueChange={(v) => form.setValue('defaultLocale', v, { shouldDirty: true })}
                   >
-                    <SelectTrigger aria-label={t('lockey_identity_form_org_locale')}>
+                    <SelectTrigger id="orgLocale" aria-label={t('lockey_identity_form_org_locale')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -241,14 +241,13 @@ export default function OrganizationDetailPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('lockey_identity_form_org_timezone')}</label>
+                </FormField>
+                <FormField label={t('lockey_identity_form_org_timezone')} htmlFor="orgTimezone">
                   <Select
                     value={form.watch('timezone')}
                     onValueChange={(v) => form.setValue('timezone', v, { shouldDirty: true })}
                   >
-                    <SelectTrigger aria-label={t('lockey_identity_form_org_timezone')}>
+                    <SelectTrigger id="orgTimezone" aria-label={t('lockey_identity_form_org_timezone')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -257,14 +256,13 @@ export default function OrganizationDetailPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('lockey_identity_form_org_currency')}</label>
+                </FormField>
+                <FormField label={t('lockey_identity_form_org_currency')} htmlFor="orgCurrency">
                   <Select
                     value={form.watch('defaultCurrency')}
                     onValueChange={(v) => form.setValue('defaultCurrency', v, { shouldDirty: true })}
                   >
-                    <SelectTrigger aria-label={t('lockey_identity_form_org_currency')}>
+                    <SelectTrigger id="orgCurrency" aria-label={t('lockey_identity_form_org_currency')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -273,14 +271,13 @@ export default function OrganizationDetailPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">{t('lockey_identity_form_org_language')}</label>
+                </FormField>
+                <FormField label={t('lockey_identity_form_org_language')} htmlFor="orgLanguage">
                   <Select
                     value={form.watch('defaultLanguage')}
                     onValueChange={(v) => form.setValue('defaultLanguage', v, { shouldDirty: true })}
                   >
-                    <SelectTrigger aria-label={t('lockey_identity_form_org_language')}>
+                    <SelectTrigger id="orgLanguage" aria-label={t('lockey_identity_form_org_language')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -289,7 +286,7 @@ export default function OrganizationDetailPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                </FormField>
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="submit" disabled={updateOrg.isPending}>

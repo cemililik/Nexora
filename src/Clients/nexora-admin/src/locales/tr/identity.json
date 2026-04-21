@@ -136,6 +136,7 @@
   "lockey_identity_error_tenant_slug_taken": "Bu kiracı kodu zaten kullanımda. Lütfen farklı bir kod seçin.",
   "lockey_identity_error_tenant_create_failed": "Kiracı oluşturulamadı. Lütfen tekrar deneyin.",
   "lockey_identity_error_tenant_realm_not_configured": "Kiracı realm'i Keycloak'ta yapılandırılmamış.",
+  "lockey_identity_error_unauthorized": "Kimlik doğrulama gerekli.",
   "lockey_identity_error_email_already_exists": "Bu e-posta adresiyle kayıtlı bir kullanıcı zaten mevcut.",
   "lockey_identity_error_user_create_failed": "Kullanıcı oluşturulamadı. Lütfen tekrar deneyin.",
   "lockey_identity_error_role_not_found": "Rol bulunamadı.",

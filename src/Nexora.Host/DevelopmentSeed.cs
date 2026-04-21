@@ -504,6 +504,8 @@ public static class DevelopmentSeed
             "CREATE UNIQUE INDEX IF NOT EXISTS \"IX_documents_documents_TenantId_FolderId_Name\" ON documents_documents (\"TenantId\", \"FolderId\", \"Name\") WHERE \"IsDeleted\" = false",
             // Permission.Scope — Phase 1.5.2: classifies permissions as Platform or Tenant scope
             "ALTER TABLE identity_permissions ADD COLUMN IF NOT EXISTS \"Scope\" varchar(20) NOT NULL DEFAULT 'Tenant'",
+            // Classify identity.tenants.* permissions as Platform scope so tenant admins cannot assign them to tenant roles
+            "UPDATE identity_permissions SET \"Scope\"='Platform' WHERE \"Module\"='identity' AND \"Resource\"='tenants'",
             // User.PreferredLanguage — Phase 1.5.3: BCP 47 language tag for UI display preference (null = use tenant default)
             "ALTER TABLE identity_users ADD COLUMN IF NOT EXISTS \"PreferredLanguage\" varchar(10)",
             // Organization.DefaultLocale — Phase 1.5.3: IETF locale tag for org-level number/date formatting (e.g. "en-US", "tr-TR")

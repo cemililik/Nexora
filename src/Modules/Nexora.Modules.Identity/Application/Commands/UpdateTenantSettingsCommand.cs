@@ -53,6 +53,7 @@ public sealed class UpdateTenantSettingsHandler(
     PlatformDbContext platformDb,
     ILogger<UpdateTenantSettingsHandler> logger) : ICommandHandler<UpdateTenantSettingsCommand>
 {
+    /// <summary>Persists the updated locale settings for the specified tenant.</summary>
     public async Task<Result> Handle(
         UpdateTenantSettingsCommand request,
         CancellationToken cancellationToken)

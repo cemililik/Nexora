@@ -222,7 +222,7 @@ Permissions have two scopes, controlled by the `PermissionScope` enum on each `P
 | Scope | Examples | Who can hold |
 |-------|----------|--------------|
 | `Platform` | `identity.tenants.read`, `identity.tenants.manage` | Platform Admin only |
-| `Tenant` | `identity.users.*`, `contacts.contact.read`, `crm.leads.write` | Tenant admins and users |
+| `Tenant` | `identity.users.*`, `contacts.contacts.read`, `crm.leads.write` | Tenant admins and users |
 
 **Enforcement rules:**
 - `CreateRoleHandler` and `UpdateRoleHandler` reject any permission with `Scope == Platform` when assigning to a tenant role. Returns `lockey_identity_error_platform_permission_denied`.

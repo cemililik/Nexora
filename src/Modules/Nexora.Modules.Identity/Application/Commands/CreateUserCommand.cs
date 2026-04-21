@@ -97,8 +97,17 @@ public sealed class CreateUserHandler(
         }
         catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
-            logger.LogWarning("User creation rejected: email {Email} already exists in realm {Realm}", request.Email, tenant.RealmId);
+            logger.LogWarning(
+                "User creation rejected: email already exists in realm {Realm} for tenant {TenantId}",
+                tenant.RealmId, tenantId);
             return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_email_already_exists"));
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex,
+                "Keycloak user creation failed in realm {Realm} for tenant {TenantId}",
+                tenant.RealmId, tenantId);
+            return Result<UserDto>.Failure(LocalizedMessage.Of("lockey_identity_error_user_create_failed"));
         }
 
         var user = User.Create(tenantId, keycloakUserId, request.Email,
@@ -109,23 +118,32 @@ public sealed class CreateUserHandler(
             await dbContext.Users.AddAsync(user, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
-        catch (Exception dbEx)
+        catch (DbUpdateException dbEx)
         {
             logger.LogError(dbEx,
-                "DB write failed after Keycloak user creation for {Email} in realm {Realm}; compensating",
-                request.Email, tenant.RealmId);
+                "DB write failed after Keycloak user creation in realm {Realm} for tenant {TenantId}; compensating",
+                tenant.RealmId, tenantId);
 
+            // Compensation must not inherit the caller's cancellation token — if the original
+            // request was cancelled, compensation would abort mid-flight and orphan the Keycloak user.
+            using var compensationCts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             try
             {
-                await keycloakAdmin.DeleteUserAsync(tenant.RealmId, keycloakUserId, cancellationToken);
+                await keycloakAdmin.DeleteUserAsync(tenant.RealmId, keycloakUserId, compensationCts.Token);
                 logger.LogInformation(
                     "Compensation succeeded: Keycloak user {KeycloakUserId} removed from realm {Realm}",
                     keycloakUserId, tenant.RealmId);
             }
-            catch (Exception compEx)
+            catch (HttpRequestException compEx)
             {
                 logger.LogCritical(compEx,
                     "COMPENSATION FAILED: Keycloak user {KeycloakUserId} in realm {Realm} is orphaned. Manual cleanup required.",
+                    keycloakUserId, tenant.RealmId);
+            }
+            catch (OperationCanceledException compEx)
+            {
+                logger.LogCritical(compEx,
+                    "COMPENSATION TIMED OUT: Keycloak user {KeycloakUserId} in realm {Realm} may be orphaned. Manual cleanup required.",
                     keycloakUserId, tenant.RealmId);
             }
 

@@ -136,6 +136,7 @@
   "lockey_identity_error_tenant_slug_taken": "This tenant slug is already in use. Please choose a different one.",
   "lockey_identity_error_tenant_create_failed": "Failed to create tenant. Please try again.",
   "lockey_identity_error_tenant_realm_not_configured": "Tenant realm is not configured in Keycloak.",
+  "lockey_identity_error_unauthorized": "Authentication required.",
   "lockey_identity_error_email_already_exists": "A user with this email address already exists.",
   "lockey_identity_error_user_create_failed": "Failed to create user. Please try again.",
   "lockey_identity_error_role_not_found": "Role not found.",

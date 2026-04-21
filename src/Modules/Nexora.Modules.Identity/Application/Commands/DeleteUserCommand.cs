@@ -84,6 +84,12 @@ public sealed class DeleteUserHandler(
                         request.Id);
                 }
             }
+            else
+            {
+                logger.LogWarning(
+                    "Keycloak disable skipped for user {UserId}: tenant {TenantId} has no realm configured",
+                    request.Id, tenantId);
+            }
         }
 
         logger.LogInformation("User {UserId} deleted for tenant {TenantId}", user.Id, tenantId);

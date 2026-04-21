@@ -70,7 +70,7 @@ public static class TenantEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.tenants.update")
+        .RequireAuthorization("identity.tenants.manage")
         .WithSummary("Update tenant locale settings")
         .WithDescription("Updates the default locale, currency, timezone, and document language for a tenant.")
         .Produces(StatusCodes.Status200OK)
