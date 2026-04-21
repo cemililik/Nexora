@@ -92,5 +92,9 @@
   "lockey_shared_money_currency_mismatch": "Currency mismatch.",
   "lockey_shared_money_invalid_currency": "Invalid currency code.",
   "lockey_shared_phone_country_code_required": "Country code is required.",
-  "lockey_shared_phone_number_required": "Phone number is required."
+  "lockey_shared_phone_number_required": "Phone number is required.",
+
+  "lockey_outbox_status_healthy": "Healthy",
+  "lockey_outbox_status_warning": "Warning",
+  "lockey_outbox_status_degraded": "Degraded"
 }

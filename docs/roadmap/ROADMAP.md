@@ -664,10 +664,10 @@ Platform-level vs tenant-level permission separation is required before multi-te
 - [x] `ILocaleContext` scoped service — resolved per-request, used by reporting/documents/notifications
 - [x] Tenant locale settings UI (admin Settings tab) and API (`PUT /identity/tenants/{id}/settings`)
 - [x] User language preference persisted to backend on Topbar switch (`PATCH /identity/users/me/preferences`), restored on login
-- [ ] Locale-aware number/currency/date formatting utilities in admin frontend (`Intl` API)
-- [ ] US locale support in reporting module (US date format, US tax receipt template)
-- [ ] TR locale support in reporting module (Turkish bağış makbuzu, TL currency formatting)
-- [ ] Translation coverage audit for all existing modules (en + tr files)
+- [x] Locale-aware number/currency/date formatting utilities in admin frontend (`Intl` API) — `useLocale` hook + `formatDate`/`formatDateTime`/`formatNumber`/`formatPercent` (see §1.16)
+- [x] Locale-aware formatting in `ReportExportService` (Excel + PDF use tenant locale `CultureInfo` for `IFormattable` values; CSV/JSON remain invariant for machine re-import). PDF footer labels (`lockey_reporting_pdf_page`, `lockey_reporting_pdf_of`) resolved per document language; 10 new tests.
+- [x] Translation coverage audit for all existing modules (en + tr files) — admin (10 files, 1,852 keys) and portal (4 files, 50 keys) locale files in full parity; 623 backend `lockey_` references scanned, 3 missing outbox status keys added to `common.json`.
+- [ ] **Deferred to Phase 3 (Donations module):** US tax receipt template + Turkish bağış makbuzu template — requires `Receipt`/`DonationReceipt` domain that does not exist in current Reporting module. ReportExportService is generic tabular export; receipt templates need dedicated domain/layout.
 
 ### 1.5.4 Portal UI Extension Points (Weeks 4-7)
 

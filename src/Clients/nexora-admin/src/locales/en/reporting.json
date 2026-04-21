@@ -90,6 +90,8 @@
   "lockey_reporting_schedule_updated": "Schedule updated.",
   "lockey_reporting_schedule_deleted": "Schedule deleted.",
   "lockey_reporting_no_data": "No data available.",
+  "lockey_reporting_pdf_page": "Page",
+  "lockey_reporting_pdf_of": "of",
 
   "lockey_reporting_error_definition_not_found": "Report definition not found.",
   "lockey_reporting_error_definition_already_active": "Report definition is already active.",

@@ -90,6 +90,8 @@
   "lockey_reporting_schedule_updated": "Zamanlama güncellendi.",
   "lockey_reporting_schedule_deleted": "Zamanlama silindi.",
   "lockey_reporting_no_data": "Veri mevcut değil.",
+  "lockey_reporting_pdf_page": "Sayfa",
+  "lockey_reporting_pdf_of": "/",
 
   "lockey_reporting_error_definition_not_found": "Rapor tanımı bulunamadı.",
   "lockey_reporting_error_definition_already_active": "Rapor tanımı zaten aktif.",
