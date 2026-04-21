@@ -673,10 +673,10 @@ Platform-level vs tenant-level permission separation is required before multi-te
 
 Modules need to register portal-facing pages, widgets, and navigation items dynamically. This mechanism must be in place before Phase 2 modules ship their portal UIs.
 
-- [ ] Module extension point registry (modules register tabs, widgets, navigation items to other modules' UIs)
-- [ ] Portal page registration system (modules declare their portal routes via manifest)
-- [ ] Portal navigation builder (aggregates navigation from all installed modules)
-- [ ] Cross-module UI contribution (e.g., Finance adds "Payment History" tab to Contact 360° view)
+- [x] Module extension point registry — `PortalModuleManifest.slots: Record<string, PortalSlotContribution[]>` declares named extension points any module can contribute to; `<ModuleSlot slotId="..." />` renders stacked contributions, `<ModuleTabs slotId="..." />` renders tabbed contributions (underline style per UX_UI_STANDARDS §3). Both filter by permissions and sort by order; each contribution wrapped in `ErrorBoundary` for cross-module isolation.
+- [x] Portal page registration system — modules declare portal routes via `navigation[{path, label, icon}]` entries; Next.js file-based routes remain per-module files, but sidebar/nav visibility is dynamic via `useModules()` tied to tenant install state.
+- [x] Portal navigation builder — `Sidebar` aggregates `navigation` entries from every active module manifest, gated by permissions. Dashboard entry is built-in; module entries sort by declaration order within each manifest.
+- [x] Cross-module UI contribution — `<ModuleTabs slotId="contact.detail.tabs" />` pattern: a host page (e.g. Contact 360°) exposes a slot; any module (e.g. Finance) contributes a labeled tab (`labelKey` → i18n) via its manifest. 10 new tests (`ModuleSlot.test.tsx`, `ModuleTabs.test.tsx`) cover slot filtering by slotId/permissions, order sorting across modules, tab switching, built-in tab precedence, and label-key guard.
 
 ### 1.5.5 Audit Module Enhancements (Weeks 5-7)
 
