@@ -104,6 +104,11 @@ export function useAuth() {
         void resolveLocale(claims).then(setTenantLocale).catch(() => {
           // Locale features degrade to i18n.language defaults.
         });
+
+        // Fire-and-forget audit entry for successful login — must not delay the UI.
+        void api.post('/audit/events/auth', { eventType: 'Login', isSuccess: true }).catch(() => {
+          // Audit failures never block the auth flow.
+        });
       })
       .catch(() => {
         clearSession();
