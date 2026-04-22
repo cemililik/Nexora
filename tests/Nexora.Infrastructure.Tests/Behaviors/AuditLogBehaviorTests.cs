@@ -30,6 +30,7 @@ public sealed class AuditLogBehaviorTests
     private readonly IAuditContext _auditContext = Substitute.For<IAuditContext>();
     private readonly IAuditConfigService _configService = Substitute.For<IAuditConfigService>();
     private readonly IAuditStore _auditStore = Substitute.For<IAuditStore>();
+    private readonly IAuditStateCapture _stateCapture = new Nexora.Infrastructure.Audit.AuditStateCapture();
     private readonly ITenantContextAccessor _tenantAccessor = Substitute.For<ITenantContextAccessor>();
 
     private AuditLogBehavior<TRequest, TResponse> CreateBehavior<TRequest, TResponse>()
@@ -37,7 +38,7 @@ public sealed class AuditLogBehaviorTests
     {
         var logger = Substitute.For<ILogger<AuditLogBehavior<TRequest, TResponse>>>();
         return new AuditLogBehavior<TRequest, TResponse>(
-            _auditContext, _configService, _auditStore, _tenantAccessor, logger);
+            _auditContext, _configService, _auditStore, _stateCapture, _tenantAccessor, logger);
     }
 
     private void SetupTenantContext(string tenantId = "tenant-1")

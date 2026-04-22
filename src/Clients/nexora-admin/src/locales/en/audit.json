@@ -91,5 +91,9 @@
   "lockey_audit_validation_operation_required": "Operation is required.",
   "lockey_audit_validation_retention_days_must_be_positive": "Retention days must be a positive number.",
   "lockey_audit_validation_retention_days_max_exceeded": "Retention days cannot exceed the maximum allowed.",
-  "lockey_audit_validation_duplicate_settings": "Duplicate settings detected."
+  "lockey_audit_validation_duplicate_settings": "Duplicate settings detected.",
+
+  "lockey_audit_auth_event_recorded": "Auth event recorded.",
+  "lockey_audit_error_auth_event_failed": "Failed to record auth event.",
+  "lockey_audit_validation_auth_event_type_invalid": "Unknown auth event type."
 }

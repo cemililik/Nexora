@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Identity.Api;
@@ -38,6 +39,7 @@ public sealed class IdentityModule : IModule
             {
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "identity");
             });
+            options.AddNexoraAuditInterceptor(sp);
         });
 
         // Platform-level DbContext (public schema — tenant management)

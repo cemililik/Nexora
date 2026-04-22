@@ -674,9 +674,9 @@ Modules need to register portal-facing pages, widgets, and navigation items dyna
 
 ### 1.5.5 Audit Module Enhancements (Weeks 5-7)
 
-- [ ] **Entity Change Tracking (Before/After State)** — AuditLogBehavior Phase 2: capture entity state before and after command execution using EF Core ChangeTracker. Populate `BeforeState`, `AfterState`, and `Changes` JSONB fields in audit entries. Required for compliance audit trails.
-- [ ] **Auth Event Auditing** — Capture Login, Logout, PasswordChange, TokenRefresh events. Requires either Keycloak Event Listener (webhook → backend endpoint → audit entry) or frontend post-login/logout audit API call.
-- [ ] **Audit Log Retention & Partitioning** — PostgreSQL table partitioning by month on `audit_entries.timestamp`. Monthly partition creation job + weekly cleanup job. Configurable retention per module via audit settings.
+- [x] **Entity Change Tracking (Before/After State)** — `IAuditStateCapture` scoped buffer + `AuditChangeTrackerInterceptor` (EF Core `SaveChangesInterceptor`) snapshots Added/Modified/Deleted entries for any `AuditableEntity<T>`. `AuditLogBehavior` reads the buffer post-handler and serializes `BeforeState`, `AfterState`, and `Changes` as JSONB. Wired into all 6 tenant-scoped DbContexts via `.AddNexoraAuditInterceptor(sp)` helper. Noisy audit fields (CreatedAt/By, UpdatedAt/By) are filtered from snapshots. 4 new interceptor tests.
+- [x] **Auth Event Auditing** — `RecordAuthEventCommand` + `POST /audit/events/auth` endpoint for FE-initiated events (Login, Logout, PasswordChange, TokenRefresh, LoginFailed). Writes directly to `IAuditStore` (bypassing config gate — auth events always retained). 4 new tests. Keycloak-side event listener deferred; FE-initiated covers the primary use case.
+- [x] **Audit Log Retention & Partitioning** — `AuditCleanupJob` (weekly, Sunday 04:00 UTC): bulk-deletes entries older than per-module retention from `audit_settings` using `ExecuteDeleteAsync`. `AuditPartitionMaintenanceJob` (monthly, day 20): ensures next 3 monthly partitions of `audit_entries` exist; no-ops when table is not yet partitioned. Conversion to a partitioned table is a one-time migration performed outside the job — documented in the production runbook.
 
 ### 1.5.6 Contact Module Enhancements (Weeks 6-8)
 

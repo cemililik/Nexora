@@ -3,13 +3,16 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence;
 using Nexora.Modules.Audit.Api;
 using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Infrastructure.Jobs;
 using Nexora.Modules.Audit.Infrastructure.Repositories;
 using Nexora.Modules.Audit.Infrastructure.Stores;
 using Nexora.SharedKernel.Abstractions.Audit;
+using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -33,6 +36,7 @@ public sealed class AuditModule : IModule
             {
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "audit");
             });
+            options.AddNexoraAuditInterceptor(sp);
         });
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(AuditModule).Assembly));
@@ -60,12 +64,25 @@ public sealed class AuditModule : IModule
     {
         endpoints.MapAuditLogEndpoints();
         endpoints.MapAuditSettingsEndpoints();
+        endpoints.MapAuthEventEndpoints();
     }
 
     /// <inheritdoc />
     public void ConfigureJobs(IJobScheduler scheduler)
     {
-        // No recurring jobs in initial version.
+        // Weekly cleanup: prune audit entries older than per-module retention (Sunday 04:00 UTC).
+        scheduler.AddOrUpdate<AuditCleanupJob>(
+            "audit:cleanup-expired-entries",
+            "0 4 * * 0",
+            job => job.RunAsync(new AuditCleanupJobParams { TenantId = "system" }, CancellationToken.None),
+            JobQueues.Maintenance);
+
+        // Monthly partition creator: ensures next month's audit_entries partition exists (runs on day 20).
+        scheduler.AddOrUpdate<AuditPartitionMaintenanceJob>(
+            "audit:ensure-future-partition",
+            "0 2 20 * *",
+            job => job.RunAsync(new AuditPartitionMaintenanceJobParams { TenantId = "system" }, CancellationToken.None),
+            JobQueues.Maintenance);
     }
 
     /// <inheritdoc />

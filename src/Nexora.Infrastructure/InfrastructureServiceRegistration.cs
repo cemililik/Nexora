@@ -160,6 +160,10 @@ public static class InfrastructureServiceRegistration
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
 
+        // Entity change capture: scoped buffer written by the EF interceptor and read by AuditLogBehavior
+        services.AddScoped<IAuditStateCapture, AuditStateCapture>();
+        services.AddScoped<AuditChangeTrackerInterceptor>();
+
         // MediatR behaviors
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));

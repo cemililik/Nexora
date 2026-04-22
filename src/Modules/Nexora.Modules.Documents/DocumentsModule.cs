@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Documents.Api;
 using Nexora.SharedKernel.Abstractions.Messaging;
@@ -39,6 +40,7 @@ public sealed class DocumentsModule : IModule
             {
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "documents");
             });
+            options.AddNexoraAuditInterceptor(sp);
         });
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DocumentsModule).Assembly));

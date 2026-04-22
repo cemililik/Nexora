@@ -91,5 +91,9 @@
   "lockey_audit_validation_operation_required": "İşlem zorunludur.",
   "lockey_audit_validation_retention_days_must_be_positive": "Saklama süresi pozitif bir sayı olmalıdır.",
   "lockey_audit_validation_retention_days_max_exceeded": "Saklama süresi izin verilen maksimum değeri aşamaz.",
-  "lockey_audit_validation_duplicate_settings": "Yinelenen ayarlar tespit edildi."
+  "lockey_audit_validation_duplicate_settings": "Yinelenen ayarlar tespit edildi.",
+
+  "lockey_audit_auth_event_recorded": "Kimlik doğrulama olayı kaydedildi.",
+  "lockey_audit_error_auth_event_failed": "Kimlik doğrulama olayı kaydedilemedi.",
+  "lockey_audit_validation_auth_event_type_invalid": "Bilinmeyen kimlik doğrulama olayı türü."
 }
