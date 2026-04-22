@@ -4,13 +4,13 @@
 
 ---
 
-## Active task
+## Prior active task (awaiting maintainer review)
 
-**T-004 — GDPR Article 17 hard delete** (Phase 1.5.6, Milestone C). Owner: cemililik. Status: In Progress.
+**T-004 — GDPR Article 17 hard delete** (Phase 1.5.6, Milestone C). Status: **In Review**.
 
-- Plan: [T-004.md §Implementation plan](../analysis/tasks/phase-1.5/T-004.md)
-- Work packages: WP1 Contacts core (in progress) → WP2/3/4 cross-module handlers → WP5 Admin UI
-- Compliance deadline: 2026-09-30 (ADR-0008)
+Shipped on development (5 WP commits + cross-cutting): 21f82c7 (Contacts core), 0bcb703
+(Documents), abefb12 (Notifications), d9ab70d (Audit), 20f5086 (Admin UI). All 17 GDPR
+tests green; full suite 405/405. Maintainer review queue.
 
 
 

@@ -9,4 +9,6 @@ public sealed record GdprExportDto(
     IReadOnlyList<ConsentRecordDto> ConsentRecords,
     IReadOnlyList<ContactActivityDto> Activities,
     IReadOnlyList<ContactCustomFieldDto> CustomFields,
+    IReadOnlyList<CommunicationPreferenceDto> CommunicationPreferences,
+    IReadOnlyList<ContactRelationshipDto> Relationships,
     DateTimeOffset ExportedAt);

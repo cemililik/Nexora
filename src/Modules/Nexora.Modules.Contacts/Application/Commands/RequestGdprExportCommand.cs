@@ -95,9 +95,30 @@ public sealed class RequestGdprExportHandler(
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
+        var communicationPreferences = await dbContext.CommunicationPreferences
+            .IgnoreQueryFilters()
+            .Where(p => p.ContactId == contactId)
+            .AsNoTracking()
+            .Select(p => new CommunicationPreferenceDto(
+                p.Id.Value, p.ContactId.Value, p.Channel.ToString(),
+                p.OptedIn, p.OptedInAt, p.OptedOutAt, p.OptInSource))
+            .ToListAsync(cancellationToken);
+
+        var relationships = await dbContext.ContactRelationships
+            .IgnoreQueryFilters()
+            .Where(r => r.ContactId == contactId || r.RelatedContactId == contactId)
+            .Join(dbContext.Contacts.IgnoreQueryFilters(),
+                r => r.RelatedContactId, c => c.Id,
+                (r, c) => new ContactRelationshipDto(
+                    r.Id.Value, r.ContactId.Value, r.RelatedContactId.Value,
+                    c.DisplayName, r.Type.ToString(), r.CreatedAt))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
         var dto = new GdprExportDto(
             contact.Id.Value, contact.DisplayName, contactDetail,
-            notes, consents, activities, customFields, DateTimeOffset.UtcNow);
+            notes, consents, activities, customFields,
+            communicationPreferences, relationships, DateTimeOffset.UtcNow);
 
         logger.LogInformation("GDPR export completed for contact {ContactId}", contactId);
 
