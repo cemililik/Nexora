@@ -4,17 +4,15 @@
 
 ---
 
-## Active task
+## Prior active tasks (awaiting maintainer review)
 
-**T-001 — User ↔ Contact linking** (Phase 1.5.6, Milestone C). Owner: cemililik. Status: **In Progress**.
-
-- Plan: [T-001.md §Implementation plan](../analysis/tasks/phase-1.5/T-001.md)
-- Closes T-004's deferred Identity inbox handler (`User.ContactId = null` on `ContactGdprDeletedIntegrationEvent`).
-
-## Prior active task (awaiting maintainer review)
+**T-001 — User ↔ Contact linking** (Phase 1.5.6, Milestone C). Status: **In Review**.
+Identity `User.ContactId?` + link/unlink commands + `UserContactLinkedIntegrationEvent`
+via outbox; system-account rejection enforced at domain + handler + UI; GDPR erasure
+inbox consumer closes T-004's deferred unlink gap. 19 targeted tests + 280/281 Identity
+suite + 72/72 architecture tests + 4/4 frontend dialog tests + lint clean.
 
 **T-004 — GDPR Article 17 hard delete** (Phase 1.5.6, Milestone C). Status: **In Review**.
-
 Shipped on development (7 commits): 21f82c7, 0bcb703, abefb12, d9ab70d, 20f5086, 95ec5d6,
 b278805. Amendment PR (b278805) addresses 18/20 maintainer review findings; 3 follow-up
 tasks filed (T-010, T-017, T-018). All 30 GDPR tests green; full suite ~1700 pass.

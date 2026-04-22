@@ -14,6 +14,8 @@ export interface UserDetailDto extends UserDto {
   organizations: UserOrganizationDto[];
   permissions?: string[];
   preferredLanguage?: string;
+  contactId?: string | null;
+  isSystemAccount?: boolean;
 }
 
 /** Organization membership within a user response. */

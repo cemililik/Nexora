@@ -27,6 +27,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Status).HasConversion<string>().HasMaxLength(50);
         builder.Property(u => u.PreferredLanguage).HasMaxLength(10);
 
+        // Optional link to Contacts module (raw Guid — crosses module boundary).
+        builder.Property(u => u.ContactId).IsRequired(false);
+        builder.HasIndex(u => u.ContactId).HasDatabaseName("ix_identity_users_contact_id");
+
         builder.HasMany(u => u.OrganizationUsers).WithOne().HasForeignKey(ou => ou.UserId);
         builder.Navigation(u => u.OrganizationUsers).UsePropertyAccessMode(PropertyAccessMode.Field);
 
