@@ -49,4 +49,15 @@ public sealed class ConsentRecord : Entity<ConsentRecordId>
         RevokedAt = DateTimeOffset.UtcNow;
         AddDomainEvent(new ConsentChangedEvent(ContactId, ConsentType, false));
     }
+
+    /// <summary>
+    /// Strips PII fields for GDPR Article 17 while preserving the legal evidence of
+    /// consent (timestamp, type, granted flag). Called by the hard-delete job on
+    /// non-relational providers; the relational path uses ExecuteUpdateAsync directly.
+    /// </summary>
+    public void Anonymize(string redactedPlaceholder)
+    {
+        Source = redactedPlaceholder;
+        IpAddress = null;
+    }
 }

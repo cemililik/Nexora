@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.SharedKernel.Abstractions.Configuration;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
 namespace Nexora.Modules.Contacts.Infrastructure;
@@ -10,6 +11,8 @@ namespace Nexora.Modules.Contacts.Infrastructure;
 /// </summary>
 public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : IModuleMigration
 {
+    private const string HardDeleteFlagKey = "gdpr.hard_delete.enabled";
+
     /// <inheritdoc />
     public string ModuleName => "contacts";
 
@@ -26,11 +29,25 @@ public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : 
     }
 
     /// <inheritdoc />
-    public Task SeedAsync(string schemaName, CancellationToken ct = default)
+    public async Task SeedAsync(string schemaName, CancellationToken ct = default)
     {
         // Contacts module permissions are seeded by Identity module's permission system.
-        // No additional seed data needed at this time.
-        return Task.CompletedTask;
+        // We only seed platform defaults that are specific to Contacts compliance flags.
+        using var scope = serviceProvider.CreateScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+        accessor.SetTenant(ExtractTenantId(schemaName));
+
+        var tenantConfig = scope.ServiceProvider.GetService<ITenantConfiguration>();
+        if (tenantConfig is null)
+            return;
+
+        // GDPR Article 17 hard-delete is opt-in per tenant. Default: anonymize mode.
+        // Idempotent: GetAsync returns default (false) if the key has never been set,
+        // which is indistinguishable from an explicit false — so we only write if the
+        // row is genuinely missing to avoid clobbering an operator override.
+        var current = await tenantConfig.GetAsync<bool?>(HardDeleteFlagKey, ct);
+        if (current is null)
+            await tenantConfig.SetAsync(HardDeleteFlagKey, false, ct);
     }
 
     private DbContextOptions<ContactsDbContext> CreateDbContextOptions(

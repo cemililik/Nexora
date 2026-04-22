@@ -20,6 +20,13 @@ public abstract class BaseDbContext(
     protected ITenantContextAccessor TenantContextAccessor { get; } = tenantContextAccessor;
 
     /// <summary>
+    /// When <c>true</c>, the soft-delete interceptor in <see cref="ConvertDeletesAndSetAuditFields"/>
+    /// is bypassed and <see cref="EntityState.Deleted"/> entries are permanently removed.
+    /// Intended ONLY for GDPR Article 17 hard-delete workflows and uninstall cleanups.
+    /// </summary>
+    public bool IsHardDeleteModeEnabled { get; set; }
+
+    /// <summary>
     /// Returns the current tenant schema name for model cache keying.
     /// Returns "default" if no tenant context is set (e.g., in tests or platform operations).
     /// </summary>
@@ -142,8 +149,9 @@ public abstract class BaseDbContext(
 
         foreach (var entry in ChangeTracker.Entries())
         {
-            // Convert hard deletes to soft deletes for ISoftDeletable entities
-            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable)
+            // Convert hard deletes to soft deletes for ISoftDeletable entities,
+            // unless hard-delete mode is explicitly enabled (GDPR Article 17).
+            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable && !IsHardDeleteModeEnabled)
             {
                 entry.State = EntityState.Modified;
                 entry.Property(nameof(ISoftDeletable.IsDeleted)).CurrentValue = true;

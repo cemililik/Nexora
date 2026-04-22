@@ -26,6 +26,7 @@ public sealed class ContactsDbContext(
     public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
     public DbSet<ContactActivity> ContactActivities => Set<ContactActivity>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
+    public DbSet<GdprErasureAudit> GdprErasureAudits => Set<GdprErasureAudit>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
