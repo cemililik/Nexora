@@ -313,6 +313,17 @@
   "lockey_contacts_gdpr_delete_title": "Kişisel Verileri Sil",
   "lockey_contacts_gdpr_delete_reason_placeholder": "Veri silme nedenini girin...",
 
+  "gdpr_erasure_button": "GDPR Silme",
+  "gdpr_erasure_dialog_title": "Kişiyi kalıcı olarak sil",
+  "gdpr_erasure_dialog_warning": "Bu işlem GDPR Madde 17 silme hakkı talebini karşılar. CRM, Documents, Notifications ve Audit modüllerindeki tüm bağlı veriler silinir. Bu işlem geri alınamaz.",
+  "gdpr_erasure_reason_label": "Sebep (zorunlu)",
+  "gdpr_erasure_reason_placeholder": "Hukuki dayanağı açıklayın (veri sahibi talebi, mahkeme kararı, ...)",
+  "gdpr_erasure_confirm_label": "Onaylamak için kişinin adını yazın",
+  "gdpr_erasure_confirm_action": "Kalıcı olarak sil",
+  "gdpr_erasure_cancel": "İptal",
+  "gdpr_erasure_reason_required": "GDPR silme için sebep zorunludur.",
+  "gdpr_erasure_name_mismatch": "Yazılan ad kişinin görüntü adıyla eşleşmiyor.",
+
   "lockey_contacts_duplicates_title": "Olası Yinelemeler",
   "lockey_contacts_duplicate_score": "Puan: {{score}}",
 

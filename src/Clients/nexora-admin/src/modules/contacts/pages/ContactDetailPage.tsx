@@ -52,6 +52,7 @@ import { useCommunicationPreferences, useUpdatePreferences } from '../hooks/useC
 import { useDuplicates } from '../hooks/useDuplicates';
 import { useGdprExport, useGdprDelete } from '../hooks/useImportExport';
 import { ContactForm } from '../components/ContactForm';
+import { GdprErasureDialog } from '../components/GdprErasureDialog';
 import type {
   ContactDetailDto,
   ContactAddressDto,
@@ -80,6 +81,7 @@ export default function ContactDetailPage() {
   const [formIsDirty, setFormIsDirty] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [showGdprErasure, setShowGdprErasure] = useState(false);
   const confirmedRef = useRef(false);
   const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
     useUnsavedChangesGuard(isEditing && formIsDirty);
@@ -144,6 +146,15 @@ export default function ContactDetailPage() {
           >
             {t('lockey_contacts_action_find_duplicates')}
           </Button>
+          {hasPermission('contacts.contacts.admin') && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowGdprErasure(true)}
+            >
+              {t('gdpr_erasure_button')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -239,6 +250,16 @@ export default function ContactDetailPage() {
         cancelLabel={t('lockey_common_stay', { ns: 'common' })}
         variant="destructive"
       />
+
+      {/* GDPR Erasure Dialog */}
+      {hasPermission('contacts.contacts.admin') && (
+        <GdprErasureDialog
+          contactId={id}
+          contactDisplayName={contact.displayName}
+          open={showGdprErasure}
+          onOpenChange={setShowGdprErasure}
+        />
+      )}
 
     </div>
   );

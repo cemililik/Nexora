@@ -313,6 +313,17 @@
   "lockey_contacts_gdpr_delete_title": "Delete Personal Data",
   "lockey_contacts_gdpr_delete_reason_placeholder": "Enter reason for data deletion...",
 
+  "gdpr_erasure_button": "GDPR Erasure",
+  "gdpr_erasure_dialog_title": "Permanently delete contact",
+  "gdpr_erasure_dialog_warning": "This action satisfies a GDPR Article 17 right-to-erasure request. All linked data in CRM, Documents, Notifications, and Audit will be purged. This cannot be undone.",
+  "gdpr_erasure_reason_label": "Reason (required)",
+  "gdpr_erasure_reason_placeholder": "Describe the legal basis (data subject request, court order, ...)",
+  "gdpr_erasure_confirm_label": "Type the contact's name to confirm",
+  "gdpr_erasure_confirm_action": "Permanently erase",
+  "gdpr_erasure_cancel": "Cancel",
+  "gdpr_erasure_reason_required": "A reason is required for GDPR erasure.",
+  "gdpr_erasure_name_mismatch": "Typed name does not match the contact's display name.",
+
   "lockey_contacts_duplicates_title": "Potential Duplicates",
   "lockey_contacts_duplicate_score": "Score: {{score}}",
 
