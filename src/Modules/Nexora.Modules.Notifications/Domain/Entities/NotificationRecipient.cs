@@ -97,4 +97,13 @@ public sealed class NotificationRecipient : AuditableEntity<NotificationRecipien
         Status = RecipientStatus.Failed;
         FailureReason = reason;
     }
+
+    /// <summary>
+    /// Redacts the recipient address (email or phone) for GDPR erasure.
+    /// Delivery status and timestamps are preserved for audit purposes.
+    /// </summary>
+    public void ScrubRecipientAddress()
+    {
+        RecipientAddress = "[REDACTED]";
+    }
 }

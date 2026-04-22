@@ -64,6 +64,8 @@ public sealed class NotificationsModule : IModule
             UserCreatedIntegrationEventHandler>();
         services.AddScoped<IIntegrationEventHandler<ConsentChangedIntegrationEvent>,
             ConsentChangedIntegrationEventHandler>();
+        services.AddScoped<IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>,
+            ContactGdprDeletedIntegrationEventHandler>();
 
         // Notification delivery via Kafka (replaces direct Hangfire job enqueuing):
         services.AddScoped<IIntegrationEventHandler<NotificationDeliveryRequestedIntegrationEvent>,

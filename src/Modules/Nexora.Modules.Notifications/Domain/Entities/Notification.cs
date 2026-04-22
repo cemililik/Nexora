@@ -125,4 +125,14 @@ public sealed class Notification : AuditableEntity<NotificationId>, IAggregateRo
         OpenedCount = opened;
         ClickedCount = clicked;
     }
+
+    /// <summary>
+    /// Redacts PII from the rendered body for GDPR erasure. Preserves audit-value
+    /// metadata (template key, status, timestamps, counts) while removing any
+    /// personal data that was interpolated into the rendered message.
+    /// </summary>
+    public void ScrubRenderedBody()
+    {
+        BodyRendered = "[REDACTED]";
+    }
 }
