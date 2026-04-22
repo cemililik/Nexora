@@ -136,9 +136,6 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
             logger.LogInformation(
                 "Audit entry saved for {Module}.{Operation} success={IsSuccess} entities={EntityCount}",
                 module, operation, isSuccess, stateCapture.Changes.Count);
-
-            // Clear so the next request/scope starts clean (scoped DI should already isolate, but be defensive).
-            stateCapture.Clear();
         }
         // [ADR] Architectural exemption: Audit logging must never block business logic.
         // These catch blocks intentionally swallow exceptions to ensure that audit
@@ -147,6 +144,11 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         catch (Exception ex)
         {
             logger.LogError(ex, "Audit save failed for {Module}.{Operation}", module, operation);
+        }
+        finally
+        {
+            // Clear so the next request/scope starts clean — runs even when SaveAsync throws.
+            stateCapture.Clear();
         }
 
         // Re-throw the handler exception preserving the original stack trace

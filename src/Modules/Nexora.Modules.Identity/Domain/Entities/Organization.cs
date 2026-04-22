@@ -45,13 +45,13 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("lockey_identity_error_org_name_required");
         if (string.IsNullOrWhiteSpace(timezone))
-            throw new DomainException("lockey_identity_error_org_timezone_required");
+            throw new DomainException("lockey_identity_validation_org_timezone_required");
         if (string.IsNullOrWhiteSpace(currency))
-            throw new DomainException("lockey_identity_error_org_currency_required");
+            throw new DomainException("lockey_identity_validation_org_currency_required");
         if (string.IsNullOrWhiteSpace(language))
-            throw new DomainException("lockey_identity_error_org_language_required");
+            throw new DomainException("lockey_identity_validation_org_language_required");
         if (string.IsNullOrWhiteSpace(locale))
-            throw new DomainException("lockey_identity_error_org_locale_required");
+            throw new DomainException("lockey_identity_validation_org_locale_required");
         if (!LocaleConstants.SupportedLocales.Contains(locale))
             throw new DomainException("lockey_identity_error_org_locale_unsupported");
         if (!LocaleConstants.SupportedTimezones.Contains(timezone))

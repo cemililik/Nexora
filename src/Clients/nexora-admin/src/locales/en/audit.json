@@ -98,5 +98,6 @@
 
   "lockey_audit_auth_event_recorded": "Auth event recorded.",
   "lockey_audit_error_auth_event_failed": "Failed to record auth event.",
-  "lockey_audit_validation_auth_event_type_invalid": "Unknown auth event type."
+  "lockey_audit_validation_auth_event_type_invalid": "Unknown auth event type.",
+  "lockey_audit_validation_metadata_too_long": "Metadata must not exceed 5000 characters."
 }

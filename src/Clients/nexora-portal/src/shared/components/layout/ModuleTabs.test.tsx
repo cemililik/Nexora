@@ -5,12 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModuleTabs } from './ModuleTabs';
 import type { PortalModuleManifest } from '@/shared/types/module';
 
-const mockActiveModules: PortalModuleManifest[] = [];
+const { mockActiveModules, mockHasPermission } = vi.hoisted(() => ({
+  mockActiveModules: [] as PortalModuleManifest[],
+  mockHasPermission: vi.fn(),
+}));
+
 vi.mock('@/shared/hooks/useModules', () => ({
   useModules: () => ({ activeModules: mockActiveModules }),
 }));
 
-const mockHasPermission = vi.fn();
 vi.mock('@/shared/hooks/usePermissions', () => ({
   usePermissions: () => ({ hasPermission: mockHasPermission }),
 }));

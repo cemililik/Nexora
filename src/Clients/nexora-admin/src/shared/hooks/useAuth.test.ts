@@ -225,7 +225,7 @@ describe('useAuth', () => {
     });
   });
 
-  it('should set the tenant locale from the resolved tenant settings', async () => {
+  it('should prefer organization locale over tenant settings when org is present', async () => {
     mockToken = 'test-jwt-token';
     mockInit.mockResolvedValue(true);
     mockApiGet.mockImplementation((url: string) => {
@@ -252,6 +252,31 @@ describe('useAuth', () => {
     await waitFor(() => {
       expect(mockSetTenantLocale).toHaveBeenCalledWith({
         locale: 'en-US', currency: 'USD', timezone: 'UTC', documentLanguage: 'en',
+      });
+    });
+  });
+
+  it('should use tenant locale when no organization is present', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/identity/users/me') {
+        return Promise.resolve({ id: 'u1', firstName: 'Admin', lastName: 'User', organizations: [] });
+      }
+      if (url.startsWith('/identity/tenants/')) {
+        return Promise.resolve({
+          defaultLocale: 'tr-TR', defaultCurrency: 'TRY',
+          defaultTimezone: 'Europe/Istanbul', defaultDocumentLanguage: 'tr',
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetTenantLocale).toHaveBeenCalledWith({
+        locale: 'tr-TR', currency: 'TRY', timezone: 'Europe/Istanbul', documentLanguage: 'tr',
       });
     });
   });

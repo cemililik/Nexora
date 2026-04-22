@@ -39,7 +39,7 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
         _capture.Changes.Should().HaveCount(1);
         var change = _capture.Changes[0];
         change.Kind.Should().Be(EntityChangeKind.Added);
-        change.EntityType.Should().Be(nameof(TestEntity));
+        change.EntityType.Should().EndWith(nameof(TestEntity));
         change.After["Name"].Should().Be("Alice");
         change.After["Score"].Should().Be(10);
         change.Before.Should().BeEmpty();
@@ -90,10 +90,19 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
         await _db.SaveChangesAsync();
 
         var change = _capture.Changes.Single();
+        // Audit stamp fields
         change.After.Should().NotContainKey("CreatedAt");
         change.After.Should().NotContainKey("CreatedBy");
         change.After.Should().NotContainKey("UpdatedAt");
         change.After.Should().NotContainKey("UpdatedBy");
+        // Soft-delete bookkeeping
+        change.After.Should().NotContainKey("IsDeleted");
+        change.After.Should().NotContainKey("DeletedAt");
+        change.After.Should().NotContainKey("DeletedBy");
+        // Tenant/org scoping and concurrency token
+        change.After.Should().NotContainKey("TenantId");
+        change.After.Should().NotContainKey("OrganizationId");
+        change.After.Should().NotContainKey("RowVersion");
     }
 
     public void Dispose() => _db.Dispose();
@@ -104,6 +113,9 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
     {
         public string Name { get; private set; } = default!;
         public int Score { get; private set; }
+        public Guid? TenantId { get; set; }
+        public Guid? OrganizationId { get; set; }
+        public uint RowVersion { get; set; }
 
         private TestEntity() { }
 
@@ -127,6 +139,9 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
             {
                 b.HasKey(e => e.Id);
                 b.Property(e => e.Name).IsRequired();
+                b.Property(e => e.TenantId);
+                b.Property(e => e.OrganizationId);
+                b.Property(e => e.RowVersion).IsConcurrencyToken();
             });
         }
     }

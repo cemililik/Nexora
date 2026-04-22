@@ -80,14 +80,11 @@ public sealed class AuditCleanupJob(
         }
         else
         {
-            // EF can't translate ToHashSet.Contains on anonymous types — project to parallel lists.
-            var modules = settingKeys.Select(k => k.Module).ToArray();
-            var operations = settingKeys.Select(k => k.Operation).ToArray();
-
+            // Delete entries where no (Module, Operation) setting row exists for this tenant —
+            // correlated subquery correctly tests the pair, not each column independently.
             var fallbackDeleted = await dbContext.AuditEntries
                 .Where(e => e.Timestamp < fallbackCutoff
-                         && !modules.Contains(e.Module)
-                         && !operations.Contains(e.Operation))
+                         && !dbContext.AuditSettings.Any(s => s.Module == e.Module && s.Operation == e.Operation))
                 .ExecuteDeleteAsync(ct);
             totalDeleted += fallbackDeleted;
         }

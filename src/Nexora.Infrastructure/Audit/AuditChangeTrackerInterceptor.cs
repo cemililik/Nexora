@@ -14,9 +14,10 @@ namespace Nexora.Infrastructure.Audit;
 /// can populate the BeforeState / AfterState / Changes JSONB fields on the audit entry.
 /// </summary>
 /// <remarks>
-/// Only <see cref="IAuditable"/> entities (i.e. <c>AuditableEntity&lt;T&gt;</c>) are captured.
-/// Audit/Outbox/Inbox infrastructure tables and owned value objects are ignored to avoid
-/// recording the audit trail of the audit system itself.
+/// Only <see cref="IAuditable"/> entities that inherit <c>AuditableEntity&lt;T&gt;</c> are captured.
+/// Infrastructure tables (Audit, Outbox, Inbox), owned value objects, and any other type
+/// that does not inherit <c>AuditableEntity&lt;T&gt;</c> are excluded implicitly — not by an
+/// explicit block-list, but because they never satisfy the <c>ShouldCapture</c> type-check.
 /// Capture failures NEVER block SaveChanges — any exception is logged and swallowed.
 /// </remarks>
 public sealed class AuditChangeTrackerInterceptor(
@@ -58,7 +59,7 @@ public sealed class AuditChangeTrackerInterceptor(
                 var (before, after, delta) = BuildSnapshots(entry, kind);
 
                 capture.Capture(new CapturedEntityChange(
-                    EntityType: entry.Entity.GetType().Name,
+                    EntityType: entry.Entity.GetType().FullName ?? entry.Entity.GetType().Name,
                     EntityId: ResolveEntityId(entry),
                     Kind: kind,
                     Before: before,
@@ -173,9 +174,11 @@ public sealed class AuditChangeTrackerInterceptor(
             || type == typeof(TimeSpan) || type.IsEnum)
             return value;
 
-        // Single-property records/structs that look like strongly-typed IDs (e.g. TenantId(Guid Value)).
+        // Only unwrap value-type structs with a single property named "Value" — the canonical
+        // strongly-typed ID shape (e.g. readonly record struct TenantId(Guid Value)).
+        // Reference types and other single-property objects are left as-is to avoid data loss.
         var props = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        if (props.Length == 1 && props[0].CanRead)
+        if (type.IsValueType && props.Length == 1 && props[0].CanRead && props[0].Name == "Value")
             return UnwrapValue(props[0].GetValue(value));
 
         return value;

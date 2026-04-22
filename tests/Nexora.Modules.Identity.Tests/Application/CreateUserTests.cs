@@ -94,7 +94,7 @@ public sealed class CreateUserTests : IDisposable
             new CreateUserCommand("taken@example.com", "C", "D", "TempPass1!"), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Message.Key.Should().Be("lockey_identity_error_user_email_taken");
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_email_already_exists");
     }
 
     [Fact]

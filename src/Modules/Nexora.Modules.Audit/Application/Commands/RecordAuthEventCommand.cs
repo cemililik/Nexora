@@ -32,13 +32,18 @@ public sealed record RecordAuthEventCommand(
     bool IsSuccess,
     string? Metadata) : ICommand;
 
-/// <summary>Validates auth event recording input — EventType must be a known value.</summary>
+/// <summary>Validates auth event recording input — EventType must be a known value; Metadata is size-capped.</summary>
 public sealed class RecordAuthEventValidator : AbstractValidator<RecordAuthEventCommand>
 {
+    /// <summary>Initializes validation rules for <see cref="RecordAuthEventCommand"/>.</summary>
     public RecordAuthEventValidator()
     {
         RuleFor(x => x.EventType)
             .IsInEnum().WithMessage("lockey_audit_validation_auth_event_type_invalid");
+
+        RuleFor(x => x.Metadata)
+            .MaximumLength(5000).When(x => x.Metadata is not null)
+            .WithMessage("lockey_audit_validation_metadata_too_long");
     }
 }
 
@@ -97,7 +102,7 @@ public sealed class RecordAuthEventHandler(
             return Result.Success(LocalizedMessage.Of("lockey_audit_auth_event_recorded"));
         }
         // [ADR] Audit write failures must never block the caller's auth flow — log and degrade.
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Failed to record auth event {EventType}", request.EventType);
             return Result.Failure(LocalizedMessage.Of("lockey_audit_error_auth_event_failed"));

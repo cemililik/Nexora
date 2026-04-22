@@ -65,8 +65,8 @@ export function EntityDiffViewer({ changes }: EntityDiffViewerProps) {
 
   return (
     <div className="space-y-4">
-      {Array.from(groups.values()).map((group, index) => (
-        <div key={index} className="space-y-2">
+      {Array.from(groups.entries()).map(([mapKey, group]) => (
+        <div key={mapKey || 'single'} className="space-y-2">
           {group.entityType && (
             <div className="text-sm font-medium">
               {group.entityType}
@@ -120,10 +120,12 @@ function DiffValue({ value, variant }: { value: unknown; variant: 'old' | 'new' 
     return <span className="text-muted-foreground">—</span>;
   }
 
-  const text =
-    typeof value === 'object'
-      ? JSON.stringify(value)
-      : String(value);
+  let text: string;
+  try {
+    text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  } catch {
+    text = '[unserializable]';
+  }
 
   const cls =
     variant === 'old'

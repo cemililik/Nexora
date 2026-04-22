@@ -44,10 +44,10 @@ import type { OrganizationMemberDto, UpdateOrganizationRequest } from '../types'
 function updateOrgSchemaFactory(t: (key: string, options?: Record<string, unknown>) => string) {
   return z.object({
     name: z.string().min(1, { message: t('lockey_identity_validation_org_name_required') }).max(200, { message: t('lockey_identity_validation_org_name_max') }),
-    timezone: z.string().refine((v) => (SUPPORTED_TIMEZONES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_timezone_required') }),
-    defaultCurrency: z.string().refine((v) => (SUPPORTED_CURRENCIES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_currency_required') }),
-    defaultLanguage: z.string().refine((v) => (SUPPORTED_LANGUAGES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_language_required') }),
-    defaultLocale: z.string().refine((v) => (SUPPORTED_LOCALES as readonly string[]).includes(v), { message: t('lockey_identity_validation_org_locale_required') }),
+    timezone: z.string().min(1, { message: t('lockey_identity_validation_org_timezone_required') }).refine((v) => (SUPPORTED_TIMEZONES as readonly string[]).includes(v), { message: t('lockey_identity_error_org_timezone_unsupported') }),
+    defaultCurrency: z.string().min(1, { message: t('lockey_identity_validation_org_currency_required') }).refine((v) => (SUPPORTED_CURRENCIES as readonly string[]).includes(v), { message: t('lockey_identity_error_org_currency_unsupported') }),
+    defaultLanguage: z.string().min(1, { message: t('lockey_identity_validation_org_language_required') }).refine((v) => (SUPPORTED_LANGUAGES as readonly string[]).includes(v), { message: t('lockey_identity_error_org_language_unsupported') }),
+    defaultLocale: z.string().min(1, { message: t('lockey_identity_validation_org_locale_required') }).refine((v) => (SUPPORTED_LOCALES as readonly string[]).includes(v), { message: t('lockey_identity_error_org_locale_unsupported') }),
   });
 }
 

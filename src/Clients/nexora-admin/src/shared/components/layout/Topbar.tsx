@@ -17,6 +17,7 @@ import {
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { cn } from '@/shared/lib/utils';
 import { api } from '@/shared/lib/api';
+import { AuthEventType } from '@/shared/types/auth';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { getKeycloak } from '@/shared/lib/auth';
@@ -38,13 +39,9 @@ export function Topbar() {
     ? `${user.firstName?.charAt(0) ?? ''}${user.lastName?.charAt(0) ?? ''}` || '?'
     : '?';
 
-  const handleLogout = async () => {
-    // Fire-and-forget audit entry for logout — must not delay the redirect.
-    try {
-      await api.post('/audit/events/auth', { eventType: 'Logout', isSuccess: true });
-    } catch {
-      // Audit failures never block the logout flow.
-    }
+  const handleLogout = () => {
+    // Fire-and-forget — audit failures must never delay the redirect.
+    void api.post('/audit/events/auth', { EventType: AuthEventType.Logout, IsSuccess: true }).catch(() => {});
 
     const keycloak = getKeycloak();
     if (keycloak) {

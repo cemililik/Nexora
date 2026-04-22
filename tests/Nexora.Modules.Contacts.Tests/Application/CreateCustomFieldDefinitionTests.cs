@@ -73,22 +73,19 @@ public sealed class CreateCustomFieldDefinitionTests : IDisposable
         result.Value!.Options.Should().Be("[\"A\",\"B\"]");
     }
 
-    [Fact]
-    public async Task Handle_WithNullOrWhitespaceOptions_ShouldReturnNullOptions()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task Handle_WithNullOrWhitespaceOptions_ShouldReturnNullOptions(string? options)
     {
         var handler = new CreateCustomFieldDefinitionHandler(_dbContext, _tenantAccessor, NullLogger<CreateCustomFieldDefinitionHandler>.Instance);
 
-        var nullResult = await handler.Handle(
-            new CreateCustomFieldDefinitionCommand("Nickname", "text", null),
+        var result = await handler.Handle(
+            new CreateCustomFieldDefinitionCommand("TextField", "text", options),
             CancellationToken.None);
-        nullResult.IsSuccess.Should().BeTrue();
-        nullResult.Value!.Options.Should().BeNull();
 
-        var whitespaceResult = await handler.Handle(
-            new CreateCustomFieldDefinitionCommand("Title", "text", "   "),
-            CancellationToken.None);
-        whitespaceResult.IsSuccess.Should().BeTrue();
-        whitespaceResult.Value!.Options.Should().BeNull();
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Options.Should().BeNull();
     }
 
     [Fact]

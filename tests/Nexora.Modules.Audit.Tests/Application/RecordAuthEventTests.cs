@@ -27,6 +27,7 @@ public sealed class RecordAuthEventTests
         _auditContext.UserId.Returns(Guid.Parse("11111111-1111-1111-1111-111111111111"));
         _auditContext.UserEmail.Returns("user@example.com");
         _auditContext.IpAddress.Returns("127.0.0.1");
+        _auditContext.UserAgent.Returns("TestAgent/1.0");
         _auditContext.CorrelationId.Returns("corr-1");
     }
 
@@ -47,6 +48,13 @@ public sealed class RecordAuthEventTests
         captured.OperationType.Should().Be(OperationType.Action);
         captured.EntityType.Should().Be("AuthSession");
         captured.IsSuccess.Should().BeTrue();
+        captured.UserId.Should().Be(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+        captured.EntityId.Should().Be("11111111-1111-1111-1111-111111111111");
+        captured.IpAddress.Should().Be("127.0.0.1");
+        captured.UserAgent.Should().Be("TestAgent/1.0");
+        captured.CorrelationId.Should().Be("corr-1");
+        captured.ErrorKey.Should().BeNull();
+        captured.Metadata.Should().BeNull();
     }
 
     [Fact]

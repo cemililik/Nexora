@@ -27,7 +27,13 @@ public static class AuthEventEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization();
+        .RequireAuthorization()
+        .Produces<ApiEnvelope<string>>(StatusCodes.Status200OK)
+        .Produces<ApiEnvelope<object>>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status500InternalServerError)
+        .WithSummary("Record an auth event")
+        .WithDescription("Records a Login, Logout, PasswordChange, TokenRefresh, or LoginFailed event for the current user.");
     }
 }
 

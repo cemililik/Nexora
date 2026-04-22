@@ -345,6 +345,67 @@ public sealed class AuditLogBehaviorTests
     }
 
     [Fact]
+    public async Task Handle_AfterExecution_StateCaptureIsCleared()
+    {
+        // Arrange — pre-populate stateCapture to simulate a previous SaveChanges interception
+        SetupTenantContext();
+        SetupAuditContext();
+        _configService.IsEnabledAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(true);
+
+        _stateCapture.Capture(new CapturedEntityChange(
+            EntityType: "TestEntity",
+            EntityId: "1",
+            Kind: EntityChangeKind.Modified,
+            Before: new Dictionary<string, object?> { ["Name"] = "old" },
+            After: new Dictionary<string, object?> { ["Name"] = "new" },
+            Delta: new Dictionary<string, object?> { ["Name"] = new { From = "old", To = "new" } }));
+
+        _stateCapture.Changes.Should().HaveCount(1);
+
+        var behavior = CreateBehavior<TestAuditCommand, Result<string>>();
+        RequestHandlerDelegate<Result<string>> next = () => Task.FromResult(Result<string>.Success("ok"));
+
+        // Act
+        await behavior.Handle(new TestAuditCommand("test"), next, CancellationToken.None);
+
+        // Assert — captured changes are forwarded to the audit entry and then cleared
+        await _auditStore.Received(1).SaveAsync(
+            Arg.Is<AuditEntry>(e => e.Changes != null),
+            Arg.Any<CancellationToken>());
+        _stateCapture.Changes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_AfterAuditSaveFailure_StateCaptureIsStillCleared()
+    {
+        // Arrange — audit store throws; stateCapture.Clear() must still run (finally block)
+        SetupTenantContext();
+        SetupAuditContext();
+        _configService.IsEnabledAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(true);
+        _auditStore.SaveAsync(Arg.Any<AuditEntry>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("Database unavailable"));
+
+        _stateCapture.Capture(new CapturedEntityChange(
+            EntityType: "TestEntity",
+            EntityId: "1",
+            Kind: EntityChangeKind.Added,
+            Before: new Dictionary<string, object?>(),
+            After: new Dictionary<string, object?> { ["Name"] = "x" },
+            Delta: new Dictionary<string, object?>()));
+
+        var behavior = CreateBehavior<TestAuditCommand, Result<string>>();
+        RequestHandlerDelegate<Result<string>> next = () => Task.FromResult(Result<string>.Success("ok"));
+
+        // Act
+        await behavior.Handle(new TestAuditCommand("test"), next, CancellationToken.None);
+
+        // Assert — stateCapture is cleared even though SaveAsync threw
+        _stateCapture.Changes.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_CommandWithCommandSuffix_StripsCommandFromOperation()
     {
         // Arrange — TestAuditCommand name ends with "Command" implicitly via the type name

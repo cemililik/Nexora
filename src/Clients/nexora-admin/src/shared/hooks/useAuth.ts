@@ -7,7 +7,7 @@ import axios from 'axios';
 import { api, setAuthToken } from '@/shared/lib/api';
 import { createKeycloak, parseTokenClaims } from '@/shared/lib/auth';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
-import type { UserInfo } from '@/shared/types/auth';
+import { AuthEventType, type UserInfo } from '@/shared/types/auth';
 
 /**
  * Initializes Keycloak authentication and synchronizes session state.
@@ -106,7 +106,7 @@ export function useAuth() {
         });
 
         // Fire-and-forget audit entry for successful login — must not delay the UI.
-        void api.post('/audit/events/auth', { eventType: 'Login', isSuccess: true }).catch(() => {
+        void api.post('/audit/events/auth', { EventType: AuthEventType.Login, IsSuccess: true }).catch(() => {
           // Audit failures never block the auth flow.
         });
       })

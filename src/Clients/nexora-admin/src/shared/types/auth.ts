@@ -32,6 +32,16 @@ export interface OrganizationBranding {
   memberCount: number;
 }
 
+/** Mirrors backend AuthEventType enum — values sent to POST /audit/events/auth. */
+export const AuthEventType = {
+  Login: 'Login',
+  Logout: 'Logout',
+  PasswordChange: 'PasswordChange',
+  TokenRefresh: 'TokenRefresh',
+  LoginFailed: 'LoginFailed',
+} as const;
+export type AuthEventType = (typeof AuthEventType)[keyof typeof AuthEventType];
+
 /** JWT claims extracted from Keycloak token. */
 export interface JwtClaims {
   sub: string;

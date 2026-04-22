@@ -65,7 +65,7 @@ public sealed class CreateUserHandler(
         {
             logger.LogWarning("User creation failed: email {Email} already taken for tenant {TenantId}", request.Email, tenantId);
             return Result<UserDto>.Failure(
-                LocalizedMessage.Of("lockey_identity_error_user_email_taken",
+                LocalizedMessage.Of("lockey_identity_error_email_already_exists",
                 new Dictionary<string, string> { ["email"] = request.Email }));
         }
 
