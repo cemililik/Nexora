@@ -261,15 +261,36 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
     }
 
     /// <summary>
-    /// Serializes the entity snapshots collected by <see cref="IAuditStateCapture"/> into the
-    /// BeforeState / AfterState / Changes JSON fields. When exactly one entity was touched we
-    /// also surface its type and id so the audit entry is filterable without parsing JSON.
+    /// Serializes entity snapshots into audit JSON fields:
+    /// - <c>Changes</c>: flat array of <c>{ field, old, new, entityType?, entityId? }</c> — consumed
+    ///   by the admin <c>EntityDiffViewer</c> for a human-readable diff. <c>entityType/entityId</c>
+    ///   are only emitted when more than one entity was touched (otherwise they're redundant with
+    ///   the audit entry's own columns).
+    /// - <c>BeforeState</c> / <c>AfterState</c>: full per-entity snapshots. Retained for compliance
+    ///   / forensics; the admin UI does not render them by default.
+    ///
+    /// When exactly one entity was touched we also surface its type and id on the audit entry so
+    /// the row is filterable without parsing JSON.
     /// </summary>
     private static (string? Before, string? After, string? Changes, string? EntityType, string? EntityId)
         SerializeCapturedChanges(IReadOnlyList<CapturedEntityChange> changes)
     {
         if (changes.Count == 0)
             return (null, null, null, null, null);
+
+        var multiEntity = changes.Count > 1;
+        var flatDelta = new List<object>();
+
+        foreach (var change in changes)
+        {
+            foreach (var (field, diff) in change.Delta)
+            {
+                var (oldValue, newValue) = ExtractFromTo(diff);
+                flatDelta.Add(multiEntity
+                    ? new { entityType = change.EntityType, entityId = change.EntityId, field, old = oldValue, @new = newValue }
+                    : new { field, old = oldValue, @new = newValue });
+            }
+        }
 
         var before = changes
             .Where(c => c.Before.Count > 0)
@@ -281,13 +302,9 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
             .Select(c => new { entityType = c.EntityType, entityId = c.EntityId, data = c.After })
             .ToArray();
 
-        var delta = changes
-            .Select(c => new { entityType = c.EntityType, entityId = c.EntityId, kind = c.Kind.ToString(), data = c.Delta })
-            .ToArray();
-
         var beforeJson = before.Length > 0 ? JsonSerializer.Serialize(before, _jsonOptions) : null;
         var afterJson = after.Length > 0 ? JsonSerializer.Serialize(after, _jsonOptions) : null;
-        var changesJson = JsonSerializer.Serialize(delta, _jsonOptions);
+        var changesJson = flatDelta.Count > 0 ? JsonSerializer.Serialize(flatDelta, _jsonOptions) : null;
 
         string? entityType = null;
         string? entityId = null;
@@ -298,5 +315,18 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         }
 
         return (beforeJson, afterJson, changesJson, entityType, entityId);
+    }
+
+    /// <summary>
+    /// Extracts From/To scalars from a delta entry produced by <c>AuditChangeTrackerInterceptor</c>.
+    /// The interceptor builds deltas as anonymous objects with From/To properties.
+    /// </summary>
+    private static (object? Old, object? New) ExtractFromTo(object? diff)
+    {
+        if (diff is null) return (null, null);
+        var type = diff.GetType();
+        var from = type.GetProperty("From")?.GetValue(diff);
+        var to = type.GetProperty("To")?.GetValue(diff);
+        return (from, to);
     }
 }

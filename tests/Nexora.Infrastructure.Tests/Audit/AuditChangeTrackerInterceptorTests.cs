@@ -22,6 +22,12 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
         _db = new TestDbContext(options);
     }
 
+    private static (object? From, object? To) FromTo(object? diff)
+    {
+        var type = diff!.GetType();
+        return (type.GetProperty("From")!.GetValue(diff), type.GetProperty("To")!.GetValue(diff));
+    }
+
     [Fact]
     public async Task Added_entity_is_captured_with_after_snapshot_and_no_before()
     {
@@ -37,7 +43,7 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
         change.After["Name"].Should().Be("Alice");
         change.After["Score"].Should().Be(10);
         change.Before.Should().BeEmpty();
-        change.Delta["Name"].Should().Be("Alice");
+        FromTo(change.Delta["Name"]).Should().Be(((object?)null, (object?)"Alice"));
     }
 
     [Fact]
@@ -57,6 +63,7 @@ public sealed class AuditChangeTrackerInterceptorTests : IDisposable
         change.After["Name"].Should().Be("Alicia");
         change.Delta.Should().ContainKey("Name");
         change.Delta.Should().NotContainKey("Score");
+        FromTo(change.Delta["Name"]).Should().Be(((object?)"Alice", (object?)"Alicia"));
     }
 
     [Fact]
