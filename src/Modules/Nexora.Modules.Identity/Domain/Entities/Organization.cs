@@ -1,3 +1,4 @@
+using Nexora.Modules.Identity.Domain.Constants;
 using Nexora.Modules.Identity.Domain.Events;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
@@ -43,8 +44,22 @@ public sealed class Organization : AuditableEntity<OrganizationId>, IAggregateRo
     {
         if (string.IsNullOrWhiteSpace(name))
             throw new DomainException("lockey_identity_error_org_name_required");
+        if (string.IsNullOrWhiteSpace(timezone))
+            throw new DomainException("lockey_identity_error_org_timezone_required");
+        if (string.IsNullOrWhiteSpace(currency))
+            throw new DomainException("lockey_identity_error_org_currency_required");
+        if (string.IsNullOrWhiteSpace(language))
+            throw new DomainException("lockey_identity_error_org_language_required");
         if (string.IsNullOrWhiteSpace(locale))
             throw new DomainException("lockey_identity_error_org_locale_required");
+        if (!LocaleConstants.SupportedLocales.Contains(locale))
+            throw new DomainException("lockey_identity_error_org_locale_unsupported");
+        if (!LocaleConstants.SupportedTimezones.Contains(timezone))
+            throw new DomainException("lockey_identity_error_org_timezone_unsupported");
+        if (!LocaleConstants.SupportedCurrencies.Contains(currency))
+            throw new DomainException("lockey_identity_error_org_currency_unsupported");
+        if (!LocaleConstants.SupportedLanguages.Contains(language))
+            throw new DomainException("lockey_identity_error_org_language_unsupported");
 
         Name = name;
         Timezone = timezone;

@@ -69,6 +69,7 @@ vi.mock('@/shared/lib/stores/authStore', () => ({
 }));
 
 import { setAuthToken } from '@/shared/lib/api';
+import i18n from '@/shared/lib/i18n';
 import { useAuth } from './useAuth';
 
 function createAxiosError(status: number, statusText: string): AxiosError {
@@ -198,6 +199,60 @@ describe('useAuth', () => {
 
     await waitFor(() => {
       expect(mockClearSession).toHaveBeenCalled();
+    });
+  });
+
+  it('should change i18n language to the user preferredLanguage from /me', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/identity/users/me') {
+        return Promise.resolve({ id: 'u1', firstName: 'Admin', lastName: 'User', preferredLanguage: 'tr' });
+      }
+      if (url.startsWith('/identity/tenants/')) {
+        return Promise.resolve({
+          defaultLocale: 'tr-TR', defaultCurrency: 'TRY',
+          defaultTimezone: 'Europe/Istanbul', defaultDocumentLanguage: 'tr',
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(i18n.changeLanguage).toHaveBeenCalledWith('tr');
+    });
+  });
+
+  it('should set the tenant locale from the resolved tenant settings', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/identity/users/me') {
+        return Promise.resolve({ id: 'u1', firstName: 'Admin', lastName: 'User' });
+      }
+      if (url.startsWith('/identity/tenants/')) {
+        return Promise.resolve({
+          defaultLocale: 'tr-TR', defaultCurrency: 'TRY',
+          defaultTimezone: 'Europe/Istanbul', defaultDocumentLanguage: 'tr',
+        });
+      }
+      if (url.startsWith('/identity/organizations/')) {
+        return Promise.resolve({
+          defaultLocale: 'en-US', defaultCurrency: 'USD',
+          timezone: 'UTC', defaultLanguage: 'en',
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetTenantLocale).toHaveBeenCalledWith({
+        locale: 'en-US', currency: 'USD', timezone: 'UTC', documentLanguage: 'en',
+      });
     });
   });
 

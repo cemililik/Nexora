@@ -117,6 +117,14 @@ public sealed class CreateTenantHandler(
                     realmName);
             }
 
+            try { await schemaManager.DropSchemaAsync(schemaName, cancellationToken); }
+            catch (DbException schemaCompEx)
+            {
+                logger.LogCritical(schemaCompEx,
+                    "COMPENSATION FAILED: tenant schema {SchemaName} is orphaned for tenant {TenantId}. Manual cleanup required.",
+                    schemaName, tenant.Id);
+            }
+
             return Result<TenantDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_create_failed"));
         }
 

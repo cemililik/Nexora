@@ -151,9 +151,9 @@ public sealed class CreateUserTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_KeycloakThrowsHttpRequestException_PropagatesException()
+    public async Task Handle_KeycloakThrowsHttpRequestException_ReturnsFailure()
     {
-        // Arrange — configure Keycloak to throw
+        // Arrange — configure Keycloak to throw a non-conflict HTTP error
         var failingKeycloak = Substitute.For<IKeycloakAdminService>();
         failingKeycloak.CreateUserAsync(
                 Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
@@ -164,10 +164,11 @@ public sealed class CreateUserTests : IDisposable
             NullLogger<CreateUserHandler>.Instance);
         var command = new CreateUserCommand("fail@example.com", "Fail", "User", "TempPass1!");
 
-        // Act & Assert — exception should propagate (GlobalExceptionHandler catches in prod)
-        var act = () => handler.Handle(command, CancellationToken.None);
-        await act.Should().ThrowAsync<HttpRequestException>()
-            .WithMessage("Keycloak is unreachable");
+        // Act — handler catches the exception and returns Result.Failure
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_user_create_failed");
     }
 
     [Fact]

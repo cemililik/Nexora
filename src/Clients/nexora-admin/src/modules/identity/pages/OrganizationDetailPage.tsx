@@ -221,16 +221,26 @@ export default function OrganizationDetailPage() {
               className="space-y-4"
             >
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="orgName" className="text-sm font-medium">
-                    {t('lockey_identity_form_org_name')}
-                  </label>
+                <FormField
+                  label={t('lockey_identity_form_org_name')}
+                  htmlFor="orgName"
+                  required
+                  error={form.formState.errors.name?.message}
+                >
                   <Input id="orgName" {...form.register('name')} />
-                </div>
-                <FormField label={t('lockey_identity_form_org_locale')} htmlFor="orgLocale">
+                </FormField>
+                <FormField
+                  label={t('lockey_identity_form_org_locale')}
+                  htmlFor="orgLocale"
+                  required
+                  error={form.formState.errors.defaultLocale?.message}
+                >
                   <Select
                     value={form.watch('defaultLocale')}
-                    onValueChange={(v) => form.setValue('defaultLocale', v, { shouldDirty: true })}
+                    onValueChange={(v) => {
+                      form.setValue('defaultLocale', v, { shouldDirty: true });
+                      void form.trigger('defaultLocale');
+                    }}
                   >
                     <SelectTrigger id="orgLocale" aria-label={t('lockey_identity_form_org_locale')}>
                       <SelectValue />
@@ -242,10 +252,18 @@ export default function OrganizationDetailPage() {
                     </SelectContent>
                   </Select>
                 </FormField>
-                <FormField label={t('lockey_identity_form_org_timezone')} htmlFor="orgTimezone">
+                <FormField
+                  label={t('lockey_identity_form_org_timezone')}
+                  htmlFor="orgTimezone"
+                  required
+                  error={form.formState.errors.timezone?.message}
+                >
                   <Select
                     value={form.watch('timezone')}
-                    onValueChange={(v) => form.setValue('timezone', v, { shouldDirty: true })}
+                    onValueChange={(v) => {
+                      form.setValue('timezone', v, { shouldDirty: true });
+                      void form.trigger('timezone');
+                    }}
                   >
                     <SelectTrigger id="orgTimezone" aria-label={t('lockey_identity_form_org_timezone')}>
                       <SelectValue />
@@ -257,10 +275,18 @@ export default function OrganizationDetailPage() {
                     </SelectContent>
                   </Select>
                 </FormField>
-                <FormField label={t('lockey_identity_form_org_currency')} htmlFor="orgCurrency">
+                <FormField
+                  label={t('lockey_identity_form_org_currency')}
+                  htmlFor="orgCurrency"
+                  required
+                  error={form.formState.errors.defaultCurrency?.message}
+                >
                   <Select
                     value={form.watch('defaultCurrency')}
-                    onValueChange={(v) => form.setValue('defaultCurrency', v, { shouldDirty: true })}
+                    onValueChange={(v) => {
+                      form.setValue('defaultCurrency', v, { shouldDirty: true });
+                      void form.trigger('defaultCurrency');
+                    }}
                   >
                     <SelectTrigger id="orgCurrency" aria-label={t('lockey_identity_form_org_currency')}>
                       <SelectValue />
@@ -272,10 +298,18 @@ export default function OrganizationDetailPage() {
                     </SelectContent>
                   </Select>
                 </FormField>
-                <FormField label={t('lockey_identity_form_org_language')} htmlFor="orgLanguage">
+                <FormField
+                  label={t('lockey_identity_form_org_language')}
+                  htmlFor="orgLanguage"
+                  required
+                  error={form.formState.errors.defaultLanguage?.message}
+                >
                   <Select
                     value={form.watch('defaultLanguage')}
-                    onValueChange={(v) => form.setValue('defaultLanguage', v, { shouldDirty: true })}
+                    onValueChange={(v) => {
+                      form.setValue('defaultLanguage', v, { shouldDirty: true });
+                      void form.trigger('defaultLanguage');
+                    }}
                   >
                     <SelectTrigger id="orgLanguage" aria-label={t('lockey_identity_form_org_language')}>
                       <SelectValue />

@@ -57,12 +57,13 @@ public sealed class UpdateUserPreferencesHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_user_not_found"));
         }
 
-        user.UpdatePreferences(request.PreferredLanguage?.Trim().ToLowerInvariant());
+        var normalizedLanguage = request.PreferredLanguage?.Trim().ToLowerInvariant();
+        user.UpdatePreferences(normalizedLanguage);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "User {UserId} preferences updated: PreferredLanguage={Language}",
-            user.Id, request.PreferredLanguage ?? "(cleared)");
+            user.Id, user.PreferredLanguage ?? "(cleared)");
 
         return Result.Success(LocalizedMessage.Of("lockey_identity_user_preferences_updated"));
     }

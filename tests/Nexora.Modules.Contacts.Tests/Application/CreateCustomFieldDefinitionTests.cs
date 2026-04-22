@@ -61,6 +61,37 @@ public sealed class CreateCustomFieldDefinitionTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_WithJsonArrayOptions_ShouldPreserveArray()
+    {
+        var handler = new CreateCustomFieldDefinitionHandler(_dbContext, _tenantAccessor, NullLogger<CreateCustomFieldDefinitionHandler>.Instance);
+
+        var result = await handler.Handle(
+            new CreateCustomFieldDefinitionCommand("Priority", "select", "[\"A\",\"B\"]"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Options.Should().Be("[\"A\",\"B\"]");
+    }
+
+    [Fact]
+    public async Task Handle_WithNullOrWhitespaceOptions_ShouldReturnNullOptions()
+    {
+        var handler = new CreateCustomFieldDefinitionHandler(_dbContext, _tenantAccessor, NullLogger<CreateCustomFieldDefinitionHandler>.Instance);
+
+        var nullResult = await handler.Handle(
+            new CreateCustomFieldDefinitionCommand("Nickname", "text", null),
+            CancellationToken.None);
+        nullResult.IsSuccess.Should().BeTrue();
+        nullResult.Value!.Options.Should().BeNull();
+
+        var whitespaceResult = await handler.Handle(
+            new CreateCustomFieldDefinitionCommand("Title", "text", "   "),
+            CancellationToken.None);
+        whitespaceResult.IsSuccess.Should().BeTrue();
+        whitespaceResult.Value!.Options.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Handle_DuplicateName_ShouldFail()
     {
         // Arrange

@@ -82,6 +82,6 @@ public sealed class UpdateUserProfileHandler(
         logger.LogInformation("User {UserId} profile updated for tenant {TenantId}", user.Id, tenantId);
 
         return Result<UserDto>.Success(dto,
-            LocalizedMessage.Of("lockey_identity_user_profile_updated"));
+            LocalizedMessage.Of("lockey_identity_user_updated"));
     }
 }

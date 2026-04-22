@@ -18,6 +18,7 @@ vi.mock('@/shared/hooks/usePermissions', () => ({
 // useTranslations returns the key so assertions can match on the raw key.
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => key,
+  useMessages: () => ({}),
 }));
 
 vi.mock('@/shared/components/feedback/ErrorBoundary', () => ({
