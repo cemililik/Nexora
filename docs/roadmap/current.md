@@ -4,13 +4,21 @@
 
 ---
 
+## Active task
+
+**T-001 — User ↔ Contact linking** (Phase 1.5.6, Milestone C). Owner: cemililik. Status: **In Progress**.
+
+- Plan: [T-001.md §Implementation plan](../analysis/tasks/phase-1.5/T-001.md)
+- Closes T-004's deferred Identity inbox handler (`User.ContactId = null` on `ContactGdprDeletedIntegrationEvent`).
+
 ## Prior active task (awaiting maintainer review)
 
 **T-004 — GDPR Article 17 hard delete** (Phase 1.5.6, Milestone C). Status: **In Review**.
 
-Shipped on development (5 WP commits + cross-cutting): 21f82c7 (Contacts core), 0bcb703
-(Documents), abefb12 (Notifications), d9ab70d (Audit), 20f5086 (Admin UI). All 17 GDPR
-tests green; full suite 405/405. Maintainer review queue.
+Shipped on development (7 commits): 21f82c7, 0bcb703, abefb12, d9ab70d, 20f5086, 95ec5d6,
+b278805. Amendment PR (b278805) addresses 18/20 maintainer review findings; 3 follow-up
+tasks filed (T-010, T-017, T-018). All 30 GDPR tests green; full suite ~1700 pass.
+Maintainer review queue.
 
 
 
