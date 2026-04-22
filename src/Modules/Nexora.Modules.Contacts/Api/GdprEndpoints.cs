@@ -14,8 +14,12 @@ public static class GdprEndpoints
     /// <summary>Maps GDPR endpoints.</summary>
     public static void MapGdprEndpoints(this IEndpointRouteBuilder endpoints)
     {
+        // Explicit defense-in-depth for GDPR-sensitive endpoints: require the
+        // contacts.contacts.admin permission at the route level. Resolved by
+        // PermissionPolicyProvider to a PermissionRequirement evaluated against
+        // the caller's effective tenant permissions.
         var group = endpoints.MapGroup("/contacts/{contactId:guid}/gdpr")
-            .RequireAuthorization();
+            .RequireAuthorization("contacts.contacts.admin");
 
         group.MapPost("/export", async (Guid contactId, ISender sender, CancellationToken ct) =>
         {

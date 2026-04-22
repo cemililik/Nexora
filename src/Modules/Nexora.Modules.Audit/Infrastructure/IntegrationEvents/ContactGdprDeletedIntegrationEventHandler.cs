@@ -2,8 +2,10 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Domain.Entities;
+using Nexora.Modules.Audit.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Domain.Events;
+using OperationType = Nexora.SharedKernel.Abstractions.Audit.OperationType;
 
 namespace Nexora.Modules.Audit.Infrastructure.IntegrationEvents;
 
@@ -22,7 +24,6 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
     private const string EntityTypeContact = "Contact";
     private const string ErasureOperation = "gdpr_erasure";
     private const string ErasureModule = "contacts";
-    private const string ErasureOperationType = "Action";
 
     /// <inheritdoc />
     public async Task HandleAsync(ContactGdprDeletedIntegrationEvent @event, CancellationToken ct)
@@ -35,7 +36,9 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             return;
         }
 
-        var contactIdString = @event.ContactId.ToString();
+        // Dashed GUID ("D") is the canonical Contact EntityId format written by the audit
+        // pipeline across this module; keep it consistent to match indexed lookups.
+        var contactIdString = @event.ContactId.ToString("D");
         var redactionMarker = BuildRedactionMarker(@event.DeletedAtUtc, @event.ErasedByUserId);
 
         // Load all audit entries for this tenant that reference the erased contact.
@@ -63,7 +66,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             tenantId: @event.TenantId,
             module: ErasureModule,
             operation: ErasureOperation,
-            operationType: ErasureOperationType,
+            operationType: nameof(OperationType.Action),
             userId: @event.ErasedByUserId,
             userEmail: null,
             ipAddress: null,
@@ -91,12 +94,14 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
     private static string BuildRedactionMarker(DateTime deletedAtUtc, Guid erasedByUserId)
     {
         var utcTimestamp = DateTime.SpecifyKind(deletedAtUtc, DateTimeKind.Utc);
-        return JsonSerializer.Serialize(new
-        {
-            _redacted = true,
-            _reason = "gdpr_erasure",
-            _erasedAtUtc = utcTimestamp.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            _erasedByUserId = erasedByUserId.ToString()
-        });
+        // "O" is the ISO-8601 round-trip format (milliseconds + timezone marker) —
+        // strict, culture-invariant, and safely re-parseable.
+        // "D" on the GUID emits the canonical dashed form used across the audit pipeline.
+        var marker = new RedactionMarker(
+            _redacted: true,
+            _reason: "gdpr_erasure",
+            _erasedAtUtc: utcTimestamp.ToString("O"),
+            _erasedByUserId: erasedByUserId.ToString("D"));
+        return JsonSerializer.Serialize(marker);
     }
 }

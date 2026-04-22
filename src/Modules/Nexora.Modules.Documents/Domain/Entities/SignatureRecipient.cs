@@ -1,4 +1,5 @@
 using Nexora.Modules.Documents.Domain.ValueObjects;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -106,8 +107,8 @@ public sealed class SignatureRecipient : AuditableEntity<SignatureRecipientId>
     /// </summary>
     public void ScrubPii()
     {
-        Name = "[REDACTED]";
-        Email = "[REDACTED]";
+        Name = PiiRedactedPlaceholder.Value;
+        Email = PiiRedactedPlaceholder.Value;
         IpAddress = null;
     }
 }

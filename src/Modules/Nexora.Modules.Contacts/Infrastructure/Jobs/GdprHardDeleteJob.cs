@@ -6,6 +6,7 @@ using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -39,8 +40,6 @@ public sealed class GdprHardDeleteJob(
     ILogger<GdprHardDeleteJob> logger)
     : NexoraJob<GdprHardDeleteParams>(tenantContextAccessor, logger)
 {
-    private const string RedactedPlaceholder = "REDACTED";
-
     /// <inheritdoc />
     protected override async Task ExecuteAsync(GdprHardDeleteParams parameters, CancellationToken ct)
     {
@@ -69,8 +68,9 @@ public sealed class GdprHardDeleteJob(
             : null;
 
         // Disable the soft-delete interceptor for the duration of this operation —
-        // GDPR Article 17 requires permanent erasure, not flagging.
-        dbContext.IsHardDeleteModeEnabled = true;
+        // GDPR Article 17 requires permanent erasure, not flagging. The scope resets the
+        // flag on Dispose, so we cannot leak the bypass past this block.
+        using var hardDeleteScope = dbContext.EnterHardDeleteScope();
 
         try
         {
@@ -195,7 +195,6 @@ public sealed class GdprHardDeleteJob(
         }
         finally
         {
-            dbContext.IsHardDeleteModeEnabled = false;
             if (transaction is not null)
                 await transaction.DisposeAsync();
         }
@@ -231,7 +230,7 @@ public sealed class GdprHardDeleteJob(
                 .Where(c => c.ContactId == contactId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(c => c.IpAddress, _ => null)
-                    .SetProperty(c => c.Source, _ => RedactedPlaceholder), ct);
+                    .SetProperty(c => c.Source, _ => PiiRedactedPlaceholder.Value), ct);
             return;
         }
 
@@ -241,6 +240,6 @@ public sealed class GdprHardDeleteJob(
             .ToListAsync(ct);
 
         foreach (var consent in consents)
-            consent.Anonymize(RedactedPlaceholder);
+            consent.Anonymize(PiiRedactedPlaceholder.Value);
     }
 }

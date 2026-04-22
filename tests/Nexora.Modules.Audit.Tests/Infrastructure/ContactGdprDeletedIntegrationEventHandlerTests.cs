@@ -7,6 +7,7 @@ using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.Modules.Audit.Infrastructure.IntegrationEvents;
 using Nexora.SharedKernel.Domain.Events;
+using OperationType = Nexora.SharedKernel.Abstractions.Audit.OperationType;
 
 namespace Nexora.Modules.Audit.Tests.Infrastructure;
 
@@ -109,8 +110,12 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
             using var beforeDoc = JsonDocument.Parse(entry.BeforeState!);
             beforeDoc.RootElement.GetProperty("_redacted").GetBoolean().Should().BeTrue();
             beforeDoc.RootElement.GetProperty("_reason").GetString().Should().Be("gdpr_erasure");
-            beforeDoc.RootElement.GetProperty("_erasedByUserId").GetString().Should().Be(erasedBy.ToString());
-            beforeDoc.RootElement.GetProperty("_erasedAtUtc").GetString().Should().Be("2026-04-23T00:00:00Z");
+            // GUID formatted with "D" (dashed canonical form) — matches audit pipeline convention.
+            beforeDoc.RootElement.GetProperty("_erasedByUserId").GetString()
+                .Should().Be(erasedBy.ToString("D"));
+            // ISO-8601 round-trip "O" format — millisecond precision + timezone marker.
+            beforeDoc.RootElement.GetProperty("_erasedAtUtc").GetString()
+                .Should().Be(DateTime.SpecifyKind(deletedAt, DateTimeKind.Utc).ToString("O"));
 
             // Operational trace preserved (the whole point of redact-not-delete).
             entry.Operation.Should().NotBeNullOrEmpty();
@@ -132,6 +137,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         erasureRecord.EntityId.Should().Be(contactX.ToString());
         erasureRecord.UserId.Should().Be(erasedBy);
         erasureRecord.Module.Should().Be("contacts");
+        erasureRecord.OperationType.Should().Be(nameof(OperationType.Action));
         erasureRecord.IsSuccess.Should().BeTrue();
         using (var payloadDoc = JsonDocument.Parse(erasureRecord.AfterState!))
         {

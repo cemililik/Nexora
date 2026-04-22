@@ -25,6 +25,8 @@ export interface GdprErasureDialogProps {
   contactId: string;
   /** The contact's resolved display name. Used for the confirm-by-name gate. */
   contactDisplayName: string;
+  /** Whether the contact has already been anonymized via an earlier GDPR request. */
+  contactAlreadyAnonymized?: boolean;
   /** Whether the dialog is currently open. */
   open: boolean;
   /** Callback when the open state changes. */
@@ -39,10 +41,14 @@ const REASON_MAX = 500;
  *
  * Requires (a) a typed reason (10–500 chars) and (b) the operator to type the
  * contact's display name verbatim before the destructive submit is enabled.
+ *
+ * When `contactAlreadyAnonymized` is true, a prominent warning is rendered
+ * making it explicit that proceeding will hard-delete the residual record.
  */
 export function GdprErasureDialog({
   contactId,
   contactDisplayName,
+  contactAlreadyAnonymized = false,
   open,
   onOpenChange,
 }: GdprErasureDialogProps) {
@@ -55,8 +61,8 @@ export function GdprErasureDialog({
         reason: z
           .string()
           .trim()
-          .min(REASON_MIN, { message: t('gdpr_erasure_reason_required') })
-          .max(REASON_MAX, { message: t('gdpr_erasure_reason_required') }),
+          .min(REASON_MIN, { message: t('lockey_contacts_gdpr_erasure_reason_required') })
+          .max(REASON_MAX, { message: t('lockey_contacts_gdpr_erasure_reason_required') }),
         confirmName: z.string(),
       }),
     [t],
@@ -105,15 +111,33 @@ export function GdprErasureDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t('gdpr_erasure_dialog_title')}</DialogTitle>
+          <DialogTitle>{t('lockey_contacts_gdpr_erasure_dialog_title')}</DialogTitle>
           <DialogDescription>
-            {t('gdpr_erasure_dialog_warning')}
+            {t('lockey_contacts_gdpr_erasure_dialog_warning')}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
+          {contactAlreadyAnonymized && (
+            <div
+              role="alert"
+              className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200"
+            >
+              {t('lockey_contacts_gdpr_erasure_already_anonymized_warning')}
+            </div>
+          )}
+
+          {mutation.isError && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive"
+            >
+              {t('lockey_contacts_gdpr_erasure_submit_failed')}
+            </div>
+          )}
+
           <FormField
-            label={t('gdpr_erasure_reason_label')}
+            label={t('lockey_contacts_gdpr_erasure_reason_label')}
             htmlFor="gdpr-erasure-reason"
             required
             error={errors.reason?.message}
@@ -121,20 +145,20 @@ export function GdprErasureDialog({
             <Textarea
               id="gdpr-erasure-reason"
               rows={4}
-              placeholder={t('gdpr_erasure_reason_placeholder')}
+              placeholder={t('lockey_contacts_gdpr_erasure_reason_placeholder')}
               maxLength={REASON_MAX}
               {...register('reason')}
             />
           </FormField>
 
           <FormField
-            label={t('gdpr_erasure_confirm_label')}
+            label={t('lockey_contacts_gdpr_erasure_confirm_label')}
             htmlFor="gdpr-erasure-confirm-name"
             required
             hint={contactDisplayName}
             error={
               confirmName.length > 0 && !nameMatches
-                ? t('gdpr_erasure_name_mismatch')
+                ? t('lockey_contacts_gdpr_erasure_name_mismatch')
                 : undefined
             }
           >
@@ -152,14 +176,14 @@ export function GdprErasureDialog({
               onClick={() => onOpenChange(false)}
               disabled={mutation.isPending}
             >
-              {t('gdpr_erasure_cancel')}
+              {t('lockey_contacts_gdpr_erasure_cancel')}
             </Button>
             <Button
               type="submit"
               variant="destructive"
               disabled={submitDisabled}
             >
-              {t('gdpr_erasure_confirm_action')}
+              {t('lockey_contacts_gdpr_erasure_confirm_action')}
             </Button>
           </DialogFooter>
         </form>

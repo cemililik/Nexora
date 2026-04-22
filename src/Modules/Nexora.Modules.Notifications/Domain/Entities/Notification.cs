@@ -1,5 +1,6 @@
 using Nexora.Modules.Notifications.Domain.Events;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -133,6 +134,6 @@ public sealed class Notification : AuditableEntity<NotificationId>, IAggregateRo
     /// </summary>
     public void ScrubRenderedBody()
     {
-        BodyRendered = "[REDACTED]";
+        BodyRendered = PiiRedactedPlaceholder.Value;
     }
 }

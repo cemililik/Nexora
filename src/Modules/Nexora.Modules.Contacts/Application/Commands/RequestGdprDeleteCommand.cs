@@ -11,6 +11,7 @@ using Nexora.SharedKernel.Abstractions.Configuration;
 using Nexora.SharedKernel.Abstractions.CQRS;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
@@ -34,8 +35,8 @@ public sealed class RequestGdprDeleteHandler(
     IBackgroundJobClient backgroundJobClient,
     ILogger<RequestGdprDeleteHandler> logger) : ICommandHandler<RequestGdprDeleteCommand>
 {
-    private const string AnonymizedPlaceholder = "[REDACTED]";
     private const string HardDeleteFlagKey = "gdpr.hard_delete.enabled";
+    private const int ErasureDebounceSeconds = 60;
 
     public async Task<Result> Handle(
         RequestGdprDeleteCommand request,
@@ -43,6 +44,31 @@ public sealed class RequestGdprDeleteHandler(
     {
         if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
             return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_tenant_context"));
+
+        if (!Guid.TryParse(tenantContextAccessor.Current.UserId, out var erasedByUserId)
+            || erasedByUserId == Guid.Empty)
+        {
+            logger.LogWarning("GDPR delete rejected — no valid user context for actor");
+            return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_user_context"));
+        }
+
+        // Debounce duplicate submissions — two rapid clicks / retries within a short window
+        // should NOT produce two audit rows. Runs BEFORE the contact lookup so the second
+        // call does not trip the "not found" branch once the contact has been soft-deleted
+        // by the first call's anonymize path.
+        var debounceThreshold = DateTime.UtcNow.AddSeconds(-ErasureDebounceSeconds);
+        var recentErasureExists = await dbContext.GdprErasureAudits
+            .AnyAsync(a => a.ContactId == request.ContactId
+                        && a.TenantId == tenantId
+                        && a.ErasedAtUtc >= debounceThreshold, cancellationToken);
+
+        if (recentErasureExists)
+        {
+            logger.LogInformation(
+                "GDPR erasure already processed within the last {DebounceSeconds}s for contact {ContactId}; request treated as duplicate.",
+                ErasureDebounceSeconds, request.ContactId);
+            return Result.Success(LocalizedMessage.Of("lockey_contacts_gdpr_erasure_already_processed"));
+        }
 
         var contactId = ContactId.From(request.ContactId);
 
@@ -61,8 +87,6 @@ public sealed class RequestGdprDeleteHandler(
             logger.LogWarning("GDPR delete not allowed for merged contact {ContactId}", request.ContactId);
             return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_gdpr_delete_merged_contact"));
         }
-
-        var erasedByUserId = ResolveErasedByUserId(tenantContextAccessor.Current);
 
         var hardDeleteEnabled = await tenantConfiguration.GetAsync<bool>(HardDeleteFlagKey, cancellationToken);
 
@@ -90,8 +114,8 @@ public sealed class RequestGdprDeleteHandler(
 
         // Anonymize path (default): PII blanked, child PII rows removed, event emitted.
         contact.Update(
-            firstName: AnonymizedPlaceholder,
-            lastName: AnonymizedPlaceholder,
+            firstName: PiiRedactedPlaceholder.Value,
+            lastName: PiiRedactedPlaceholder.Value,
             companyName: null,
             email: null,
             phone: null,
@@ -125,12 +149,20 @@ public sealed class RequestGdprDeleteHandler(
             .ToListAsync(cancellationToken);
         dbContext.ContactCustomFields.RemoveRange(customFields);
 
+        // Both paths (anonymize and hard_deleted) write the same 8 keys for forensic
+        // consistency. On the anonymize path, rows NOT modified are reported as 0 —
+        // preserved entities (tags, relationships, communicationPreferences, activities)
+        // stay in the tenant schema because they do not carry standalone PII.
         var childCounts = new Dictionary<string, int>
         {
             ["addresses"] = addresses.Count,
             ["notes"] = notes.Count,
             ["customFields"] = customFields.Count,
-            ["consentsRevoked"] = activeConsents.Count
+            ["tags"] = 0,
+            ["relationships"] = 0,
+            ["communicationPreferences"] = 0,
+            ["activities"] = 0,
+            ["consentsAnonymized"] = activeConsents.Count
         };
         var childCountsJson = JsonSerializer.Serialize(childCounts);
 
@@ -164,11 +196,6 @@ public sealed class RequestGdprDeleteHandler(
             contactId.Value, erasedByUserId, request.Reason);
 
         return Result.Success(LocalizedMessage.Of("lockey_contacts_gdpr_delete_completed"));
-    }
-
-    private static Guid ResolveErasedByUserId(ITenantContext context)
-    {
-        return Guid.TryParse(context.UserId, out var userId) ? userId : Guid.Empty;
     }
 }
 

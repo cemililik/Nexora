@@ -225,6 +225,86 @@ public sealed class RequestGdprDeleteTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_MissingUserContext_ShouldFailWithInvalidUserContext()
+    {
+        var contact = await SeedContact();
+
+        // Re-seed tenant accessor without a user id — simulates an unauthenticated caller.
+        var anonymousAccessor = new TenantContextAccessor();
+        anonymousAccessor.SetTenant(_tenantId.ToString(), _orgId.ToString());
+
+        var handler = new RequestGdprDeleteHandler(
+            _dbContext, anonymousAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            NullLogger<RequestGdprDeleteHandler>.Instance);
+
+        var result = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_invalid_user_context");
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateWithinDebounce_ShouldBeTreatedAsAlreadyProcessed()
+    {
+        var contact = await SeedContact();
+        var handler = CreateHandler();
+
+        // First call completes normally.
+        var first = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+        first.IsSuccess.Should().BeTrue();
+
+        _outbox.ClearReceivedCalls();
+
+        // Second call within the 60s window: short-circuits with the debounce message.
+        var second = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        second.IsSuccess.Should().BeTrue();
+        second.Message!.Key.Should().Be("lockey_contacts_gdpr_erasure_already_processed");
+
+        // No additional outbox event on the debounced call.
+        await _outbox.DidNotReceive().EnqueueAsync(
+            Arg.Any<ContactGdprDeletedIntegrationEvent>(), Arg.Any<CancellationToken>());
+
+        // Only one audit row was written across the two calls.
+        (await _dbContext.GdprErasureAudits
+            .CountAsync(a => a.ContactId == contact.Id.Value))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_AnonymizePath_ShouldWriteChildCountsWithEightKeys()
+    {
+        var contact = await SeedContact();
+        var consent = ConsentRecord.Create(contact.Id, ConsentType.EmailMarketing, true, "Web");
+        await _dbContext.ConsentRecords.AddAsync(consent);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = CreateHandler();
+        await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        var audit = await _dbContext.GdprErasureAudits
+            .FirstAsync(a => a.ContactId == contact.Id.Value);
+        var json = audit.ChildCountsJson;
+        json.Should().Contain("\"addresses\"");
+        json.Should().Contain("\"notes\"");
+        json.Should().Contain("\"customFields\"");
+        json.Should().Contain("\"tags\"");
+        json.Should().Contain("\"relationships\"");
+        json.Should().Contain("\"communicationPreferences\"");
+        json.Should().Contain("\"activities\"");
+        json.Should().Contain("\"consentsAnonymized\"");
+        json.Should().NotContain("consentsRevoked");
+    }
+
+    [Fact]
     public async Task Handle_ContactWithAddresses_ShouldRemoveAll()
     {
         var contact = await SeedContact();

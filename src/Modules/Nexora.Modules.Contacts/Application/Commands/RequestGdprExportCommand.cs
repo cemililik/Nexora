@@ -104,9 +104,12 @@ public sealed class RequestGdprExportHandler(
                 p.OptedIn, p.OptedInAt, p.OptedOutAt, p.OptInSource))
             .ToListAsync(cancellationToken);
 
-        var relationships = await dbContext.ContactRelationships
+        // Relationships are bidirectional. For inbound rows (the subject is the target)
+        // we must join on ContactId so the DTO carries the counter-party's DisplayName,
+        // not the subject's own name.
+        var outboundRelationships = await dbContext.ContactRelationships
             .IgnoreQueryFilters()
-            .Where(r => r.ContactId == contactId || r.RelatedContactId == contactId)
+            .Where(r => r.ContactId == contactId)
             .Join(dbContext.Contacts.IgnoreQueryFilters(),
                 r => r.RelatedContactId, c => c.Id,
                 (r, c) => new ContactRelationshipDto(
@@ -114,6 +117,19 @@ public sealed class RequestGdprExportHandler(
                     c.DisplayName, r.Type.ToString(), r.CreatedAt))
             .AsNoTracking()
             .ToListAsync(cancellationToken);
+
+        var inboundRelationships = await dbContext.ContactRelationships
+            .IgnoreQueryFilters()
+            .Where(r => r.RelatedContactId == contactId && r.ContactId != contactId)
+            .Join(dbContext.Contacts.IgnoreQueryFilters(),
+                r => r.ContactId, c => c.Id,
+                (r, c) => new ContactRelationshipDto(
+                    r.Id.Value, r.ContactId.Value, r.RelatedContactId.Value,
+                    c.DisplayName, r.Type.ToString(), r.CreatedAt))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+
+        var relationships = outboundRelationships.Concat(inboundRelationships).ToList();
 
         var dto = new GdprExportDto(
             contact.Id.Value, contact.DisplayName, contactDetail,

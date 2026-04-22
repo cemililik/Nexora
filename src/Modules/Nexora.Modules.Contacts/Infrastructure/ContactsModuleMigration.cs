@@ -37,9 +37,9 @@ public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : 
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
         accessor.SetTenant(ExtractTenantId(schemaName));
 
-        var tenantConfig = scope.ServiceProvider.GetService<ITenantConfiguration>();
-        if (tenantConfig is null)
-            return;
+        // Hard fail if ITenantConfiguration is not registered — production misconfiguration
+        // should surface immediately, not silently skip seeding the hard-delete flag.
+        var tenantConfig = scope.ServiceProvider.GetRequiredService<ITenantConfiguration>();
 
         // GDPR Article 17 hard-delete is opt-in per tenant. Default: anonymize mode.
         // Idempotent: GetAsync returns default (false) if the key has never been set,

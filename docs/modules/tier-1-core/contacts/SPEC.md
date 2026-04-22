@@ -493,7 +493,57 @@ button gated by `contacts.contacts.admin`. Dialog requires a reason (10–500 ch
 the contact's display name to be typed for confirmation.
 
 **Locale keys:** `lockey_contacts_gdpr_erasure_enqueued`, `lockey_contacts_gdpr_erasure_completed`,
-`lockey_contacts_gdpr_erasure_failed` (en + tr).
+`lockey_contacts_gdpr_erasure_failed`, `lockey_contacts_gdpr_erasure_already_processed`,
+`lockey_contacts_error_invalid_user_context` (en + tr).
+
+**`childCountsJson` schema.** Both anonymize and hard-delete paths write the SAME 8-key
+schema for forensic consistency:
+
+```json
+{
+  "addresses": <int>,
+  "notes": <int>,
+  "customFields": <int>,
+  "tags": <int>,
+  "relationships": <int>,
+  "communicationPreferences": <int>,
+  "activities": <int>,
+  "consentsAnonymized": <int>
+}
+```
+
+Values represent rows affected (removed in hard-delete; removed-or-preserved in
+anonymize per entity type — anonymize preserves tags/relationships/comm-prefs/
+activities so those keys carry `0`).
+
+**Debounce.** A 60-second idempotency window prevents duplicate submissions: if a
+`GdprErasureAudit` row exists for the same `ContactId` within the last 60s, the
+handler returns `lockey_contacts_gdpr_erasure_already_processed` (HTTP 200) without
+re-executing. This covers both double-click from a single operator and racing
+operators across tabs.
+
+**Audit trail inclusion in GDPR export.** `GdprErasureAudit` records are **not**
+included in the `RequestGdprExportCommand` response. Rationale: the audit log is the
+data controller's operational record of compliance actions; per GDPR Article 15
+guidance for data controller records (vs. processor records), these are not subject
+to the data subject's right of access. If regulators request a controller audit
+trail, it is exported separately via a platform admin endpoint (not subject-facing).
+
+**Explicit permission gate.** `POST /contacts/{id}/gdpr/delete` enforces
+`contacts.contacts.admin` via `.RequireAuthorization(policy => policy.RequireClaim(...))`
+— defense-in-depth beyond the module's default permission pipeline.
+
+**Known limitations (tracked as follow-up tasks):**
+
+- **Cross-module audit payload PII scan** — the Audit inbox handler only redacts
+  entries matched by `EntityType=Contact AND EntityId=<id>`. Audit entries in other
+  modules whose JSON payloads mention the contact by name/email are not scrubbed.
+  Follow-up: **T-010**.
+- **`Notification.BodyRendered` placeholder** — the scrub writes `[REDACTED]`
+  instead of `null` because the column is currently non-nullable. Schema migration
+  is follow-up: **T-017**.
+- **User↔Contact unlink handler** — Identity module will add an inbox consumer to
+  set `User.ContactId = null` once T-001 ships. Currently no-op.
 
 ## API Endpoints
 

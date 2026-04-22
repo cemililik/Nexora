@@ -1,5 +1,6 @@
 using Nexora.Modules.Notifications.Domain.Events;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -104,6 +105,6 @@ public sealed class NotificationRecipient : AuditableEntity<NotificationRecipien
     /// </summary>
     public void ScrubRecipientAddress()
     {
-        RecipientAddress = "[REDACTED]";
+        RecipientAddress = PiiRedactedPlaceholder.Value;
     }
 }

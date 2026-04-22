@@ -152,7 +152,7 @@ export default function ContactDetailPage() {
               variant="destructive"
               onClick={() => setShowGdprErasure(true)}
             >
-              {t('gdpr_erasure_button')}
+              {t('lockey_contacts_gdpr_erasure_button')}
             </Button>
           )}
         </div>
@@ -256,6 +256,9 @@ export default function ContactDetailPage() {
         <GdprErasureDialog
           contactId={id}
           contactDisplayName={contact.displayName}
+          contactAlreadyAnonymized={
+            contact.status === 'Archived' && contact.displayName.includes('[REDACTED]')
+          }
           open={showGdprErasure}
           onOpenChange={setShowGdprErasure}
         />

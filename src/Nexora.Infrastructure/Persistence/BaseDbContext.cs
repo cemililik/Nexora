@@ -23,8 +23,27 @@ public abstract class BaseDbContext(
     /// When <c>true</c>, the soft-delete interceptor in <see cref="ConvertDeletesAndSetAuditFields"/>
     /// is bypassed and <see cref="EntityState.Deleted"/> entries are permanently removed.
     /// Intended ONLY for GDPR Article 17 hard-delete workflows and uninstall cleanups.
+    /// Toggle via <see cref="EnterHardDeleteScope"/>; direct mutation is disallowed.
     /// </summary>
-    public bool IsHardDeleteModeEnabled { get; set; }
+    public bool IsHardDeleteModeEnabled { get; private set; }
+
+    /// <summary>
+    /// Enables hard-delete mode for the lifetime of the returned scope. On <see cref="IDisposable.Dispose"/>
+    /// the flag is restored to <c>false</c>, guaranteeing we never leak the bypass beyond the caller.
+    /// Scope-based helper; not thread-safe. Intended for use within a single-scoped DbContext
+    /// (Hangfire job scope, request scope).
+    /// </summary>
+    /// <returns>A disposable handle that resets the flag on <see cref="IDisposable.Dispose"/>.</returns>
+    public IDisposable EnterHardDeleteScope()
+    {
+        IsHardDeleteModeEnabled = true;
+        return new HardDeleteScope(this);
+    }
+
+    private sealed class HardDeleteScope(BaseDbContext context) : IDisposable
+    {
+        public void Dispose() => context.IsHardDeleteModeEnabled = false;
+    }
 
     /// <summary>
     /// Returns the current tenant schema name for model cache keying.

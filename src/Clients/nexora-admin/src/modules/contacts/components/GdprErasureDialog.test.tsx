@@ -6,9 +6,14 @@ import type { ReactNode } from 'react';
 
 const mockMutate = vi.fn();
 const mockUseGdprErasure = vi.fn();
+const mockNavigate = vi.fn();
 
 vi.mock('../hooks/useGdprErasure', () => ({
   useGdprErasure: (contactId: string) => mockUseGdprErasure(contactId),
+}));
+
+vi.mock('react-router', () => ({
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock('sonner', () => ({
@@ -32,9 +37,11 @@ describe('GdprErasureDialog', () => {
   beforeEach(() => {
     mockMutate.mockReset();
     mockUseGdprErasure.mockReset();
+    mockNavigate.mockReset();
     mockUseGdprErasure.mockReturnValue({
       mutate: mockMutate,
       isPending: false,
+      isError: false,
     });
   });
 
@@ -51,7 +58,9 @@ describe('GdprErasureDialog', () => {
       </Wrapper>,
     );
 
-    const submit = screen.getByRole('button', { name: 'gdpr_erasure_confirm_action' });
+    const submit = screen.getByRole('button', {
+      name: 'lockey_contacts_gdpr_erasure_confirm_action',
+    });
     expect(submit).toBeDisabled();
   });
 
@@ -70,17 +79,21 @@ describe('GdprErasureDialog', () => {
     );
 
     await user.type(
-      screen.getByLabelText(/gdpr_erasure_reason_label/),
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_reason_label/),
       'Valid legal basis for erasure',
     );
     await user.type(
-      screen.getByLabelText(/gdpr_erasure_confirm_label/),
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_confirm_label/),
       'Wrong Name',
     );
 
-    const submit = screen.getByRole('button', { name: 'gdpr_erasure_confirm_action' });
+    const submit = screen.getByRole('button', {
+      name: 'lockey_contacts_gdpr_erasure_confirm_action',
+    });
     await waitFor(() => expect(submit).toBeDisabled());
-    expect(screen.getByText('gdpr_erasure_name_mismatch')).toBeInTheDocument();
+    expect(
+      screen.getByText('lockey_contacts_gdpr_erasure_name_mismatch'),
+    ).toBeInTheDocument();
     expect(mockMutate).not.toHaveBeenCalled();
   });
 
@@ -99,15 +112,17 @@ describe('GdprErasureDialog', () => {
     );
 
     await user.type(
-      screen.getByLabelText(/gdpr_erasure_reason_label/),
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_reason_label/),
       'Data subject request received',
     );
     await user.type(
-      screen.getByLabelText(/gdpr_erasure_confirm_label/),
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_confirm_label/),
       'Ada Lovelace',
     );
 
-    const submit = screen.getByRole('button', { name: 'gdpr_erasure_confirm_action' });
+    const submit = screen.getByRole('button', {
+      name: 'lockey_contacts_gdpr_erasure_confirm_action',
+    });
     await waitFor(() => expect(submit).toBeEnabled());
 
     await user.click(submit);
@@ -131,14 +146,61 @@ describe('GdprErasureDialog', () => {
       </Wrapper>,
     );
 
-    await user.type(screen.getByLabelText(/gdpr_erasure_reason_label/), 'short');
     await user.type(
-      screen.getByLabelText(/gdpr_erasure_confirm_label/),
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_reason_label/),
+      'short',
+    );
+    await user.type(
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_confirm_label/),
       'Ada Lovelace',
     );
 
-    const submit = screen.getByRole('button', { name: 'gdpr_erasure_confirm_action' });
+    const submit = screen.getByRole('button', {
+      name: 'lockey_contacts_gdpr_erasure_confirm_action',
+    });
     await waitFor(() => expect(submit).toBeDisabled());
     expect(mockMutate).not.toHaveBeenCalled();
+  });
+
+  it('shows the already-anonymized warning when contactAlreadyAnonymized is true', () => {
+    const Wrapper = createWrapper();
+    render(
+      <Wrapper>
+        <GdprErasureDialog
+          contactId="c-1"
+          contactDisplayName="[REDACTED] Contact"
+          contactAlreadyAnonymized
+          open
+          onOpenChange={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    expect(
+      screen.getByText('lockey_contacts_gdpr_erasure_already_anonymized_warning'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows an inline error alert when the mutation is in error state', () => {
+    mockUseGdprErasure.mockReturnValue({
+      mutate: mockMutate,
+      isPending: false,
+      isError: true,
+    });
+    const Wrapper = createWrapper();
+    render(
+      <Wrapper>
+        <GdprErasureDialog
+          contactId="c-1"
+          contactDisplayName="Ada Lovelace"
+          open
+          onOpenChange={vi.fn()}
+        />
+      </Wrapper>,
+    );
+
+    expect(
+      screen.getByText('lockey_contacts_gdpr_erasure_submit_failed'),
+    ).toBeInTheDocument();
   });
 });

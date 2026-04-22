@@ -88,7 +88,7 @@ public sealed class GdprHardDeleteJobTests : IDisposable
             .ToListAsync();
         consents.Should().HaveCount(1);
         consents[0].IpAddress.Should().BeNull();
-        consents[0].Source.Should().Be("REDACTED");
+        consents[0].Source.Should().Be("[REDACTED]");
 
         // Audit record written.
         var audit = await _dbContext.GdprErasureAudits

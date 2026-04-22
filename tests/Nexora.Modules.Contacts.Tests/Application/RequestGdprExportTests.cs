@@ -109,6 +109,43 @@ public sealed class RequestGdprExportTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_ContactIsInboundTargetOfRelationship_ShouldReturnCounterPartyDisplayName()
+    {
+        // Arrange — the subject is the RelatedContactId (inbound side).
+        // A naive one-way join on RelatedContactId would return the subject's own
+        // DisplayName ("John Doe") instead of the counter-party's — this test guards
+        // against that regression.
+        var subject = await SeedContact();
+
+        var other = Contact.Create(_tenantId, _orgId, ContactType.Individual,
+            "Alice", "Smith", null, "alice@test.com", null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(other);
+        await _dbContext.SaveChangesAsync();
+
+        // Relationship: other -> subject (subject is the target / RelatedContactId).
+        var inbound = ContactRelationship.Create(other.Id, subject.Id, RelationshipType.ContactOf);
+        await _dbContext.ContactRelationships.AddAsync(inbound);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = new RequestGdprExportHandler(
+            _dbContext, _tenantAccessor, NullLogger<RequestGdprExportHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(
+            new RequestGdprExportCommand(subject.Id.Value),
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Relationships.Should().HaveCount(1);
+        var dto = result.Value.Relationships[0];
+        dto.RelatedContactDisplayName.Should().Be("Alice Smith",
+            "export must return the counter-party's DisplayName, never the subject's own");
+        dto.ContactId.Should().Be(other.Id.Value);
+        dto.RelatedContactId.Should().Be(subject.Id.Value);
+    }
+
+    [Fact]
     public async Task Handle_ContactWithActivities_ShouldIncludeActivities()
     {
         // Arrange
