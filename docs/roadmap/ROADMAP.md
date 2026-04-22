@@ -588,6 +588,91 @@ See [Module Dependencies](../diagrams/module-dependencies.md) for the full depen
 
 ---
 
+### 1.17 PR #75 Review Fixes (2026-04-22)
+
+> Review feedback on the Phase 1.5.3 / 1.5.4 bundle — 13 items addressed across Identity, Contacts, Reporting, and the portal. Commit `e5dcc51`.
+
+**Security:**
+- [x] `RoleEndpoints GET /permissions` — server-side `PermissionScope.Tenant` enforcement when a tenant-scoped JWT is present; client can no longer escalate by omitting `scope`
+- [x] `LocaleContextResolver` — explicit `TenantId` filter on Organization and User queries (cross-tenant data leak via crafted JWT prevented); broad catch narrowed to `InvalidOperationException`
+- [x] `KeycloakAdminService` — `Uri.EscapeDataString()` applied to every realm / keycloakUserId URL segment; `DeleteUserAsync` made 404-tolerant (LogWarning + return)
+
+**Identity handlers:**
+- [x] `CreateTenantCommand` / `CreateUserCommand` — narrowed `catch(Exception)` to `DbException`, `DbUpdateException`, `HttpRequestException`, `OperationCanceledException`
+- [x] `CreateUserCommand` — independent 10 s `CancellationTokenSource` for compensation; PII (email) removed from log messages
+- [x] `DeleteUserCommand` — LogWarning when Keycloak disable is skipped (tenant has no `RealmId`)
+- [x] `UpdateUserPreferencesCommand` — `PreferredLanguage` normalized with `Trim().ToLowerInvariant()` before persisting; XML doc on Handle
+- [x] `UpdateTenantSettingsCommand` — XML doc on Handle
+- [x] `Organization.Update()` — domain guards: empty name / locale throw `DomainException`
+
+**Infrastructure:**
+- [x] `TenantSettings.FromJson` — narrowed catch to `JsonException`; field-level fallback to `Default` for valid-but-empty JSON (`{}`)
+- [x] `DevelopmentSeed` — additional `UPDATE identity_permissions SET Scope='Platform' WHERE Module='identity' AND Resource='tenants'` after the `ADD COLUMN` so existing databases are repaired on next startup (verified post-deploy: all 5 `identity.tenants.*` rows now `Platform`)
+
+**Contacts:**
+- [x] `CreateCustomFieldDefinitionCommand` / `UpdateCustomFieldDefinitionCommand` — `catch {}` → `catch (JsonException)`
+
+**API layer:**
+- [x] `UserEndpoints` — `Results.Unauthorized()` wrapped in `ApiEnvelope.Fail` with `lockey_identity_error_unauthorized`
+- [x] `TenantEndpoints` — `PUT /settings` now requires `identity.tenants.manage` (the seeded platform permission) instead of the never-seeded `identity.tenants.update`
+
+**Portal:**
+- [x] `PortalSlotContribution` — `translationNamespace?: string` field added; `ModuleTabs` resolves labels via `useMessages()` when a contribution specifies a namespace different from the host slot
+
+**Admin UI:**
+- [x] `OrganizationDetailPage` — all four locale `Select` fields wrapped in `FormField` (consistent label / a11y)
+- [x] `useAuth` — non-blocking init: `isInitializing` released immediately after `setSession()`; locale resolution runs via `void Promise.all([tenant, org])` in the background
+- [x] `uiStore` — explicit `createJSONStorage(() => window.localStorage)` in persist config; jsdom `localStorage` polyfill in test setup
+
+**Tests:**
+- [x] `ReportExportServiceTests` — converted all `Assert.*` calls to FluentAssertions
+- [x] `UpdateTenantSettingsTests` — fresh `DbContext` (via `CreateContext()`) used for verify reads to test actual persistence, not EF tracking cache
+- [x] `useAuth.test.ts` — `@/shared/lib/i18n` singleton mocked; `setTenantLocale` added to store mock
+
+**Docs:**
+- [x] `CONSISTENCY_STANDARDS.md` — Keycloak `DeleteUser` tier description: hard-delete → disable
+- [x] `ADR-014` — handler count corrected (5 → 4) to match the "Why Not Full Saga Now?" rationale
+- [x] `IDENTITY.md` — typo fix: `contacts.contact.read` → `contacts.contacts.read`
+- [x] `ROADMAP.md` — removed stale §1.16 deferred list (items all tracked as complete in §1.5.3)
+- [x] `tr/validation.json` — `page_size_range` uses `{{min}}/{{max}}` placeholders (not hardcoded `1 / 100`)
+
+---
+
+### 1.18 Audit Module Phase 1.5.5 (2026-04-22)
+
+> Entity change tracking, auth-event auditing, and retention / partition maintenance — see §1.5.5 for the roadmap-side status. Commits `3d2456b`, `db42a99`, `73c28e7`.
+
+**Entity Change Tracking (Before / After State):**
+- [x] `IAuditStateCapture` scoped buffer + `CapturedEntityChange` record (SharedKernel)
+- [x] `AuditChangeTrackerInterceptor` (`SaveChangesInterceptor`) — snapshots Added/Modified/Deleted entries on `AuditableEntity<T>`; detects soft-delete via `ISoftDeletable.IsDeleted` false → true transition
+- [x] `UnwrapValue()` — single-property record/struct wrappers (e.g. `TenantId(Guid Value)`) are flattened to their inner scalar before serialization
+- [x] Excluded from snapshots: `CreatedAt/By`, `UpdatedAt/By`, `DeletedAt/By`, `IsDeleted`, `TenantId`, `OrganizationId`, `RowVersion`
+- [x] `DbContextOptionsBuilder.AddNexoraAuditInterceptor(sp)` helper — wired into all 6 tenant-scoped module DbContexts (Contacts, Identity, Notifications, Reporting, Documents, Audit)
+- [x] `AuditLogBehavior` — reads capture buffer after handler; emits flat `[{ field, old, new, entityType?, entityId? }]` delta JSON (matches `EntityDiffViewer` schema); `BeforeState` / `AfterState` retained server-side for compliance but not exposed to the UI by default
+- [x] 4 new interceptor tests (Added, Modified diff, soft-delete kind detection, excluded-field filtering)
+
+**Auth Event Auditing:**
+- [x] `RecordAuthEventCommand` + `AuthEventType` enum (`Login`, `Logout`, `PasswordChange`, `TokenRefresh`, `LoginFailed`)
+- [x] `POST /audit/events/auth` endpoint (any authenticated user)
+- [x] Handler writes directly to `IAuditStore` — bypasses the per-module audit config gate so auth events are always retained; graceful fallback when tenant context is missing (logout with revoked session)
+- [x] Admin `useAuth` emits `Login` on successful init; `Topbar.handleLogout` emits `Logout` before Keycloak redirect; both are fire-and-forget
+- [x] 4 new handler tests (Login, LoginFailed, missing tenant context, store failure)
+
+**Retention & Partitioning:**
+- [x] `AuditCleanupJob` (PlatformJob, Sunday 04:00 UTC) — bulk-deletes entries older than per-module retention via `ExecuteDeleteAsync`; default 365-day retention for entries without an `AuditSetting` row; per-tenant fan-out
+- [x] `AuditPartitionMaintenanceJob` (monthly, day 20 at 02:00 UTC) — ensures the next 3 monthly range partitions of `audit_entries` exist (idempotent via `IF NOT EXISTS`); queries `pg_partitioned_table` to no-op when the table is not yet partitioned (conversion is a separate one-time migration)
+- [x] Both jobs registered on the Maintenance queue via `AuditModule.ConfigureJobs()`
+
+**Admin UI — Changes tab redesign:**
+- [x] Removed collapsible `BeforeState` / `AfterState` raw-JSON sections (leaked strongly-typed ID wrappers and tenant scoping fields — UX and disclosure concerns)
+- [x] `EntityDiffViewer` rewritten: accepts flat `{ field, old, new, entityType?, entityId? }` shape; null renders as `—`; objects render as compact JSON with title tooltip; multi-entity commands are grouped by entity header
+- [x] Added missing lockey keys: `lockey_audit_detail_tab_overview`, `lockey_audit_detail_tab_changes`, `lockey_audit_search_placeholder` (en + tr); new `lockey_audit_auth_event_*` and `lockey_audit_validation_auth_event_type_invalid` for the new handler
+
+**Roadmap:**
+- [x] §1.5.5 — all three items (entity change tracking, auth events, retention + partitioning) marked complete with implementation details
+
+---
+
 ## Phase 1.5: Bridge
 
 > **Goal**: Critical infrastructure and tooling needed before business modules.
