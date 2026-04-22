@@ -79,4 +79,17 @@ public sealed class AuditEntry : Entity<AuditEntryId>
             Timestamp = timestamp
         };
     }
+
+    /// <summary>
+    /// Replaces the PII-containing payload columns (<see cref="BeforeState"/>,
+    /// <see cref="AfterState"/>, <see cref="Changes"/>) with a sanitized redaction marker,
+    /// while preserving the operational trace (who, what, when). Used for GDPR erasure propagation.
+    /// </summary>
+    public void RedactPayloadForGdpr(string redactionMarker)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(redactionMarker);
+        BeforeState = redactionMarker;
+        AfterState = redactionMarker;
+        Changes = redactionMarker;
+    }
 }
