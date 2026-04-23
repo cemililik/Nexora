@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Nexora.Modules.Identity.Application.Commands;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Application.Queries;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Api;
@@ -47,7 +48,7 @@ public static class RoleEndpoints
                     ApiEnvelope<RoleDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<RoleDto>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.roles.manage");
+        .RequireAuthorization("identity.roles.create");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateRoleRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -57,7 +58,7 @@ public static class RoleEndpoints
                 ? Results.Ok(ApiEnvelope<RoleDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<RoleDto>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.roles.manage");
+        .RequireAuthorization("identity.roles.update");
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -66,7 +67,7 @@ public static class RoleEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.roles.manage");
+        .RequireAuthorization("identity.roles.delete");
 
         group.MapGet("/{id:guid}/users", async (Guid id, int? page, int? pageSize, ISender sender, CancellationToken ct) =>
         {
@@ -85,7 +86,7 @@ public static class RoleEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.roles.manage");
+        .RequireAuthorization("identity.roles.update");
 
         group.MapDelete("/{id:guid}/users/{userId:guid}", async (Guid id, Guid userId, ISender sender, CancellationToken ct) =>
         {
@@ -95,14 +96,20 @@ public static class RoleEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.roles.manage");
+        .RequireAuthorization("identity.roles.update");
 
         // Permissions listing
         endpoints.MapGroup("/permissions")
             .RequireAuthorization("identity.roles.read")
-            .MapGet("/", async (string? module, ISender sender, CancellationToken ct) =>
+            .MapGet("/", async (string? module, PermissionScope? scope, HttpContext httpContext, ISender sender, CancellationToken ct) =>
             {
-                var result = await sender.Send(new GetPermissionsQuery(module), ct);
+                // Tenant-scoped users must never see Platform permissions — enforce server-side
+                // regardless of the scope query param passed by the client.
+                var tenantId = httpContext.User.FindFirst("tenant_id")?.Value;
+                if (!string.IsNullOrEmpty(tenantId))
+                    scope = PermissionScope.Tenant;
+
+                var result = await sender.Send(new GetPermissionsQuery(module, scope), ct);
                 return result.IsSuccess
                     ? Results.Ok(ApiEnvelope<List<PermissionDto>>.Success(result.Value!, result.Message))
                     : Results.BadRequest(ApiEnvelope<List<PermissionDto>>.Fail(result.Error!));

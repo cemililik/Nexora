@@ -77,5 +77,42 @@
 
   "lockey_reporting_tab_overview": "Overview",
   "lockey_reporting_tab_executions": "Executions",
-  "lockey_reporting_tab_parameters": "Parameters"
+  "lockey_reporting_tab_parameters": "Parameters",
+
+  "lockey_reporting_definition_created": "Report definition created.",
+  "lockey_reporting_definition_updated": "Report definition updated.",
+  "lockey_reporting_definition_deleted": "Report definition deleted.",
+  "lockey_reporting_dashboard_created": "Dashboard created.",
+  "lockey_reporting_dashboard_updated": "Dashboard updated.",
+  "lockey_reporting_dashboard_deleted": "Dashboard deleted.",
+  "lockey_reporting_execution_queued": "Report execution queued.",
+  "lockey_reporting_schedule_created": "Schedule created.",
+  "lockey_reporting_schedule_updated": "Schedule updated.",
+  "lockey_reporting_schedule_deleted": "Schedule deleted.",
+  "lockey_reporting_no_data": "No data available.",
+  "lockey_reporting_pdf_page": "Page",
+  "lockey_reporting_pdf_of": "of",
+
+  "lockey_reporting_error_definition_not_found": "Report definition not found.",
+  "lockey_reporting_error_definition_already_active": "Report definition is already active.",
+  "lockey_reporting_error_definition_already_inactive": "Report definition is already inactive.",
+  "lockey_reporting_error_dashboard_not_found": "Dashboard not found.",
+  "lockey_reporting_error_widget_not_found": "Widget not found.",
+  "lockey_reporting_error_execution_not_found": "Report execution not found.",
+  "lockey_reporting_error_execution_not_queued": "Only queued executions can be processed.",
+  "lockey_reporting_error_execution_not_running": "Execution is not currently running.",
+  "lockey_reporting_error_result_not_available": "Report results are not yet available.",
+  "lockey_reporting_error_execution_failed": "Report execution failed.",
+  "lockey_reporting_error_schedule_not_found": "Schedule not found.",
+  "lockey_reporting_error_schedule_already_active": "Schedule is already active.",
+  "lockey_reporting_error_schedule_already_inactive": "Schedule is already inactive.",
+  "lockey_reporting_error_invalid_format": "Invalid report format.",
+
+  "lockey_reporting_validation_query_empty": "Query cannot be empty.",
+  "lockey_reporting_validation_query_must_start_select": "Query must start with SELECT.",
+  "lockey_reporting_validation_query_no_semicolons": "Query cannot contain semicolons.",
+  "lockey_reporting_validation_query_forbidden_keyword": "Query contains a forbidden keyword.",
+  "lockey_reporting_validation_query_forbidden_function": "Query contains a forbidden function.",
+  "lockey_reporting_validation_query_locking_forbidden": "Locking clauses are not allowed.",
+  "lockey_reporting_validation_query_select_into_forbidden": "SELECT INTO is not allowed."
 }

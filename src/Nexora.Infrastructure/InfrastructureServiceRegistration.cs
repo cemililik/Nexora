@@ -26,11 +26,13 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Licensing;
 using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Secrets;
 using Nexora.SharedKernel.Abstractions.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Nexora.Infrastructure.Licensing;
 
 namespace Nexora.Infrastructure;
 
@@ -80,6 +82,7 @@ public static class InfrastructureServiceRegistration
         // Outbox (reliable event publishing)
         services.Configure<OutboxOptions>(
             configuration.GetSection(OutboxOptions.SectionName));
+        services.AddSingleton<IValidateOptions<OutboxOptions>, OutboxOptionsValidator>();
         services.AddDbContext<OutboxDbContext>((_, options) =>
         {
             var connStr = configuration.GetConnectionString("Default");
@@ -145,9 +148,21 @@ public static class InfrastructureServiceRegistration
         services.AddScoped<OutboxCleanupJob>();
         services.AddScoped<InboxCleanupJob>();
 
+        // TODO(NMP): Replace NullLicenseVerifier with a real implementation when the NMP track is built.
+        // The "Nexora:DeploymentMode" setting in appsettings.json ("OnPrem" | "SaaS") should be used
+        // here to conditionally register the on-prem verifier vs the SaaS/NMP verifier:
+        //   var mode = configuration["Nexora:DeploymentMode"];
+        //   if (mode == "SaaS") services.AddSingleton<ILicenseVerifier, NmpLicenseVerifier>();
+        //   else                services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
+        services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
+
         // Audit context (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
+
+        // Entity change capture: scoped buffer written by the EF interceptor and read by AuditLogBehavior
+        services.AddScoped<IAuditStateCapture, AuditStateCapture>();
+        services.AddScoped<AuditChangeTrackerInterceptor>();
 
         // MediatR behaviors
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

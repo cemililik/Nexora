@@ -41,6 +41,7 @@ public sealed class GetOrganizationsHandler(
                 o.Timezone,
                 o.DefaultCurrency,
                 o.DefaultLanguage,
+                o.DefaultLocale,
                 o.IsActive))
             .ToListAsync(cancellationToken);
 

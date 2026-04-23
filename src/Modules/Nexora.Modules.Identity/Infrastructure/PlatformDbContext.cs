@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Identity.Domain.Entities;
+using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.SharedKernel.Domain.Base;
 
 namespace Nexora.Modules.Identity.Infrastructure;
@@ -14,6 +15,7 @@ public sealed class PlatformDbContext(
 {
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<TenantModule> TenantModules => Set<TenantModule>();
+    public DbSet<PlatformLicenseCache> LicenseCache => Set<PlatformLicenseCache>();
 
     /// <inheritdoc />
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -131,6 +133,20 @@ public sealed class PlatformDbContext(
             e.Property("UpdatedBy").HasMaxLength(200);
 
             e.HasQueryFilter(tm => !tm.IsDeleted);
+        });
+
+        modelBuilder.Entity<PlatformLicenseCache>(e =>
+        {
+            e.ToTable("platform_license_cache");
+            // Composite PK: one row per (tenant, module)
+            e.HasKey(lc => new { lc.TenantId, lc.ModuleName });
+            e.Property(lc => lc.TenantId)
+                .HasConversion(id => id.Value, v => TenantId.From(v))
+                .IsRequired();
+            e.Property(lc => lc.ModuleName).HasMaxLength(100).IsRequired();
+            e.Property(lc => lc.IsLicensed).IsRequired();
+            e.Property(lc => lc.CachedAt).IsRequired();
+            e.Property(lc => lc.ExpiresAt).IsRequired();
         });
     }
 }

@@ -65,7 +65,7 @@ public sealed class CreateCustomFieldDefinitionHandler(
 
         var definition = CustomFieldDefinition.Create(
             tenantId, request.FieldName, request.FieldType,
-            request.Options, request.IsRequired, request.DisplayOrder);
+            CustomFieldOptionsNormalizer.Normalize(request.Options), request.IsRequired, request.DisplayOrder);
 
         await dbContext.CustomFieldDefinitions.AddAsync(definition, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -81,4 +81,5 @@ public sealed class CreateCustomFieldDefinitionHandler(
         return Result<CustomFieldDefinitionDto>.Success(dto,
             LocalizedMessage.Of("lockey_contacts_custom_field_definition_created"));
     }
+
 }

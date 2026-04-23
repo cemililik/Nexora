@@ -20,8 +20,8 @@ export const roleKeys = {
   detail: (id: string) => [...roleKeys.all, 'detail', id] as const,
   users: (id: string, params: PaginationParams) =>
     [...roleKeys.all, 'users', id, params] as const,
-  permissions: (module?: string) =>
-    ['identity', 'permissions', module ?? 'all'] as const,
+  permissions: (module?: string, scope?: 'Platform' | 'Tenant') =>
+    ['identity', 'permissions', module ?? 'all', scope ?? 'all'] as const,
 };
 
 export interface RoleFilterParams extends PaginationParams {
@@ -51,11 +51,15 @@ export function useRole(id: string) {
   });
 }
 
-export function usePermissions(module?: string) {
+export function usePermissions(module?: string, scope?: 'Platform' | 'Tenant') {
   return useQuery({
-    queryKey: roleKeys.permissions(module),
-    queryFn: () =>
-      api.get<PermissionDto[]>('/identity/permissions', module ? { module } : undefined),
+    queryKey: roleKeys.permissions(module, scope),
+    queryFn: () => {
+      const params: Record<string, string> = {};
+      if (module) params.module = module;
+      if (scope) params.scope = scope;
+      return api.get<PermissionDto[]>('/identity/permissions', Object.keys(params).length ? params : undefined);
+    },
   });
 }
 

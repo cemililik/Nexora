@@ -118,7 +118,7 @@ public sealed class OrganizationMemberTests : IDisposable
             new RemoveOrganizationMemberCommand(_org.Id.Value, _user.Id.Value), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Message.Key.Should().Be("lockey_identity_error_user_not_member");
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_user_not_in_org");
     }
 
     [Fact]

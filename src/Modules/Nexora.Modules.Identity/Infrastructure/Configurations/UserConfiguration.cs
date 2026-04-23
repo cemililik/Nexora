@@ -25,6 +25,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Phone).HasMaxLength(30);
         builder.Property(u => u.AvatarUrl).HasMaxLength(500);
         builder.Property(u => u.Status).HasConversion<string>().HasMaxLength(50);
+        builder.Property(u => u.PreferredLanguage).HasMaxLength(10);
 
         builder.HasMany(u => u.OrganizationUsers).WithOne().HasForeignKey(ou => ou.UserId);
         builder.Navigation(u => u.OrganizationUsers).UsePropertyAccessMode(PropertyAccessMode.Field);

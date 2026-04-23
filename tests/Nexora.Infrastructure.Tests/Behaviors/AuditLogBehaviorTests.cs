@@ -30,6 +30,7 @@ public sealed class AuditLogBehaviorTests
     private readonly IAuditContext _auditContext = Substitute.For<IAuditContext>();
     private readonly IAuditConfigService _configService = Substitute.For<IAuditConfigService>();
     private readonly IAuditStore _auditStore = Substitute.For<IAuditStore>();
+    private readonly IAuditStateCapture _stateCapture = new Nexora.Infrastructure.Audit.AuditStateCapture();
     private readonly ITenantContextAccessor _tenantAccessor = Substitute.For<ITenantContextAccessor>();
 
     private AuditLogBehavior<TRequest, TResponse> CreateBehavior<TRequest, TResponse>()
@@ -37,7 +38,7 @@ public sealed class AuditLogBehaviorTests
     {
         var logger = Substitute.For<ILogger<AuditLogBehavior<TRequest, TResponse>>>();
         return new AuditLogBehavior<TRequest, TResponse>(
-            _auditContext, _configService, _auditStore, _tenantAccessor, logger);
+            _auditContext, _configService, _auditStore, _stateCapture, _tenantAccessor, logger);
     }
 
     private void SetupTenantContext(string tenantId = "tenant-1")
@@ -341,6 +342,67 @@ public sealed class AuditLogBehaviorTests
         await _auditStore.Received(1).SaveAsync(
             Arg.Is<AuditEntry>(e => e.Module == "Unknown"),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_AfterExecution_StateCaptureIsCleared()
+    {
+        // Arrange — pre-populate stateCapture to simulate a previous SaveChanges interception
+        SetupTenantContext();
+        SetupAuditContext();
+        _configService.IsEnabledAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(true);
+
+        _stateCapture.Capture(new CapturedEntityChange(
+            EntityType: "TestEntity",
+            EntityId: "1",
+            Kind: EntityChangeKind.Modified,
+            Before: new Dictionary<string, object?> { ["Name"] = "old" },
+            After: new Dictionary<string, object?> { ["Name"] = "new" },
+            Delta: new Dictionary<string, object?> { ["Name"] = new { From = "old", To = "new" } }));
+
+        _stateCapture.Changes.Should().HaveCount(1);
+
+        var behavior = CreateBehavior<TestAuditCommand, Result<string>>();
+        RequestHandlerDelegate<Result<string>> next = () => Task.FromResult(Result<string>.Success("ok"));
+
+        // Act
+        await behavior.Handle(new TestAuditCommand("test"), next, CancellationToken.None);
+
+        // Assert — captured changes are forwarded to the audit entry and then cleared
+        await _auditStore.Received(1).SaveAsync(
+            Arg.Is<AuditEntry>(e => e.Changes != null),
+            Arg.Any<CancellationToken>());
+        _stateCapture.Changes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_AfterAuditSaveFailure_StateCaptureIsStillCleared()
+    {
+        // Arrange — audit store throws; stateCapture.Clear() must still run (finally block)
+        SetupTenantContext();
+        SetupAuditContext();
+        _configService.IsEnabledAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<bool>())
+            .Returns(true);
+        _auditStore.SaveAsync(Arg.Any<AuditEntry>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("Database unavailable"));
+
+        _stateCapture.Capture(new CapturedEntityChange(
+            EntityType: "TestEntity",
+            EntityId: "1",
+            Kind: EntityChangeKind.Added,
+            Before: new Dictionary<string, object?>(),
+            After: new Dictionary<string, object?> { ["Name"] = "x" },
+            Delta: new Dictionary<string, object?>()));
+
+        var behavior = CreateBehavior<TestAuditCommand, Result<string>>();
+        RequestHandlerDelegate<Result<string>> next = () => Task.FromResult(Result<string>.Success("ok"));
+
+        // Act
+        await behavior.Handle(new TestAuditCommand("test"), next, CancellationToken.None);
+
+        // Assert — stateCapture is cleared even though SaveAsync threw
+        _stateCapture.Changes.Should().BeEmpty();
     }
 
     [Fact]

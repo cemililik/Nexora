@@ -40,7 +40,7 @@ public sealed class GetOrganizationByIdHandler(
 
         var dto = new OrganizationDetailDto(
             org.Id.Value, org.Name, org.Slug, org.LogoUrl,
-            org.Timezone, org.DefaultCurrency, org.DefaultLanguage,
+            org.Timezone, org.DefaultCurrency, org.DefaultLanguage, org.DefaultLocale,
             org.IsActive, memberCount);
 
         return Result<OrganizationDetailDto>.Success(dto,

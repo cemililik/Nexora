@@ -55,29 +55,42 @@ public sealed class DeleteUserHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_cannot_delete_self"));
         }
 
-        // Remove from Keycloak
-        if (!string.IsNullOrEmpty(user.KeycloakUserId))
-        {
-            try
-            {
-                var tenant = await platformDbContext.Tenants
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(t => t.Id == tenantId, ct);
-
-                if (tenant?.RealmId is not null)
-                    await keycloakAdmin.DisableUserAsync(tenant.RealmId, user.KeycloakUserId, ct);
-            }
-            catch (HttpRequestException ex)
-            {
-                logger.LogError(ex, "Failed to delete user {UserId} from Keycloak", request.Id);
-                // Continue with local deletion even if KC fails
-            }
-        }
-
-        // Remove org memberships (cascades to user roles via EF config)
+        // CONSISTENCY: Tier 2A — DB-First.
+        // Soft-delete locally first (our source of truth). Then disable the Keycloak account
+        // so the user cannot log in. We disable (not hard-delete) Keycloak to preserve the
+        // account for audit purposes and to prevent email reuse on the Keycloak side.
+        // If Keycloak disable fails the user is still blocked at our API (DB state checked on
+        // every request). Keycloak divergence is non-fatal — logged as Warning.
         dbContext.OrganizationUsers.RemoveRange(user.OrganizationUsers);
         dbContext.Users.Remove(user);
         await dbContext.SaveChangesAsync(ct);
+
+        if (!string.IsNullOrEmpty(user.KeycloakUserId))
+        {
+            var tenant = await platformDbContext.Tenants
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+
+            if (tenant?.RealmId is not null)
+            {
+                try
+                {
+                    await keycloakAdmin.DisableUserAsync(tenant.RealmId, user.KeycloakUserId, ct);
+                }
+                catch (HttpRequestException ex)
+                {
+                    logger.LogWarning(ex,
+                        "Keycloak disable failed for user {UserId} after local deletion; state will diverge until reconciled",
+                        request.Id);
+                }
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Keycloak disable skipped for user {UserId}: tenant {TenantId} has no realm configured",
+                    request.Id, tenantId);
+            }
+        }
 
         logger.LogInformation("User {UserId} deleted for tenant {TenantId}", user.Id, tenantId);
 

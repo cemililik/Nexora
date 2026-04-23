@@ -58,11 +58,21 @@ describe('roleKeys', () => {
       'identity',
       'permissions',
       'contacts',
+      'all',
     ]);
   });
 
   it('should use all when module is not provided', () => {
-    expect(roleKeys.permissions()).toEqual(['identity', 'permissions', 'all']);
+    expect(roleKeys.permissions()).toEqual(['identity', 'permissions', 'all', 'all']);
+  });
+
+  it('should include scope in permissions key when scope is provided', () => {
+    expect(roleKeys.permissions(undefined, 'Tenant')).toEqual([
+      'identity',
+      'permissions',
+      'all',
+      'Tenant',
+    ]);
   });
 });
 
@@ -121,6 +131,20 @@ describe('usePermissions', () => {
     });
 
     expect(mockApiGet).toHaveBeenCalledWith('/identity/permissions', { module: 'contacts' });
+  });
+
+  it('should pass scope filter when provided', async () => {
+    mockApiGet.mockResolvedValue([]);
+
+    const { result } = renderHook(() => usePermissions(undefined, 'Tenant'), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/permissions', { scope: 'Tenant' });
   });
 });
 

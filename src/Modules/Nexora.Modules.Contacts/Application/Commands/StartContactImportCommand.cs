@@ -87,9 +87,11 @@ public sealed class StartContactImportHandler(
         var importJob = ImportJob.Create(
             tenantId, orgId, request.FileName, request.FileFormat, request.StorageKey, userId);
 
-        await dbContext.ImportJobs.AddAsync(importJob, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
+        // CONSISTENCY: Enqueue-in-same-transaction rule.
+        // Hangfire.Enqueue returns the job ID synchronously. We attach it to the entity
+        // and commit both in a single SaveChangesAsync so the ImportJob record and its
+        // Hangfire job ID are always written atomically. This prevents orphaned ImportJob
+        // records that have no corresponding background job.
         var hangfireJobId = backgroundJobClient.Enqueue<ContactImportJob>(j => j.RunAsync(
             new ContactImportJobParams
             {
@@ -104,6 +106,8 @@ public sealed class StartContactImportHandler(
             CancellationToken.None));
 
         importJob.SetHangfireJobId(hangfireJobId);
+
+        await dbContext.ImportJobs.AddAsync(importJob, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(

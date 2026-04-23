@@ -48,7 +48,7 @@ public static class OrganizationEndpoints
         group.MapPut("/{id:guid}", async (Guid id, UpdateOrganizationRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new UpdateOrganizationCommand(id, request.Name, request.Timezone,
-                request.DefaultCurrency, request.DefaultLanguage);
+                request.DefaultCurrency, request.DefaultLanguage, request.DefaultLocale);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<OrganizationDto>.Success(result.Value!, result.Message))
@@ -107,7 +107,8 @@ public sealed record UpdateOrganizationRequest(
     string Name,
     string Timezone,
     string DefaultCurrency,
-    string DefaultLanguage);
+    string DefaultLanguage,
+    string DefaultLocale);
 
 /// <summary>Request body for adding a member to an organization.</summary>
 public sealed record AddMemberRequest(Guid UserId, bool IsDefault = false);

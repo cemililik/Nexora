@@ -55,9 +55,37 @@ public sealed class CreateCustomFieldDefinitionTests : IDisposable
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value!.Options.Should().Be("Low,Medium,High");
+        result.Value!.Options.Should().Be("[\"Low\",\"Medium\",\"High\"]");
         result.Value.IsRequired.Should().BeTrue();
         result.Value.DisplayOrder.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_WithJsonArrayOptions_ShouldPreserveArray()
+    {
+        var handler = new CreateCustomFieldDefinitionHandler(_dbContext, _tenantAccessor, NullLogger<CreateCustomFieldDefinitionHandler>.Instance);
+
+        var result = await handler.Handle(
+            new CreateCustomFieldDefinitionCommand("Priority", "select", "[\"A\",\"B\"]"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Options.Should().Be("[\"A\",\"B\"]");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("   ")]
+    public async Task Handle_WithNullOrWhitespaceOptions_ShouldReturnNullOptions(string? options)
+    {
+        var handler = new CreateCustomFieldDefinitionHandler(_dbContext, _tenantAccessor, NullLogger<CreateCustomFieldDefinitionHandler>.Instance);
+
+        var result = await handler.Handle(
+            new CreateCustomFieldDefinitionCommand("TextField", "text", options),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Options.Should().BeNull();
     }
 
     [Fact]

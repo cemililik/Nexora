@@ -4,6 +4,7 @@ using System.Text.Json;
 using ClosedXML.Excel;
 using CsvHelper;
 using CsvHelper.Configuration;
+using Nexora.SharedKernel.Abstractions.Localization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -12,8 +13,11 @@ namespace Nexora.Modules.Reporting.Infrastructure.Services;
 
 /// <summary>
 /// Exports report data to various formats (CSV, Excel, PDF, JSON).
+/// CSV and JSON use invariant culture (machine-readable). Excel and PDF use the
+/// tenant/user locale from <see cref="ILocaleContext"/> for number/date formatting,
+/// and PDF labels are resolved for the tenant document language.
 /// </summary>
-public sealed class ReportExportService
+public sealed class ReportExportService(ILocaleContext localeContext)
 {
     /// <summary>Exports rows to the specified format and returns a seekable stream. Caller owns the stream.</summary>
     public Stream Export(
@@ -27,8 +31,8 @@ public sealed class ReportExportService
         return format.ToUpperInvariant() switch
         {
             "CSV" => ExportCsv(rows),
-            "EXCEL" => ExportExcel(rows, reportName),
-            "PDF" => ExportPdf(rows, reportName, noDataLabel),
+            "EXCEL" => ExportExcel(rows, reportName, ResolveCulture()),
+            "PDF" => ExportPdf(rows, reportName, noDataLabel, ResolveCulture(), localeContext.DocumentLanguage),
             "JSON" => ExportJson(rows),
             _ => throw new ArgumentException($"Unsupported format: {format}", nameof(format))
         };
@@ -52,6 +56,26 @@ public sealed class ReportExportService
         "PDF" => ".pdf",
         "JSON" => ".json",
         _ => ".bin"
+    };
+
+    private CultureInfo ResolveCulture()
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(localeContext.Locale);
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.GetCultureInfo("en-US");
+        }
+    }
+
+    private static string FormatValue(object? value, CultureInfo culture) => value switch
+    {
+        null => string.Empty,
+        string s => s,
+        IFormattable f => f.ToString(null, culture),
+        _ => value.ToString() ?? string.Empty
     };
 
     private static Stream ExportCsv(IReadOnlyList<Dictionary<string, object?>> rows)
@@ -79,7 +103,7 @@ public sealed class ReportExportService
             foreach (var row in rows)
             {
                 foreach (var header in headers)
-                    csv.WriteField(row.GetValueOrDefault(header)?.ToString() ?? string.Empty);
+                    csv.WriteField(FormatValue(row.GetValueOrDefault(header), CultureInfo.InvariantCulture));
                 csv.NextRecord();
             }
 
@@ -95,7 +119,7 @@ public sealed class ReportExportService
         return stream;
     }
 
-    private static Stream ExportExcel(IReadOnlyList<Dictionary<string, object?>> rows, string reportName)
+    private static Stream ExportExcel(IReadOnlyList<Dictionary<string, object?>> rows, string reportName, CultureInfo culture)
     {
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add(reportName.Length > 31 ? reportName[..31] : reportName);
@@ -121,7 +145,7 @@ public sealed class ReportExportService
             for (var col = 0; col < headers.Count; col++)
             {
                 var value = rows[rowIdx].GetValueOrDefault(headers[col]);
-                worksheet.Cell(rowIdx + 2, col + 1).Value = value?.ToString() ?? string.Empty;
+                worksheet.Cell(rowIdx + 2, col + 1).Value = FormatValue(value, culture);
             }
         }
 
@@ -133,9 +157,17 @@ public sealed class ReportExportService
         return stream;
     }
 
-    private static Stream ExportPdf(IReadOnlyList<Dictionary<string, object?>> rows, string reportName, string noDataLabel)
+    private static Stream ExportPdf(
+        IReadOnlyList<Dictionary<string, object?>> rows,
+        string reportName,
+        string noDataLabel,
+        CultureInfo culture,
+        string documentLanguage)
     {
         QuestPDF.Settings.License = LicenseType.Community;
+
+        var pageLabel = GetPdfLabel("lockey_reporting_pdf_page", documentLanguage);
+        var ofLabel = GetPdfLabel("lockey_reporting_pdf_of", documentLanguage);
 
         var document = Document.Create(container =>
         {
@@ -165,20 +197,18 @@ public sealed class ReportExportService
                                 columns.RelativeColumn();
                         });
 
-                        // Header row
                         foreach (var header in headers)
                         {
                             table.Cell().Background(Colors.Grey.Lighten3)
                                 .Padding(4).Text(header).FontSize(9).Bold();
                         }
 
-                        // Data rows
                         foreach (var row in rows)
                         {
                             foreach (var header in headers)
                             {
                                 table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2)
-                                    .Padding(4).Text(row.GetValueOrDefault(header)?.ToString() ?? "").FontSize(8);
+                                    .Padding(4).Text(FormatValue(row.GetValueOrDefault(header), culture)).FontSize(8);
                             }
                         }
                     });
@@ -186,9 +216,9 @@ public sealed class ReportExportService
 
                 page.Footer().AlignCenter().Text(text =>
                 {
-                    text.Span("Page ").FontSize(8);
+                    text.Span($"{pageLabel} ").FontSize(8);
                     text.CurrentPageNumber().FontSize(8);
-                    text.Span(" of ").FontSize(8);
+                    text.Span($" {ofLabel} ").FontSize(8);
                     text.TotalPages().FontSize(8);
                 });
             });
@@ -211,4 +241,15 @@ public sealed class ReportExportService
         stream.Position = 0;
         return stream;
     }
+
+    // Backend-rendered PDF labels. Frontend `lockey_` resolution does not apply here —
+    // generated documents embed translated text at generation time.
+    private static string GetPdfLabel(string key, string language) => (key, language) switch
+    {
+        ("lockey_reporting_pdf_page", "tr") => "Sayfa",
+        ("lockey_reporting_pdf_of", "tr") => "/",
+        ("lockey_reporting_pdf_page", _) => "Page",
+        ("lockey_reporting_pdf_of", _) => "of",
+        _ => key
+    };
 }

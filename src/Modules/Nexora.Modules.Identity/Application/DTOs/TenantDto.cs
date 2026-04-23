@@ -9,13 +9,16 @@ public sealed record TenantDto(
     string? RealmId,
     DateTimeOffset CreatedAt);
 
-/// <summary>Tenant detail with installed modules, returned from get-by-id queries.</summary>
+/// <summary>Tenant detail with installed modules and locale settings, returned from get-by-id queries.</summary>
 public sealed record TenantDetailDto(
     Guid Id,
     string Name,
     string Slug,
     string Status,
     string? RealmId,
-    string? Settings,
     DateTimeOffset CreatedAt,
-    List<string> InstalledModules);
+    List<string> InstalledModules,
+    string DefaultLocale,
+    string DefaultCurrency,
+    string DefaultTimezone,
+    string DefaultDocumentLanguage);

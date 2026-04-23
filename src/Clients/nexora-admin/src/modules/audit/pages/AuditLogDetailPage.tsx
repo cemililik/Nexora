@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
@@ -12,37 +11,6 @@ import { useAuditLogDetail } from '../hooks/useAuditLogDetail';
 import { AuditStatusBadge } from '../components/AuditStatusBadge';
 import { AuditOperationTypeBadge } from '../components/AuditOperationTypeBadge';
 import { EntityDiffViewer } from '../components/EntityDiffViewer';
-
-function JsonSection({ title, json }: { title: string; json: string | null | undefined }) {
-  const [open, setOpen] = useState(false);
-
-  if (!json) return null;
-
-  let formatted: string;
-  try {
-    formatted = JSON.stringify(JSON.parse(json), null, 2);
-  } catch {
-    formatted = json;
-  }
-
-  return (
-    <div className="rounded-md border">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium hover:bg-accent transition-colors"
-      >
-        <span>{title}</span>
-        <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <pre className="overflow-x-auto border-t bg-muted/30 px-4 py-3 text-xs">
-          {formatted}
-        </pre>
-      )}
-    </div>
-  );
-}
 
 const TABS = [
   { id: 'overview', labelKey: 'lockey_audit_detail_tab_overview' },
@@ -204,25 +172,19 @@ export default function AuditLogDetailPage() {
         </div>
       )}
 
-      {/* Changes Tab */}
+      {/* Changes Tab — shows only the human-readable field-level diff.
+          Raw BeforeState/AfterState JSON is intentionally not rendered: it exposes
+          internal schema (strongly-typed IDs, tenant scoping fields) and is retained
+          server-side for compliance/forensics only. */}
       {activeTab === 'changes' && (
-        <div className="space-y-4">
-          {log.changes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('lockey_audit_detail_changes')}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EntityDiffViewer changes={log.changes} />
-              </CardContent>
-            </Card>
-          )}
-          <JsonSection title={t('lockey_audit_detail_before_state')} json={log.beforeState} />
-          <JsonSection title={t('lockey_audit_detail_after_state')} json={log.afterState} />
-          {!log.changes && !log.beforeState && !log.afterState && (
-            <p className="text-sm text-muted-foreground">{t('lockey_audit_detail_no_changes')}</p>
-          )}
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('lockey_audit_detail_changes')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EntityDiffViewer changes={log.changes} />
+          </CardContent>
+        </Card>
       )}
     </div>
   );

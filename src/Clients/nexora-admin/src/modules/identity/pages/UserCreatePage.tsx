@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
-import { useApiError } from '@/shared/hooks/useApiError';
 import { useCreateUser } from '../hooks/useUsers';
 import { UserForm } from '../components/UserForm';
 
@@ -13,7 +12,6 @@ export default function UserCreatePage() {
   const navigate = useNavigate();
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
   const createUser = useCreateUser();
-  const { handleApiError } = useApiError();
 
   useEffect(() => {
     setBreadcrumbs([
@@ -37,7 +35,6 @@ export default function UserCreatePage() {
             onSubmit={(data) => {
               createUser.mutate(data, {
                 onSuccess: () => void navigate('/identity/users'),
-                onError: (err) => handleApiError(err),
               });
             }}
             isPending={createUser.isPending}

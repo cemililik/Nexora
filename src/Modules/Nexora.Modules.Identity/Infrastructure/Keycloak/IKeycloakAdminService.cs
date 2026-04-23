@@ -6,6 +6,9 @@ public interface IKeycloakAdminService
     /// <summary>Creates a new realm for a tenant. Returns the realm name.</summary>
     Task<string> CreateRealmAsync(string realmName, string displayName, CancellationToken ct = default);
 
+    /// <summary>Permanently deletes a realm. Used for compensation when tenant provisioning fails.</summary>
+    Task DeleteRealmAsync(string realmName, CancellationToken ct = default);
+
     /// <summary>Creates a user in the specified realm. Returns the Keycloak user ID.</summary>
     Task<string> CreateUserAsync(string realm, string username, string email,
         string firstName, string lastName, string temporaryPassword, CancellationToken ct = default);
@@ -13,6 +16,9 @@ public interface IKeycloakAdminService
     /// <summary>Updates an existing user's profile in the specified realm.</summary>
     Task UpdateUserAsync(string realm, string keycloakUserId, string email,
         string firstName, string lastName, CancellationToken ct = default);
+
+    /// <summary>Permanently deletes a user from the specified realm.</summary>
+    Task DeleteUserAsync(string realm, string keycloakUserId, CancellationToken ct = default);
 
     /// <summary>Disables a user in the specified realm.</summary>
     Task DisableUserAsync(string realm, string keycloakUserId, CancellationToken ct = default);

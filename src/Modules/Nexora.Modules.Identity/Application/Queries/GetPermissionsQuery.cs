@@ -2,15 +2,21 @@ using Microsoft.EntityFrameworkCore;
 using Nexora.Modules.Identity.Application.DTOs;
 using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.CQRS;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Application.Queries;
 
-/// <summary>Query to list permissions, optionally filtered by module name.</summary>
-public sealed record GetPermissionsQuery(string? Module = null) : IQuery<List<PermissionDto>>;
+/// <summary>
+/// Query to list permissions, optionally filtered by module name and/or scope.
+/// Tenant admin UIs should pass <c>Scope = PermissionScope.Tenant</c> to hide platform-only permissions.
+/// </summary>
+public sealed record GetPermissionsQuery(
+    string? Module = null,
+    PermissionScope? Scope = null) : IQuery<List<PermissionDto>>;
 
-/// <summary>Returns permissions ordered by module/resource/action, with optional module filter.</summary>
+/// <summary>Returns permissions ordered by module/resource/action, with optional module and scope filters.</summary>
 public sealed class GetPermissionsHandler(
     IdentityDbContext dbContext) : IQueryHandler<GetPermissionsQuery, List<PermissionDto>>
 {
@@ -23,6 +29,9 @@ public sealed class GetPermissionsHandler(
         if (!string.IsNullOrEmpty(request.Module))
             query = query.Where(p => p.Module == request.Module);
 
+        if (request.Scope is not null)
+            query = query.Where(p => p.Scope == request.Scope);
+
         var permissions = await query
             .OrderBy(p => p.Module).ThenBy(p => p.Resource).ThenBy(p => p.Action)
             .Select(p => new PermissionDto(
@@ -31,7 +40,8 @@ public sealed class GetPermissionsHandler(
                 p.Resource,
                 p.Action,
                 p.Key,
-                p.Description))
+                p.Description,
+                p.Scope))
             .ToListAsync(cancellationToken);
 
         return Result<List<PermissionDto>>.Success(permissions,

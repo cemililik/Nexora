@@ -102,4 +102,44 @@ public sealed class UserTests
 
         user.Status.Should().Be(UserStatus.Active);
     }
+
+    [Fact]
+    public void UpdatePreferences_ValidLanguage_SetsNormalized()
+    {
+        var user = User.Create(_tenantId, "kc-1", "j@test.com", "John", "Doe");
+
+        user.UpdatePreferences("TR");
+
+        user.PreferredLanguage.Should().Be("tr");
+    }
+
+    [Fact]
+    public void UpdatePreferences_NullValue_ClearsLanguage()
+    {
+        var user = User.Create(_tenantId, "kc-1", "j@test.com", "John", "Doe");
+        user.UpdatePreferences("en");
+
+        user.UpdatePreferences(null);
+
+        user.PreferredLanguage.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdatePreferences_WhitespaceValue_ClearsLanguage()
+    {
+        var user = User.Create(_tenantId, "kc-1", "j@test.com", "John", "Doe");
+        user.UpdatePreferences("en");
+
+        user.UpdatePreferences("   ");
+
+        user.PreferredLanguage.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_PreferredLanguage_IsNullByDefault()
+    {
+        var user = User.Create(_tenantId, "kc-1", "j@test.com", "John", "Doe");
+
+        user.PreferredLanguage.Should().BeNull();
+    }
 }

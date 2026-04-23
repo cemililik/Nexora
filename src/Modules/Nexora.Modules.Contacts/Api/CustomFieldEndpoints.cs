@@ -15,7 +15,7 @@ public static class CustomFieldEndpoints
     /// <summary>Maps custom field endpoints.</summary>
     public static void MapCustomFieldEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var definitionGroup = endpoints.MapGroup("/contacts/custom-fields")
+        var definitionGroup = endpoints.MapGroup("/custom-fields")
             .RequireAuthorization();
 
         definitionGroup.MapGet("/", async (bool? isActive, ISender sender, CancellationToken ct) =>
@@ -32,7 +32,7 @@ public static class CustomFieldEndpoints
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Created(
-                    $"/api/v1/contacts/contacts/custom-fields/{result.Value!.Id}",
+                    $"/api/v1/contacts/custom-fields/{result.Value!.Id}",
                     ApiEnvelope<CustomFieldDefinitionDto>.Success(result.Value, result.Message))
                 : result.Error!.Message.Key switch
                 {

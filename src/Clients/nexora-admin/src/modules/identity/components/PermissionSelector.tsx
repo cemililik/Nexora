@@ -16,7 +16,7 @@ interface PermissionSelectorProps {
  */
 export function PermissionSelector({ selectedIds, onChange, disabled }: PermissionSelectorProps) {
   const { t } = useTranslation('identity');
-  const { data: permissions, isLoading } = usePermissions();
+  const { data: permissions, isLoading } = usePermissions(undefined, 'Tenant');
 
   const grouped = useMemo(() => {
     if (!permissions) return {};

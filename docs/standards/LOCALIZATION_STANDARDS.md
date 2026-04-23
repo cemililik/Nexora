@@ -534,3 +534,115 @@ RuleFor(x => x.Amount).GreaterThan(0).WithMessage("lockey_validation_amount_grea
 <h1>{t('lockey_donations_page_title')}</h1>
 <p>{t('lockey_common_no_results')}</p>
 ```
+
+## 8. Locale Context System
+
+The platform uses a **2-tier locale model** that separates UI language (user preference) from regional settings (tenant configuration). These are distinct concepts and must not be conflated.
+
+### 8.1 The Two Tiers
+
+| Tier | Controlled by | What it governs | Where stored |
+|------|--------------|-----------------|--------------|
+| **Tier 1 — UI Language** | User | React UI language (`i18next` namespace) | `identity_users."PreferredLanguage"` (BCP 47, e.g. `"tr"`) |
+| **Tier 2 — Regional Settings** | Tenant admin | Documents, reports, currency display, date formatting | `Tenant.Settings` (JSONB) |
+
+> **No organization-level locale** — organizations inherit tenant regional settings. Users control only UI language.
+
+### 8.2 Resolution Order
+
+```
+User.PreferredLanguage     → resolved by ILocaleContext.Language
+    ↓ (if null)
+TenantSettings.DefaultLocale → Language derived from locale prefix (e.g. "en-US" → "en")
+    ↓ (if no tenant context)
+Platform defaults: en-US / USD / UTC / en
+```
+
+### 8.3 ILocaleContext
+
+Defined in `Nexora.SharedKernel.Abstractions.Localization`:
+
+```csharp
+public interface ILocaleContext
+{
+    /// <summary>BCP 47 UI language (e.g. "en", "tr"). User → Tenant → "en".</summary>
+    string Language { get; }
+
+    /// <summary>IETF locale for number/date formatting (e.g. "en-US", "tr-TR"). Tenant → "en-US".</summary>
+    string Locale { get; }
+
+    /// <summary>ISO 4217 currency code (e.g. "USD", "TRY"). Tenant → "USD".</summary>
+    string Currency { get; }
+
+    /// <summary>IANA timezone (e.g. "UTC", "Europe/Istanbul"). Tenant → "UTC".</summary>
+    string Timezone { get; }
+
+    /// <summary>BCP 47 language tag for PDF/document rendering. Tenant → "en".</summary>
+    string DocumentLanguage { get; }
+}
+```
+
+Inject `ILocaleContext` in any service or handler that needs culture-aware behaviour:
+
+```csharp
+public sealed class GenerateReceiptHandler(
+    ILocaleContext locale,
+    IPdfRenderer pdf) : ICommandHandler<GenerateReceiptCommand, byte[]>
+{
+    public Task<Result<byte[]>> Handle(GenerateReceiptCommand request, CancellationToken ct)
+    {
+        // Use tenant's document language for PDF text
+        // Use tenant's currency and locale for money formatting
+        var culture = new CultureInfo(locale.Locale);
+        var amount = request.Amount.ToString("C", culture);
+        return pdf.RenderAsync(request.TemplateKey, locale.DocumentLanguage, amount, ct);
+    }
+}
+```
+
+### 8.4 TenantSettings Value Object
+
+Stored as JSONB in `Tenant.Settings`. Access via domain methods:
+
+```csharp
+// Read
+var settings = tenant.GetSettings();
+// → TenantSettings { DefaultLocale="tr-TR", DefaultCurrency="TRY", ... }
+
+// Write
+tenant.UpdateSettings(new TenantSettings("tr-TR", "TRY", "Europe/Istanbul", "tr"));
+await db.SaveChangesAsync(ct);
+```
+
+`TenantSettings.FromJson(null)` always returns `TenantSettings.Default` (`en-US / USD / UTC / en`) — safe for tenants that predate this feature.
+
+### 8.5 Supported Values
+
+Defined in `Nexora.Modules.Identity.Domain.Constants.LocaleConstants` (backend) and `src/shared/lib/localeConstants.ts` (frontend). Validators reject unsupported values at the API boundary.
+
+| Dimension | Supported values |
+|-----------|-----------------|
+| Locale | `en-US`, `tr-TR` |
+| Currency | `USD`, `EUR`, `TRY` |
+| Timezone | `UTC`, `Europe/Istanbul`, `Europe/London`, `Europe/Berlin`, `America/New_York`, `America/Chicago`, `America/Denver`, `America/Los_Angeles`, `Asia/Dubai` |
+| Language | `en`, `tr` |
+
+### 8.6 Frontend Integration
+
+```tsx
+// Topbar language switch — changes UI language AND persists to backend
+const { i18n } = useTranslation('common');
+const updatePreferences = useUpdateCurrentUserPreferences();
+
+const handleLanguageChange = (lang: string) => {
+  void i18n.changeLanguage(lang);           // immediate UI change
+  if (user) updatePreferences.mutate({ preferredLanguage: lang }); // persist
+};
+
+// On login — useAuth applies stored preference automatically
+if (userInfo?.preferredLanguage) {
+  void i18n.changeLanguage(userInfo.preferredLanguage);
+}
+```
+
+Tenant regional settings are managed in `TenantDetailPage` → Settings tab (`PUT /identity/tenants/{id}/settings`).

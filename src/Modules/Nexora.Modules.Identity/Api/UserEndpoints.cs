@@ -45,7 +45,9 @@ public static class UserEndpoints
         {
             var keycloakUserId = httpContext.User.GetKeycloakUserId();
             if (string.IsNullOrEmpty(keycloakUserId))
-                return Results.Unauthorized();
+                return Results.Json(
+                    ApiEnvelope.Fail(new Error(LocalizedMessage.Of("lockey_identity_error_unauthorized"))),
+                    statusCode: StatusCodes.Status401Unauthorized);
 
             var result = await sender.Send(new GetCurrentUserQuery(keycloakUserId), ct);
             if (result.IsSuccess)
@@ -82,6 +84,26 @@ public static class UserEndpoints
                 : Results.NotFound(ApiEnvelope<UserDetailDto>.Fail(result.Error!));
         });
 
+        group.MapPatch("/me/preferences", async (HttpContext httpContext, UpdatePreferencesRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var keycloakUserId = httpContext.User.GetKeycloakUserId();
+            if (string.IsNullOrEmpty(keycloakUserId))
+                return Results.Json(
+                    ApiEnvelope.Fail(new Error(LocalizedMessage.Of("lockey_identity_error_unauthorized"))),
+                    statusCode: StatusCodes.Status401Unauthorized);
+
+            var command = new UpdateUserPreferencesCommand(keycloakUserId, request.PreferredLanguage);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
+        })
+        .WithSummary("Update current user's locale preferences")
+        .WithDescription("Sets the preferred UI language for the authenticated user. Pass null to clear (falls back to tenant default).")
+        .Produces(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized);
+
         group.MapGet("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
             var result = await sender.Send(new GetUserByIdQuery(id), ct);
@@ -100,7 +122,7 @@ public static class UserEndpoints
                     ApiEnvelope<UserDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<UserDto>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.create");
 
         group.MapPut("/{id:guid}/profile", async (Guid id, UpdateProfileRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -110,7 +132,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope<UserDto>.Success(result.Value!, result.Message))
                 : Results.NotFound(ApiEnvelope<UserDto>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.update");
 
         group.MapPut("/{id:guid}/status", async (Guid id, UpdateUserStatusRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -120,7 +142,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.NotFound(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.update");
 
         group.MapDelete("/{id:guid}", async (Guid id, ISender sender, CancellationToken ct) =>
         {
@@ -129,7 +151,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.delete");
 
         group.MapGet("/{id:guid}/roles", async (Guid id, Guid? organizationId, ISender sender, CancellationToken ct) =>
         {
@@ -152,7 +174,7 @@ public static class UserEndpoints
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
         })
-        .RequireAuthorization("identity.users.manage");
+        .RequireAuthorization("identity.users.update");
     }
 }
 
@@ -164,3 +186,6 @@ public sealed record UpdateUserStatusRequest(string Action);
 
 /// <summary>Request body for assigning roles to a user within an organization.</summary>
 public sealed record AssignRolesRequest(Guid OrganizationId, List<Guid> RoleIds);
+
+/// <summary>Request body for updating current user's locale preferences.</summary>
+public sealed record UpdatePreferencesRequest(string? PreferredLanguage);

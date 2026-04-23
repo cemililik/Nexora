@@ -11,6 +11,7 @@ import type {
   TenantDetailDto,
   CreateTenantRequest,
   UpdateTenantStatusRequest,
+  UpdateTenantSettingsRequest,
 } from '../types';
 
 export const tenantKeys = {
@@ -52,6 +53,25 @@ export function useCreateTenant() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       toast.success(t('lockey_identity_tenant_created'));
+    },
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function useUpdateTenantSettings(tenantId: string) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('identity');
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (data: UpdateTenantSettingsRequest) =>
+      api.put<void>(
+        `/identity/tenants/${encodeURIComponent(tenantId)}/settings`,
+        data,
+      ),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: tenantKeys.detail(tenantId) });
+      toast.success(t('lockey_identity_tenant_settings_updated'));
     },
     onError: (err) => handleApiError(err),
   });

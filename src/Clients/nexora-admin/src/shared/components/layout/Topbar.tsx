@@ -16,9 +16,12 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/shared/components/ui/avatar';
 import { cn } from '@/shared/lib/utils';
+import { api } from '@/shared/lib/api';
+import { AuthEventType } from '@/shared/types/auth';
 import { useAuthStore } from '@/shared/lib/stores/authStore';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
 import { getKeycloak } from '@/shared/lib/auth';
+import { useUpdateCurrentUserPreferences } from '@/shared/hooks/useCurrentUser';
 
 /** Admin top bar with user menu, language switcher, and theme toggle. */
 export function Topbar() {
@@ -30,12 +33,16 @@ export function Topbar() {
   const theme = useUiStore((s) => s.theme);
 
   const [logoutConfirm, setLogoutConfirm] = useState(false);
+  const updatePreferences = useUpdateCurrentUserPreferences();
 
   const initials = user
     ? `${user.firstName?.charAt(0) ?? ''}${user.lastName?.charAt(0) ?? ''}` || '?'
     : '?';
 
   const handleLogout = () => {
+    // Fire-and-forget — audit failures must never delay the redirect.
+    void api.post('/audit/events/auth', { EventType: AuthEventType.Logout, IsSuccess: true }).catch(() => {});
+
     const keycloak = getKeycloak();
     if (keycloak) {
       void keycloak.logout({ redirectUri: window.location.origin + '/login' });
@@ -47,6 +54,11 @@ export function Topbar() {
 
   const handleLanguageChange = (lang: string) => {
     void i18n.changeLanguage(lang);
+    // Persist the preference to the backend so it is restored on next login.
+    // Fire-and-forget — the toast is shown by the mutation's onSuccess handler.
+    if (user) {
+      updatePreferences.mutate({ preferredLanguage: lang });
+    }
   };
 
   return (

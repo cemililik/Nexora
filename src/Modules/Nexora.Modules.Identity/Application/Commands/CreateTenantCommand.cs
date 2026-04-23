@@ -1,3 +1,4 @@
+using System.Data.Common;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -57,30 +58,75 @@ public sealed class CreateTenantHandler(
                 new Dictionary<string, string> { ["slug"] = request.Slug }));
         }
 
-        // Create tenant entity
+        // CONSISTENCY: Tier 2B — External-First + Compensation.
+        // Keycloak realm must be created first because CreateRealmAsync returns the realm name
+        // we store. The realm name is deterministic (tenant-{slug}), so if the subsequent DB
+        // write fails we compensate by deleting the realm. CreateRealmAsync is idempotent —
+        // a 409 Conflict means the realm already exists and is treated as success.
+        var realmName = $"tenant-{request.Slug.ToLowerInvariant()}";
+        var createdRealmId = await keycloakAdmin.CreateRealmAsync(realmName, request.Name, cancellationToken);
+
+        // Provision tenant schema (idempotent — CREATE SCHEMA IF NOT EXISTS)
         var tenant = Tenant.Create(request.Name, request.Slug);
+        var schemaName = $"tenant_{tenant.Id.Value}";
+
+        try
+        {
+            await schemaManager.CreateSchemaAsync(schemaName, cancellationToken);
+        }
+        catch (DbException schemaEx)
+        {
+            logger.LogError(schemaEx,
+                "Schema creation failed for tenant {TenantId}; compensating Keycloak realm {RealmName}",
+                tenant.Id, realmName);
+
+            try { await keycloakAdmin.DeleteRealmAsync(realmName, cancellationToken); }
+            catch (HttpRequestException compEx)
+            {
+                logger.LogCritical(compEx,
+                    "COMPENSATION FAILED: Keycloak realm {RealmName} is orphaned. Manual cleanup required.",
+                    realmName);
+            }
+
+            return Result<TenantDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_create_failed"));
+        }
+
+        // Persist tenant + realm ID + identity module + active status — single commit
+        tenant.SetRealmId(createdRealmId);
+        var identityModule = TenantModule.Create(tenant.Id, "identity");
+        tenant.Activate();
 
         await platformDb.Tenants.AddAsync(tenant, cancellationToken);
-        await platformDb.SaveChangesAsync(cancellationToken);
-
-        // Provision Keycloak realm for this tenant
-        var realmName = $"tenant-{tenant.Slug}";
-        var createdRealmId = await keycloakAdmin.CreateRealmAsync(realmName, tenant.Name, cancellationToken);
-        tenant.SetRealmId(createdRealmId);
-        await platformDb.SaveChangesAsync(cancellationToken);
-
-        // Provision tenant schema + run migrations
-        var schemaName = $"tenant_{tenant.Id.Value}";
-        await schemaManager.CreateSchemaAsync(schemaName, cancellationToken);
-
-        // Install identity module by default (core module)
-        var identityModule = TenantModule.Create(tenant.Id, "identity");
         await platformDb.TenantModules.AddAsync(identityModule, cancellationToken);
-        await platformDb.SaveChangesAsync(cancellationToken);
 
-        // Activate tenant after successful provisioning
-        tenant.Activate();
-        await platformDb.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await platformDb.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException dbEx)
+        {
+            logger.LogError(dbEx,
+                "DB write failed after provisioning tenant {TenantId}; compensating realm {RealmName} and schema {SchemaName}",
+                tenant.Id, realmName, schemaName);
+
+            try { await keycloakAdmin.DeleteRealmAsync(realmName, cancellationToken); }
+            catch (HttpRequestException compEx)
+            {
+                logger.LogCritical(compEx,
+                    "COMPENSATION FAILED: Keycloak realm {RealmName} is orphaned. Manual cleanup required.",
+                    realmName);
+            }
+
+            try { await schemaManager.DropSchemaAsync(schemaName, cancellationToken); }
+            catch (DbException schemaCompEx)
+            {
+                logger.LogCritical(schemaCompEx,
+                    "COMPENSATION FAILED: tenant schema {SchemaName} is orphaned for tenant {TenantId}. Manual cleanup required.",
+                    schemaName, tenant.Id);
+            }
+
+            return Result<TenantDto>.Failure(LocalizedMessage.Of("lockey_identity_error_tenant_create_failed"));
+        }
 
         var dto = new TenantDto(
             tenant.Id.Value,

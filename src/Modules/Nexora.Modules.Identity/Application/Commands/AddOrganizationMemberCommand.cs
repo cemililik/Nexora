@@ -86,6 +86,6 @@ public sealed class AddOrganizationMemberHandler(
         logger.LogInformation("Member {UserId} added to organization {OrganizationId}", request.UserId, request.OrganizationId);
 
         return Result<OrganizationMemberDto>.Success(dto,
-            LocalizedMessage.Of("lockey_identity_org_member_added"));
+            LocalizedMessage.Of("lockey_identity_member_added"));
     }
 }

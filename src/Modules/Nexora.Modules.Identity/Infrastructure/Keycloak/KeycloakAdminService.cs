@@ -77,6 +77,31 @@ public sealed class KeycloakAdminService(
     }
 
     /// <inheritdoc />
+    public async Task DeleteRealmAsync(string realmName, CancellationToken ct = default)
+    {
+        using var activity = ActivitySource.StartActivity("Keycloak.DeleteRealm", ActivityKind.Client);
+        activity?.SetTag("keycloak.operation", "DeleteRealm");
+        activity?.SetTag("keycloak.realm", realmName);
+
+        var token = await EnsureAuthenticatedAsync(ct);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/admin/realms/{Uri.EscapeDataString(realmName)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, ct);
+        activity?.SetTag("http.status_code", (int)response.StatusCode);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            logger.LogWarning("Realm {RealmName} not found during deletion (already removed)", realmName);
+            return;
+        }
+
+        response.EnsureSuccessStatusCode();
+        logger.LogInformation("Deleted Keycloak realm {RealmName}", realmName);
+    }
+
+    /// <inheritdoc />
     public async Task<string> CreateUserAsync(string realm, string username, string email,
         string firstName, string lastName, string temporaryPassword, CancellationToken ct = default)
     {
@@ -108,7 +133,7 @@ public sealed class KeycloakAdminService(
                 ]
             };
 
-            using var request = new HttpRequestMessage(HttpMethod.Post, $"/admin/realms/{realm}/users");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"/admin/realms/{Uri.EscapeDataString(realm)}/users");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             request.Content = JsonContent.Create(user);
 
@@ -164,7 +189,7 @@ public sealed class KeycloakAdminService(
 
             // GET the full user representation first — Keycloak PUT requires the complete object
             using var getRequest = new HttpRequestMessage(HttpMethod.Get,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var getUserResponse = await httpClient.SendAsync(getRequest, ct);
@@ -181,7 +206,7 @@ public sealed class KeycloakAdminService(
             };
 
             using var putRequest = new HttpRequestMessage(HttpMethod.Put,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             putRequest.Content = JsonContent.Create(updatedUser);
 
@@ -206,6 +231,34 @@ public sealed class KeycloakAdminService(
             if (capturedException is not null)
                 activity?.SetStatus(ActivityStatusCode.Error, capturedException.Message);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteUserAsync(string realm, string keycloakUserId, CancellationToken ct = default)
+    {
+        using var activity = ActivitySource.StartActivity("Keycloak.DeleteUser", ActivityKind.Client);
+        activity?.SetTag("keycloak.operation", "DeleteUser");
+        activity?.SetTag("keycloak.realm", realm);
+
+        var token = await EnsureAuthenticatedAsync(ct);
+
+        using var request = new HttpRequestMessage(HttpMethod.Delete,
+            $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        var response = await httpClient.SendAsync(request, ct);
+        activity?.SetTag("http.status_code", (int)response.StatusCode);
+
+        // Idempotent compensation: a 404 means the user is already absent — treat as success so
+        // compensation flows (e.g. CreateUserCommand rollback) do not surface spurious failures.
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            logger.LogWarning("Keycloak user {KeycloakUserId} not found in realm {Realm} during deletion (already removed)",
+                keycloakUserId, realm);
+            return;
+        }
+
+        response.EnsureSuccessStatusCode();
     }
 
     /// <inheritdoc />
@@ -234,7 +287,7 @@ public sealed class KeycloakAdminService(
 
             // GET the full user representation first — Keycloak PUT requires the complete object
             using var getRequest = new HttpRequestMessage(HttpMethod.Get,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             getRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
             var getUserResponse = await httpClient.SendAsync(getRequest, ct);
@@ -246,7 +299,7 @@ public sealed class KeycloakAdminService(
             var updatedUser = user with { Enabled = enabled };
 
             using var putRequest = new HttpRequestMessage(HttpMethod.Put,
-                $"/admin/realms/{realm}/users/{keycloakUserId}");
+                $"/admin/realms/{Uri.EscapeDataString(realm)}/users/{Uri.EscapeDataString(keycloakUserId)}");
             putRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             putRequest.Content = JsonContent.Create(updatedUser);
 

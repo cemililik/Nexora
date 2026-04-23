@@ -1,11 +1,18 @@
 import type { LazyExoticComponent, FC } from 'react';
 
-/** Portal module manifest for navigation and section registration. */
+/** Portal module manifest for navigation, section, and cross-module slot registration. */
 export interface PortalModuleManifest {
   name: string;
   navigation: PortalNavigationItem[];
   permissions: string[];
   sections?: PortalSection[];
+  /**
+   * Named extension slots contributed by this module to other modules' pages.
+   * Key is the slot identifier the host page renders via `<ModuleSlot slotId="..." />`
+   * or `<ModuleTabs slotId="..." />`. Example: a Finance module contributing a
+   * `"contact.detail.tabs"` entry to add a Payment History tab to the Contact 360° view.
+   */
+  slots?: Record<string, PortalSlotContribution[]>;
 }
 
 /** Navigation item rendered in the sidebar. */
@@ -31,6 +38,21 @@ export interface PortalSection {
   order: number;
   component: LazyExoticComponent<FC>;
   permissions: string[];
+}
+
+/**
+ * Contribution from a module to a named extension slot.
+ * Rendered by `<ModuleSlot />` (stacked) or `<ModuleTabs />` (tabbed) in a host page.
+ */
+export interface PortalSlotContribution {
+  id: string;
+  order: number;
+  permissions: string[];
+  component: LazyExoticComponent<FC>;
+  /** Optional lockey_ key for the contribution label (used by `<ModuleTabs />`). */
+  labelKey?: string;
+  /** next-intl namespace to resolve `labelKey` in (defaults to the host slot's namespace). */
+  translationNamespace?: string;
 }
 
 /** Installed module info from backend. */

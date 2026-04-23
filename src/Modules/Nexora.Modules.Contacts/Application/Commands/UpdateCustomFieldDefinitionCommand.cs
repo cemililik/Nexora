@@ -72,7 +72,16 @@ public sealed class UpdateCustomFieldDefinitionHandler(
             return Result<CustomFieldDefinitionDto>.Failure(LocalizedMessage.Of("lockey_contacts_error_custom_field_name_duplicate"));
         }
 
-        definition.Update(request.FieldName, request.Options, request.IsRequired, request.DisplayOrder);
+        var requiresOptions = definition.FieldType is "select" or "multiselect";
+        if (requiresOptions && string.IsNullOrWhiteSpace(request.Options))
+        {
+            logger.LogWarning(
+                "Options are required for field type {FieldType} but were not provided (definition {DefinitionId})",
+                definition.FieldType, request.DefinitionId);
+            return Result<CustomFieldDefinitionDto>.Failure(LocalizedMessage.Of("lockey_contacts_validation_options_required"));
+        }
+
+        definition.Update(request.FieldName, CustomFieldOptionsNormalizer.Normalize(request.Options), request.IsRequired, request.DisplayOrder);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Custom field definition {DefinitionId} updated for tenant {TenantId}",
@@ -86,4 +95,5 @@ public sealed class UpdateCustomFieldDefinitionHandler(
         return Result<CustomFieldDefinitionDto>.Success(dto,
             LocalizedMessage.Of("lockey_contacts_custom_field_definition_updated"));
     }
+
 }

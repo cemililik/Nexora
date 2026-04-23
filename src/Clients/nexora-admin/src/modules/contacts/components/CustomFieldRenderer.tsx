@@ -167,6 +167,36 @@ function renderEditInput(
       );
     }
 
+    case 'multiselect': {
+      const options = parseOptions(definition.options);
+      let selected: string[] = [];
+      try {
+        const parsed: unknown = JSON.parse(value);
+        if (Array.isArray(parsed)) selected = parsed.filter((x): x is string => typeof x === 'string');
+      } catch {
+        selected = value ? value.split(',').map((s) => s.trim()).filter(Boolean) : [];
+      }
+      return (
+        <div className="flex flex-col gap-1">
+          {options.map((opt) => (
+            <div key={opt} className="flex items-center gap-2">
+              <Checkbox
+                id={`ms-${definition.id}-${opt}`}
+                checked={selected.includes(opt)}
+                onCheckedChange={(checked) => {
+                  const next = checked === true
+                    ? [...selected, opt]
+                    : selected.filter((s) => s !== opt);
+                  onChange(JSON.stringify(next));
+                }}
+              />
+              <label htmlFor={`ms-${definition.id}-${opt}`} className="text-sm">{opt}</label>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
     case 'date':
       return (
         <Input

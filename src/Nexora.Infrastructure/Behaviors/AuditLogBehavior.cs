@@ -1,4 +1,5 @@
 using System.Runtime.ExceptionServices;
+using System.Text.Json;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Abstractions.Audit;
@@ -17,10 +18,17 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
     IAuditContext auditContext,
     IAuditConfigService configService,
     IAuditStore auditStore,
+    IAuditStateCapture stateCapture,
     ITenantContextAccessor tenantContextAccessor,
     ILogger<AuditLogBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = false,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     /// <summary>Intercepts command/query execution to create audit log entries.</summary>
     /// <remarks>
     /// Audit failures NEVER block business logic. If config check or audit write fails,
@@ -100,6 +108,9 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
                     ? OperationType.Read
                     : DeriveOperationType(operation));
 
+            var (beforeJson, afterJson, changesJson, inferredEntityType, inferredEntityId) =
+                SerializeCapturedChanges(stateCapture.Changes);
+
             var entry = new AuditEntry(
                 Id: AuditEntryId.New(),
                 TenantId: tenantId,
@@ -113,16 +124,18 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
                 CorrelationId: auditContext.CorrelationId,
                 IsSuccess: isSuccess,
                 ErrorKey: errorKey,
-                EntityType: entityType,
-                EntityId: null,
-                BeforeState: null,
-                AfterState: null,
-                Changes: null,
+                EntityType: entityType ?? inferredEntityType,
+                EntityId: inferredEntityId,
+                BeforeState: beforeJson,
+                AfterState: afterJson,
+                Changes: changesJson,
                 Metadata: null,
                 Timestamp: DateTimeOffset.UtcNow);
 
             await auditStore.SaveAsync(entry, cancellationToken);
-            logger.LogInformation("Audit entry saved for {Module}.{Operation} success={IsSuccess}", module, operation, isSuccess);
+            logger.LogInformation(
+                "Audit entry saved for {Module}.{Operation} success={IsSuccess} entities={EntityCount}",
+                module, operation, isSuccess, stateCapture.Changes.Count);
         }
         // [ADR] Architectural exemption: Audit logging must never block business logic.
         // These catch blocks intentionally swallow exceptions to ensure that audit
@@ -131,6 +144,11 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         catch (Exception ex)
         {
             logger.LogError(ex, "Audit save failed for {Module}.{Operation}", module, operation);
+        }
+        finally
+        {
+            // Clear so the next request/scope starts clean — runs even when SaveAsync throws.
+            stateCapture.Clear();
         }
 
         // Re-throw the handler exception preserving the original stack trace
@@ -242,5 +260,75 @@ public sealed class AuditLogBehavior<TRequest, TResponse>(
         Command,
         Query,
         Other
+    }
+
+    /// <summary>
+    /// Serializes entity snapshots into audit JSON fields:
+    /// - <c>Changes</c>: flat array of <c>{ field, old, new, entityType?, entityId? }</c> — consumed
+    ///   by the admin <c>EntityDiffViewer</c> for a human-readable diff. <c>entityType/entityId</c>
+    ///   are only emitted when more than one entity was touched (otherwise they're redundant with
+    ///   the audit entry's own columns).
+    /// - <c>BeforeState</c> / <c>AfterState</c>: full per-entity snapshots. Retained for compliance
+    ///   / forensics; the admin UI does not render them by default.
+    ///
+    /// When exactly one entity was touched we also surface its type and id on the audit entry so
+    /// the row is filterable without parsing JSON.
+    /// </summary>
+    private static (string? Before, string? After, string? Changes, string? EntityType, string? EntityId)
+        SerializeCapturedChanges(IReadOnlyList<CapturedEntityChange> changes)
+    {
+        if (changes.Count == 0)
+            return (null, null, null, null, null);
+
+        var multiEntity = changes.Count > 1;
+        var flatDelta = new List<object>();
+
+        foreach (var change in changes)
+        {
+            foreach (var (field, diff) in change.Delta)
+            {
+                var (oldValue, newValue) = ExtractFromTo(diff);
+                flatDelta.Add(multiEntity
+                    ? new { entityType = change.EntityType, entityId = change.EntityId, field, old = oldValue, @new = newValue }
+                    : new { field, old = oldValue, @new = newValue });
+            }
+        }
+
+        var before = changes
+            .Where(c => c.Before.Count > 0)
+            .Select(c => new { entityType = c.EntityType, entityId = c.EntityId, data = c.Before })
+            .ToArray();
+
+        var after = changes
+            .Where(c => c.After.Count > 0)
+            .Select(c => new { entityType = c.EntityType, entityId = c.EntityId, data = c.After })
+            .ToArray();
+
+        var beforeJson = before.Length > 0 ? JsonSerializer.Serialize(before, _jsonOptions) : null;
+        var afterJson = after.Length > 0 ? JsonSerializer.Serialize(after, _jsonOptions) : null;
+        var changesJson = flatDelta.Count > 0 ? JsonSerializer.Serialize(flatDelta, _jsonOptions) : null;
+
+        string? entityType = null;
+        string? entityId = null;
+        if (changes.Count == 1)
+        {
+            entityType = changes[0].EntityType;
+            entityId = changes[0].EntityId;
+        }
+
+        return (beforeJson, afterJson, changesJson, entityType, entityId);
+    }
+
+    /// <summary>
+    /// Extracts From/To scalars from a delta entry produced by <c>AuditChangeTrackerInterceptor</c>.
+    /// The interceptor builds deltas as anonymous objects with From/To properties.
+    /// </summary>
+    private static (object? Old, object? New) ExtractFromTo(object? diff)
+    {
+        if (diff is null) return (null, null);
+        var type = diff.GetType();
+        var from = type.GetProperty("From")?.GetValue(diff);
+        var to = type.GetProperty("To")?.GetValue(diff);
+        return (from, to);
     }
 }

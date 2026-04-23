@@ -63,7 +63,7 @@ describe('useTenantModules', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith('/identity/tenants/tenant-1/modules');
+    expect(mockApiGet).toHaveBeenCalledWith('/identity/tenants/modules');
   });
 
   it('should not fetch when tenantId is empty', () => {
@@ -96,7 +96,7 @@ describe('useInstallModule', () => {
     });
 
     expect(mockApiPost).toHaveBeenCalledWith(
-      '/identity/tenants/tenant-1/modules',
+      '/identity/tenants/modules',
       { moduleName: 'crm' },
     );
   });
@@ -121,14 +121,14 @@ describe('useUninstallModule', () => {
     });
 
     expect(mockApiDelete).toHaveBeenCalledWith(
-      '/identity/tenants/tenant-1/modules/crm',
+      '/identity/tenants/modules/crm',
     );
   });
 
-  it('should encode special characters in tenantId and moduleName', async () => {
+  it('should encode special characters in moduleName', async () => {
     mockApiDelete.mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => useUninstallModule('tenant/special'), {
+    const { result } = renderHook(() => useUninstallModule('tenant-1'), {
       wrapper: createWrapper(),
     });
 
@@ -139,7 +139,7 @@ describe('useUninstallModule', () => {
     });
 
     expect(mockApiDelete).toHaveBeenCalledWith(
-      '/identity/tenants/tenant%2Fspecial/modules/mod%2Fname',
+      '/identity/tenants/modules/mod%2Fname',
     );
   });
 });

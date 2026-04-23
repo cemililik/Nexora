@@ -85,7 +85,7 @@ public sealed class UserManagementIntegrationTests : IDisposable
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error!.Message.Key.Should().Be("lockey_identity_error_user_email_taken");
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_email_already_exists");
     }
 
     [Fact]

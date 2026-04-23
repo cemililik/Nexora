@@ -49,7 +49,8 @@ describe('UserForm', () => {
         expect(screen.getByText('lockey_validation_email_invalid')).toBeInTheDocument();
       });
 
-      expect(screen.getAllByText('lockey_validation_required').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText('lockey_identity_validation_first_name_required')).toBeInTheDocument();
+      expect(screen.getByText('lockey_identity_validation_last_name_required')).toBeInTheDocument();
       expect(onSubmit).not.toHaveBeenCalled();
     });
   });
@@ -138,8 +139,8 @@ describe('UserForm', () => {
       await user.click(screen.getByRole('button', { name: 'lockey_common_save' }));
 
       await waitFor(() => {
-        const errorMessages = screen.getAllByText('lockey_validation_required');
-        expect(errorMessages).toHaveLength(2);
+        expect(screen.getByText('lockey_identity_validation_first_name_required')).toBeInTheDocument();
+        expect(screen.getByText('lockey_identity_validation_last_name_required')).toBeInTheDocument();
       });
     });
 

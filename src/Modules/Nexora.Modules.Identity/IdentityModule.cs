@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Identity.Api;
@@ -9,6 +10,7 @@ using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Identity.Infrastructure.Authorization;
 using Nexora.Modules.Identity.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Identity.Infrastructure.Keycloak;
+using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -37,6 +39,7 @@ public sealed class IdentityModule : IModule
             {
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "identity");
             });
+            options.AddNexoraAuditInterceptor(sp);
         });
 
         // Platform-level DbContext (public schema — tenant management)
@@ -47,6 +50,9 @@ public sealed class IdentityModule : IModule
         });
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(IdentityModule).Assembly));
+
+        // Locale context — resolves language/currency/timezone per request (User → Tenant → Platform defaults)
+        services.AddScoped<ILocaleContext, LocaleContextResolver>();
 
         // Permission-based authorization — loads user permissions from Identity DB
         services.AddScoped<IUserPermissionService, UserPermissionService>();

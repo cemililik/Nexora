@@ -33,7 +33,7 @@ public sealed class InboxCleanupJob(
         IServiceProvider scopedServices,
         CancellationToken ct)
     {
-        if (!Regex.IsMatch(tenant.SchemaName, @"^[a-z0-9_]+$"))
+        if (!Regex.IsMatch(tenant.SchemaName, @"^[a-z0-9_-]+$"))
         {
             logger.LogWarning("Skipping inbox cleanup for tenant with invalid schema name: {SchemaName}", tenant.SchemaName);
             return;

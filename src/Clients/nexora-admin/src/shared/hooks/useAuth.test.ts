@@ -42,15 +42,26 @@ vi.mock('sonner', () => ({
   toast: { error: (...args: unknown[]) => mockToastError(...args) },
 }));
 
+// Mock the shared i18n singleton to avoid real i18next.use(initReactI18next)
+// execution under the globally-mocked react-i18next module.
+vi.mock('@/shared/lib/i18n', () => ({
+  default: {
+    language: 'en',
+    changeLanguage: vi.fn(),
+  },
+}));
+
 // Mock auth store
 const mockSetSession = vi.fn();
 const mockClearSession = vi.fn();
 const mockUpdateTokenStore = vi.fn();
+const mockSetTenantLocale = vi.fn();
 vi.mock('@/shared/lib/stores/authStore', () => ({
   useAuthStore: () => ({
     setSession: mockSetSession,
     clearSession: mockClearSession,
     updateToken: mockUpdateTokenStore,
+    setTenantLocale: mockSetTenantLocale,
     user: null,
     isAuthenticated: false,
     token: null,
@@ -58,6 +69,7 @@ vi.mock('@/shared/lib/stores/authStore', () => ({
 }));
 
 import { setAuthToken } from '@/shared/lib/api';
+import i18n from '@/shared/lib/i18n';
 import { useAuth } from './useAuth';
 
 function createAxiosError(status: number, statusText: string): AxiosError {
@@ -187,6 +199,85 @@ describe('useAuth', () => {
 
     await waitFor(() => {
       expect(mockClearSession).toHaveBeenCalled();
+    });
+  });
+
+  it('should change i18n language to the user preferredLanguage from /me', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/identity/users/me') {
+        return Promise.resolve({ id: 'u1', firstName: 'Admin', lastName: 'User', preferredLanguage: 'tr' });
+      }
+      if (url.startsWith('/identity/tenants/')) {
+        return Promise.resolve({
+          defaultLocale: 'tr-TR', defaultCurrency: 'TRY',
+          defaultTimezone: 'Europe/Istanbul', defaultDocumentLanguage: 'tr',
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(i18n.changeLanguage).toHaveBeenCalledWith('tr');
+    });
+  });
+
+  it('should prefer organization locale over tenant settings when org is present', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/identity/users/me') {
+        return Promise.resolve({ id: 'u1', firstName: 'Admin', lastName: 'User' });
+      }
+      if (url.startsWith('/identity/tenants/')) {
+        return Promise.resolve({
+          defaultLocale: 'tr-TR', defaultCurrency: 'TRY',
+          defaultTimezone: 'Europe/Istanbul', defaultDocumentLanguage: 'tr',
+        });
+      }
+      if (url.startsWith('/identity/organizations/')) {
+        return Promise.resolve({
+          defaultLocale: 'en-US', defaultCurrency: 'USD',
+          timezone: 'UTC', defaultLanguage: 'en',
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetTenantLocale).toHaveBeenCalledWith({
+        locale: 'en-US', currency: 'USD', timezone: 'UTC', documentLanguage: 'en',
+      });
+    });
+  });
+
+  it('should use tenant locale when no organization is present', async () => {
+    mockToken = 'test-jwt-token';
+    mockInit.mockResolvedValue(true);
+    mockApiGet.mockImplementation((url: string) => {
+      if (url === '/identity/users/me') {
+        return Promise.resolve({ id: 'u1', firstName: 'Admin', lastName: 'User', organizations: [] });
+      }
+      if (url.startsWith('/identity/tenants/')) {
+        return Promise.resolve({
+          defaultLocale: 'tr-TR', defaultCurrency: 'TRY',
+          defaultTimezone: 'Europe/Istanbul', defaultDocumentLanguage: 'tr',
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    renderHook(() => useAuth());
+
+    await waitFor(() => {
+      expect(mockSetTenantLocale).toHaveBeenCalledWith({
+        locale: 'tr-TR', currency: 'TRY', timezone: 'Europe/Istanbul', documentLanguage: 'tr',
+      });
     });
   });
 

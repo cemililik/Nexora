@@ -36,7 +36,6 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabKey>('profile');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { handleApiError } = useApiError();
   const { hasPermission } = usePermissions();
 
   const { data: user, isPending } = useUser(id);
@@ -161,7 +160,6 @@ export default function UserDetailPage() {
               onSubmit={(data) => {
                 updateProfile.mutate(data, {
                   onSuccess: () => setIsEditing(false),
-                  onError: (err) => handleApiError(err),
                 });
               }}
               isPending={updateProfile.isPending}
@@ -296,7 +294,6 @@ export default function UserDetailPage() {
 function UserOrgRow({ userId, org }: { userId: string; org: UserOrganizationDto }) {
   const { t } = useTranslation('identity');
   const removeMember = useRemoveMember(org.organizationId);
-  const { handleApiError } = useApiError();
 
   return (
     <li className="flex items-center justify-between">
@@ -312,9 +309,7 @@ function UserOrgRow({ userId, org }: { userId: string; org: UserOrganizationDto 
         className="text-destructive"
         disabled={removeMember.isPending}
         onClick={() => {
-          removeMember.mutate(userId, {
-            onError: (err) => handleApiError(err),
-          });
+          removeMember.mutate(userId);
         }}
       >
         {t('lockey_identity_action_leave_org')}

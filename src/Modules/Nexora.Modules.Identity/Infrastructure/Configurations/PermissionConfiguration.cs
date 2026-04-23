@@ -21,6 +21,12 @@ public sealed class PermissionConfiguration : IEntityTypeConfiguration<Permissio
         builder.HasIndex(p => new { p.Module, p.Resource, p.Action }).IsUnique().HasFilter("\"IsDeleted\" = false");
         builder.Property(p => p.Description).HasMaxLength(500);
 
+        builder.Property(p => p.Scope)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(SharedKernel.Authorization.PermissionScope.Tenant);
+
         builder.Ignore(p => p.Key);
     }
 }

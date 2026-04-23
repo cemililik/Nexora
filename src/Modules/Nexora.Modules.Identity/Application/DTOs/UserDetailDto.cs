@@ -1,6 +1,6 @@
 namespace Nexora.Modules.Identity.Application.DTOs;
 
-/// <summary>User detail with organization memberships.</summary>
+/// <summary>User detail with organization memberships and preferences.</summary>
 public sealed record UserDetailDto(
     Guid Id,
     string Email,
@@ -10,7 +10,8 @@ public sealed record UserDetailDto(
     string Status,
     DateTimeOffset? LastLoginAt,
     List<UserOrganizationDto> Organizations,
-    List<string>? Permissions = null);
+    List<string>? Permissions = null,
+    string? PreferredLanguage = null);
 
 /// <summary>Organization membership info for a user.</summary>
 public sealed record UserOrganizationDto(
