@@ -186,6 +186,17 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 
 ## Pending decisions
 
+**ADR-0028 — Module uninstall data-retention contract** (Proposed 2026-04-23).
+Formalizes the current rename-and-retain uninstall pattern: 30-day default
+retention (configurable via resolver key `modules.uninstall.retention_days`,
+cap-bounded per ADR-0025), mandatory `platform:purge-uninstalled-modules`
+cleanup job, dependency-cascade guard, GDPR Article 17 escape hatch that
+honours erasure against `_del_{timestamp}` renamed tables, extended
+`ModuleUninstalledIntegrationEvent` carrying canonical + renamed table names.
+Rejects immediate hard-delete (no recovery, long-lock risk) and per-module
+policy sprawl (breaks cross-module reasoning). Three follow-up tasks scoped
+in the ADR (T-025 cleanup job, T-026 cascade guard, T-027 GDPR handler).
+
 **ADR-0027 — Production schema-migration strategy** (Proposed 2026-04-23). Closes
 the "Production strategy — TBD" marker in `docs/standards/schema-migration.md`
 and CLAUDE.md. Chooses EF Core Migrations (module-scoped, per-tenant rollout per

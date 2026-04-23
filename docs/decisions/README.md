@@ -70,3 +70,4 @@ answerable from the Git log alone.
 | [0025](./0025-org-scoped-compliance-config-with-platform-caps.md) | Org-Scoped Compliance Config with Platform-Level Caps | Accepted |
 | [0026](./0026-cross-module-pii-payload-scan-for-gdpr-erasure.md) | Cross-Module PII Payload Scan for GDPR Erasure | Proposed |
 | [0027](./0027-production-schema-migration-strategy.md) | Production Schema-Migration Strategy | Proposed |
+| [0028](./0028-module-uninstall-data-retention-contract.md) | Module Uninstall Data-Retention Contract | Proposed |
