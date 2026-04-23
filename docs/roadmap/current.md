@@ -6,9 +6,23 @@
 
 ## Active task
 
-_None. T-023 moved to In Review — last batch entry is T-024._
+_None. All 6 tasks in the review-independent batch moved to In Review —
+see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-024 — `check-schema-drift.py` CI integration via an opt-in xUnit wrapper**
+(Phase 1.5, tooling). Status: **In Review**. `SchemaDriftToolTests` (tagged
+`Category=Tooling`) wraps the existing Python drift detector using
+`[SkippableFact]`. Default PR CI: Skipped with a one-liner pointing at
+`NEXORA_SCHEMA_DRIFT_ENABLED=1`. Opt-in: shells out to
+`python3 tools/check-schema-drift.py`, fails with the full stdout + stderr
+when exit code is non-zero so the CI log names the drifted column. Precondition
+misses (python3 not on PATH, script not found) surface as Skipped — drift is
+the only failure mode. Verified in both paths: default Skipped (confirmed in
+run output — 1 Skipped across Infrastructure.Tests); opt-in against the live
+dev DB passes (confirms T-021 + T-022 cleanup held — zero drift detected).
+`docs/standards/schema-migration.md` §5 gains a new Testing bullet.
 
 **T-023 — `/health/ready` dependency-level diagnostics** (Phase 1.5,
 observability). Status: **In Review**. `AddHealthChecks` now registers

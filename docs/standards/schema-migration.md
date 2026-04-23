@@ -131,6 +131,14 @@ When you add a property to a domain entity:
    \d "tenant_00000000-0000-0000-0000-000000000001".{module}_{table}
    ```
 
+4. **Drift detector** — `tools/check-schema-drift.py` compares every EF entity's
+   mapped properties against the live dev tenant schema and exits non-zero on
+   drift. T-024 wraps the script in an opt-in xUnit test
+   (`SchemaDriftToolTests`, tagged `Category=Tooling`), skipped unless the
+   `NEXORA_SCHEMA_DRIFT_ENABLED=1` environment variable is set. Nightly CI and
+   local devs opt in; default PR CI stays fast. When the script reports drift,
+   the test fails with the full stdout so the offending column / entity is
+   visible in the CI log.
 
 ---
 
