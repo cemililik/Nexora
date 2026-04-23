@@ -147,7 +147,16 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 
 ## Pending decisions
 
-None currently open. ADR-0025 (org-scoped compliance config) was promoted to `Accepted`
+**ADR-0026 — Cross-module PII payload scan for GDPR erasure** (Proposed 2026-04-23).
+Captures the design decision that T-010 is blocked on: per-module
+`IContactReferenceLocator` with declared JSON paths (chosen), vs. full-table regex
+scan / write-time structured tagging / no-op. The ADR identifies false-positive
+safety as the decisive driver — a regex scan for the erased contact's name would
+almost certainly redact unrelated audit rows ("paid Jon's invoice" colliding with
+a contact named "Jon"), which would itself be a data-integrity incident. Maintainer
+promotion to Accepted unblocks T-010. Related: T-010, ADR-0008, ADR-0023.
+
+ADR-0025 (org-scoped compliance config) was promoted to `Accepted`
 on 2026-04-23; T-019 unblocked, implementation shipped, now In Review (see Prior active tasks).
 
 The three Phase-1 foundation ADRs are **Accepted** (maintainer promoted 2026-04-22):
