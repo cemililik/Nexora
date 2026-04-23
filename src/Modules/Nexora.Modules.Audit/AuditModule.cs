@@ -4,17 +4,21 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Audit.Api;
 using Nexora.Modules.Audit.Application.Services;
 using Nexora.Modules.Audit.Domain.Repositories;
 using Nexora.Modules.Audit.Infrastructure;
+using Nexora.Modules.Audit.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Audit.Infrastructure.Jobs;
 using Nexora.Modules.Audit.Infrastructure.Repositories;
 using Nexora.Modules.Audit.Infrastructure.Stores;
 using Nexora.SharedKernel.Abstractions.Audit;
 using Nexora.SharedKernel.Abstractions.Jobs;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Audit;
 
@@ -51,12 +55,17 @@ public sealed class AuditModule : IModule
         // Register audit infrastructure services
         services.AddScoped<IAuditStore, PostgresAuditStore>();
         services.AddScoped<IAuditConfigService, AuditConfigService>();
+
+        // Register inbox guard for idempotent integration event consumption
+        services.AddScoped<IInboxGuard, InboxGuard<AuditDbContext>>();
     }
 
     /// <inheritdoc />
     public void ConfigureEventHandlers(IServiceCollection services)
     {
-        // Audit module does not consume integration events from other modules.
+        // GDPR erasure propagation — redacts PII payloads and appends a compliance record.
+        services.AddScoped<IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>,
+            ContactGdprDeletedIntegrationEventHandler>();
     }
 
     /// <inheritdoc />

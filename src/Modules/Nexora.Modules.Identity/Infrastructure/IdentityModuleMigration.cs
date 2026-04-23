@@ -61,6 +61,7 @@ public sealed class IdentityModuleMigration(
                 Permission.Create("identity", "users", "create", "lockey_identity_permission_users_create"),
                 Permission.Create("identity", "users", "update", "lockey_identity_permission_users_update"),
                 Permission.Create("identity", "users", "delete", "lockey_identity_permission_users_delete"),
+                Permission.Create("identity", "users", "link_contact", "lockey_identity_permission_users_link_contact"),
                 Permission.Create("identity", "roles", "read", "lockey_identity_permission_roles_read"),
                 Permission.Create("identity", "roles", "create", "lockey_identity_permission_roles_create"),
                 Permission.Create("identity", "roles", "update", "lockey_identity_permission_roles_update"),
@@ -138,6 +139,36 @@ public sealed class IdentityModuleMigration(
 
         foreach (var p in misclassified)
             p.SetScope(PermissionScope.Platform);
+
+        // Idempotent top-up: ensure newly-introduced permissions exist on tenants
+        // seeded before they were added. Grants the Platform Admin role by default.
+        var newPermissionsToEnsure = new[]
+        {
+            ("identity", "users", "link_contact", "lockey_identity_permission_users_link_contact"),
+        };
+
+        foreach (var (module, resource, action, descriptionKey) in newPermissionsToEnsure)
+        {
+            // Find or create the permission — even if it already exists, we still want to
+            // (idempotently) ensure the admin role has it assigned.
+            var permission = await dbContext.Permissions
+                .FirstOrDefaultAsync(p => p.Module == module && p.Resource == resource && p.Action == action, ct);
+
+            if (permission is null)
+            {
+                permission = Permission.Create(module, resource, action, descriptionKey);
+                await dbContext.Permissions.AddAsync(permission, ct);
+            }
+
+            // Pick the admin role deterministically by name (not just "any IsSystemRole" —
+            // multiple system roles could exist and FirstOrDefault would be non-deterministic).
+            var adminRole = await dbContext.Roles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.Name == "Platform Admin", ct);
+
+            // AssignPermission is idempotent (entity guards against duplicates).
+            adminRole?.AssignPermission(permission);
+        }
 
         // Seed platform-admin role if not exist
         if (!await dbContext.Roles.AnyAsync(r => r.IsSystemRole, ct))

@@ -11,7 +11,9 @@ public sealed record UserDetailDto(
     DateTimeOffset? LastLoginAt,
     List<UserOrganizationDto> Organizations,
     List<string>? Permissions = null,
-    string? PreferredLanguage = null);
+    string? PreferredLanguage = null,
+    Guid? ContactId = null,
+    bool IsSystemAccount = false);
 
 /// <summary>Organization membership info for a user.</summary>
 public sealed record UserOrganizationDto(

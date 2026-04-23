@@ -1,0 +1,220 @@
+using System.Globalization;
+using ClosedXML.Excel;
+using CsvHelper;
+using CsvHelper.Configuration;
+
+namespace Nexora.Modules.Contacts.Infrastructure.Parsers;
+
+/// <summary>
+/// Header-preserving parser for contact import files. Produces a list of rows
+/// keyed by the detected source header name, enabling the import pipeline to
+/// apply a user-supplied column mapping at a later stage.
+/// </summary>
+public static class ContactImportParser
+{
+    private const string CsvFormat = "csv";
+    private const string XlsxFormat = "xlsx";
+
+    /// <summary>Detects and returns the header row of the uploaded file.</summary>
+    /// <param name="content">The uploaded file content as a readable stream.</param>
+    /// <param name="format">Either <c>csv</c> or <c>xlsx</c> (case-insensitive).</param>
+    public static IReadOnlyList<string> ParseHeaders(Stream content, string format)
+    {
+        return format.ToLowerInvariant() switch
+        {
+            CsvFormat => ParseCsvHeaders(content),
+            XlsxFormat => ParseXlsxHeaders(content),
+            _ => throw new NotSupportedException($"Unsupported import format: {format}")
+        };
+    }
+
+    /// <summary>
+    /// Parses the file into header-keyed rows. <paramref name="skip"/> / <paramref name="take"/>
+    /// allow partial reads (e.g. preview of first 5 rows).
+    /// </summary>
+    public static List<IReadOnlyDictionary<string, string?>> ParseRows(
+        Stream content,
+        string format,
+        int? skip = 0,
+        int? take = null)
+    {
+        return format.ToLowerInvariant() switch
+        {
+            CsvFormat => ParseCsvRows(content, skip ?? 0, take),
+            XlsxFormat => ParseXlsxRows(content, skip ?? 0, take),
+            _ => throw new NotSupportedException($"Unsupported import format: {format}")
+        };
+    }
+
+    private static List<string> ParseCsvHeaders(Stream content)
+    {
+        using var reader = new StreamReader(content, leaveOpen: true);
+        using var csv = new CsvReader(reader, BuildCsvConfig());
+
+        if (!csv.Read())
+            return [];
+        csv.ReadHeader();
+
+        var headers = csv.HeaderRecord?
+            .Select(h => h?.Trim() ?? string.Empty)
+            .Where(h => !string.IsNullOrEmpty(h))
+            .ToList() ?? [];
+
+        EnsureNoDuplicateHeaders(headers);
+        return headers;
+    }
+
+    /// <summary>
+    /// Rejects header lists containing two or more entries that differ only in case
+    /// (e.g. <c>Email</c> and <c>email</c>) — they would collide in the
+    /// case-insensitive row dictionary and silently lose data.
+    /// </summary>
+    private static void EnsureNoDuplicateHeaders(IReadOnlyList<string> headers)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in headers)
+        {
+            if (!seen.Add(header))
+                throw new FormatException("lockey_contacts_import_error_duplicate_headers");
+        }
+    }
+
+    private static List<IReadOnlyDictionary<string, string?>> ParseCsvRows(
+        Stream content,
+        int skip,
+        int? take)
+    {
+        using var reader = new StreamReader(content, leaveOpen: true);
+        using var csv = new CsvReader(reader, BuildCsvConfig());
+
+        if (!csv.Read())
+            return [];
+        csv.ReadHeader();
+
+        var headers = csv.HeaderRecord?
+            .Select(h => h?.Trim() ?? string.Empty)
+            .ToArray() ?? [];
+
+        EnsureNoDuplicateHeaders(headers.Where(h => !string.IsNullOrEmpty(h)).ToList());
+
+        var result = new List<IReadOnlyDictionary<string, string?>>();
+        var skipped = 0;
+        while (csv.Read())
+        {
+            if (skipped < skip)
+            {
+                skipped++;
+                continue;
+            }
+
+            if (take is { } limit && result.Count >= limit)
+                break;
+
+            var dict = new Dictionary<string, string?>(headers.Length, StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < headers.Length; i++)
+            {
+                var header = headers[i];
+                if (string.IsNullOrEmpty(header))
+                    continue;
+
+                var value = csv.GetField(i)?.Trim();
+                dict[header] = string.IsNullOrEmpty(value) ? null : value;
+            }
+            result.Add(dict);
+        }
+
+        return result;
+    }
+
+    private static CsvConfiguration BuildCsvConfig() => new(CultureInfo.InvariantCulture)
+    {
+        HasHeaderRecord = true,
+        HeaderValidated = null,
+        MissingFieldFound = null,
+    };
+
+    private static List<string> ParseXlsxHeaders(Stream content)
+    {
+        using var workbook = new XLWorkbook(content);
+        var worksheet = workbook.Worksheet(1);
+        var headerRow = worksheet.Row(1);
+        var lastHeaderCell = headerRow.LastCellUsed();
+        if (lastHeaderCell is null)
+            return [];
+
+        var headers = new List<string>();
+        for (var col = 1; col <= lastHeaderCell.Address.ColumnNumber; col++)
+        {
+            var value = headerRow.Cell(col).GetString().Trim();
+            if (!string.IsNullOrEmpty(value))
+                headers.Add(value);
+        }
+        EnsureNoDuplicateHeaders(headers);
+        return headers;
+    }
+
+    private static List<IReadOnlyDictionary<string, string?>> ParseXlsxRows(
+        Stream content,
+        int skip,
+        int? take)
+    {
+        using var workbook = new XLWorkbook(content);
+        var worksheet = workbook.Worksheet(1);
+        var headerRow = worksheet.Row(1);
+        var lastHeaderCell = headerRow.LastCellUsed();
+        if (lastHeaderCell is null)
+            return [];
+
+        var headers = new List<(string Name, int Column)>();
+        for (var col = 1; col <= lastHeaderCell.Address.ColumnNumber; col++)
+        {
+            var value = headerRow.Cell(col).GetString().Trim();
+            if (!string.IsNullOrEmpty(value))
+                headers.Add((value, col));
+        }
+
+        EnsureNoDuplicateHeaders(headers.Select(h => h.Name).ToList());
+
+        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+        var result = new List<IReadOnlyDictionary<string, string?>>();
+        var skipped = 0;
+
+        for (var rowNum = 2; rowNum <= lastRow; rowNum++)
+        {
+            var row = worksheet.Row(rowNum);
+
+            if (IsRowEmpty(row, headers))
+                continue;
+
+            if (skipped < skip)
+            {
+                skipped++;
+                continue;
+            }
+
+            if (take is { } limit && result.Count >= limit)
+                break;
+
+            var dict = new Dictionary<string, string?>(headers.Count, StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, col) in headers)
+            {
+                var cellValue = row.Cell(col).GetString().Trim();
+                dict[name] = string.IsNullOrEmpty(cellValue) ? null : cellValue;
+            }
+            result.Add(dict);
+        }
+
+        return result;
+    }
+
+    private static bool IsRowEmpty(IXLRow row, List<(string Name, int Column)> headers)
+    {
+        foreach (var (_, col) in headers)
+        {
+            var value = row.Cell(col).GetString();
+            if (!string.IsNullOrWhiteSpace(value))
+                return false;
+        }
+        return true;
+    }
+}

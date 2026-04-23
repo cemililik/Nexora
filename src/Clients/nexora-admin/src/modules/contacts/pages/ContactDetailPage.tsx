@@ -52,6 +52,7 @@ import { useCommunicationPreferences, useUpdatePreferences } from '../hooks/useC
 import { useDuplicates } from '../hooks/useDuplicates';
 import { useGdprExport, useGdprDelete } from '../hooks/useImportExport';
 import { ContactForm } from '../components/ContactForm';
+import { GdprErasureDialog } from '../components/GdprErasureDialog';
 import type {
   ContactDetailDto,
   ContactAddressDto,
@@ -80,6 +81,7 @@ export default function ContactDetailPage() {
   const [formIsDirty, setFormIsDirty] = useState(false);
   const [confirmAction, setConfirmAction] = useState<'archive' | 'restore' | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [showGdprErasure, setShowGdprErasure] = useState(false);
   const confirmedRef = useRef(false);
   const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
     useUnsavedChangesGuard(isEditing && formIsDirty);
@@ -144,6 +146,15 @@ export default function ContactDetailPage() {
           >
             {t('lockey_contacts_action_find_duplicates')}
           </Button>
+          {hasPermission('contacts.contacts.admin') && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => setShowGdprErasure(true)}
+            >
+              {t('lockey_contacts_gdpr_erasure_button')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -239,6 +250,23 @@ export default function ContactDetailPage() {
         cancelLabel={t('lockey_common_stay', { ns: 'common' })}
         variant="destructive"
       />
+
+      {/* GDPR Erasure Dialog */}
+      {hasPermission('contacts.contacts.admin') && (
+        <GdprErasureDialog
+          contactId={id}
+          contactDisplayName={contact.displayName}
+          // Heuristic: `ContactStatus` does not currently include an explicit
+          // "Anonymized" state, so we treat `Archived` as a proxy signal for
+          // the post-anonymize end state. This over-approximates (any archived
+          // contact shows the residual-record warning) but is safer than a
+          // fragile string match against a localized "[REDACTED]" placeholder.
+          // TODO: replace with a dedicated `isAnonymized` backend flag once exposed.
+          contactAlreadyAnonymized={contact.status === 'Archived'}
+          open={showGdprErasure}
+          onOpenChange={setShowGdprErasure}
+        />
+      )}
 
     </div>
   );

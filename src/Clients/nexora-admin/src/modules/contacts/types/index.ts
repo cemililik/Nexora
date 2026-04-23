@@ -18,7 +18,8 @@ export type RelationshipType =
 export type TagCategory = 'Donor' | 'Parent' | 'Volunteer' | 'Vendor' | 'Student' | 'Staff';
 export type ImportJobStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
 export type ExportJobStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
-export type ExportFormat = 'csv' | 'xlsx';
+export type ExportFormat = 'csv' | 'xlsx' | 'vcard';
+export type ExportDateField = 'CreatedAt' | 'UpdatedAt';
 
 // DTOs
 export interface ContactDto {
@@ -194,10 +195,12 @@ export interface ImportJobDto {
 export interface ExportJobDto {
   jobId: string;
   status: ExportJobStatus;
-  format: ExportFormat;
+  format: string;
+  totalRows: number;
   createdAt: string;
   completedAt?: string;
   downloadUrl?: string;
+  errorDetails?: string;
 }
 
 // Request types
@@ -300,12 +303,47 @@ export interface ConfirmImportRequest {
   fileName: string;
   fileFormat: string;
   storageKey: string;
+  columnMapping?: Record<string, string>;
+}
+
+export interface PreviewImportRequest {
+  storageKey: string;
+  fileFormat: string;
+}
+
+export interface ContactImportPreviewDto {
+  headers: string[];
+  rows: Array<Record<string, string | null>>;
+  totalRowCount: number;
+}
+
+export interface ValidateImportRequest {
+  storageKey: string;
+  fileFormat: string;
+  columnMapping: Record<string, string>;
+}
+
+export interface ContactImportValidationErrorDto {
+  rowNumber: number;
+  errorKey: string;
+  fieldName?: string | null;
+}
+
+export interface ContactImportValidationDto {
+  totalRows: number;
+  errorCount: number;
+  errors: ContactImportValidationErrorDto[];
 }
 
 export interface StartExportRequest {
   format: ExportFormat;
+  fields?: string[];
+  customFieldIds?: string[];
   statusFilter?: ContactStatus;
   typeFilter?: ContactType;
+  dateFrom?: string;
+  dateTo?: string;
+  dateField?: ExportDateField;
 }
 
 export interface CreateCustomFieldRequest {

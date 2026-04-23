@@ -22,6 +22,7 @@ public sealed class ImportJob : Entity<ImportJobId>
     public int ErrorCount { get; private set; }
     public string? ErrorDetails { get; private set; }
     public string? HangfireJobId { get; private set; }
+    public string? ColumnMappingJson { get; private set; }
     public string? CreatedBy { get; private set; }
     public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset? CompletedAt { get; private set; }
@@ -58,6 +59,12 @@ public sealed class ImportJob : Entity<ImportJobId>
             throw new DomainException("lockey_contacts_error_import_hangfire_id_required");
 
         HangfireJobId = hangfireJobId;
+    }
+
+    /// <summary>Stores the serialized source-header → target-field column mapping.</summary>
+    public void SetColumnMapping(string? mappingJson)
+    {
+        ColumnMappingJson = mappingJson;
     }
 
     /// <summary>Transitions the job to Processing status with the total row count.</summary>

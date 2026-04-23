@@ -10,6 +10,10 @@ import type {
   ImportUploadUrlDto,
   GenerateImportUploadUrlRequest,
   ConfirmImportRequest,
+  PreviewImportRequest,
+  ContactImportPreviewDto,
+  ValidateImportRequest,
+  ContactImportValidationDto,
   StartExportRequest,
   GdprDeleteRequest,
   GdprExportDto,
@@ -19,12 +23,36 @@ export const importKeys = {
   job: (jobId: string) => ['contacts', 'import', jobId] as const,
 };
 
+export const exportKeys = {
+  job: (jobId: string) => ['contacts', 'export', jobId] as const,
+};
+
 export function useGenerateImportUploadUrl() {
   const { handleApiError } = useApiError();
 
   return useMutation({
     mutationFn: (data: GenerateImportUploadUrlRequest) =>
       api.post<ImportUploadUrlDto>('/contacts/contacts/import/upload-url', data),
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function usePreviewImport() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (data: PreviewImportRequest) =>
+      api.post<ContactImportPreviewDto>('/contacts/contacts/import/preview', data),
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function useValidateImport() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (data: ValidateImportRequest) =>
+      api.post<ContactImportValidationDto>('/contacts/contacts/import/validate', data),
     onError: (err) => handleApiError(err),
   });
 }
@@ -72,6 +100,24 @@ export function useStartExport() {
       toast.success(t('lockey_contacts_toast_export_started'));
     },
     onError: (err) => handleApiError(err),
+  });
+}
+
+export function useExportStatus(jobId: string) {
+  return useQuery({
+    queryKey: exportKeys.job(jobId),
+    queryFn: () =>
+      api.get<ExportJobDto>(
+        `/contacts/contacts/export/${encodeURIComponent(jobId)}`,
+      ),
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'Processing' || status === 'Pending') {
+        return 2000;
+      }
+      return false;
+    },
   });
 }
 

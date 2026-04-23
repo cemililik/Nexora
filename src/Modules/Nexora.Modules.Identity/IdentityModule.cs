@@ -79,6 +79,10 @@ public sealed class IdentityModule : IModule
         // Self-consuming handler for cross-instance permission cache invalidation
         services.AddScoped<IIntegrationEventHandler<UserRolesChangedIntegrationEvent>,
             UserRolesChangedEventHandler>();
+
+        // Cross-module: GDPR erasure in Contacts cascades to unlink users.
+        services.AddScoped<IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>,
+            ContactGdprDeletedIntegrationEventHandler>();
     }
 
     /// <inheritdoc />

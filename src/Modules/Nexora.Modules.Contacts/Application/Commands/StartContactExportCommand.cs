@@ -1,53 +1,31 @@
-using FluentValidation;
-using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Application.DTOs;
 using Nexora.SharedKernel.Abstractions.CQRS;
-using Nexora.SharedKernel.Abstractions.MultiTenancy;
-using Nexora.SharedKernel.Localization;
-using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Contacts.Application.Commands;
 
-/// <summary>Command to start a contact export job.</summary>
+/// <summary>
+/// Command to start a contact export job. Persists an <c>ExportJob</c>,
+/// enqueues a Hangfire background job, and returns the client-facing DTO.
+/// </summary>
 public sealed record StartContactExportCommand(
     string Format,
+    IReadOnlyList<string>? Fields = null,
+    IReadOnlyList<Guid>? CustomFieldIds = null,
     string? StatusFilter = null,
-    string? TypeFilter = null) : ICommand<ExportJobDto>;
+    string? TypeFilter = null,
+    DateTimeOffset? DateFrom = null,
+    DateTimeOffset? DateTo = null,
+    string? DateField = null) : ICommand<ExportJobDto>;
 
-/// <summary>Validates contact export input.</summary>
-public sealed class StartContactExportValidator : AbstractValidator<StartContactExportCommand>
-{
-    private static readonly string[] ValidFormats = ["csv", "json", "xlsx"];
+/// <summary>Serialization shape for <c>ExportJob.FiltersJson</c>.</summary>
+public sealed record ExportFiltersPayload(
+    string? StatusFilter,
+    string? TypeFilter,
+    DateTimeOffset? DateFrom,
+    DateTimeOffset? DateTo,
+    string? DateField);
 
-    public StartContactExportValidator()
-    {
-        RuleFor(x => x.Format)
-            .NotEmpty().WithMessage("lockey_contacts_validation_export_format_required")
-            .Must(f => ValidFormats.Contains(f.ToLowerInvariant()))
-            .WithMessage("lockey_contacts_validation_export_format_invalid");
-    }
-}
-
-/// <summary>Starts a background export job and returns job tracking info.</summary>
-public sealed class StartContactExportHandler(
-    ITenantContextAccessor tenantContextAccessor,
-    ILogger<StartContactExportHandler> logger) : ICommandHandler<StartContactExportCommand, ExportJobDto>
-{
-    public Task<Result<ExportJobDto>> Handle(
-        StartContactExportCommand request,
-        CancellationToken cancellationToken)
-    {
-        var tenantId = tenantContextAccessor.Current.TenantId;
-        var jobId = Guid.NewGuid();
-
-        logger.LogInformation("Contact export job {JobId} started for tenant {TenantId} in format {Format}",
-            jobId, tenantId, request.Format);
-
-        var dto = new ExportJobDto(
-            jobId, "Queued", request.Format.ToLowerInvariant(),
-            DateTimeOffset.UtcNow, null, null);
-
-        return Task.FromResult(Result<ExportJobDto>.Success(dto,
-            LocalizedMessage.Of("lockey_contacts_export_job_started")));
-    }
-}
+/// <summary>Serialization shape for <c>ExportJob.FieldsJson</c>.</summary>
+public sealed record ExportFieldsPayload(
+    IReadOnlyList<string>? Fields,
+    IReadOnlyList<Guid>? CustomFieldIds);

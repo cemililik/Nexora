@@ -41,7 +41,9 @@ public sealed class GetUserByIdHandler(
         var dto = new UserDetailDto(
             user.Id.Value, user.Email, user.FirstName, user.LastName,
             user.Phone, user.Status.ToString(), user.LastLoginAt, orgs,
-            PreferredLanguage: user.PreferredLanguage);
+            PreferredLanguage: user.PreferredLanguage,
+            ContactId: user.ContactId,
+            IsSystemAccount: user.IsSystemAccount);
 
         return Result<UserDetailDto>.Success(dto,
             new LocalizedMessage("lockey_identity_user_retrieved"));

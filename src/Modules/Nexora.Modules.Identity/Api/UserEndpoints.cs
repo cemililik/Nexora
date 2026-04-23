@@ -166,6 +166,29 @@ public static class UserEndpoints
         })
         .RequireAuthorization("identity.users.read");
 
+        group.MapPost("/{id:guid}/link-contact", async (Guid id, LinkContactRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new LinkUserContactCommand(id, request.ContactId);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
+        })
+        .RequireAuthorization("identity.users.link_contact")
+        .WithSummary("Link user to contact")
+        .WithDescription("Links an Identity user to a Contacts module contact record. System accounts are rejected.");
+
+        group.MapDelete("/{id:guid}/link-contact", async (Guid id, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new UnlinkUserContactCommand(id), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope.Success(result.Message))
+                : Results.BadRequest(ApiEnvelope.Fail(result.Error!));
+        })
+        .RequireAuthorization("identity.users.link_contact")
+        .WithSummary("Unlink user from contact")
+        .WithDescription("Removes the user↔contact link. Idempotent — returns success even when no link exists.");
+
         group.MapPut("/{id:guid}/roles", async (Guid id, AssignRolesRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new AssignUserRolesCommand(id, request.OrganizationId, request.RoleIds);
@@ -189,3 +212,6 @@ public sealed record AssignRolesRequest(Guid OrganizationId, List<Guid> RoleIds)
 
 /// <summary>Request body for updating current user's locale preferences.</summary>
 public sealed record UpdatePreferencesRequest(string? PreferredLanguage);
+
+/// <summary>Request body for linking a user to a Contacts module contact record.</summary>
+public sealed record LinkContactRequest(Guid ContactId);

@@ -1,14 +1,17 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
-using Nexora.SharedKernel.Abstractions.Messaging;
-using NSubstitute;
 using Nexora.Modules.Contacts.Application.Commands;
 using Nexora.Modules.Contacts.Domain.Entities;
 using Nexora.Modules.Contacts.Domain.ValueObjects;
 using Nexora.Modules.Contacts.Infrastructure;
+using Nexora.Modules.Contacts.Infrastructure.Jobs;
+using Nexora.SharedKernel.Abstractions.Configuration;
+using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Events;
+using NSubstitute;
 
 namespace Nexora.Modules.Contacts.Tests.Application;
 
@@ -17,13 +20,24 @@ public sealed class RequestGdprDeleteTests : IDisposable
     private readonly ContactsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly IOutbox _outbox;
+    private readonly ITenantConfiguration _tenantConfiguration;
+    private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
+    private readonly Guid _userId = Guid.NewGuid();
 
     public RequestGdprDeleteTests()
     {
-        _tenantAccessor = CreateTenantAccessor(_tenantId, _orgId);
+        _tenantAccessor = CreateTenantAccessor(_tenantId, _orgId, _userId);
         _outbox = Substitute.For<IOutbox>();
+        _tenantConfiguration = Substitute.For<ITenantConfiguration>();
+        _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
+
+        // Default: hard-delete disabled (anonymize path).
+        _tenantConfiguration
+            .GetAsync<bool>("gdpr.hard_delete.enabled", Arg.Any<CancellationToken>())
+            .Returns(false);
+
         var options = new DbContextOptionsBuilder<ContactsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
@@ -33,16 +47,13 @@ public sealed class RequestGdprDeleteTests : IDisposable
     [Fact]
     public async Task Handle_ValidContact_ShouldAnonymizeAndSoftDelete()
     {
-        // Arrange
         var contact = await SeedContact();
         var handler = CreateHandler();
 
-        // Act
         var result = await handler.Handle(
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
 
         var updated = await _dbContext.Contacts
@@ -58,48 +69,98 @@ public sealed class RequestGdprDeleteTests : IDisposable
 
         await _outbox.Received(1).EnqueueAsync(
             Arg.Is<ContactGdprDeletedIntegrationEvent>(e =>
-                e.ContactId == contact.Id.Value && e.Reason == "User request"),
+                e.ContactId == contact.Id.Value
+                && e.Reason == "User request"
+                && e.Mode == "anonymized"
+                && e.ErasedByUserId == _userId
+                && e.DeletedAtUtc != default),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_AnonymizePath_ShouldWriteAuditEntry()
+    {
+        var contact = await SeedContact();
+        var handler = CreateHandler();
+
+        await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        var audit = await _dbContext.GdprErasureAudits
+            .FirstOrDefaultAsync(a => a.ContactId == contact.Id.Value);
+        audit.Should().NotBeNull();
+        audit!.Mode.Should().Be("anonymized");
+        audit.ErasedByUserId.Should().Be(_userId);
+        audit.TenantId.Should().Be(_tenantId);
+        audit.ChildCountsJson.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Handle_HardDeleteFlagEnabled_ShouldEnqueueJobAndNotAnonymizeImmediately()
+    {
+        var contact = await SeedContact();
+        _tenantConfiguration
+            .GetAsync<bool>("gdpr.hard_delete.enabled", Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Message!.Key.Should().Be("lockey_contacts_gdpr_erasure_enqueued");
+
+        // Contact is untouched — the job will handle it.
+        var stillPresent = await _dbContext.Contacts
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == contact.Id);
+        stillPresent.Should().NotBeNull();
+        stillPresent!.FirstName.Should().Be("John");
+        stillPresent.IsDeleted.Should().BeFalse();
+
+        // No outbox event emitted on the enqueue path.
+        await _outbox.DidNotReceive().EnqueueAsync(
+            Arg.Any<ContactGdprDeletedIntegrationEvent>(), Arg.Any<CancellationToken>());
+
+        // Background job enqueued.
+        _backgroundJobClient.Received(1).Create(
+            Arg.Any<Hangfire.Common.Job>(),
+            Arg.Any<Hangfire.States.IState>());
     }
 
     [Fact]
     public async Task Handle_ActiveContact_ShouldBeExcludedFromDefaultQueries()
     {
-        // Arrange
         var contact = await SeedContact();
         var handler = CreateHandler();
 
-        // Act
         await handler.Handle(
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert — default query (with soft delete filter) should not find the contact
         var found = await _dbContext.Contacts
             .FirstOrDefaultAsync(c => c.Id == contact.Id);
         found.Should().BeNull();
 
-        // Assert — IgnoreQueryFilters should still find it for audit purposes
         var auditRecord = await _dbContext.Contacts
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == contact.Id);
         auditRecord.Should().NotBeNull();
         auditRecord!.IsDeleted.Should().BeTrue();
-
     }
 
     [Fact]
     public async Task Handle_ContactNotFound_ShouldFail()
     {
-        // Arrange
         var handler = CreateHandler();
 
-        // Act
         var result = await handler.Handle(
             new RequestGdprDeleteCommand(Guid.NewGuid(), "User request"),
             CancellationToken.None);
 
-        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Key.Should().Be("lockey_contacts_error_contact_not_found");
     }
@@ -107,7 +168,6 @@ public sealed class RequestGdprDeleteTests : IDisposable
     [Fact]
     public async Task Handle_MergedContact_ShouldFail()
     {
-        // Arrange
         var primary = await SeedContact();
         var secondary = Contact.Create(_tenantId, _orgId, ContactType.Individual,
             "Jane", "Doe", null, "jane@test.com", null, ContactSource.Manual);
@@ -118,12 +178,10 @@ public sealed class RequestGdprDeleteTests : IDisposable
 
         var handler = CreateHandler();
 
-        // Act
         var result = await handler.Handle(
             new RequestGdprDeleteCommand(secondary.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert
         result.IsFailure.Should().BeTrue();
         result.Error!.Message.Key.Should().Be("lockey_contacts_error_gdpr_delete_merged_contact");
     }
@@ -131,20 +189,17 @@ public sealed class RequestGdprDeleteTests : IDisposable
     [Fact]
     public async Task Handle_ContactWithConsents_ShouldRevokeAll()
     {
-        // Arrange
         var contact = await SeedContact();
         var consent1 = ConsentRecord.Create(contact.Id, ConsentType.EmailMarketing, true, "Web");
         var consent2 = ConsentRecord.Create(contact.Id, ConsentType.SmsMarketing, true, "App");
         await _dbContext.ConsentRecords.AddRangeAsync(consent1, consent2);
         await _dbContext.SaveChangesAsync();
 
-        // Act
         var handler = CreateHandler();
         await handler.Handle(
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert
         var consents = await _dbContext.ConsentRecords
             .Where(c => c.ContactId == contact.Id)
             .ToListAsync();
@@ -154,48 +209,141 @@ public sealed class RequestGdprDeleteTests : IDisposable
     [Fact]
     public async Task Handle_ContactWithNotes_ShouldRemoveAll()
     {
-        // Arrange
         var contact = await SeedContact();
         var note = ContactNote.Create(contact.Id, _orgId, Guid.NewGuid(), "Sensitive info");
         await _dbContext.ContactNotes.AddAsync(note);
         await _dbContext.SaveChangesAsync();
 
-        // Act
         var handler = CreateHandler();
         await handler.Handle(
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert
         var noteCount = await _dbContext.ContactNotes
             .CountAsync(n => n.ContactId == contact.Id);
         noteCount.Should().Be(0);
     }
 
     [Fact]
+    public async Task Handle_MissingUserContext_ShouldFailWithInvalidUserContext()
+    {
+        var contact = await SeedContact();
+
+        // Re-seed tenant accessor without a user id — simulates an unauthenticated caller.
+        var anonymousAccessor = new TenantContextAccessor();
+        anonymousAccessor.SetTenant(_tenantId.ToString(), _orgId.ToString());
+
+        var handler = new RequestGdprDeleteHandler(
+            _dbContext, anonymousAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            NullLogger<RequestGdprDeleteHandler>.Instance);
+
+        var result = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_invalid_user_context");
+    }
+
+    [Fact]
+    public async Task Handle_DuplicateWithinDebounce_ShouldBeTreatedAsAlreadyProcessed()
+    {
+        var contact = await SeedContact();
+        var handler = CreateHandler();
+
+        // First call completes normally.
+        var first = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+        first.IsSuccess.Should().BeTrue();
+
+        _outbox.ClearReceivedCalls();
+
+        // Second call within the 60s window: short-circuits with the debounce message.
+        var second = await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        second.IsSuccess.Should().BeTrue();
+        second.Message!.Key.Should().Be("lockey_contacts_gdpr_erasure_already_processed");
+
+        // No additional outbox event on the debounced call.
+        await _outbox.DidNotReceive().EnqueueAsync(
+            Arg.Any<ContactGdprDeletedIntegrationEvent>(), Arg.Any<CancellationToken>());
+
+        // Only one audit row was written across the two calls.
+        (await _dbContext.GdprErasureAudits
+            .CountAsync(a => a.ContactId == contact.Id.Value))
+            .Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Handle_AnonymizePath_ShouldWriteChildCountsWithEightKeys()
+    {
+        var contact = await SeedContact();
+        var consent = ConsentRecord.Create(contact.Id, ConsentType.EmailMarketing, true, "Web");
+        await _dbContext.ConsentRecords.AddAsync(consent);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = CreateHandler();
+        await handler.Handle(
+            new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
+            CancellationToken.None);
+
+        var audit = await _dbContext.GdprErasureAudits
+            .FirstAsync(a => a.ContactId == contact.Id.Value);
+        var json = audit.ChildCountsJson;
+        json.Should().Contain("\"addresses\"");
+        json.Should().Contain("\"notes\"");
+        json.Should().Contain("\"customFields\"");
+        json.Should().Contain("\"tags\"");
+        json.Should().Contain("\"relationships\"");
+        json.Should().Contain("\"communicationPreferences\"");
+        json.Should().Contain("\"activities\"");
+        json.Should().Contain("\"consentsAnonymized\"");
+        json.Should().NotContain("consentsRevoked");
+    }
+
+    [Fact]
     public async Task Handle_ContactWithAddresses_ShouldRemoveAll()
     {
-        // Arrange
         var contact = await SeedContact();
         var address = ContactAddress.Create(contact.Id, AddressType.Home,
             "123 Main St", "Istanbul", "TR", isPrimary: true);
         await _dbContext.ContactAddresses.AddAsync(address);
         await _dbContext.SaveChangesAsync();
 
-        // Act
         var handler = CreateHandler();
         await handler.Handle(
             new RequestGdprDeleteCommand(contact.Id.Value, "User request"),
             CancellationToken.None);
 
-        // Assert
         var addressCount = await _dbContext.ContactAddresses
             .CountAsync(a => a.ContactId == contact.Id);
         addressCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Handle_InvalidTenantContext_ReturnsFailure()
+    {
+        var badAccessor = new TenantContextAccessor();
+        badAccessor.SetTenant("not-a-guid", _orgId.ToString(), _userId.ToString());
+
+        var handler = new RequestGdprDeleteHandler(
+            _dbContext, badAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            NullLogger<RequestGdprDeleteHandler>.Instance);
+
+        var result = await handler.Handle(
+            new RequestGdprDeleteCommand(Guid.NewGuid(), "User request"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_invalid_tenant_context");
+    }
+
     private RequestGdprDeleteHandler CreateHandler() =>
-        new(_dbContext, _tenantAccessor, _outbox, NullLogger<RequestGdprDeleteHandler>.Instance);
+        new(_dbContext, _tenantAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            NullLogger<RequestGdprDeleteHandler>.Instance);
 
     private async Task<Contact> SeedContact()
     {
@@ -208,10 +356,10 @@ public sealed class RequestGdprDeleteTests : IDisposable
 
     public void Dispose() => _dbContext.Dispose();
 
-    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId)
+    private static ITenantContextAccessor CreateTenantAccessor(Guid tenantId, Guid orgId, Guid userId)
     {
         var accessor = new TenantContextAccessor();
-        accessor.SetTenant(tenantId.ToString(), orgId.ToString());
+        accessor.SetTenant(tenantId.ToString(), orgId.ToString(), userId.ToString());
         return accessor;
     }
 }

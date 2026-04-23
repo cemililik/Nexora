@@ -4,16 +4,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Documents.Api;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.Modules.Documents.Application.Services;
 using Nexora.Modules.Documents.Infrastructure;
+using Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Documents.Infrastructure.Jobs;
 using Nexora.Modules.Documents.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 using DocumentService = Nexora.Modules.Documents.Infrastructure.Services.DocumentService;
 
 namespace Nexora.Modules.Documents;
@@ -59,14 +62,18 @@ public sealed class DocumentsModule : IModule
 
         // Outbox for transactional event publishing
         services.AddScoped<IOutbox, OutboxService<DocumentsDbContext>>();
+
+        // Inbox guard for idempotent integration event consumption (ADR-0011)
+        services.AddScoped<IInboxGuard, InboxGuard<DocumentsDbContext>>();
     }
 
     /// <inheritdoc />
     public void ConfigureEventHandlers(IServiceCollection services)
     {
         // Domain event handlers are auto-registered via MediatR assembly scanning.
-        // Cross-module integration event handlers (education, donations, hr) will be added
-        // when those modules are implemented.
+        // Integration event handlers for cross-module events:
+        services.AddScoped<IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>,
+            ContactGdprDeletedIntegrationEventHandler>();
     }
 
     /// <inheritdoc />

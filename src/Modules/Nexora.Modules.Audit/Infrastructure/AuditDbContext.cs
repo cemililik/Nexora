@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nexora.Infrastructure.Persistence;
+using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 
@@ -14,12 +15,14 @@ public sealed class AuditDbContext(
 {
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<AuditSetting> AuditSettings => Set<AuditSetting>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AuditDbContext).Assembly);
+        modelBuilder.ApplyConfiguration(new InboxMessageConfiguration());
         ApplySoftDeleteFilters(modelBuilder);
     }
 }

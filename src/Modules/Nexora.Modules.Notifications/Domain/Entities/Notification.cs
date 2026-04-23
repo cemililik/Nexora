@@ -1,5 +1,6 @@
 using Nexora.Modules.Notifications.Domain.Events;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -124,5 +125,16 @@ public sealed class Notification : AuditableEntity<NotificationId>, IAggregateRo
         FailedCount = failed;
         OpenedCount = opened;
         ClickedCount = clicked;
+    }
+
+    /// <summary>
+    /// Redacts PII from the rendered body and subject for GDPR erasure. Preserves
+    /// audit-value metadata (template key, status, timestamps, counts) while removing
+    /// any personal data that was interpolated into the rendered message or subject line.
+    /// </summary>
+    public void ScrubRenderedBody()
+    {
+        BodyRendered = PiiRedactedPlaceholder.Value;
+        Subject = PiiRedactedPlaceholder.Value;
     }
 }

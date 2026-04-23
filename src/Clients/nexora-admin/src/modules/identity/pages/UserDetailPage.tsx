@@ -26,6 +26,8 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { UserStatusBadge } from '../components/UserStatusBadge';
 import { UserForm } from '../components/UserForm';
+import { LinkContactDialog } from '../components/LinkContactDialog';
+import { useUnlinkContact } from '../hooks/useUnlinkContact';
 import type { RoleDto, OrganizationDto, UserOrganizationDto } from '../types';
 
 type TabKey = 'profile' | 'organizations' | 'roles';
@@ -46,8 +48,10 @@ export default function UserDetailPage() {
   const { data: allOrgs } = useOrganizations({ page: 1, pageSize: 100 });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'activate' | 'deactivate' | 'delete' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'activate' | 'deactivate' | 'delete' | 'unlink-contact' | null>(null);
   const [addOrgOpen, setAddOrgOpen] = useState(false);
+  const [linkContactOpen, setLinkContactOpen] = useState(false);
+  const unlinkContact = useUnlinkContact(id);
 
   const { isBlocked: isEditBlocked, proceed: proceedEdit, reset: resetEdit } =
     useUnsavedChangesGuard(isEditing);
@@ -184,6 +188,50 @@ export default function UserDetailPage() {
               </div>
             </dl>
           )}
+
+          {/* Linked contact section */}
+          {hasPermission('identity.users.link_contact') && (
+            <section className="mt-6 rounded-md border p-4 space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-semibold">
+                    {t('lockey_identity_user_link_contact_section_title')}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {user.isSystemAccount
+                      ? t('lockey_identity_user_link_contact_system_account_hint')
+                      : user.contactId
+                        ? t('lockey_identity_user_link_contact_linked_hint')
+                        : t('lockey_identity_user_link_contact_not_linked_hint')}
+                  </p>
+                </div>
+                {!user.isSystemAccount && (
+                  user.contactId ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setConfirmAction('unlink-contact')}
+                      disabled={unlinkContact.isPending}
+                    >
+                      {t('lockey_identity_user_link_contact_unlink_button')}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setLinkContactOpen(true)}
+                    >
+                      {t('lockey_identity_user_link_contact_button')}
+                    </Button>
+                  )
+                )}
+              </div>
+              {user.contactId && (
+                <p className="text-xs text-muted-foreground font-mono">{user.contactId}</p>
+              )}
+            </section>
+          )}
         </div>
       )}
 
@@ -236,16 +284,26 @@ export default function UserDetailPage() {
             ? t('lockey_identity_action_delete_user')
             : confirmAction === 'deactivate'
               ? t('lockey_identity_action_deactivate')
-              : t('lockey_identity_action_activate')
+              : confirmAction === 'unlink-contact'
+                ? t('lockey_identity_user_link_contact_unlink_confirm_title')
+                : t('lockey_identity_action_activate')
         }
         description={
           confirmAction === 'delete'
             ? t('lockey_identity_confirm_delete_user')
             : confirmAction === 'deactivate'
               ? t('lockey_identity_confirm_deactivate_user')
-              : t('lockey_identity_confirm_activate_user')
+              : confirmAction === 'unlink-contact'
+                ? t('lockey_identity_user_link_contact_unlink_confirm_description')
+                : t('lockey_identity_confirm_activate_user')
         }
-        variant={confirmAction === 'delete' || confirmAction === 'deactivate' ? 'destructive' : 'default'}
+        variant={
+          confirmAction === 'delete'
+            || confirmAction === 'deactivate'
+            || confirmAction === 'unlink-contact'
+            ? 'destructive'
+            : 'default'
+        }
         onConfirm={() => {
           if (confirmAction === 'delete') {
             deleteUser.mutate(id, {
@@ -256,6 +314,12 @@ export default function UserDetailPage() {
             });
             return;
           }
+          if (confirmAction === 'unlink-contact') {
+            unlinkContact.mutate(undefined, {
+              onSuccess: () => setConfirmAction(null),
+            });
+            return;
+          }
           if (confirmAction === 'activate') {
             updateStatus.activate();
           } else {
@@ -263,7 +327,13 @@ export default function UserDetailPage() {
           }
           setConfirmAction(null);
         }}
-        isPending={updateStatus.isPending || deleteUser.isPending}
+        isPending={updateStatus.isPending || deleteUser.isPending || unlinkContact.isPending}
+      />
+
+      <LinkContactDialog
+        userId={id}
+        open={linkContactOpen}
+        onOpenChange={setLinkContactOpen}
       />
 
       <AddToOrgDialog

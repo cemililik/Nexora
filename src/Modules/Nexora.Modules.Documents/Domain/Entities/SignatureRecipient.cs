@@ -1,4 +1,5 @@
 using Nexora.Modules.Documents.Domain.ValueObjects;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -96,5 +97,18 @@ public sealed class SignatureRecipient : AuditableEntity<SignatureRecipientId>
             return; // Already in terminal state, skip
 
         Status = SignatureRecipientStatus.Expired;
+    }
+
+    /// <summary>
+    /// Scrubs personally identifiable information from this recipient in response to a
+    /// GDPR erasure for the associated contact. Signing status, signature data, and
+    /// timestamps are preserved for the audit trail; Name/Email become "[REDACTED]"
+    /// and IpAddress is cleared.
+    /// </summary>
+    public void ScrubPii()
+    {
+        Name = PiiRedactedPlaceholder.Value;
+        Email = PiiRedactedPlaceholder.Value;
+        IpAddress = null;
     }
 }

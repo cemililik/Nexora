@@ -20,6 +20,49 @@ public abstract class BaseDbContext(
     protected ITenantContextAccessor TenantContextAccessor { get; } = tenantContextAccessor;
 
     /// <summary>
+    /// When <c>true</c>, the soft-delete interceptor in <see cref="ConvertDeletesAndSetAuditFields"/>
+    /// is bypassed and <see cref="EntityState.Deleted"/> entries are permanently removed.
+    /// Intended ONLY for GDPR Article 17 hard-delete workflows and uninstall cleanups.
+    /// Toggle via <see cref="EnterHardDeleteScope"/>; direct mutation is disallowed.
+    /// </summary>
+    public bool IsHardDeleteModeEnabled { get; private set; }
+
+    /// <summary>
+    /// Enables hard-delete mode for the lifetime of the returned scope. On <see cref="IDisposable.Dispose"/>
+    /// the flag is restored to <c>false</c>, guaranteeing we never leak the bypass beyond the caller.
+    /// Scope-based helper; not thread-safe. Intended for use within a single-scoped DbContext
+    /// (Hangfire job scope, request scope).
+    /// </summary>
+    /// <returns>A disposable handle that resets the flag on <see cref="IDisposable.Dispose"/>.</returns>
+    public IDisposable EnterHardDeleteScope() => new HardDeleteScope(this);
+
+    /// <summary>
+    /// Stores the previous value of <see cref="IsHardDeleteModeEnabled"/> and restores it on
+    /// dispose so nested scopes compose correctly (inner scope must not flip the flag off
+    /// while an outer scope is still active). Dispose is idempotent.
+    /// </summary>
+    private sealed class HardDeleteScope : IDisposable
+    {
+        private readonly BaseDbContext _context;
+        private readonly bool _previousValue;
+        private bool _disposed;
+
+        public HardDeleteScope(BaseDbContext context)
+        {
+            _context = context;
+            _previousValue = context.IsHardDeleteModeEnabled;
+            context.IsHardDeleteModeEnabled = true;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _context.IsHardDeleteModeEnabled = _previousValue;
+            _disposed = true;
+        }
+    }
+
+    /// <summary>
     /// Returns the current tenant schema name for model cache keying.
     /// Returns "default" if no tenant context is set (e.g., in tests or platform operations).
     /// </summary>
@@ -142,8 +185,9 @@ public abstract class BaseDbContext(
 
         foreach (var entry in ChangeTracker.Entries())
         {
-            // Convert hard deletes to soft deletes for ISoftDeletable entities
-            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable)
+            // Convert hard deletes to soft deletes for ISoftDeletable entities,
+            // unless hard-delete mode is explicitly enabled (GDPR Article 17).
+            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable && !IsHardDeleteModeEnabled)
             {
                 entry.State = EntityState.Modified;
                 entry.Property(nameof(ISoftDeletable.IsDeleted)).CurrentValue = true;

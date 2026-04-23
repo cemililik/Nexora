@@ -1,5 +1,6 @@
 using Nexora.Modules.Notifications.Domain.Events;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Base;
 using Nexora.SharedKernel.Domain.Exceptions;
 
@@ -96,5 +97,15 @@ public sealed class NotificationRecipient : AuditableEntity<NotificationRecipien
 
         Status = RecipientStatus.Failed;
         FailureReason = reason;
+    }
+
+    /// <summary>
+    /// Redacts the recipient address (email or phone) and any failure-reason text for
+    /// GDPR erasure. Delivery status and timestamps are preserved for audit purposes.
+    /// </summary>
+    public void ScrubRecipientAddress()
+    {
+        RecipientAddress = PiiRedactedPlaceholder.Value;
+        FailureReason = null;
     }
 }
