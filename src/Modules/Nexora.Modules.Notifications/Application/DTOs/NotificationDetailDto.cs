@@ -6,7 +6,7 @@ public sealed record NotificationDetailDto(
     Guid? TemplateId,
     string Channel,
     string Subject,
-    string BodyRendered,
+    string? BodyRendered,
     string Status,
     string TriggeredBy,
     Guid? TriggeredByUserId,

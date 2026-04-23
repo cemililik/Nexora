@@ -101,8 +101,8 @@ erDiagram
 **PII retention — `body_rendered`:** The `body_rendered` column contains the fully-resolved notification payload (including recipient name, invoice total, donor amount, etc.) and is classified as PII.
 
 - **Hot retention:** 30 days (for delivery troubleshooting + user-visible "notification history" in portal).
-- **Cold storage:** after 30 days, `body_rendered` is set to NULL; only `template_key`, `rendered_variables_hash` (SHA-256 of the input variables), and delivery status are retained for audit (indefinite).
-- **GDPR erasure:** on tenant/user deletion request, all `Notification` rows for that recipient are hard-deleted (not soft-deleted) — ADR-0008 GDPR path.
+- **Cold storage:** after 30 days, `body_rendered` is set to NULL (column is nullable per T-017); only `template_key`, `rendered_variables_hash` (SHA-256 of the input variables), and delivery status are retained for audit (indefinite).
+- **GDPR erasure:** on contact deletion the `ContactGdprDeletedIntegrationEventHandler` writes `BodyRendered = null` (T-017 — auditors can distinguish an erased row from real content) while `Subject` remains the `[REDACTED]` placeholder (column NOT NULL). The `Notification` row itself is preserved; see ADR-0008 for the tenant/user-level hard-delete path.
 - **Tenant config key:** `notifications.retention.body_rendered_days` (default: 30, range: 7–90).
 - Recurring job: `notifications:purge-rendered-bodies` runs daily at 03:00 UTC per tenant.
 

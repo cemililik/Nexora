@@ -6,9 +6,19 @@
 
 ## Active task
 
-_None. T-018 moved to In Review — see Prior active tasks._
+_None. T-017 and T-018 both moved to In Review — see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-017 — Notifications BodyRendered nullable migration** (Phase 1.5.6, Milestone C —
+T-004 follow-up). Status: **In Review**. Drops NOT NULL on
+`notifications_notifications.BodyRendered` via `ApplySchemaUpdatesAsync`; EF config
+`IsRequired(false)`; `Notification.ScrubRenderedBody()` now writes null (Subject keeps
+its placeholder because its column stays NOT NULL); handler `SetProperty(n => n.BodyRendered, (string?)null)`;
+`NotificationDetailDto.BodyRendered` is now `string?`; SPEC §PII retention references
+T-017 and explains the null-body / placeholder-subject split. Manually verified: the
+ALTER ran clean against the dev tenant schema, `\d` confirms nullable. Tests updated
+— 247 Notifications tests + full suite green.
 
 **T-018 — Verify NexoraJob tenant context + org propagation for tenant-scoped seed**
 (Phase 1.5.6, Milestone C — T-004 follow-up). Status: **In Review**. Adds two

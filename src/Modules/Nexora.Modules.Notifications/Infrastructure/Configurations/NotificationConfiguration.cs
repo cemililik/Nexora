@@ -20,7 +20,9 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
 
         builder.Property(n => n.Channel).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(n => n.Subject).HasMaxLength(500).IsRequired();
-        builder.Property(n => n.BodyRendered).IsRequired();
+        // Nullable per T-017: at end of hot retention the GDPR scrub path sets this
+        // to null (not a placeholder), matching the Notifications SPEC §PII retention.
+        builder.Property(n => n.BodyRendered).IsRequired(false);
         builder.Property(n => n.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
         builder.Property(n => n.TriggeredBy).HasMaxLength(100).IsRequired();
 

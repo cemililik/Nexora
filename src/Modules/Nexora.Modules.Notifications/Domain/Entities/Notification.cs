@@ -17,7 +17,12 @@ public sealed class Notification : AuditableEntity<NotificationId>, IAggregateRo
     public NotificationTemplateId? TemplateId { get; private set; }
     public NotificationChannel Channel { get; private set; }
     public string Subject { get; private set; } = default!;
-    public string BodyRendered { get; private set; } = default!;
+    /// <summary>
+    /// The rendered notification body. Non-null while the notification is live; set to
+    /// <c>null</c> by <see cref="ScrubRenderedBody"/> at the end of hot retention or on
+    /// GDPR erasure, per T-017 / Notifications SPEC §PII retention.
+    /// </summary>
+    public string? BodyRendered { get; private set; }
     public NotificationStatus Status { get; private set; }
     public string TriggeredBy { get; private set; } = default!;
     public Guid? TriggeredByUserId { get; private set; }
@@ -128,13 +133,16 @@ public sealed class Notification : AuditableEntity<NotificationId>, IAggregateRo
     }
 
     /// <summary>
-    /// Redacts PII from the rendered body and subject for GDPR erasure. Preserves
-    /// audit-value metadata (template key, status, timestamps, counts) while removing
-    /// any personal data that was interpolated into the rendered message or subject line.
+    /// Redacts PII from the rendered body and subject for GDPR erasure. The body is
+    /// nulled out (T-017 — matches Notifications SPEC §PII retention, so a compliance
+    /// auditor reading the column can distinguish an erased row from a placeholder).
+    /// The subject column is NOT NULL and keeps the redaction placeholder so existing
+    /// NOT NULL consumers (analytics, inbox listing) continue to work. Audit metadata
+    /// (template key, status, timestamps, counts) is preserved either way.
     /// </summary>
     public void ScrubRenderedBody()
     {
-        BodyRendered = PiiRedactedPlaceholder.Value;
+        BodyRendered = null;
         Subject = PiiRedactedPlaceholder.Value;
     }
 }

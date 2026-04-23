@@ -592,6 +592,13 @@ public static class DevelopmentSeed
             // Redundant when the CREATE TABLE above runs fresh (column already present), but required for
             // tenants whose contacts_import_jobs was created before SkippedCount was introduced.
             "ALTER TABLE contacts_import_jobs ADD COLUMN IF NOT EXISTS \"SkippedCount\" int NOT NULL DEFAULT 0",
+
+            // --- T-017: Notifications BodyRendered becomes nullable ---
+            // The GDPR scrub path now writes null (not "[REDACTED]") at end of hot
+            // retention so a compliance auditor reading the table cannot mistake a
+            // placeholder for real content. Dropping NOT NULL is additive per
+            // schema-migration.md §2 rule 2 (nullability relaxation is allowed).
+            "ALTER TABLE notifications_notifications ALTER COLUMN \"BodyRendered\" DROP NOT NULL",
         };
 
         foreach (var sql in alterStatements)

@@ -56,7 +56,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         var targetNotification = await _dbContext.Notifications
             .Include(n => n.Recipients)
             .FirstAsync(n => n.Id == targetNotificationId);
-        targetNotification.BodyRendered.Should().Be(PiiRedactedPlaceholder.Value);
+        targetNotification.BodyRendered.Should().BeNull(
+            "T-017: BodyRendered is nullable and the scrub path writes null (not a placeholder) so auditors can distinguish an erased row from real content.");
         targetNotification.Recipients.Should().OnlyContain(r => r.RecipientAddress == PiiRedactedPlaceholder.Value);
 
         // Assert — unrelated untouched
@@ -129,14 +130,14 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         // Act — first run scrubs
         await handler.HandleAsync(@event, CancellationToken.None);
         var afterFirstRun = await _dbContext.Notifications.AsNoTracking().FirstAsync();
-        afterFirstRun.BodyRendered.Should().Be(PiiRedactedPlaceholder.Value);
+        afterFirstRun.BodyRendered.Should().BeNull("T-017: scrubbed body is null.");
 
         // Act — second run (same EventId) must short-circuit via inbox guard
         await handler.HandleAsync(@event, CancellationToken.None);
 
         // Assert — values unchanged, and no extra MarkAsProcessed invocation for this EventId
         var afterSecondRun = await _dbContext.Notifications.AsNoTracking().FirstAsync();
-        afterSecondRun.BodyRendered.Should().Be(PiiRedactedPlaceholder.Value);
+        afterSecondRun.BodyRendered.Should().BeNull("T-017: scrubbed body stays null across idempotent re-runs.");
         _inboxGuard.Received(1).MarkAsProcessed(@event.EventId, nameof(ContactGdprDeletedIntegrationEvent));
     }
 
