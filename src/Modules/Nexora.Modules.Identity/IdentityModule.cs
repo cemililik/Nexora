@@ -108,8 +108,34 @@ public sealed class IdentityModule : IModule
     }
 
     /// <inheritdoc />
-    public Task OnStartupAsync(CancellationToken ct)
+    public Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct)
     {
+        // Identity & cross-platform permissions (ADR-004 / permissions.md §3).
+        // The identity.tenants.* block is Platform-scope — tenant admins cannot hold these.
+        registry.Register("identity", "tenants", "read",   "lockey_identity_permission_tenants_read",   PermissionScope.Platform);
+        registry.Register("identity", "tenants", "manage", "lockey_identity_permission_tenants_manage", PermissionScope.Platform);
+
+        // Organizations, users, roles — tenant-scope.
+        registry.Register("identity", "organizations", "read",   "lockey_identity_permission_organizations_read");
+        registry.Register("identity", "organizations", "create", "lockey_identity_permission_organizations_create");
+        registry.Register("identity", "organizations", "update", "lockey_identity_permission_organizations_update");
+        registry.Register("identity", "organizations", "delete", "lockey_identity_permission_organizations_delete");
+        registry.Register("identity", "users", "read",         "lockey_identity_permission_users_read");
+        registry.Register("identity", "users", "create",       "lockey_identity_permission_users_create");
+        registry.Register("identity", "users", "update",       "lockey_identity_permission_users_update");
+        registry.Register("identity", "users", "delete",       "lockey_identity_permission_users_delete");
+        registry.Register("identity", "users", "link_contact", "lockey_identity_permission_users_link_contact");
+        registry.Register("identity", "roles", "read",   "lockey_identity_permission_roles_read");
+        registry.Register("identity", "roles", "create", "lockey_identity_permission_roles_create");
+        registry.Register("identity", "roles", "update", "lockey_identity_permission_roles_update");
+        registry.Register("identity", "roles", "delete", "lockey_identity_permission_roles_delete");
+        registry.Register("identity", "modules", "read",   "lockey_identity_permission_modules_read");
+        registry.Register("identity", "modules", "manage", "lockey_identity_permission_modules_manage");
+
+        // Platform-wide operator permission (reserved for NMP operators — ADR-0025).
+        registry.Register("platform", "compliance", "policy_manage",
+            "lockey_platform_permission_compliance_policy_manage", PermissionScope.Platform);
+
         return Task.CompletedTask;
     }
 

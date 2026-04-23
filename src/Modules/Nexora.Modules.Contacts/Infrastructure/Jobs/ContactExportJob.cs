@@ -94,11 +94,13 @@ public sealed class ContactExportJob(
             return;
         }
 
-        // Idempotency guard — skip if already processed or in progress.
-        if (exportJob.Status is ExportJobStatus.Processing or ExportJobStatus.Completed)
+        // Idempotency guard — only skip if already completed. Processing is left resumable
+        // so Hangfire retries after a mid-job crash can pick up where the previous attempt left
+        // off; otherwise a crashed Processing row would deadlock all subsequent retries.
+        if (exportJob.Status == ExportJobStatus.Completed)
         {
             logger.LogWarning(
-                "ExportJob {ExportJobId} already in {Status}, skipping", exportJobId, exportJob.Status);
+                "ExportJob {ExportJobId} already completed, skipping", exportJobId);
             return;
         }
 
@@ -174,8 +176,11 @@ public sealed class ContactExportJob(
         }
 
         var totalRows = contacts.Count;
-        exportJob.MarkProcessing(totalRows);
-        await dbContext.SaveChangesAsync(ct);
+        if (exportJob.Status == ExportJobStatus.Queued)
+        {
+            exportJob.MarkProcessing(totalRows);
+            await dbContext.SaveChangesAsync(ct);
+        }
 
         var culture = ResolveCulture(localeContext.Locale);
         var selectedFields = parameters.Fields is { Count: > 0 }

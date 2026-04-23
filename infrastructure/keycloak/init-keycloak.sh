@@ -269,7 +269,7 @@ cat > /tmp/user-attrs.json << 'USEREOF'
       "contacts.note.create","contacts.note.update","contacts.note.read","contacts.note.delete",
       "contacts.relationship.create","contacts.relationship.delete",
       "contacts.import.execute","contacts.export.execute",
-      "contacts.gdpr.export","contacts.gdpr.delete","contacts.merge.execute",
+      "contacts.gdpr.export","contacts.gdpr.delete","contacts.gdpr.settings_manage","contacts.merge.execute",
       "documents.document.read","documents.document.upload","documents.document.update","documents.document.delete",
       "documents.folder.read","documents.folder.manage",
       "documents.signature.read","documents.signature.create","documents.signature.manage",
@@ -282,7 +282,7 @@ cat > /tmp/user-attrs.json << 'USEREOF'
       "reporting.execution.run","reporting.execution.read",
       "reporting.schedule.manage",
       "reporting.dashboard.read","reporting.dashboard.manage",
-      "audit.logs.read","audit.logs.export","audit.settings.read","audit.settings.manage"
+      "audit.logs.read","audit.logs.write","audit.settings.read","audit.settings.manage"
     ]
   }
 }

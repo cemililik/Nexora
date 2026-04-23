@@ -576,6 +576,14 @@ export default function ImportPage() {
                       {jobStatus.errorCount}
                     </dd>
                   </div>
+                  <div>
+                    <dt className="text-muted-foreground">
+                      {t('lockey_contacts_import_col_skipped')}
+                    </dt>
+                    <dd className="font-medium text-muted-foreground">
+                      {jobStatus.skippedCount}
+                    </dd>
+                  </div>
                 </dl>
 
                 {jobStatus.completedAt && (

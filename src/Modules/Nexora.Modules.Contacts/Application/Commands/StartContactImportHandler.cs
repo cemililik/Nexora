@@ -63,8 +63,19 @@ public sealed class StartContactImportHandler(
 
         if (request.ColumnMapping is { Count: > 0 })
         {
-            var mappingJson = JsonSerializer.Serialize(request.ColumnMapping);
-            importJob.SetColumnMapping(mappingJson);
+            // Strip the "__skip__" sentinel the UI sends for unmapped columns — the job
+            // only needs genuine source → target pairs. Without this filter the sentinel
+            // would serialize into the persisted mapping and leak into downstream lookups.
+            var effectiveMapping = request.ColumnMapping
+                .Where(kv => !string.Equals(kv.Value, "__skip__", StringComparison.Ordinal)
+                          && !string.IsNullOrWhiteSpace(kv.Value))
+                .ToDictionary(kv => kv.Key, kv => kv.Value);
+
+            if (effectiveMapping.Count > 0)
+            {
+                var mappingJson = JsonSerializer.Serialize(effectiveMapping);
+                importJob.SetColumnMapping(mappingJson);
+            }
         }
 
         // CONSISTENCY: Enqueue-in-same-transaction rule.
@@ -95,7 +106,7 @@ public sealed class StartContactImportHandler(
             importJob.Id, hangfireJobId, tenantId, request.FileName, request.StorageKey);
 
         var dto = new ImportJobDto(
-            importJob.Id.Value, importJob.Status.ToString(), 0, 0, 0, 0,
+            importJob.Id.Value, importJob.Status.ToString(), 0, 0, 0, 0, 0,
             importJob.CreatedAt, null);
 
         return Result<ImportJobDto>.Success(dto,

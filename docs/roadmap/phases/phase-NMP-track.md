@@ -85,6 +85,25 @@ Prerequisite: Phase 1.5.2 Permission Tier System complete.
       different codebases**; see ADR-0019 for the analogous tenant-Subscription vs Fundraising
       separation).
 - [ ] NMP frontend: tenant dashboard, subscription management, invoice history.
+- [ ] **Compliance caps editor (ADR-0025)** — NMP UI to set/clear `compliance.caps.<key>`
+      entries (`allowed`, `forced`, `value`) per tenant. Required platform permission:
+      `platform.compliance.policy_manage`. Published via the existing
+      `PUT /api/v1/internal/tenants/{id}/entitlements` channel under the
+      `compliance.caps` sub-object — no new wire contract.
+- [ ] **`NmpComplianceCapProvider`** — SaaS CRM runtime implementation of
+      `IComplianceCapProvider` (SharedKernel). Reads caps from `platform_license_cache.EntitlementsJson`
+      at `compliance.caps.<key>`. Replaces `NullComplianceCapProvider` (shipped in T-019)
+      via DI swap in SaaS deployments. On-prem stays on `NullComplianceCapProvider` or a
+      future `LicenseKeyCapProvider` (NMP.4) that reads caps from the signed license key.
+- [ ] **Compliance-resolver metrics** (deferred from T-019 intentionally):
+  - `nexora_compliance_config_resolution_count{layer=cap|tenant_default|org_override|none}` —
+    counts which layer won, per key. Metric names must be finalized in this phase so they
+    line up with NMP wire names before public dashboards are built.
+  - `nexora_compliance_policy_changes_total{key,scope=tenant|org,action=set|clear|rejected}` —
+    policy-change rate for SLO tracking.
+  - Emission happens inside `DatabaseConfigurationResolver`; the metric schema change lands
+    in this phase, not Phase 1.5, because NMP needs to expose the same counters in its own
+    analytics dashboard for operator visibility.
 
 ### NMP.3 — Admin Panel Adaptation (after Phase 2 modules exist)
 

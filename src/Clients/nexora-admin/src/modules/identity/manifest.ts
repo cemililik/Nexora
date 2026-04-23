@@ -56,6 +56,10 @@ export const identityManifest: AdminModuleManifest = {
       path: 'tenants/:id',
       component: lazy(() => import('./pages/TenantDetailPage')),
     },
+    {
+      path: 'settings/compliance',
+      component: lazy(() => import('./pages/ComplianceSettingsPage')),
+    },
   ],
   navigation: [
     {
@@ -67,6 +71,11 @@ export const identityManifest: AdminModuleManifest = {
       label: 'lockey_identity_nav_roles',
       path: '/identity/roles',
       icon: 'ShieldCheck',
+    },
+    {
+      label: 'lockey_identity_nav_compliance',
+      path: '/identity/settings/compliance',
+      icon: 'Shield',
     },
     {
       label: 'lockey_identity_nav_organizations',
@@ -99,5 +108,6 @@ export const identityManifest: AdminModuleManifest = {
     'identity.audit-logs.read',
     'identity.modules.read',
     'identity.modules.manage',
+    'contacts.gdpr.settings_manage',
   ],
 };

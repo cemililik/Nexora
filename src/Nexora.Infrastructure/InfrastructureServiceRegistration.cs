@@ -7,6 +7,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Nexora.Infrastructure.Audit;
+using Nexora.Infrastructure.Authorization;
 using Nexora.Infrastructure.Behaviors;
 using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Caching;
@@ -30,6 +31,7 @@ using Nexora.SharedKernel.Abstractions.Licensing;
 using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Secrets;
 using Nexora.SharedKernel.Abstractions.Storage;
+using Nexora.SharedKernel.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Nexora.Infrastructure.Licensing;
@@ -46,6 +48,10 @@ public static class InfrastructureServiceRegistration
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Permission registry (ADR-004 / permissions.md §3) — populated by each module's
+        // OnStartupAsync hook, consumed by IdentityModuleMigration.SeedAsync.
+        services.AddSingleton<IPermissionRegistry, InMemoryPermissionRegistry>();
+
         // Multi-tenancy
         services.AddSingleton<ITenantContextAccessor, TenantContextAccessor>();
         services.AddSingleton<ITenantSchemaManager>(sp =>
@@ -110,6 +116,12 @@ public static class InfrastructureServiceRegistration
             options.UseNpgsql(connStr);
         });
         services.AddScoped<ITenantConfiguration, DatabaseTenantConfiguration>();
+
+        // ADR-0025: three-tier configuration resolver (platform cap → tenant default → org
+        // override). NullComplianceCapProvider is the default; SaaS deployments replace it
+        // with NmpComplianceCapProvider in NMP.2.
+        services.AddScoped<IConfigurationResolver, DatabaseConfigurationResolver>();
+        services.AddSingleton<IComplianceCapProvider, NullComplianceCapProvider>();
 
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>

@@ -5,8 +5,18 @@ using Nexora.SharedKernel.Abstractions.Configuration;
 namespace Nexora.Infrastructure.Configuration;
 
 /// <summary>
-/// Tenant-specific configuration stored in the tenant's schema.
+/// Backward-compatible shim over <see cref="IConfigurationResolver"/>. Existing callers
+/// keep the old <c>Get/Set</c> semantics against <c>platform_tenant_config</c> (no org
+/// layer, no cap check). New code MUST depend on <see cref="IConfigurationResolver"/>
+/// directly — this type is preserved only to avoid a sweeping signature change during
+/// the Phase 1.5.6 rollout (ADR-0025).
 /// </summary>
+/// <remarks>
+/// The resolver is NOT consulted here: reads go straight to the tenant layer so that
+/// legacy keys which are not yet cap-managed keep behaving exactly as they did before.
+/// When a key graduates to org-scope management, its call site should migrate to
+/// <see cref="IConfigurationResolver"/> in the same PR.
+/// </remarks>
 public sealed class DatabaseTenantConfiguration(
     TenantConfigDbContext dbContext) : ITenantConfiguration
 {
@@ -14,6 +24,7 @@ public sealed class DatabaseTenantConfiguration(
     public async Task<T> GetAsync<T>(string key, CancellationToken ct = default)
     {
         var entry = await dbContext.Configurations
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Key == key, ct);
 
         if (entry is null)

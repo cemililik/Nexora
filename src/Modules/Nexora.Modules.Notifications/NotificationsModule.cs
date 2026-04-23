@@ -15,6 +15,7 @@ using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Notifications;
@@ -112,8 +113,16 @@ public sealed class NotificationsModule : IModule
     }
 
     /// <inheritdoc />
-    public Task OnStartupAsync(CancellationToken ct)
+    public Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct)
     {
+        registry.Register("notifications", "notification", "read", "lockey_notifications_permission_notification_read");
+        registry.Register("notifications", "notification", "send", "lockey_notifications_permission_notification_send");
+        registry.Register("notifications", "template", "read",   "lockey_notifications_permission_template_read");
+        registry.Register("notifications", "template", "manage", "lockey_notifications_permission_template_manage");
+        registry.Register("notifications", "provider", "read",   "lockey_notifications_permission_provider_read");
+        registry.Register("notifications", "provider", "manage", "lockey_notifications_permission_provider_manage");
+        registry.Register("notifications", "schedule", "read",   "lockey_notifications_permission_schedule_read");
+        registry.Register("notifications", "schedule", "manage", "lockey_notifications_permission_schedule_manage");
         return Task.CompletedTask;
     }
 

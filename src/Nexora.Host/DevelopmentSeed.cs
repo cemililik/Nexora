@@ -244,64 +244,16 @@ public static class DevelopmentSeed
             logger.LogInformation("[DevSeed] Seeded default organization: {OrgId}", DevOrgGuid);
         }
 
-        // Seed permissions (incremental — adds any missing permissions)
-        var existingKeys = (await dbContext.Permissions.ToListAsync())
-            .Select(p => $"{p.Module}.{p.Resource}.{p.Action}")
-            .ToHashSet();
-
-        var allDefaultPermissions = CreateDefaultPermissions();
-        var newPermissions = allDefaultPermissions
-            .Where(p => !existingKeys.Contains($"{p.Module}.{p.Resource}.{p.Action}"))
-            .ToArray();
-
-        if (newPermissions.Length > 0)
-        {
-            await dbContext.Permissions.AddRangeAsync(newPermissions);
-            await dbContext.SaveChangesAsync();
-            logger.LogInformation("[DevSeed] Seeded {NewCount} new permissions (total: {TotalCount})",
-                newPermissions.Length, existingKeys.Count + newPermissions.Length);
-        }
-        else if (existingKeys.Count == 0)
-        {
-            await dbContext.Permissions.AddRangeAsync(allDefaultPermissions);
-            await dbContext.SaveChangesAsync();
-            logger.LogInformation("[DevSeed] Seeded {Count} permissions", allDefaultPermissions.Length);
-        }
-
-        // Seed Platform Admin role with all permissions (or update if new permissions added)
-        var adminRole = await dbContext.Roles.Include(r => r.Permissions)
-            .FirstOrDefaultAsync(r => r.IsSystemRole);
-
-        if (adminRole is null)
-        {
-            var tenantId = TenantId.From(DevTenantGuid);
-            adminRole = Role.Create(tenantId, "Platform Admin",
-                "lockey_identity_role_platform_admin_description", isSystem: true);
-
-            var allPermissions = await dbContext.Permissions.ToListAsync();
-            foreach (var permission in allPermissions)
-                adminRole.AssignPermission(permission);
-
-            await dbContext.Roles.AddAsync(adminRole);
-            await dbContext.SaveChangesAsync();
-            logger.LogInformation("[DevSeed] Seeded Platform Admin role with {Count} permissions", allPermissions.Count);
-        }
-        else if (newPermissions.Length > 0)
-        {
-            // Assign newly added permissions to existing Platform Admin role
-            var assignedPermissionIds = adminRole.Permissions
-                .Select(rp => rp.PermissionId)
-                .ToHashSet();
-
-            var allPermissions = await dbContext.Permissions.ToListAsync();
-            var unassigned = allPermissions.Where(p => !assignedPermissionIds.Contains(p.Id)).ToList();
-
-            foreach (var permission in unassigned)
-                adminRole.AssignPermission(permission);
-
-            await dbContext.SaveChangesAsync();
-            logger.LogInformation("[DevSeed] Assigned {Count} new permissions to Platform Admin", unassigned.Count);
-        }
+        // Permissions + Platform Admin role are owned by IdentityModuleMigration.SeedAsync
+        // (the single source of truth per ADR-004 / permissions.md §3 / T-020). Delegating
+        // here keeps dev and prod seed paths in sync — no parallel permission list to drift.
+        var identityModuleMigration = scope.ServiceProvider
+            .GetServices<IModuleMigration>()
+            .OfType<IdentityModuleMigration>()
+            .Single();
+        await identityModuleMigration.SeedAsync(SchemaName);
+        logger.LogInformation(
+            "[DevSeed] Delegated permission + Platform Admin role seed to IdentityModuleMigration");
 
         // Seed admin user (matches Keycloak test user)
         await SeedAdminUserAsync(dbContext, connectionString, configuration, logger);
@@ -510,6 +462,130 @@ public static class DevelopmentSeed
             "ALTER TABLE identity_users ADD COLUMN IF NOT EXISTS \"PreferredLanguage\" varchar(10)",
             // Organization.DefaultLocale — Phase 1.5.3: IETF locale tag for org-level number/date formatting (e.g. "en-US", "tr-TR")
             "ALTER TABLE identity_organizations ADD COLUMN IF NOT EXISTS \"DefaultLocale\" varchar(20) NOT NULL DEFAULT 'en-US'",
+            // User.ContactId — optional link to a Contacts module contact record for 360° view
+            "ALTER TABLE identity_users ADD COLUMN IF NOT EXISTS \"ContactId\" uuid NULL",
+            // TenantModule.DeletedTableNames — CSV of renamed tables captured at uninstall time, used by reinstall path
+            "ALTER TABLE identity_tenant_modules ADD COLUMN IF NOT EXISTS \"DeletedTableNames\" text NULL",
+
+            // --- ADR-0025: Org-scoped compliance configuration + policy audit trail ---
+            // Three-tier resolver (platform cap → tenant default → org override) reads from these
+            // tables. Both live in the tenant schema; `platform_` prefix is legacy naming consistent
+            // with `platform_tenant_config` rather than an indication of schema placement.
+
+            // Organization-scope override store for configuration keys (per ADR-0025).
+            """
+            CREATE TABLE IF NOT EXISTS platform_org_config (
+                "OrganizationId" uuid NOT NULL,
+                "Key" varchar(256) NOT NULL,
+                "Value" jsonb NOT NULL,
+                "UpdatedAt" timestamptz NOT NULL DEFAULT now(),
+                "UpdatedBy" varchar(200),
+                PRIMARY KEY ("OrganizationId", "Key")
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_platform_org_config_Key\" ON platform_org_config (\"Key\")",
+
+            // Append-only policy audit trail for compliance-config changes (per ADR-0025).
+            """
+            CREATE TABLE IF NOT EXISTS platform_compliance_policy_audit (
+                "Id" uuid PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "OrganizationId" uuid,
+                "Key" varchar(256) NOT NULL,
+                "OldValue" jsonb,
+                "NewValue" jsonb,
+                "ChangedByUserId" uuid NOT NULL,
+                "ChangedAtUtc" timestamptz NOT NULL DEFAULT now(),
+                "Reason" varchar(500)
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_TenantId_ChangedAtUtc\" ON platform_compliance_policy_audit (\"TenantId\", \"ChangedAtUtc\")",
+            "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_Key\" ON platform_compliance_policy_audit (\"Key\")",
+
+            // --- Contacts module: tables added after the initial CreateTables short-circuit ---
+            // (EnsureModuleTablesAsync only runs CreateTablesAsync once per sentinel; entities
+            //  added to the DbContext later never reach that path, so their tables must be
+            //  declared here with CREATE TABLE IF NOT EXISTS per docs/standards/schema-migration.md)
+
+            // ImportJob — tracks contact import jobs (Hangfire-backed, bulk queue)
+            """
+            CREATE TABLE IF NOT EXISTS contacts_import_jobs (
+                "Id" uuid PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "OrganizationId" uuid NOT NULL,
+                "FileName" varchar(500) NOT NULL,
+                "FileFormat" varchar(10) NOT NULL,
+                "StorageKey" varchar(1000) NOT NULL,
+                "Status" varchar(20) NOT NULL,
+                "TotalRows" int NOT NULL DEFAULT 0,
+                "ProcessedRows" int NOT NULL DEFAULT 0,
+                "SuccessCount" int NOT NULL DEFAULT 0,
+                "ErrorCount" int NOT NULL DEFAULT 0,
+                "SkippedCount" int NOT NULL DEFAULT 0,
+                "ErrorDetails" jsonb,
+                "HangfireJobId" varchar(100),
+                "ColumnMappingJson" text,
+                "CreatedBy" varchar(200),
+                "CreatedAt" timestamptz NOT NULL,
+                "CompletedAt" timestamptz
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_contacts_import_jobs_TenantId_Status\" ON contacts_import_jobs (\"TenantId\", \"Status\")",
+            "CREATE INDEX IF NOT EXISTS \"IX_contacts_import_jobs_TenantId_HangfireJobId\" ON contacts_import_jobs (\"TenantId\", \"HangfireJobId\")",
+
+            // ExportJob — tracks contact export jobs (CSV/XLSX/vCard generation)
+            """
+            CREATE TABLE IF NOT EXISTS contacts_export_jobs (
+                "Id" uuid PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "OrganizationId" uuid NOT NULL,
+                "Format" varchar(10) NOT NULL,
+                "StorageKey" varchar(1000),
+                "Status" varchar(20) NOT NULL,
+                "TotalRows" int NOT NULL DEFAULT 0,
+                "ErrorDetails" jsonb,
+                "HangfireJobId" varchar(100),
+                "FiltersJson" text,
+                "FieldsJson" text,
+                "CreatedBy" varchar(200),
+                "CreatedAt" timestamptz NOT NULL,
+                "CompletedAt" timestamptz
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_contacts_export_jobs_TenantId_Status\" ON contacts_export_jobs (\"TenantId\", \"Status\")",
+            "CREATE INDEX IF NOT EXISTS \"IX_contacts_export_jobs_TenantId_HangfireJobId\" ON contacts_export_jobs (\"TenantId\", \"HangfireJobId\")",
+
+            // TenantConfigEntry — per-tenant key/value config store read by ITenantConfiguration.
+            // Despite the "platform_" prefix, the table lives inside each tenant's schema
+            // (TenantConfigDbContext uses HasDefaultSchema(schema)); the prefix is legacy naming.
+            """
+            CREATE TABLE IF NOT EXISTS platform_tenant_config (
+                "Key" varchar(256) PRIMARY KEY,
+                "Value" jsonb NOT NULL,
+                "UpdatedAt" timestamptz NOT NULL DEFAULT now()
+            )
+            """,
+
+            // GdprErasureAudit — append-only forensic trail for GDPR Article 17 erasures
+            """
+            CREATE TABLE IF NOT EXISTS contacts_gdpr_erasure_audit (
+                "Id" uuid PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "ContactId" uuid NOT NULL,
+                "ErasedByUserId" uuid NOT NULL,
+                "ErasedAtUtc" timestamptz NOT NULL,
+                "Reason" varchar(500) NOT NULL,
+                "Mode" varchar(20) NOT NULL,
+                "ChildCountsJson" text NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS \"IX_contacts_gdpr_erasure_audit_TenantId_ErasedAtUtc\" ON contacts_gdpr_erasure_audit (\"TenantId\", \"ErasedAtUtc\")",
+            "CREATE INDEX IF NOT EXISTS \"IX_contacts_gdpr_erasure_audit_ContactId\" ON contacts_gdpr_erasure_audit (\"ContactId\")",
+
+            // ImportJob.SkippedCount — separates "already-exists" skips from genuine errors for accurate reporting.
+            // Redundant when the CREATE TABLE above runs fresh (column already present), but required for
+            // tenants whose contacts_import_jobs was created before SkippedCount was introduced.
+            "ALTER TABLE contacts_import_jobs ADD COLUMN IF NOT EXISTS \"SkippedCount\" int NOT NULL DEFAULT 0",
         };
 
         foreach (var sql in alterStatements)
@@ -524,6 +600,16 @@ public static class DevelopmentSeed
             {
                 // Unique index creation may fail if duplicate data exists — skip gracefully
                 logger.LogWarning("[DevSeed] Skipped schema update due to existing data conflict: {Message}", ex.MessageText);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                // Parent table does not exist yet — legitimate when a module's sentinel
+                // short-circuited initial CreateTables, leaving a later-added entity's table
+                // uncreated. The schema update is effectively a no-op for this tenant until
+                // the owning table is (re)created. Safe to skip.
+                logger.LogWarning(
+                    "[DevSeed] Skipped schema update because target relation is missing: {Message}",
+                    ex.MessageText);
             }
         }
 
@@ -570,82 +656,7 @@ public static class DevelopmentSeed
         return (bool)(await cmd.ExecuteScalarAsync())!;
     }
 
-    private static Permission[] CreateDefaultPermissions() =>
-    [
-        // Identity
-        Permission.Create("identity", "tenants", "read", "lockey_identity_permission_tenants_read"),
-        Permission.Create("identity", "tenants", "create", "lockey_identity_permission_tenants_create"),
-        Permission.Create("identity", "tenants", "update", "lockey_identity_permission_tenants_update"),
-        Permission.Create("identity", "tenants", "delete", "lockey_identity_permission_tenants_delete"),
-        Permission.Create("identity", "organizations", "read", "lockey_identity_permission_organizations_read"),
-        Permission.Create("identity", "organizations", "create", "lockey_identity_permission_organizations_create"),
-        Permission.Create("identity", "organizations", "update", "lockey_identity_permission_organizations_update"),
-        Permission.Create("identity", "organizations", "delete", "lockey_identity_permission_organizations_delete"),
-        Permission.Create("identity", "users", "read", "lockey_identity_permission_users_read"),
-        Permission.Create("identity", "users", "create", "lockey_identity_permission_users_create"),
-        Permission.Create("identity", "users", "update", "lockey_identity_permission_users_update"),
-        Permission.Create("identity", "users", "delete", "lockey_identity_permission_users_delete"),
-        Permission.Create("identity", "roles", "read", "lockey_identity_permission_roles_read"),
-        Permission.Create("identity", "roles", "create", "lockey_identity_permission_roles_create"),
-        Permission.Create("identity", "roles", "update", "lockey_identity_permission_roles_update"),
-        Permission.Create("identity", "roles", "delete", "lockey_identity_permission_roles_delete"),
-        Permission.Create("identity", "modules", "read", "lockey_identity_permission_modules_read"),
-        Permission.Create("identity", "modules", "manage", "lockey_identity_permission_modules_manage"),
-        // Contacts
-        Permission.Create("contacts", "contact", "read", "lockey_contacts_permission_contact_read"),
-        Permission.Create("contacts", "contact", "create", "lockey_contacts_permission_contact_create"),
-        Permission.Create("contacts", "contact", "update", "lockey_contacts_permission_contact_update"),
-        Permission.Create("contacts", "contact", "delete", "lockey_contacts_permission_contact_delete"),
-        Permission.Create("contacts", "tag", "read", "lockey_contacts_permission_tag_read"),
-        Permission.Create("contacts", "tag", "create", "lockey_contacts_permission_tag_create"),
-        Permission.Create("contacts", "tag", "update", "lockey_contacts_permission_tag_update"),
-        Permission.Create("contacts", "tag", "delete", "lockey_contacts_permission_tag_delete"),
-        Permission.Create("contacts", "custom-field", "read", "lockey_contacts_permission_custom_field_read"),
-        Permission.Create("contacts", "custom-field", "manage", "lockey_contacts_permission_custom_field_manage"),
-        Permission.Create("contacts", "note", "create", "lockey_contacts_permission_note_create"),
-        Permission.Create("contacts", "note", "update", "lockey_contacts_permission_note_update"),
-        Permission.Create("contacts", "note", "read", "lockey_contacts_permission_note_read"),
-        Permission.Create("contacts", "note", "delete", "lockey_contacts_permission_note_delete"),
-        Permission.Create("contacts", "relationship", "create", "lockey_contacts_permission_relationship_create"),
-        Permission.Create("contacts", "relationship", "delete", "lockey_contacts_permission_relationship_delete"),
-        Permission.Create("contacts", "import", "execute", "lockey_contacts_permission_import_execute"),
-        Permission.Create("contacts", "export", "execute", "lockey_contacts_permission_export_execute"),
-        Permission.Create("contacts", "gdpr", "export", "lockey_contacts_permission_gdpr_export"),
-        Permission.Create("contacts", "gdpr", "delete", "lockey_contacts_permission_gdpr_delete"),
-        Permission.Create("contacts", "merge", "execute", "lockey_contacts_permission_merge_execute"),
-        // Documents
-        Permission.Create("documents", "document", "read", "lockey_documents_permission_document_read"),
-        Permission.Create("documents", "document", "upload", "lockey_documents_permission_document_upload"),
-        Permission.Create("documents", "document", "update", "lockey_documents_permission_document_update"),
-        Permission.Create("documents", "document", "delete", "lockey_documents_permission_document_delete"),
-        Permission.Create("documents", "folder", "read", "lockey_documents_permission_folder_read"),
-        Permission.Create("documents", "folder", "manage", "lockey_documents_permission_folder_manage"),
-        Permission.Create("documents", "signature", "read", "lockey_documents_permission_signature_read"),
-        Permission.Create("documents", "signature", "create", "lockey_documents_permission_signature_create"),
-        Permission.Create("documents", "signature", "manage", "lockey_documents_permission_signature_manage"),
-        Permission.Create("documents", "template", "read", "lockey_documents_permission_template_read"),
-        Permission.Create("documents", "template", "manage", "lockey_documents_permission_template_manage"),
-        // Notifications
-        Permission.Create("notifications", "notification", "read", "lockey_notifications_permission_notification_read"),
-        Permission.Create("notifications", "notification", "send", "lockey_notifications_permission_notification_send"),
-        Permission.Create("notifications", "template", "read", "lockey_notifications_permission_template_read"),
-        Permission.Create("notifications", "template", "manage", "lockey_notifications_permission_template_manage"),
-        Permission.Create("notifications", "provider", "read", "lockey_notifications_permission_provider_read"),
-        Permission.Create("notifications", "provider", "manage", "lockey_notifications_permission_provider_manage"),
-        Permission.Create("notifications", "schedule", "read", "lockey_notifications_permission_schedule_read"),
-        Permission.Create("notifications", "schedule", "manage", "lockey_notifications_permission_schedule_manage"),
-        // Reporting
-        Permission.Create("reporting", "definition", "read", "lockey_reporting_permission_definition_read"),
-        Permission.Create("reporting", "definition", "manage", "lockey_reporting_permission_definition_manage"),
-        Permission.Create("reporting", "execution", "run", "lockey_reporting_permission_execution_run"),
-        Permission.Create("reporting", "execution", "read", "lockey_reporting_permission_execution_read"),
-        Permission.Create("reporting", "schedule", "manage", "lockey_reporting_permission_schedule_manage"),
-        Permission.Create("reporting", "dashboard", "read", "lockey_reporting_permission_dashboard_read"),
-        Permission.Create("reporting", "dashboard", "manage", "lockey_reporting_permission_dashboard_manage"),
-        // Audit
-        Permission.Create("audit", "logs", "read", "lockey_audit_permission_logs_read"),
-        Permission.Create("audit", "logs", "export", "lockey_audit_permission_logs_export"),
-        Permission.Create("audit", "settings", "read", "lockey_audit_permission_settings_read"),
-        Permission.Create("audit", "settings", "manage", "lockey_audit_permission_settings_manage"),
-    ];
+    // CreateDefaultPermissions() removed by T-020: permissions are declared once, by each
+    // module's OnStartupAsync, and materialized into the DB by IdentityModuleMigration.SeedAsync.
+    // See ADR-004 and docs/standards/permissions.md §3.
 }

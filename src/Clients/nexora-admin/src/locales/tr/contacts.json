@@ -160,6 +160,7 @@
   "lockey_contacts_import_col_processed": "İşlenen",
   "lockey_contacts_import_col_success": "Başarılı",
   "lockey_contacts_import_col_errors": "Hatalar",
+  "lockey_contacts_import_col_skipped": "Atlananlar (tekrar kayıtlar)",
 
   "lockey_contacts_export_title": "Kişileri Dışa Aktar",
   "lockey_contacts_export_description": "Kişileri bir dosyaya dışa aktarın.",

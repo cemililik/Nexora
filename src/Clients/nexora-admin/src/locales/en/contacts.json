@@ -160,6 +160,7 @@
   "lockey_contacts_import_col_processed": "Processed",
   "lockey_contacts_import_col_success": "Success",
   "lockey_contacts_import_col_errors": "Errors",
+  "lockey_contacts_import_col_skipped": "Skipped (duplicates)",
 
   "lockey_contacts_export_title": "Export Contacts",
   "lockey_contacts_export_description": "Export contacts to a file.",

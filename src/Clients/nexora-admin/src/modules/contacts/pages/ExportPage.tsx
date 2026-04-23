@@ -160,14 +160,23 @@ export default function ExportPage() {
             </dl>
 
             {status === 'Completed' && job?.downloadUrl && (
-              <Button type="button" asChild>
-                <a
-                  href={job.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t('lockey_contacts_export_button_download')}
-                </a>
+              <Button
+                type="button"
+                onClick={() => {
+                  // Programmatic anchor click with the `download` attribute. Popup-blockers
+                  // suppress window.open in async callbacks (post-poll), but an anchor click
+                  // triggered from a direct user gesture is allowed in every major browser.
+                  if (!job.downloadUrl) return;
+                  const anchor = document.createElement('a');
+                  anchor.href = job.downloadUrl;
+                  anchor.download = '';
+                  anchor.rel = 'noopener noreferrer';
+                  document.body.appendChild(anchor);
+                  anchor.click();
+                  document.body.removeChild(anchor);
+                }}
+              >
+                {t('lockey_contacts_export_button_download')}
               </Button>
             )}
 

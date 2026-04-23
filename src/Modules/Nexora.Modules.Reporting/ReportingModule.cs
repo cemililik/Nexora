@@ -13,6 +13,7 @@ using Nexora.Modules.Reporting.Infrastructure.Jobs;
 using Nexora.Modules.Reporting.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.Modules.Reporting;
 
@@ -81,9 +82,15 @@ public sealed class ReportingModule : IModule
     }
 
     /// <inheritdoc />
-    public Task OnStartupAsync(CancellationToken ct)
+    public Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct)
     {
-        // Reporting permissions are seeded centrally in IdentityModuleMigration.SeedAsync().
+        registry.Register("reporting", "definition", "read",   "lockey_reporting_permission_definition_read");
+        registry.Register("reporting", "definition", "manage", "lockey_reporting_permission_definition_manage");
+        registry.Register("reporting", "execution", "run",  "lockey_reporting_permission_execution_run");
+        registry.Register("reporting", "execution", "read", "lockey_reporting_permission_execution_read");
+        registry.Register("reporting", "schedule", "manage", "lockey_reporting_permission_schedule_manage");
+        registry.Register("reporting", "dashboard", "read",   "lockey_reporting_permission_dashboard_read");
+        registry.Register("reporting", "dashboard", "manage", "lockey_reporting_permission_dashboard_manage");
         return Task.CompletedTask;
     }
 

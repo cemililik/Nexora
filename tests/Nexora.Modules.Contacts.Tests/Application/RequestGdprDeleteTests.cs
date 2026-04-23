@@ -20,7 +20,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
     private readonly ContactsDbContext _dbContext;
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly IOutbox _outbox;
-    private readonly ITenantConfiguration _tenantConfiguration;
+    private readonly IConfigurationResolver _configurationResolver;
     private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly Guid _tenantId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
@@ -30,12 +30,13 @@ public sealed class RequestGdprDeleteTests : IDisposable
     {
         _tenantAccessor = CreateTenantAccessor(_tenantId, _orgId, _userId);
         _outbox = Substitute.For<IOutbox>();
-        _tenantConfiguration = Substitute.For<ITenantConfiguration>();
+        _configurationResolver = Substitute.For<IConfigurationResolver>();
         _backgroundJobClient = Substitute.For<IBackgroundJobClient>();
 
-        // Default: hard-delete disabled (anonymize path).
-        _tenantConfiguration
-            .GetAsync<bool>("gdpr.hard_delete.enabled", Arg.Any<CancellationToken>())
+        // Default: hard-delete disabled (anonymize path). Per ADR-0025 the handler now
+        // consults IConfigurationResolver instead of ITenantConfiguration.
+        _configurationResolver
+            .GetAsync<bool>(ComplianceKey.GdprHardDeleteEnabled, Arg.Any<CancellationToken>())
             .Returns(false);
 
         var options = new DbContextOptionsBuilder<ContactsDbContext>()
@@ -100,8 +101,8 @@ public sealed class RequestGdprDeleteTests : IDisposable
     public async Task Handle_HardDeleteFlagEnabled_ShouldEnqueueJobAndNotAnonymizeImmediately()
     {
         var contact = await SeedContact();
-        _tenantConfiguration
-            .GetAsync<bool>("gdpr.hard_delete.enabled", Arg.Any<CancellationToken>())
+        _configurationResolver
+            .GetAsync<bool>(ComplianceKey.GdprHardDeleteEnabled, Arg.Any<CancellationToken>())
             .Returns(true);
 
         var handler = CreateHandler();
@@ -234,7 +235,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
         anonymousAccessor.SetTenant(_tenantId.ToString(), _orgId.ToString());
 
         var handler = new RequestGdprDeleteHandler(
-            _dbContext, anonymousAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            _dbContext, anonymousAccessor, _configurationResolver, _outbox, _backgroundJobClient,
             NullLogger<RequestGdprDeleteHandler>.Instance);
 
         var result = await handler.Handle(
@@ -330,7 +331,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
         badAccessor.SetTenant("not-a-guid", _orgId.ToString(), _userId.ToString());
 
         var handler = new RequestGdprDeleteHandler(
-            _dbContext, badAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            _dbContext, badAccessor, _configurationResolver, _outbox, _backgroundJobClient,
             NullLogger<RequestGdprDeleteHandler>.Instance);
 
         var result = await handler.Handle(
@@ -342,7 +343,7 @@ public sealed class RequestGdprDeleteTests : IDisposable
     }
 
     private RequestGdprDeleteHandler CreateHandler() =>
-        new(_dbContext, _tenantAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+        new(_dbContext, _tenantAccessor, _configurationResolver, _outbox, _backgroundJobClient,
             NullLogger<RequestGdprDeleteHandler>.Instance);
 
     private async Task<Contact> SeedContact()

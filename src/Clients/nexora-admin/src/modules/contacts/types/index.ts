@@ -188,6 +188,7 @@ export interface ImportJobDto {
   processedRows: number;
   successCount: number;
   errorCount: number;
+  skippedCount: number;
   createdAt: string;
   completedAt?: string;
 }

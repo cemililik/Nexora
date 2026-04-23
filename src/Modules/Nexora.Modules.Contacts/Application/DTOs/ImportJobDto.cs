@@ -8,5 +8,6 @@ public sealed record ImportJobDto(
     int ProcessedRows,
     int SuccessCount,
     int ErrorCount,
+    int SkippedCount,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt);

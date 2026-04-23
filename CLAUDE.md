@@ -6,88 +6,97 @@ Nexora is a modular, multi-tenant enterprise platform built with .NET 10, Postgr
 ## Mandatory Standards
 
 ### CRITICAL: Always Follow These Standards
-Before writing ANY code or documentation, you MUST read and strictly follow:
+Before writing ANY code or documentation, you MUST read and strictly follow.
+All standards live in `docs/standards/` (lowercase, canonical). The legacy UPPERCASE
+files have been archived to `docs/_archive/standards-legacy/`.
 
-1. **Coding Standards**: `docs/standards/CODING_STANDARDS.md`
-   - SOLID principles, CQRS pattern, strongly-typed IDs
-   - C# naming conventions (_camelCase for private fields, PascalCase for everything else)
-   - File-scoped namespaces, primary constructors for DI
-   - Rich domain model (behavior on entities, not anemic)
-   - Result pattern for expected failures, exceptions for unexpected
-   - API conventions: `/api/v{version}/{module}/{resource}`
-   - Conventional Commits for git messages
-   - Test naming: `Method_Scenario_ExpectedResult`
+1. **Architectural Principles**: `docs/standards/architectural-principles.md`
+   - SOLID, Modular Monolith, Clean Architecture per module
+   - Result pattern, module boundaries, observability, infrastructure primitives
 
-2. **Documentation Standards**: `docs/standards/DOCUMENTATION_STANDARDS.md`
-   - All diagrams MUST use Mermaid (renders natively in GitHub)
-   - Diagrams must be embedded inline in markdown, not as separate image files
-   - ADRs are immutable once accepted
-   - Every module spec requires: ER diagram, state diagrams, sequence diagrams, component diagram, integration diagram
-   - API docs auto-generated from XML comments
+2. **Code Style**: `docs/standards/code-style.md`
+   - C# / TypeScript naming, file-scoped namespaces, primary constructors
+   - API endpoint convention: `/api/v{version}/{module}/{resource}`
+   - ApiEnvelope<T> contract, Conventional Commits message style
 
-3. **Release Standards**: `docs/standards/RELEASE_STANDARDS.md`
-   - Semantic Versioning (SemVer)
-   - GitHub Flow branching strategy
-   - Conventional Commits required
-   - Squash merge to main
+3. **Testing**: `docs/standards/testing.md`
+   - Three test tiers (unit, integration, architecture)
+   - Naming: `Method_Scenario_ExpectedResult`
+   - Mock policy and current coverage counts
 
-4. **Localization Standards**: `docs/standards/LOCALIZATION_STANDARDS.md`
+4. **Documentation Style**: `docs/standards/documentation-style.md`
+   - Mermaid mandate — all diagrams embedded inline
+   - ADR immutability, required module-spec diagrams
+   - Linking and template rules
+
+5. **Commit Style**: `docs/standards/commit-style.md`
+   - Conventional Commits, trailer format, branch flow, squash-merge policy
+   - Release/SemVer rules
+
+6. **Localization**: `docs/standards/localization.md`
    - **ZERO hardcoded user-facing strings** — backend or frontend
-   - All messages use `lockey_{scope}_{context}_{descriptor}` format
+   - `lockey_{scope}_{context}_{descriptor}` format
    - Backend returns `lockey_` keys in responses, NEVER translated strings
-   - Frontend resolves keys via `react-i18next` (admin) / `next-intl` (portal)
-   - FluentValidation `.WithMessage()` MUST use `lockey_` keys
-   - DomainException MUST use `lockey_` keys
-   - Result.Failure/Success MUST use `LocalizedMessage.Of("lockey_...")`
+   - FluentValidation `.WithMessage()`, DomainException, and Result.Success/Failure MUST use lockey keys
 
-5. **Observability & Error Handling Standards**: `docs/standards/OBSERVABILITY_STANDARDS.md`
-   - Structured logging with Serilog + `ILogger<T>` — PascalCase named parameters, no string interpolation
-   - Two-tier error model: `Result.Failure()` for expected errors, exceptions for unexpected
-   - `DomainException` only from domain entities — handlers use `Result.Failure()`
-   - `GlobalExceptionHandler` middleware catches all unhandled exceptions → standard `ApiEnvelope` response
-   - OpenTelemetry for distributed tracing and metrics
-   - Custom `ActivitySource` for external service calls and job execution
-   - Module-specific metrics via `System.Diagnostics.Metrics` (Meter/Counter/Histogram)
-   - Health checks: `/health/live`, `/health/ready`, `/health/startup`
-   - `CorrelationId` propagated across entire request chain
-   - Command handlers MUST log success (Information) and business rule failures (Warning)
-   - **NEVER** log secrets, passwords, tokens, or PII
-   - **NEVER** use `catch(Exception)` in module code — only in GlobalExceptionHandler and NexoraJob
+7. **Permissions**: `docs/standards/permissions.md`
+   - `{module}.{resource}.{action}` format, Platform vs Tenant scope, seeding rules
+   - Built-in roles (Platform Admin / Tenant Admin / Tenant User / Portal User) and per-module matrix
 
-6. **Frontend Standards**: `docs/standards/FRONTEND_STANDARDS.md`
-   - TypeScript strict, functional components, no `any`
-   - State: TanStack Query (server) + Zustand (client) + React Hook Form (forms)
-   - Styling: Tailwind CSS 4 + shadcn/ui, `cn()` utility
-   - Testing: Vitest + React Testing Library
-   - API integration patterns and query key conventions
-   - Module manifest structure for dynamic UI loading
+8. **Audit Coverage**: `docs/standards/audit-coverage.md`
+   - Per-module operation-class audit matrix (MUST/SHOULD/MAY)
 
-7. **API Integration Standards**: `docs/standards/API_INTEGRATION_STANDARDS.md`
-   - ApiEnvelope<T> response format and TypeScript types — backend MUST always wrap responses
-   - HTTP status codes → mandatory frontend actions (§4)
-   - Auth gate: MUST check `!token || token.error === 'RefreshAccessTokenError'`
-   - TanStack Query patterns: factory QueryClient, key factory, CRUD hooks (§8)
-   - Error handling: `useApiError` hook — no manual error parsing allowed
-   - File upload: presigned URL pattern — no direct multipart uploads (§11)
+9. **Multi-Currency**: `docs/standards/multi-currency.md`
+   - Money value object, exchange rate service, cross-module usage, display rules
 
-8. **Module System**: `docs/architecture/MODULE_SYSTEM.md`
-   - Modules are true plugins — installable/removable per tenant at runtime
-   - Every module implements `IModule` interface
-   - Modules declare their dependencies explicitly
-   - Cross-module communication via integration events (Kafka) or SharedKernel interfaces
-   - Module tables prefixed: `{module}_{table}` in tenant schema
-   - Module UI loaded dynamically based on tenant's installed modules
+10. **UX/UI**: `docs/standards/ux-ui.md`
+    - Tab-based layout mandate (custom underline tabs, not Radix/shadcn Tabs), max 5 tabs
+    - Shared component inventory (§9), empty/loading states, accessibility
 
-9. **UX/UI Design Standards**: `docs/standards/UX_UI_STANDARDS.md`
-   - Tab-based layout mandatory for all detail pages (not card-based), max 5 tabs
-   - Consistent page templates: Detail, List, Create/Edit
-   - Status badge color scheme: green=active, gray=inactive, red=error, yellow=pending
-   - Breadcrumb required on every page, skip-to-content link in AppLayout
-   - Accessibility: ARIA labels, keyboard nav, focus indicators, color+icon, skip link
-   - Empty states via `EmptyState` component (icon, text, CTA) — never inline
-   - Loading: `TabContentSkeleton` for tabs, `LoadingSkeleton` for pages, DataTable built-in skeleton
-   - Unsaved changes guard (`useUnsavedChangesGuard`) mandatory on all edit forms
-   - Shared component inventory in §9 — use existing components, don't rebuild
+11. **Code Review**: `docs/standards/code-review.md`
+    - 10-category review checklist, severity, zero-tolerance rules
+
+12. **Security Review**: `docs/standards/security-review.md`
+    - OWASP lens, multi-tenant isolation, secrets, CVEs, PII handling
+
+13. **Schema Migration**: `docs/standards/schema-migration.md`
+    - Migration-free schema evolution: `ApplySchemaUpdatesAsync` pattern in `DevelopmentSeed.cs`
+    - Idempotency rules (`IF NOT EXISTS`), C# → PostgreSQL type map
+    - No EF Core migration files in this project
+
+14. **Module System** (architecture, not a standard): `docs/architecture/MODULE_SYSTEM.md`
+    - Modules are true plugins — installable/removable per tenant at runtime
+    - `IModule` interface, explicit dependency declaration
+    - Cross-module comms via integration events (Kafka) or SharedKernel interfaces
+    - Module tables prefixed `{module}_{table}` in tenant schema
+    - UI loaded dynamically based on installed modules
+
+### Observability & Error Handling (rules inline)
+- Structured logging with Serilog + `ILogger<T>` — PascalCase named parameters, no string interpolation
+- Two-tier error model: `Result.Failure()` for expected errors, exceptions for unexpected
+- `DomainException` only from domain entities — handlers use `Result.Failure()`
+- `GlobalExceptionHandler` middleware catches all unhandled exceptions → standard `ApiEnvelope` response
+- OpenTelemetry for distributed tracing and metrics; custom `ActivitySource` for external calls / jobs
+- Module-specific metrics via `System.Diagnostics.Metrics` (Meter/Counter/Histogram)
+- Health checks: `/health/live`, `/health/ready`, `/health/startup`
+- `CorrelationId` propagated across the entire request chain
+- Command handlers MUST log success (Information) and business rule failures (Warning)
+- **NEVER** log secrets, passwords, tokens, or PII
+- **NEVER** use `catch(Exception)` in module code — only in `GlobalExceptionHandler` and `NexoraJob`
+
+### Frontend & API Integration (rules inline — no standalone doc yet)
+- TypeScript strict, functional components, no `any`
+- State: TanStack Query (server) + Zustand (client) + React Hook Form (forms)
+- Styling: Tailwind CSS 4 + shadcn/ui, `cn()` utility
+- Testing: Vitest + React Testing Library
+- API responses are `ApiEnvelope<T>` — always unwrap `data` field
+- Error messages are `lockey_` keys — resolve with `t(key, meta)` and the `useApiError` hook
+- File upload: presigned URL pattern — no direct multipart uploads
+- Full reference (legacy, still accurate for patterns): `docs/_archive/standards-legacy/FRONTEND_STANDARDS.md` and `docs/_archive/standards-legacy/API_INTEGRATION_STANDARDS.md`
+- Integration guide: `docs/guides/API_INTEGRATION_GUIDE.md`
+
+### Infrastructure (rules inline — no standalone doc yet)
+- Full reference (legacy): `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md`
 
 ## Solution Structure
 ```
@@ -158,9 +167,9 @@ Nexora.Modules.{ModuleName}/
 
 ### Database
 - PostgreSQL 17, schema-per-tenant
-- EF Core Code-First migrations
+- **Migration-free schema evolution** — no EF Core migration files. Tables are created on first startup via `IRelationalDatabaseCreator`; incremental changes go into `ApplySchemaUpdatesAsync` in `DevelopmentSeed.cs` as idempotent SQL (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`). See `docs/standards/schema-migration.md`.
 - Strongly-typed IDs (never raw Guid/int in domain)
-- Migrations are additive-only in production
+- Schema changes are additive-only in production (no `DROP COLUMN`, no type/nullability tightening)
 
 ## Tech Stack Quick Reference
 - Backend: .NET 10, ASP.NET Core, EF Core, MediatR, FluentValidation, Mapster
@@ -173,7 +182,7 @@ Nexora.Modules.{ModuleName}/
 - Observability: OpenTelemetry, Grafana, Loki, Tempo
 
 ## Infrastructure Standards
-**Full spec**: `docs/standards/INFRASTRUCTURE_STANDARDS.md`
+**Legacy spec (still accurate)**: `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md`
 
 ### Cache
 - Use **only** `ICacheService` for caching — never `IDistributedCache`, `IMemoryCache`, or `DaprClient` directly
@@ -240,9 +249,10 @@ Nexora.Modules.{ModuleName}/
   - Hard delete is allowed ONLY for: GDPR compliance, join-table reconciliation (removing orphaned many-to-many rows), and uninstall/orphan cleanup (removing data for deprovisioned modules or tenants)
 
 ## When Writing Frontend Code
-**Full spec**: `docs/standards/FRONTEND_STANDARDS.md`
-**API standard**: `docs/standards/API_INTEGRATION_STANDARDS.md`
-**UX/UI design**: `docs/standards/UX_UI_STANDARDS.md`
+**UX/UI standard**: `docs/standards/ux-ui.md`
+**Integration guide**: `docs/guides/API_INTEGRATION_GUIDE.md`
+**Legacy spec (still accurate for patterns)**: `docs/_archive/standards-legacy/FRONTEND_STANDARDS.md`
+**Legacy API standard (still accurate)**: `docs/_archive/standards-legacy/API_INTEGRATION_STANDARDS.md`
 
 ### UX/UI Layout Rules
 - Detail pages MUST use **custom underline tab layout** (`<button>` with `border-b-2`) — NOT shadcn/Radix Tabs, NOT card-based side-by-side
@@ -256,7 +266,7 @@ Nexora.Modules.{ModuleName}/
 - Edit forms MUST use `useUnsavedChangesGuard(isDirty)` to prevent accidental navigation
 - Form fields MUST use `FormField` wrapper (label + required `*` + hint + error)
 - Grid layouts MUST use responsive breakpoints: `grid-cols-1 sm:grid-cols-2` (never bare `grid-cols-2`)
-- Refer to `UX_UI_STANDARDS.md` §9 for full shared component inventory
+- Refer to `docs/standards/ux-ui.md` §9 for full shared component inventory
 
 ### Pre-Commit Checklist: ALWAYS Run Linter Before Committing
 **CRITICAL**: Any changes in `src/Clients/` (nexora-admin or nexora-portal) MUST pass linting before commit.
@@ -322,7 +332,7 @@ cd src/Clients/nexora-portal && npm run lint
 
 ## When Writing Documentation
 - Always use Mermaid for diagrams — embedded inline in markdown
-- Follow the module spec template in `docs/standards/DOCUMENTATION_STANDARDS.md`
+- Follow the module spec template in `docs/standards/documentation-style.md`
 - Use ADR template for architecture decisions
 - Keep CHANGELOG.md updated with every release
 

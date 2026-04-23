@@ -62,6 +62,42 @@ public sealed class ContactDuplicateMatcherTests : IDisposable
     }
 
     [Fact]
+    public async Task FindExistingContactIdAsync_EmailCaseDiffers_StillDetectedAsDuplicate()
+    {
+        // Seed with canonically-lowercased email (the Contact factory / normalization path).
+        var existing = Contact.Create(_tenantId, _orgId, ContactType.Individual,
+            "Ada", "Lovelace", null, "ada@example.com", null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(existing);
+        await _dbContext.SaveChangesAsync();
+
+        // Probe with an upper-case + whitespace-padded variant that is semantically identical.
+        var match = await _matcher.FindExistingContactIdAsync(
+            _tenantId, _orgId, "  Ada@Example.COM  ", phone: null, CancellationToken.None);
+
+        match.Should().Be(existing.Id.Value);
+    }
+
+    [Fact]
+    public async Task FindExistingByEmailsAsync_CallerPassesRawEmails_NormalizesBeforeProbe()
+    {
+        // Contract: matcher trusts the caller to pre-normalize. The ContactImportJob
+        // normalizes via `Trim().ToLowerInvariant()` before building its probe set, and
+        // stored emails are always lowercase — so a lowercase-only probe suffices.
+        // This test documents that behaviour so a future regression (e.g. removing the
+        // caller's normalization) is caught explicitly.
+        var contact = Contact.Create(_tenantId, _orgId, ContactType.Individual,
+            "Grace", "Hopper", null, "grace@example.com", null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(contact);
+        await _dbContext.SaveChangesAsync();
+
+        var probe = new[] { "grace@example.com" };
+        var result = await _matcher.FindExistingByEmailsAsync(_tenantId, _orgId, probe, CancellationToken.None);
+
+        result.Should().HaveCount(1);
+        result["grace@example.com"].Should().Be(contact.Id.Value);
+    }
+
+    [Fact]
     public async Task FindExistingByEmailsAsync_OtherOrganization_NotReturned()
     {
         var otherOrg = Guid.NewGuid();

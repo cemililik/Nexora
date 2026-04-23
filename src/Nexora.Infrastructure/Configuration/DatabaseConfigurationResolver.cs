@@ -1,0 +1,298 @@
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Nexora.SharedKernel.Abstractions.Caching;
+using Nexora.SharedKernel.Abstractions.Configuration;
+using Nexora.SharedKernel.Abstractions.MultiTenancy;
+
+namespace Nexora.Infrastructure.Configuration;
+
+/// <summary>
+/// Three-tier configuration resolver per ADR-0025:
+/// <c>cap.forced &gt; org override &gt; tenant default &gt; cap.default</c>.
+/// Writes audit rows atomically with every mutation so compliance teams can answer
+/// "who turned hard-delete on and when?" without spelunking the erasure log.
+/// </summary>
+public sealed class DatabaseConfigurationResolver(
+    TenantConfigDbContext dbContext,
+    IComplianceCapProvider capProvider,
+    ITenantContextAccessor tenantContextAccessor,
+    ICacheService cache,
+    ILogger<DatabaseConfigurationResolver> logger) : IConfigurationResolver
+{
+    private static readonly CacheOptions ResolverCacheOptions = new()
+    {
+        L1Ttl = TimeSpan.FromMinutes(2),
+        L2Ttl = TimeSpan.FromMinutes(15)
+    };
+
+    /// <inheritdoc />
+    public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+
+        var (_, orgId) = ResolveContextIds();
+
+        // Only the effective value is cached — ResolvedConfiguration<T> (diagnostic view
+        // for the admin panel) bypasses the cache. DaprCacheService prepends the tenant
+        // prefix automatically via ITenantContextAccessor, so we only scope by org + key.
+        var resolvedValueWrapper = await cache.GetOrSetAsync<CachedResolution<T>>(
+            BuildCacheKey(key, orgId),
+            async innerCt =>
+            {
+                var resolved = await ResolveAsync<T>(key, orgId, innerCt);
+                return new CachedResolution<T>(resolved.Effective);
+            },
+            ResolverCacheOptions,
+            ct);
+
+        return resolvedValueWrapper.Value;
+    }
+
+    /// <inheritdoc />
+    public async Task<ResolvedConfiguration<T>> GetResolvedAsync<T>(
+        string key, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var (_, orgId) = ResolveContextIds();
+        return await ResolveAsync<T>(key, orgId, ct);
+    }
+
+    private async Task<ResolvedConfiguration<T>> ResolveAsync<T>(
+        string key, Guid? orgId, CancellationToken ct)
+    {
+        var cap = await capProvider.GetCapAsync(key, ct);
+
+        var tenantEntry = await dbContext.Configurations
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Key == key, ct);
+        var tenantPresent = tenantEntry is not null;
+        var tenantDefault = tenantPresent ? Deserialize<T>(tenantEntry!.Value) : default;
+
+        var orgPresent = false;
+        T? orgOverride = default;
+        if (orgId is { } org)
+        {
+            var orgEntry = await dbContext.OrgOverrides
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.OrganizationId == org && c.Key == key, ct);
+            if (orgEntry is not null)
+            {
+                orgPresent = true;
+                orgOverride = Deserialize<T>(orgEntry.Value);
+            }
+        }
+
+        // Precedence: cap.forced > org > tenant > cap.default.
+        // `is not null` checks below only tell us the reference exists; value-type
+        // emptiness is tracked via the explicit *Present flags so a genuine `false` / `0`
+        // isn't confused with "unset".
+        T? effective;
+        ResolutionLayer winner;
+
+        if (cap.Forced && cap.Value is not null)
+        {
+            effective = Deserialize<T>(cap.Value);
+            winner = ResolutionLayer.Cap;
+        }
+        else if (orgPresent)
+        {
+            effective = orgOverride;
+            winner = ResolutionLayer.OrgOverride;
+        }
+        else if (tenantPresent)
+        {
+            effective = tenantDefault;
+            winner = ResolutionLayer.TenantDefault;
+        }
+        else if (cap.Value is not null)
+        {
+            effective = Deserialize<T>(cap.Value);
+            winner = ResolutionLayer.Cap;
+        }
+        else
+        {
+            effective = default;
+            winner = ResolutionLayer.None;
+        }
+
+        logger.LogDebug(
+            "Resolved config key {Key} for org {OrgId}: winner={Layer}",
+            key, orgId, winner);
+
+        return new ResolvedConfiguration<T>(effective, tenantDefault, orgOverride, cap, winner);
+    }
+
+    /// <inheritdoc />
+    public async Task SetOrgOverrideAsync<T>(
+        string key, T value, string reason, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        ArgumentNullException.ThrowIfNull(value);
+        if (reason.Length > 500)
+            throw new ArgumentException("Reason must be 500 characters or fewer.", nameof(reason));
+
+        var (tenantId, orgId) = ResolveContextIds();
+        if (orgId is null)
+            throw new InvalidOperationException(
+                "Cannot set an org override without an organization in the current context.");
+        var userId = ResolveChangedByUserId();
+
+        var cap = await capProvider.GetCapAsync(key, ct);
+        if (!cap.Allowed)
+        {
+            logger.LogWarning(
+                "Org override rejected for {Key} — platform cap disallows it (tenant {TenantId}, org {OrgId})",
+                key, tenantId, orgId);
+            throw new ComplianceCapViolationException(
+                key, "lockey_error_compliance_cap_blocks_override");
+        }
+        if (cap.Forced)
+        {
+            // Forced caps collapse org overrides. Record the attempt (so the auditor sees
+            // someone tried) but do not persist — the cap's own value keeps winning.
+            await AppendAuditAsync(tenantId, orgId, key,
+                oldValue: null, newValue: JsonSerializer.Serialize(value),
+                userId, $"{reason} [rejected: cap.Forced]", ct);
+            await dbContext.SaveChangesAsync(ct);
+            await InvalidateCacheAsync(key, orgId, ct);
+            return;
+        }
+
+        var json = JsonSerializer.Serialize(value);
+        var existing = await dbContext.OrgOverrides
+            .FirstOrDefaultAsync(c => c.OrganizationId == orgId.Value && c.Key == key, ct);
+        var oldJson = existing?.Value;
+
+        if (existing is null)
+        {
+            dbContext.OrgOverrides.Add(new OrgConfigEntry
+            {
+                OrganizationId = orgId.Value,
+                Key = key,
+                Value = json,
+                UpdatedAt = DateTimeOffset.UtcNow,
+                UpdatedBy = userId.ToString()
+            });
+        }
+        else
+        {
+            existing.Value = json;
+            existing.UpdatedAt = DateTimeOffset.UtcNow;
+            existing.UpdatedBy = userId.ToString();
+        }
+
+        await AppendAuditAsync(tenantId, orgId, key, oldJson, json, userId, reason, ct);
+        await dbContext.SaveChangesAsync(ct);
+
+        await InvalidateCacheAsync(key, orgId, ct);
+
+        logger.LogInformation(
+            "Org override saved for {Key} in tenant {TenantId} org {OrgId} by {UserId}",
+            key, tenantId, orgId, userId);
+    }
+
+    /// <inheritdoc />
+    public async Task ClearOrgOverrideAsync(
+        string key, string reason, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (reason.Length > 500)
+            throw new ArgumentException("Reason must be 500 characters or fewer.", nameof(reason));
+
+        var (tenantId, orgId) = ResolveContextIds();
+        if (orgId is null)
+            throw new InvalidOperationException(
+                "Cannot clear an org override without an organization in the current context.");
+        var userId = ResolveChangedByUserId();
+
+        var existing = await dbContext.OrgOverrides
+            .FirstOrDefaultAsync(c => c.OrganizationId == orgId.Value && c.Key == key, ct);
+
+        if (existing is null)
+        {
+            logger.LogDebug(
+                "Clear-override no-op: no org override exists for {Key} in org {OrgId}",
+                key, orgId);
+            return;
+        }
+
+        var oldJson = existing.Value;
+        dbContext.OrgOverrides.Remove(existing);
+
+        await AppendAuditAsync(tenantId, orgId, key, oldJson, newValue: null, userId, reason, ct);
+        await dbContext.SaveChangesAsync(ct);
+
+        await InvalidateCacheAsync(key, orgId, ct);
+
+        logger.LogInformation(
+            "Org override cleared for {Key} in tenant {TenantId} org {OrgId} by {UserId}",
+            key, tenantId, orgId, userId);
+    }
+
+    private (Guid TenantId, Guid? OrgId) ResolveContextIds()
+    {
+        var ctx = tenantContextAccessor.Current;
+        var tenantId = ctx.TryGetTenantGuid()
+            ?? throw new InvalidOperationException("Configuration resolver requires a tenant context.");
+        var orgId = ctx.TryGetOrganizationGuid();
+        return (tenantId, orgId);
+    }
+
+    private Guid ResolveChangedByUserId()
+    {
+        var userId = tenantContextAccessor.Current.UserId;
+        if (!Guid.TryParse(userId, out var guid) || guid == Guid.Empty)
+            throw new InvalidOperationException(
+                "Configuration writes require an authenticated user in the tenant context.");
+        return guid;
+    }
+
+    private Task AppendAuditAsync(
+        Guid tenantId, Guid? orgId, string key,
+        string? oldValue, string? newValue, Guid userId, string reason,
+        CancellationToken ct)
+    {
+        dbContext.PolicyAudit.Add(new CompliancePolicyAuditEntry
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrganizationId = orgId,
+            Key = key,
+            OldValue = oldValue,
+            NewValue = newValue,
+            ChangedByUserId = userId,
+            ChangedAtUtc = DateTime.UtcNow,
+            Reason = reason
+        });
+        return Task.CompletedTask;
+    }
+
+    private async Task InvalidateCacheAsync(string key, Guid? orgId, CancellationToken ct)
+    {
+        await cache.RemoveAsync(BuildCacheKey(key, orgId), ct);
+    }
+
+    private static string BuildCacheKey(string key, Guid? orgId)
+        => $"config:resolved:{orgId?.ToString() ?? "_"}:{key}";
+
+    // Wrapper exists because DaprCacheService.GetOrSetAsync<T> requires a reference type
+    // for nullable-safe caching; raw nullable value types would round-trip as boxed defaults.
+    private sealed record CachedResolution<T>(T? Value);
+
+    private static T? Deserialize<T>(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return default;
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json);
+        }
+        catch (JsonException)
+        {
+            return default;
+        }
+    }
+}

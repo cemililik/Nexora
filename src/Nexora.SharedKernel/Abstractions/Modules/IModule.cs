@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.SharedKernel.Abstractions.Modules;
 
@@ -37,8 +38,13 @@ public interface IModule
     /// <summary>Check module health (database connectivity, external services, etc.)</summary>
     Task<HealthCheckResult> CheckHealthAsync(CancellationToken ct);
 
-    /// <summary>Run on application startup (register permissions, caches)</summary>
-    Task OnStartupAsync(CancellationToken ct);
+    /// <summary>
+    /// Run on application startup. Each module MUST register every permission it enforces
+    /// via <paramref name="registry"/>; unregistered names cannot be enforced
+    /// (<c>docs/standards/permissions.md</c> §3, ADR-004).
+    /// Modules may also warm caches or perform other idempotent startup work here.
+    /// </summary>
+    Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct);
 
     /// <summary>Run when module is installed for a tenant</summary>
     Task OnInstallAsync(TenantInstallContext context, CancellationToken ct);

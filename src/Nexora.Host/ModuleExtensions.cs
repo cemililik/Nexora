@@ -1,6 +1,7 @@
 using System.Reflection;
 using Nexora.Infrastructure.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.Host;
 
@@ -97,11 +98,14 @@ public static class ModuleExtensions
     public static async Task RunModuleStartupAsync(this WebApplication app)
     {
         var scheduler = app.Services.GetRequiredService<IJobScheduler>();
+        // Permission registry (ADR-004 / permissions.md §3) — module OnStartupAsync
+        // populates it in-order; IdentityModuleMigration.SeedAsync consumes it later.
+        var permissionRegistry = app.Services.GetRequiredService<IPermissionRegistry>();
 
         foreach (var module in _modules)
         {
             module.ConfigureJobs(scheduler);
-            await module.OnStartupAsync(CancellationToken.None);
+            await module.OnStartupAsync(permissionRegistry, CancellationToken.None);
         }
     }
 }

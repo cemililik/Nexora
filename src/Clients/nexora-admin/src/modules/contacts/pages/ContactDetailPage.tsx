@@ -1558,7 +1558,7 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
                 type="button"
                 variant="outline"
                 disabled={gdprExport.isPending}
-                onClick={() => gdprExport.mutate(undefined, { onError: (err) => handleApiError(err) })}
+                onClick={() => gdprExport.mutate(undefined)}
               >
                 {t('lockey_contacts_gdpr_export')}
               </Button>
@@ -1598,14 +1598,13 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
         description={t('lockey_contacts_gdpr_confirm_delete')}
         variant="destructive"
         onConfirm={() => {
+          // Hook owns the error toast via its own onError (handleApiError).
+          // Caller only handles local side-effects (close dialog, reset form).
           gdprDelete.mutate(
             { reason: reasonValue.trim() },
             {
               onSuccess: () => { setShowDeleteConfirm(false); reset(); },
-              onError: (err) => {
-                setShowDeleteConfirm(false);
-                handleApiError(err);
-              },
+              onError: () => setShowDeleteConfirm(false),
             },
           );
         }}

@@ -35,7 +35,7 @@ public static class ImportExportEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<ContactImportPreviewDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<ContactImportPreviewDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.write");
+        }).RequireAuthorization("contacts.import.execute");
 
         group.MapPost("/import/validate", async (ValidateImportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -45,7 +45,7 @@ public static class ImportExportEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<ContactImportValidationDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<ContactImportValidationDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.write");
+        }).RequireAuthorization("contacts.import.execute");
 
         group.MapPost("/import", async (ConfirmImportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -57,7 +57,7 @@ public static class ImportExportEndpoints
                     $"/api/v1/contacts/contacts/import/{result.Value!.JobId}",
                     ApiEnvelope<ImportJobDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<ImportJobDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.write");
+        }).RequireAuthorization("contacts.import.execute");
 
         group.MapGet("/import/{jobId:guid}", async (Guid jobId, ISender sender, CancellationToken ct) =>
         {
@@ -70,7 +70,7 @@ public static class ImportExportEndpoints
                         Results.NotFound(ApiEnvelope<ImportJobDto>.Fail(result.Error)),
                     _ => Results.BadRequest(ApiEnvelope<ImportJobDto>.Fail(result.Error))
                 };
-        }).RequireAuthorization("contacts.contacts.read");
+        }).RequireAuthorization("contacts.contact.read");
 
         group.MapPost("/export", async (StartExportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -89,7 +89,7 @@ public static class ImportExportEndpoints
                     $"/api/v1/contacts/contacts/export/{result.Value!.JobId}",
                     ApiEnvelope<ExportJobDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<ExportJobDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.read");
+        }).RequireAuthorization("contacts.export.execute");
 
         group.MapGet("/export/{jobId:guid}", async (Guid jobId, ISender sender, CancellationToken ct) =>
         {
@@ -102,7 +102,7 @@ public static class ImportExportEndpoints
                         Results.NotFound(ApiEnvelope<ExportJobDto>.Fail(result.Error)),
                     _ => Results.BadRequest(ApiEnvelope<ExportJobDto>.Fail(result.Error))
                 };
-        }).RequireAuthorization("contacts.contacts.read");
+        }).RequireAuthorization("contacts.contact.read");
     }
 }
 
