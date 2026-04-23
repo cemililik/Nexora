@@ -235,9 +235,20 @@ public sealed class ContactExportJob(
         }, ct);
 
         // Completion notification fires only on the Queued-origin path. On resume we do
-        // not re-send because the original attempt may have already notified the user;
-        // a follow-up refactor moves this into the ContactExportCompletedIntegrationEvent
-        // consumer (inbox-guarded) so notification becomes idempotent end-to-end.
+        // not re-send because the original attempt may have already notified the user.
+        // Planned idempotent follow-up (see T-010 / T-017 backlog):
+        //   1. Remove this inline SendAsync call.
+        //   2. Add a ContactExportCompletedNotificationHandler subscribing to
+        //      ContactExportCompletedIntegrationEvent via the standard inbox table.
+        //   3. Use a stable dedupe key of the form
+        //        $"contacts:export-ready:{jobId}"
+        //      — jobId is assigned at Queue time, survives retries unchanged, and is
+        //      unique per export. The inbox primary key (MessageId, Consumer) will
+        //      collapse duplicates no matter how many times the event is redelivered.
+        // Until that lands, the startedFromQueued guard prevents duplicate at-most-once
+        // notification on resume at the cost of possibly missing notification when a
+        // crash happens between MarkProcessing and SendAsync — acceptable trade-off
+        // given the user can see completion on the status page.
         if (startedFromQueued && parameters.TriggeredByUserId is { } userId)
         {
             try

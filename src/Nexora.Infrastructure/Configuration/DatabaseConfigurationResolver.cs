@@ -90,7 +90,9 @@ public sealed class DatabaseConfigurationResolver(
             }
         }
 
-        // Precedence: cap.forced > org > tenant > cap.default.
+        // Precedence: cap.forced > (cap.blocked → cap.value) > org > tenant > cap.default.
+        // When cap.Allowed is false the cap collapses every lower layer — a stale org
+        // override left over from before the cap tightened must not keep leaking through.
         // `is not null` checks below only tell us the reference exists; value-type
         // emptiness is tracked via the explicit *Present flags so a genuine `false` / `0`
         // isn't confused with "unset".
@@ -100,6 +102,11 @@ public sealed class DatabaseConfigurationResolver(
         if (cap.Forced && cap.Value is not null)
         {
             effective = Deserialize<T>(cap.Value, key);
+            winner = ResolutionLayer.Cap;
+        }
+        else if (!cap.Allowed)
+        {
+            effective = cap.Value is not null ? Deserialize<T>(cap.Value, key) : default;
             winner = ResolutionLayer.Cap;
         }
         else if (orgPresent)
@@ -146,6 +153,13 @@ public sealed class DatabaseConfigurationResolver(
                 "Cannot set an org override without an organization in the current context.");
         var userId = ResolveChangedByUserId();
 
+        // Load the existing override BEFORE consulting the cap so rejection audits can
+        // record the prior value — an auditor chasing "who let this slip through" needs
+        // to know what was in place when the blocked attempt was made.
+        var existing = await dbContext.OrgOverrides
+            .FirstOrDefaultAsync(c => c.OrganizationId == orgId.Value && c.Key == key, ct);
+        var oldJson = existing?.Value;
+
         var cap = await capProvider.GetCapAsync(key, ct);
         if (!cap.Allowed)
         {
@@ -153,7 +167,7 @@ public sealed class DatabaseConfigurationResolver(
             // forensic trail captures blocked attempts as well.
             AppendAudit(new AuditContext(
                 tenantId, orgId, key,
-                OldValue: null, NewValue: JsonSerializer.Serialize(value),
+                OldValue: oldJson, NewValue: JsonSerializer.Serialize(value),
                 ChangedByUserId: userId,
                 Reason: $"{reason} {CapBlockedRejectedSuffix}"));
             await dbContext.SaveChangesAsync(ct);
@@ -173,7 +187,7 @@ public sealed class DatabaseConfigurationResolver(
             // would misreport 200 OK while the override never took effect.
             AppendAudit(new AuditContext(
                 tenantId, orgId, key,
-                OldValue: null, NewValue: JsonSerializer.Serialize(value),
+                OldValue: oldJson, NewValue: JsonSerializer.Serialize(value),
                 ChangedByUserId: userId,
                 Reason: $"{reason} {CapForcedRejectedSuffix}"));
             await dbContext.SaveChangesAsync(ct);
@@ -188,9 +202,6 @@ public sealed class DatabaseConfigurationResolver(
         }
 
         var json = JsonSerializer.Serialize(value);
-        var existing = await dbContext.OrgOverrides
-            .FirstOrDefaultAsync(c => c.OrganizationId == orgId.Value && c.Key == key, ct);
-        var oldJson = existing?.Value;
 
         if (existing is null)
         {

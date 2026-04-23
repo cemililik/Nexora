@@ -114,6 +114,55 @@ public sealed class DatabaseConfigurationResolverTests : IDisposable
     }
 
     [Fact]
+    public async Task Get_CapAllowedFalse_IgnoresLowerLayers_EvenIfPresent()
+    {
+        _dbContext.Configurations.Add(new TenantConfigEntry
+        {
+            Key = Key, Value = "true", UpdatedAt = DateTimeOffset.UtcNow
+        });
+        _dbContext.OrgOverrides.Add(new OrgConfigEntry
+        {
+            OrganizationId = _orgId, Key = Key, Value = "true",
+            UpdatedAt = DateTimeOffset.UtcNow, UpdatedBy = _userId.ToString()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        // Cap tightened to disallow — pre-existing org/tenant values must not leak through.
+        _capProvider.GetCapAsync(Key, Arg.Any<CancellationToken>())
+            .Returns(new ComplianceCap(Allowed: false, Forced: false, Value: "false"));
+
+        var resolver = CreateResolver();
+        var resolved = await resolver.GetResolvedAsync<bool>(Key);
+
+        resolved.Effective.Should().BeFalse();
+        resolved.WinningLayer.Should().Be(ResolutionLayer.Cap);
+    }
+
+    [Fact]
+    public async Task SetOrgOverride_CapDisallows_AuditRecordsPriorOverrideAsOldValue()
+    {
+        // Pre-existing override left over from before the cap tightened.
+        _dbContext.OrgOverrides.Add(new OrgConfigEntry
+        {
+            OrganizationId = _orgId, Key = Key, Value = "true",
+            UpdatedAt = DateTimeOffset.UtcNow, UpdatedBy = _userId.ToString()
+        });
+        await _dbContext.SaveChangesAsync();
+
+        _capProvider.GetCapAsync(Key, Arg.Any<CancellationToken>())
+            .Returns(new ComplianceCap(Allowed: false, Forced: false));
+
+        var resolver = CreateResolver();
+
+        var act = () => resolver.SetOrgOverrideAsync(Key, false, "attempting flip");
+        await act.Should().ThrowAsync<ComplianceCapViolationException>();
+
+        var audit = await _dbContext.PolicyAudit.SingleAsync();
+        audit.OldValue.Should().Be("true");
+        audit.NewValue.Should().Be("false");
+    }
+
+    [Fact]
     public async Task Get_NoOrgContext_SkipsOrgLayer()
     {
         // Reset accessor to omit org id

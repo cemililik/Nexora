@@ -69,12 +69,23 @@ public sealed class InMemoryPermissionRegistryTests
     }
 
     [Theory]
-    [InlineData("", "r", "a", "k")]
-    [InlineData(" ", "r", "a", "k")]
-    [InlineData("m", "", "a", "k")]
-    [InlineData("m", "r", "", "k")]
+    // Blank parts — caught by ArgumentException.ThrowIfNullOrWhiteSpace.
+    [InlineData("", "r", "a", "lockey_test_k")]
+    [InlineData(" ", "r", "a", "lockey_test_k")]
+    [InlineData("m", "", "a", "lockey_test_k")]
+    [InlineData("m", "r", "", "lockey_test_k")]
     [InlineData("m", "r", "a", "")]
-    public void Register_WithBlankPart_Throws(string module, string resource, string action, string key)
+    // Format violations per permissions.md §1 — lowercase, letter-leading segments.
+    [InlineData("CRM", "lead", "read", "lockey_test_k")]      // uppercase module
+    [InlineData("crm", "Lead", "read", "lockey_test_k")]      // uppercase resource
+    [InlineData("crm", "lead", "Read", "lockey_test_k")]      // uppercase action
+    [InlineData("1crm", "lead", "read", "lockey_test_k")]     // digit-leading module
+    [InlineData("crm", "lead", "read.write", "lockey_test_k")] // dot in action
+    [InlineData("crm", "lead", "read write", "lockey_test_k")] // whitespace in action
+    // DescriptionKey must carry the lockey_ prefix so FE/BE lookups stay uniform.
+    [InlineData("crm", "lead", "read", "k")]
+    [InlineData("crm", "lead", "read", "crm_lead_read")]
+    public void Register_WithInvalidInput_Throws(string module, string resource, string action, string key)
     {
         var registry = new InMemoryPermissionRegistry();
         var act = () => registry.Register(module, resource, action, key);

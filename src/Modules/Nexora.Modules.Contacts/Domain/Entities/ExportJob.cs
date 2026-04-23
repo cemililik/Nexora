@@ -109,10 +109,9 @@ public sealed class ExportJob : Entity<ExportJobId>
     public void UpdateTotalRows(int totalRows)
     {
         if (Status != ExportJobStatus.Processing)
-            throw new InvalidOperationException(
-                $"Cannot update TotalRows when status is {Status}. Expected: Processing.");
+            throw new DomainException("lockey_contacts_error_export_update_total_rows_invalid_status");
         if (totalRows < 0)
-            throw new ArgumentOutOfRangeException(nameof(totalRows), "TotalRows must be non-negative.");
+            throw new DomainException("lockey_contacts_error_export_total_rows_negative");
 
         TotalRows = totalRows;
     }

@@ -33,8 +33,13 @@ import argparse
 SCHEMA_DEFAULT = 'tenant_00000000-0000-0000-0000-000000000001'
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src'))
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Single source of truth for the EF configuration folder/segment name. Every scan
+# below pivots on this, so a repo-wide rename only touches one line.
+CONFIG_DIR_NAME = 'Configurations'
+
 CONFIG_PATTERNS = [
-    f'{ROOT}/Modules/*/Infrastructure/Configurations/*.cs',
+    f'{ROOT}/Modules/*/Infrastructure/{CONFIG_DIR_NAME}/*.cs',
     f'{ROOT}/Nexora.Infrastructure/**/*.cs',
 ]
 
@@ -104,7 +109,7 @@ def collect_configs() -> list[str]:
         configs += glob.glob(pat, recursive=True)
     configs = [c for c in configs
                if 'Configuration' in os.path.basename(c)
-               and 'Configurations' in pathlib.PurePath(c).parts]
+               and CONFIG_DIR_NAME in pathlib.PurePath(c).parts]
     return sorted(configs)
 
 
@@ -139,7 +144,7 @@ def find_entity_file(config_file: str, entity_name: str) -> str | None:
         module_matches = glob.glob(
             f'{module_root}/**/{entity_name}.cs', recursive=True)
         # Exclude configuration files themselves.
-        module_matches = [m for m in module_matches if 'Configurations' not in pathlib.PurePath(m).parts]
+        module_matches = [m for m in module_matches if CONFIG_DIR_NAME not in pathlib.PurePath(m).parts]
         if len(module_matches) == 1:
             return module_matches[0]
         if len(module_matches) > 1:
@@ -155,7 +160,7 @@ def find_entity_file(config_file: str, entity_name: str) -> str | None:
     all_matches: list[str] = []
     for pat in patterns:
         all_matches += [m for m in glob.glob(pat, recursive=True)
-                        if 'Configurations' not in pathlib.PurePath(m).parts]
+                        if CONFIG_DIR_NAME not in pathlib.PurePath(m).parts]
     all_matches = list(dict.fromkeys(all_matches))  # de-dup preserving order
     if len(all_matches) == 1:
         return all_matches[0]

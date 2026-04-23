@@ -629,6 +629,8 @@
   "lockey_contacts_validation_import_storage_key_required": "Depolama anahtarı zorunludur.",
   "lockey_contacts_validation_export_format_required": "Dışa aktarma formatı zorunludur.",
   "lockey_contacts_validation_export_format_invalid": "Geçersiz dışa aktarma formatı.",
+  "lockey_contacts_error_export_update_total_rows_invalid_status": "Toplam satır sayısı yalnızca dışa aktarma işlenirken güncellenebilir.",
+  "lockey_contacts_error_export_total_rows_negative": "Dışa aktarma toplam satır sayısı sıfır veya daha büyük olmalıdır.",
   "lockey_contacts_import_step_upload": "Yükle",
   "lockey_contacts_import_step_mapping": "Sütunları eşle",
   "lockey_contacts_import_step_validate": "Doğrula",

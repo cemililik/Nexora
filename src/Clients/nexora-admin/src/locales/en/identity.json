@@ -367,6 +367,8 @@
   "lockey_identity_compliance_load_failed": "Couldn't load compliance settings",
   "lockey_identity_compliance_load_failed_description": "Please retry in a moment; if the issue persists, contact your administrator.",
   "lockey_identity_compliance_retry": "Try again",
+  "lockey_identity_compliance_refresh": "Refresh",
+  "lockey_identity_compliance_field_reason": "Reason",
   "lockey_identity_compliance_effective_value": "Effective value",
   "lockey_identity_compliance_tenant_default": "Tenant default",
   "lockey_identity_compliance_org_override": "Org override",

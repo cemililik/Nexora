@@ -629,6 +629,8 @@
   "lockey_contacts_validation_import_storage_key_required": "Storage key is required.",
   "lockey_contacts_validation_export_format_required": "Export format is required.",
   "lockey_contacts_validation_export_format_invalid": "Invalid export format.",
+  "lockey_contacts_error_export_update_total_rows_invalid_status": "Export row count can only be updated while the export is processing.",
+  "lockey_contacts_error_export_total_rows_negative": "Export total rows must be zero or greater.",
   "lockey_contacts_import_step_upload": "Upload",
   "lockey_contacts_import_step_mapping": "Map columns",
   "lockey_contacts_import_step_validate": "Validate",

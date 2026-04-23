@@ -47,7 +47,10 @@ export default function ComplianceSettingsPage() {
         description={t('lockey_identity_compliance_load_failed_description')}
         action={{
           label: t('lockey_identity_compliance_retry'),
-          onClick: () => { void refetch(); },
+          // refetch returns a promise but surfaces its outcome via isError/data; the
+          // catch keeps a rejection from becoming an uncaught promise without
+          // swallowing diagnostics the query layer will log.
+          onClick: () => { refetch().catch(() => { /* handled via isError */ }); },
         }}
       />
     );
@@ -69,6 +72,10 @@ export default function ComplianceSettingsPage() {
           icon={Shield}
           title={t('lockey_identity_compliance_empty_title')}
           description={t('lockey_identity_compliance_empty_description')}
+          action={{
+            label: t('lockey_identity_compliance_refresh'),
+            onClick: () => { refetch().catch(() => { /* handled via isError */ }); },
+          }}
         />
       ) : (
         data.map((item) => <ComplianceRow key={item.key} item={item} />)

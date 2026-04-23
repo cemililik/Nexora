@@ -66,9 +66,14 @@ the central constraint.
    - **Platform cap** (read-only from the tenant side). Lives in the `platform_license_cache`
      entitlements JSON maintained by NMP (SaaS) or the signed license key (on-prem). Expressed
      as a `ComplianceCap` object:
-     `{ "gdpr.hard_delete.enabled": { "allowed": true|false, "forced": true|false } }`
-     where `allowed=false` means an org CANNOT turn it on, and `forced=true` means an org
-     CANNOT turn it off. `NullComplianceCapProvider` returns "all allowed, none forced" in dev.
+     `{ "gdpr.hard_delete.enabled": { "allowed": true|false, "forced": true|false, "value": "true"|null } }`
+     where `allowed=false` means an org CANNOT turn it on, `forced=true` means an org
+     CANNOT turn it off, and `value` carries the serialized value the cap pins
+     (read when `forced=true`, or used as the platform-supplied default when both
+     tenant and org layers are empty). `value` MAY be omitted / `null` when the cap
+     only gates the *ability* to override. `NullComplianceCapProvider` returns the
+     explicit `(allowed: true, forced: false, value: null)` tuple in dev — never
+     implicit defaults — so every caller sees the same shape.
    - **Tenant default**. Remains in `platform_tenant_config` (tenant schema). Same shape as
      today: `(Key, Value, UpdatedAt)`. Org admins read-through when they have no override.
    - **Org override**. New table `platform_org_config` in the tenant schema:
@@ -210,15 +215,19 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
   }
   ```
 - **`ComplianceCap` sources:**
-  - `NullComplianceCapProvider` (dev, on-prem pre-NMP) — always returns `(Allowed=true, Forced=false)`.
+  - `NullComplianceCapProvider` (dev, on-prem pre-NMP) — always returns the explicit
+    tuple `(Allowed=true, Forced=false, Value=null)` via `ComplianceCap.Permissive`.
   - `NmpComplianceCapProvider` (SaaS, NMP.1+) — reads from the `platform_license_cache.EntitlementsJson`
     under a `compliance.caps` sub-object. NMP publishes caps via the existing
     `PUT /api/internal/tenants/{id}/entitlements` endpoint — no new wire contract needed.
-- **Backward compatibility:** `ITenantConfiguration` keeps its existing method signature;
-  its implementation delegates to `IConfigurationResolver` with the current org from
-  `ITenantContextAccessor`. Callers that MUST bypass org scope (rare, e.g. platform jobs
-  that iterate tenants) get a new `ITenantConfiguration.GetTenantDefaultAsync<T>(key)` method
-  that explicitly skips the org layer.
+- **Backward compatibility:** `ITenantConfiguration` keeps its existing method signature
+  *and* its existing behavior — `DatabaseTenantConfiguration` reads `platform_tenant_config`
+  directly (no org layer, no cap check). Delegating the shim to `IConfigurationResolver`
+  was considered and rejected: legacy keys that are NOT yet cap-managed must keep their
+  pre-ADR semantics exactly, otherwise every existing consumer silently picks up the
+  three-tier resolution and any cap-provider misconfiguration becomes a tenant-wide
+  regression. Migration is per-key: when a key graduates to org-scope management, its
+  call site switches to `IConfigurationResolver` in the same PR.
 - **Admin panel UI:** new page under `/identity/settings/compliance` — lists each
   compliance key, shows (tenant default | org override | effective value) with cap badge
   (🔒 forced, 🚫 blocked, ⚙️ configurable). Requires `contacts.gdpr.settings_manage`.

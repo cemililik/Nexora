@@ -134,7 +134,7 @@ export const api = {
     // axios DELETE supports a request body via the `data` config — used when the
     // operation carries an auditable payload (e.g. GDPR / compliance reason) that
     // must not leak into query strings, referrers, or access logs.
-    const resp = await apiClient.delete<ApiEnvelope<T>>(url, data !== undefined ? { data } : undefined);
+    const resp = await apiClient.delete<ApiEnvelope<T>>(url, { data });
     if (resp.status === 204 || resp.data?.data == null) {
       return undefined as T;
     }

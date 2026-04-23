@@ -11,8 +11,6 @@ namespace Nexora.Architecture.Tests;
 /// </summary>
 public sealed class ConfigurationResolverBoundaryTests
 {
-    private const string SharedKernelAssembly = "Nexora.SharedKernel";
-    private const string InfrastructureAssembly = "Nexora.Infrastructure";
     private const string ConfigurationEntitiesNamespace = "Nexora.Infrastructure.Configuration";
 
     /// <summary>

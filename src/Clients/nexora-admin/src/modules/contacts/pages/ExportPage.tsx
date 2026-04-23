@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { isSafeDownloadUrl } from '@/shared/lib/urlSafety';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { useExportStatus, useStartExport } from '../hooks/useImportExport';
@@ -25,21 +26,6 @@ import type {
 } from '../types';
 
 const ALL_SENTINEL = '__all__';
-
-/**
- * Accepts http(s) absolute URLs and safe relative paths; rejects javascript:, data:,
- * and anything else that could execute script on click. Used before assigning
- * `anchor.href` on the download button.
- */
-function isSafeDownloadUrl(url: string): boolean {
-  if (url.startsWith('/') && !url.startsWith('//')) return true;
-  try {
-    const parsed = new URL(url, window.location.origin);
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
-  } catch {
-    return false;
-  }
-}
 
 export default function ExportPage() {
   const { t, i18n } = useTranslation('contacts');

@@ -497,12 +497,12 @@ public static class DevelopmentSeed
                 "Reason" varchar(500) NOT NULL DEFAULT ''
             )
             """,
-            // Legacy tenants may predate the Reason column entirely (if the CREATE TABLE
-            // above already ran in an earlier shape). Ensure the column exists first, then
-            // backfill nulls, then tighten to NOT NULL — each step idempotent.
+            // Legacy tenants may predate the Reason column entirely. Add it as a nullable
+            // varchar so fresh installs (CREATE TABLE above already enforces NOT NULL) and
+            // legacy tenants converge without violating schema-migration.md §2 rule 2
+            // (no ALTER COLUMN tightening nullability). Any legacy NULL rows remain legal;
+            // new writes from the resolver always carry a non-null Reason.
             "ALTER TABLE platform_compliance_policy_audit ADD COLUMN IF NOT EXISTS \"Reason\" varchar(500) DEFAULT ''",
-            "UPDATE platform_compliance_policy_audit SET \"Reason\" = '' WHERE \"Reason\" IS NULL",
-            "ALTER TABLE platform_compliance_policy_audit ALTER COLUMN \"Reason\" SET NOT NULL",
             "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_TenantId_ChangedAtUtc\" ON platform_compliance_policy_audit (\"TenantId\", \"ChangedAtUtc\")",
             "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_Key\" ON platform_compliance_policy_audit (\"Key\")",
             // Compliance-review lookup: recent changes for a given org + key.

@@ -12,7 +12,6 @@ import type {
 export const complianceKeys = {
   all: ['identity', 'compliance'] as const,
   list: () => [...complianceKeys.all, 'list'] as const,
-  detail: (key: string) => [...complianceKeys.all, 'detail', key] as const,
 };
 
 export function useComplianceConfig() {

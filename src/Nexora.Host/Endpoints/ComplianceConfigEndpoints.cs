@@ -133,17 +133,20 @@ public static class ComplianceConfigEndpoints
     /// </summary>
     private static IResult? ValidateReason(string? reason)
     {
+        // The `field` meta value is itself a lockey so the frontend resolves it through
+        // t() instead of surfacing the raw English "Reason" in Turkish contexts.
+        const string fieldLockey = "lockey_identity_compliance_field_reason";
         if (string.IsNullOrWhiteSpace(reason))
         {
             return Results.BadRequest(ApiEnvelope<object>.Fail(new Error(
                 LocalizedMessage.Of("lockey_validation_required",
-                    new Dictionary<string, string> { ["field"] = "Reason" }))));
+                    new Dictionary<string, string> { ["field"] = fieldLockey }))));
         }
         if (reason.Length > 500)
         {
             return Results.BadRequest(ApiEnvelope<object>.Fail(new Error(
                 LocalizedMessage.Of("lockey_validation_max_length",
-                    new Dictionary<string, string> { ["field"] = "Reason", ["max"] = "500" }))));
+                    new Dictionary<string, string> { ["field"] = fieldLockey, ["max"] = "500" }))));
         }
         return null;
     }
