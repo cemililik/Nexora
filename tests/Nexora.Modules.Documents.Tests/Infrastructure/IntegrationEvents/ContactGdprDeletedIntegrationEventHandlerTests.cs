@@ -1,3 +1,4 @@
+using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
@@ -85,20 +86,20 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
 
         // Assert
         var reloadedLinked = await _dbContext.Documents.FindAsync(linkedDoc.Id);
-        Assert.Null(reloadedLinked!.LinkedEntityId);
-        Assert.Null(reloadedLinked.LinkedEntityType);
+        reloadedLinked!.LinkedEntityId.Should().BeNull();
+        reloadedLinked.LinkedEntityType.Should().BeNull();
 
         var reloadedOther = await _dbContext.Documents.FindAsync(otherContactDoc.Id);
-        Assert.NotNull(reloadedOther!.LinkedEntityId);
-        Assert.Equal("Contact", reloadedOther.LinkedEntityType);
+        reloadedOther!.LinkedEntityId.Should().NotBeNull();
+        reloadedOther.LinkedEntityType.Should().Be("Contact");
 
         var reloadedUnlinked = await _dbContext.Documents.FindAsync(unlinkedDoc.Id);
-        Assert.Null(reloadedUnlinked!.LinkedEntityId);
+        reloadedUnlinked!.LinkedEntityId.Should().BeNull();
 
         // Entity type "Deal" with same id should NOT be touched — we match on type+id.
         var reloadedDeal = await _dbContext.Documents.FindAsync(dealDoc.Id);
-        Assert.Equal(_contactId, reloadedDeal!.LinkedEntityId);
-        Assert.Equal("Deal", reloadedDeal.LinkedEntityType);
+        reloadedDeal!.LinkedEntityId.Should().Be(_contactId);
+        reloadedDeal.LinkedEntityType.Should().Be("Deal");
     }
 
     [Fact]
@@ -128,17 +129,17 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
 
         // Assert — matching recipient scrubbed
         var scrubbed = await _dbContext.SignatureRecipients.FindAsync(matchingRecipient.Id);
-        Assert.Equal("[REDACTED]", scrubbed!.Name);
-        Assert.Equal("[REDACTED]", scrubbed.Email);
-        Assert.Null(scrubbed.IpAddress);
-        Assert.Equal("signature-data", scrubbed.SignatureData); // audit trail retained
-        Assert.NotNull(scrubbed.SignedAt);
+        scrubbed!.Name.Should().Be("[REDACTED]");
+        scrubbed.Email.Should().Be("[REDACTED]");
+        scrubbed.IpAddress.Should().BeNull();
+        scrubbed.SignatureData.Should().Be("signature-data"); // audit trail retained
+        scrubbed.SignedAt.Should().NotBeNull();
 
         // Other recipient untouched
         var otherRecipient = request.Recipients.First(r => r.ContactId != _contactId);
         var reloadedOther = await _dbContext.SignatureRecipients.FindAsync(otherRecipient.Id);
-        Assert.Equal("Bob Other", reloadedOther!.Name);
-        Assert.Equal("other@example.com", reloadedOther.Email);
+        reloadedOther!.Name.Should().Be("Bob Other");
+        reloadedOther.Email.Should().Be("other@example.com");
     }
 
     [Fact]
@@ -167,13 +168,13 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
 
         // Assert — second run did NOT unlink again (InboxGuard blocked execution).
         var reloaded = await _dbContext.Documents.FindAsync(linkedDoc.Id);
-        Assert.Equal(_contactId, reloaded!.LinkedEntityId);
-        Assert.Equal("Contact", reloaded.LinkedEntityType);
+        reloaded!.LinkedEntityId.Should().Be(_contactId);
+        reloaded.LinkedEntityType.Should().Be("Contact");
 
         // Inbox has exactly one row for this EventId.
         var inboxCount = await _dbContext.Set<InboxMessage>()
             .CountAsync(m => m.EventId == @event.EventId);
-        Assert.Equal(1, inboxCount);
+        inboxCount.Should().Be(1);
     }
 
     public void Dispose() => _dbContext.Dispose();

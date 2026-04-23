@@ -44,13 +44,13 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         var otherContact = Guid.NewGuid();
 
         var u1 = User.Create(_tenantId, "kc-1", "u1@test.com", "U", "One");
-        u1.LinkContact(contactId, Guid.NewGuid());
+        u1.LinkContact(contactId, UserId.From(Guid.NewGuid()));
 
         var u2 = User.Create(_tenantId, "kc-2", "u2@test.com", "U", "Two");
-        u2.LinkContact(contactId, Guid.NewGuid());
+        u2.LinkContact(contactId, UserId.From(Guid.NewGuid()));
 
         var u3 = User.Create(_tenantId, "kc-3", "u3@test.com", "U", "Three");
-        u3.LinkContact(otherContact, Guid.NewGuid());
+        u3.LinkContact(otherContact, UserId.From(Guid.NewGuid()));
 
         _dbContext.Users.AddRange(u1, u2, u3);
         await _dbContext.SaveChangesAsync();
@@ -85,7 +85,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
     {
         var contactId = Guid.NewGuid();
         var user = User.Create(_tenantId, "kc-1", "u@test.com", "U", "One");
-        user.LinkContact(contactId, Guid.NewGuid());
+        user.LinkContact(contactId, UserId.From(Guid.NewGuid()));
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 
@@ -117,7 +117,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         // Create a user in a different tenant linked to same contact
         // (contrived but guards against tenant leak).
         var foreignUser = User.Create(otherTenant, "kc-foreign", "f@test.com", "F", "User");
-        foreignUser.LinkContact(contactId, Guid.NewGuid());
+        foreignUser.LinkContact(contactId, UserId.From(Guid.NewGuid()));
         _dbContext.Users.Add(foreignUser);
         await _dbContext.SaveChangesAsync();
 

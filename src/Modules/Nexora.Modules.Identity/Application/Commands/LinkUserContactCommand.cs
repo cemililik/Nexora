@@ -43,15 +43,23 @@ public sealed class LinkUserContactHandler(
     /// <inheritdoc />
     public async Task<Result> Handle(LinkUserContactCommand request, CancellationToken cancellationToken)
     {
-        var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
+        if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantGuid)
+        {
+            logger.LogWarning("LinkUserContact rejected — invalid tenant context for user {UserId}", request.UserId);
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_invalid_tenant_context"));
+        }
+
+        var tenantId = TenantId.From(tenantGuid);
         var userId = UserId.From(request.UserId);
 
-        if (!Guid.TryParse(tenantContextAccessor.Current.UserId, out var linkedByUserId)
-            || linkedByUserId == Guid.Empty)
+        if (!Guid.TryParse(tenantContextAccessor.Current.UserId, out var linkedByUserGuid)
+            || linkedByUserGuid == Guid.Empty)
         {
-            logger.LogWarning("User contact link rejected — no valid actor user context");
+            logger.LogWarning("User contact link rejected — no valid actor user context for user {UserId}", request.UserId);
             return Result.Failure(LocalizedMessage.Of("lockey_identity_error_invalid_user_context"));
         }
+
+        var linkedByUserId = UserId.From(linkedByUserGuid);
 
         var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId, cancellationToken);
@@ -95,14 +103,14 @@ public sealed class LinkUserContactHandler(
             UserId = request.UserId,
             ContactId = request.ContactId,
             LinkedAtUtc = linkedAt,
-            LinkedByUserId = linkedByUserId
+            LinkedByUserId = linkedByUserGuid
         }, cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "User {UserId} linked to contact {ContactId} by {LinkedByUserId} in tenant {TenantId}",
-            request.UserId, request.ContactId, linkedByUserId, tenantId);
+            request.UserId, request.ContactId, linkedByUserGuid, tenantId);
 
         return Result.Success(LocalizedMessage.Of("lockey_identity_user_link_contact_success"));
     }

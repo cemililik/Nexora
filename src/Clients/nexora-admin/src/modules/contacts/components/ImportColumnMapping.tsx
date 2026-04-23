@@ -53,6 +53,14 @@ export function ImportColumnMapping({
     onChange({ ...mapping, [header]: value });
   };
 
+  // Identify target values that are assigned to more than one source column
+  // (excluding the skip sentinel). These rows render an inline warning.
+  const duplicateTargets = new Set(
+    Object.values(mapping)
+      .filter((v) => v !== SKIP_MAPPING)
+      .filter((v, _, arr) => arr.filter((x) => x === v).length > 1),
+  );
+
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -96,6 +104,14 @@ export function ImportColumnMapping({
                       ))}
                     </SelectContent>
                   </Select>
+                  {duplicateTargets.has(currentValue) && (
+                    <span
+                      role="alert"
+                      className="mt-1 block text-xs text-destructive"
+                    >
+                      {t('lockey_contacts_import_mapping_duplicate_target')}
+                    </span>
+                  )}
                 </td>
               </tr>
             );

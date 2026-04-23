@@ -39,8 +39,23 @@ public sealed class UnlinkUserContactHandler(
     /// <inheritdoc />
     public async Task<Result> Handle(UnlinkUserContactCommand request, CancellationToken cancellationToken)
     {
-        var tenantId = TenantId.Parse(tenantContextAccessor.Current.TenantId);
+        if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantGuid)
+        {
+            logger.LogWarning("UnlinkUserContact rejected — invalid tenant context for user {UserId}", request.UserId);
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_invalid_tenant_context"));
+        }
+
+        var tenantId = TenantId.From(tenantGuid);
         var userId = UserId.From(request.UserId);
+
+        if (!Guid.TryParse(tenantContextAccessor.Current.UserId, out var unlinkedByUserGuid)
+            || unlinkedByUserGuid == Guid.Empty)
+        {
+            logger.LogWarning("UnlinkUserContact rejected — no valid actor user context for user {UserId}", request.UserId);
+            return Result.Failure(LocalizedMessage.Of("lockey_identity_error_invalid_user_context"));
+        }
+
+        var unlinkedByUserId = UserId.From(unlinkedByUserGuid);
 
         var user = await dbContext.Users
             .FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId, cancellationToken);
@@ -62,7 +77,7 @@ public sealed class UnlinkUserContactHandler(
         // can correlate the unlink with the contact record.
         var previousContactId = user.ContactId;
 
-        user.UnlinkContact();
+        user.UnlinkContact(unlinkedByUserId);
 
         var unlinkedAt = DateTime.UtcNow;
 

@@ -62,7 +62,7 @@ export function GdprErasureDialog({
           .string()
           .trim()
           .min(REASON_MIN, { message: t('lockey_contacts_gdpr_erasure_reason_required') })
-          .max(REASON_MAX, { message: t('lockey_contacts_gdpr_erasure_reason_required') }),
+          .max(REASON_MAX, { message: t('lockey_contacts_gdpr_erasure_reason_too_long') }),
         confirmName: z.string(),
       }),
     [t],
@@ -83,7 +83,7 @@ export function GdprErasureDialog({
   });
 
   const confirmName = useWatch({ control, name: 'confirmName' });
-  const nameMatches = confirmName === contactDisplayName;
+  const nameMatches = confirmName.trim() === contactDisplayName.trim();
 
   // Reset the form whenever the dialog is re-opened so stale input never lingers.
   useEffect(() => {
@@ -108,7 +108,13 @@ export function GdprErasureDialog({
   const submitDisabled = !isValid || !nameMatches || mutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (mutation.isPending) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('lockey_contacts_gdpr_erasure_dialog_title')}</DialogTitle>

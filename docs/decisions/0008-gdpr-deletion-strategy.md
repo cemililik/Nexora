@@ -1,7 +1,7 @@
 # ADR-008: GDPR Deletion Strategy
 
 ## Status
-Accepted (Phase 1 interim) — Superseded by hard delete plan in Phase 1.5.6
+**Status:** Accepted
 
 ## Date
 2026-03-31
@@ -11,6 +11,8 @@ Accepted (Phase 1 interim) — Superseded by hard delete plan in Phase 1.5.6
 GDPR Article 17 ("Right to Erasure") requires physical removal of personal data upon a valid deletion request. The initial implementation only performed anonymization combined with soft-delete (`IsDeleted = true`), which does not satisfy the requirement for physical data removal. The data remained in the database, merely hidden by EF Core global query filters.
 
 ## Decision
+
+> **Amendment note:** The Phase 1.5.6 hard-delete evolution is captured as an amendment to this ADR (see T-004 and the Phase 1.5 task series) and not as a separate superseding ADR — no material decision change, only a phase progression.
 
 We will implement GDPR deletion in **two phases**:
 
@@ -35,7 +37,7 @@ flowchart TD
     B --> C[Enqueue deletion job]
     C --> D[Hard delete 9 child entities via ExecuteDeleteAsync]
     D --> E[Anonymize ConsentRecord — Art. 17-3-e retention]
-    E --> F[Publish GdprDeletionCompletedEvent]
+    E --> F[Publish ContactGdprDeletedIntegrationEvent]
     F --> G[Other modules clean up references]
     G --> H[Log audit trail]
 ```
@@ -46,7 +48,7 @@ flowchart TD
 - **Phase 1 provides immediate compliance posture**: Anonymized data is not personally identifiable
 - **Phase 1.5.6 achieves full compliance**: Physical removal satisfies Article 17
 - **ConsentRecord retention**: Maintains legal defensibility for past consent decisions
-- **Cross-module coordination**: Integration events ensure no orphaned PII across module boundaries
+- **Cross-module coordination**: The `ContactGdprDeletedIntegrationEvent` ensures no orphaned PII across module boundaries
 
 ### Negative
 - **Data still in DB until Phase 1.5.6**: Anonymized but physically present — may not satisfy strict interpretations of Article 17

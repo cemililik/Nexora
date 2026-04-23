@@ -256,9 +256,13 @@ export default function ContactDetailPage() {
         <GdprErasureDialog
           contactId={id}
           contactDisplayName={contact.displayName}
-          contactAlreadyAnonymized={
-            contact.status === 'Archived' && contact.displayName.includes('[REDACTED]')
-          }
+          // Heuristic: `ContactStatus` does not currently include an explicit
+          // "Anonymized" state, so we treat `Archived` as a proxy signal for
+          // the post-anonymize end state. This over-approximates (any archived
+          // contact shows the residual-record warning) but is safer than a
+          // fragile string match against a localized "[REDACTED]" placeholder.
+          // TODO: replace with a dedicated `isAnonymized` backend flag once exposed.
+          contactAlreadyAnonymized={contact.status === 'Archived'}
           open={showGdprErasure}
           onOpenChange={setShowGdprErasure}
         />

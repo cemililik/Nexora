@@ -77,62 +77,35 @@ public sealed class GdprHardDeleteJob(
 
         try
         {
-            // Count first (ExecuteDeleteAsync returns affected rows but we need counts per type
-            // BEFORE deletion for child counts JSON, and ExecuteDeleteAsync is safe on InMemory
-            // only via fallback path — we use raw counts for compatibility).
-            var addressCount = await dbContext.ContactAddresses
-                .IgnoreQueryFilters()
-                .CountAsync(a => a.ContactId == contactId, ct);
-            var noteCount = await dbContext.ContactNotes
-                .IgnoreQueryFilters()
-                .CountAsync(n => n.ContactId == contactId, ct);
-            var customFieldCount = await dbContext.ContactCustomFields
-                .IgnoreQueryFilters()
-                .CountAsync(f => f.ContactId == contactId, ct);
-            var tagCount = await dbContext.ContactTags
-                .IgnoreQueryFilters()
-                .CountAsync(t => t.ContactId == contactId, ct);
-            var relationshipCount = await dbContext.ContactRelationships
-                .IgnoreQueryFilters()
-                .CountAsync(r => r.ContactId == contactId || r.RelatedContactId == contactId, ct);
-            var communicationPreferenceCount = await dbContext.CommunicationPreferences
-                .IgnoreQueryFilters()
-                .CountAsync(p => p.ContactId == contactId, ct);
-            var activityCount = await dbContext.ContactActivities
-                .IgnoreQueryFilters()
-                .CountAsync(a => a.ContactId == contactId, ct);
-            var consentCount = await dbContext.ConsentRecords
-                .IgnoreQueryFilters()
-                .CountAsync(c => c.ContactId == contactId, ct);
-
             // FK-safe order. Uses ExecuteDeleteAsync to bypass the soft-delete audit
-            // interceptor and perform a true hard delete.
-            await HardDeleteAsync(
+            // interceptor and perform a true hard delete. ExecuteDeleteAsync returns the
+            // affected row count, so we no longer need separate CountAsync roundtrips.
+            var addressCount = await HardDeleteAsync(
                 dbContext.ContactAddresses.IgnoreQueryFilters().Where(a => a.ContactId == contactId),
                 a => dbContext.ContactAddresses.Remove(a),
                 ct);
-            await HardDeleteAsync(
+            var noteCount = await HardDeleteAsync(
                 dbContext.ContactNotes.IgnoreQueryFilters().Where(n => n.ContactId == contactId),
                 n => dbContext.ContactNotes.Remove(n),
                 ct);
-            await HardDeleteAsync(
+            var customFieldCount = await HardDeleteAsync(
                 dbContext.ContactCustomFields.IgnoreQueryFilters().Where(f => f.ContactId == contactId),
                 f => dbContext.ContactCustomFields.Remove(f),
                 ct);
-            await HardDeleteAsync(
+            var tagCount = await HardDeleteAsync(
                 dbContext.ContactTags.IgnoreQueryFilters().Where(t => t.ContactId == contactId),
                 t => dbContext.ContactTags.Remove(t),
                 ct);
-            await HardDeleteAsync(
+            var relationshipCount = await HardDeleteAsync(
                 dbContext.ContactRelationships.IgnoreQueryFilters()
                     .Where(r => r.ContactId == contactId || r.RelatedContactId == contactId),
                 r => dbContext.ContactRelationships.Remove(r),
                 ct);
-            await HardDeleteAsync(
+            var communicationPreferenceCount = await HardDeleteAsync(
                 dbContext.CommunicationPreferences.IgnoreQueryFilters().Where(p => p.ContactId == contactId),
                 p => dbContext.CommunicationPreferences.Remove(p),
                 ct);
-            await HardDeleteAsync(
+            var activityCount = await HardDeleteAsync(
                 dbContext.ContactActivities.IgnoreQueryFilters().Where(a => a.ContactId == contactId),
                 a => dbContext.ContactActivities.Remove(a),
                 ct);
@@ -140,7 +113,7 @@ public sealed class GdprHardDeleteJob(
             // Consents: anonymize but keep the row (Article 17(3)(e) — legal claims defense).
             // Only IpAddress is PII on the current schema; Source is a free-text origin label
             // that we also redact defensively.
-            await AnonymizeConsentsAsync(contactId, ct);
+            var consentCount = await AnonymizeConsentsAsync(contactId, ct);
 
             // Finally delete the contact itself.
             await HardDeleteAsync(
@@ -208,33 +181,32 @@ public sealed class GdprHardDeleteJob(
     /// soft-delete interceptor) or falls back to change-tracker deletion on in-memory
     /// providers used by tests.
     /// </summary>
-    private async Task HardDeleteAsync<TEntity>(
+    private async Task<int> HardDeleteAsync<TEntity>(
         IQueryable<TEntity> query,
         Action<TEntity> fallbackRemove,
         CancellationToken ct) where TEntity : class
     {
         if (dbContext.Database.IsRelational())
         {
-            await query.ExecuteDeleteAsync(ct);
-            return;
+            return await query.ExecuteDeleteAsync(ct);
         }
 
         var rows = await query.ToListAsync(ct);
         foreach (var row in rows)
             fallbackRemove(row);
+        return rows.Count;
     }
 
-    private async Task AnonymizeConsentsAsync(ContactId contactId, CancellationToken ct)
+    private async Task<int> AnonymizeConsentsAsync(ContactId contactId, CancellationToken ct)
     {
         if (dbContext.Database.IsRelational())
         {
-            await dbContext.ConsentRecords
+            return await dbContext.ConsentRecords
                 .IgnoreQueryFilters()
                 .Where(c => c.ContactId == contactId)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(c => c.IpAddress, _ => null)
                     .SetProperty(c => c.Source, _ => PiiRedactedPlaceholder.Value), ct);
-            return;
         }
 
         var consents = await dbContext.ConsentRecords
@@ -244,5 +216,6 @@ public sealed class GdprHardDeleteJob(
 
         foreach (var consent in consents)
             consent.Anonymize(PiiRedactedPlaceholder.Value);
+        return consents.Count;
     }
 }

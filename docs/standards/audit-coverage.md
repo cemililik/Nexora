@@ -77,7 +77,7 @@ This matrix is the **minimum** — modules may exceed it.
 Per [ADR-009](../decisions/ADR-009-audit-module-repository-pattern.md), every audit event
 carries:
 
-```
+```jsonc
 {
   "tenantId":    "<tenant GUID>",
   "organizationId": "<org GUID | null>",

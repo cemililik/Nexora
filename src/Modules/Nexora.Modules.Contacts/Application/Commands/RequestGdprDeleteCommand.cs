@@ -43,7 +43,10 @@ public sealed class RequestGdprDeleteHandler(
         CancellationToken cancellationToken)
     {
         if (tenantContextAccessor.Current.TryGetTenantGuid() is not { } tenantId)
+        {
+            logger.LogWarning("GDPR delete rejected — invalid tenant context");
             return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_tenant_context"));
+        }
 
         if (!Guid.TryParse(tenantContextAccessor.Current.UserId, out var erasedByUserId)
             || erasedByUserId == Guid.Empty)

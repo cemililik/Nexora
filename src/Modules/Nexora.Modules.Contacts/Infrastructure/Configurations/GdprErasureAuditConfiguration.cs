@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Nexora.Modules.Contacts.Domain.Entities;
+using Nexora.Modules.Contacts.Domain.ValueObjects;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Configurations;
 
@@ -12,6 +13,7 @@ public sealed class GdprErasureAuditConfiguration : IEntityTypeConfiguration<Gdp
     {
         builder.ToTable("contacts_gdpr_erasure_audit");
         builder.HasKey(a => a.Id);
+        builder.Property(a => a.Id).HasConversion(id => id.Value, v => GdprErasureAuditId.From(v));
 
         builder.Property(a => a.TenantId).IsRequired();
         builder.Property(a => a.ContactId).IsRequired();

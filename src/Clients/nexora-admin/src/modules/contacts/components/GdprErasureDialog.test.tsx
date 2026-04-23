@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
@@ -179,6 +179,51 @@ describe('GdprErasureDialog', () => {
     expect(
       screen.getByText('lockey_contacts_gdpr_erasure_already_anonymized_warning'),
     ).toBeInTheDocument();
+  });
+
+  it('closes dialog and resets form after successful erasure', async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    let capturedOnSuccess: (() => void) | undefined;
+    mockMutate.mockImplementation(
+      (_args: unknown, opts?: { onSuccess?: () => void }) => {
+        capturedOnSuccess = opts?.onSuccess;
+      },
+    );
+
+    const Wrapper = createWrapper();
+    render(
+      <Wrapper>
+        <GdprErasureDialog
+          contactId="c-1"
+          contactDisplayName="Ada Lovelace"
+          open
+          onOpenChange={onOpenChange}
+        />
+      </Wrapper>,
+    );
+
+    await user.type(
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_reason_label/),
+      'Data subject request received',
+    );
+    await user.type(
+      screen.getByLabelText(/lockey_contacts_gdpr_erasure_confirm_label/),
+      'Ada Lovelace',
+    );
+
+    const submit = screen.getByRole('button', {
+      name: 'lockey_contacts_gdpr_erasure_confirm_action',
+    });
+    await waitFor(() => expect(submit).toBeEnabled());
+    await user.click(submit);
+
+    await waitFor(() => expect(mockMutate).toHaveBeenCalledTimes(1));
+    act(() => {
+      capturedOnSuccess?.();
+    });
+
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
   it('shows an inline error alert when the mutation is in error state', () => {

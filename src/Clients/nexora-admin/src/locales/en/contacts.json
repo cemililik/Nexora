@@ -356,13 +356,14 @@
 
   "lockey_contacts_gdpr_erasure_button": "GDPR Erasure",
   "lockey_contacts_gdpr_erasure_dialog_title": "Permanently delete contact",
-  "lockey_contacts_gdpr_erasure_dialog_warning": "This action satisfies a GDPR Article 17 right-to-erasure request. All linked data in CRM, Documents, Notifications, and Audit will be purged. This cannot be undone.",
+  "lockey_contacts_gdpr_erasure_dialog_warning": "This action satisfies a GDPR Article 17 right-to-erasure request. Linked records in CRM, Documents, Notifications, and Audit are unlinked or redacted (PII removed) per module retention policies. This cannot be undone.",
   "lockey_contacts_gdpr_erasure_reason_label": "Reason (required)",
   "lockey_contacts_gdpr_erasure_reason_placeholder": "Describe the legal basis (data subject request, court order, ...)",
   "lockey_contacts_gdpr_erasure_confirm_label": "Type the contact's name to confirm",
   "lockey_contacts_gdpr_erasure_confirm_action": "Permanently erase",
   "lockey_contacts_gdpr_erasure_cancel": "Cancel",
   "lockey_contacts_gdpr_erasure_reason_required": "A reason is required for GDPR erasure.",
+  "lockey_contacts_gdpr_erasure_reason_too_long": "Reason must be at most 500 characters.",
   "lockey_contacts_gdpr_erasure_name_mismatch": "Typed name does not match the contact's display name.",
   "lockey_contacts_gdpr_erasure_already_processed": "A GDPR erasure for this contact was just processed. Please wait a moment before retrying.",
   "lockey_contacts_gdpr_erasure_already_anonymized_warning": "This contact has already been anonymized. Proceeding will hard-delete the residual record.",
@@ -511,7 +512,7 @@
   "lockey_contacts_gdpr_delete_completed": "Contact data deleted (GDPR).",
   "lockey_contacts_gdpr_erasure_enqueued": "GDPR erasure has been scheduled. The contact will be permanently deleted shortly.",
   "lockey_contacts_gdpr_erasure_completed": "GDPR erasure completed for this contact.",
-  "lockey_contacts_gdpr_erasure_failed": "GDPR erasure failed. Operations has been notified.",
+  "lockey_contacts_gdpr_erasure_failed": "GDPR erasure failed. The operations team has been notified.",
   "lockey_contacts_import_job_started": "Import started. You will be notified when complete.",
   "lockey_contacts_import_upload_url_generated": "Upload URL generated.",
   "lockey_contacts_export_job_started": "Export started. You will be notified when complete.",
@@ -659,5 +660,9 @@
   "lockey_contacts_import_validation_email_required": "Email is required.",
   "lockey_contacts_import_validation_email_invalid": "Email address is invalid.",
   "lockey_contacts_import_validation_phone_invalid": "Phone number is invalid.",
-  "lockey_contacts_import_validation_unknown_source_column": "Mapping references an unknown source column."
+  "lockey_contacts_import_validation_unknown_source_column": "Mapping references an unknown source column.",
+  "lockey_contacts_import_validation_name_or_company_required": "Each contact must have a first/last name or a company name.",
+  "lockey_contacts_import_mapping_duplicate_target": "Another column is already mapped to this field. Keep one.",
+  "lockey_contacts_import_error_upload_failed": "Upload failed (HTTP {{status}}). Please try again.",
+  "lockey_contacts_import_validation_field_none": "—"
 }

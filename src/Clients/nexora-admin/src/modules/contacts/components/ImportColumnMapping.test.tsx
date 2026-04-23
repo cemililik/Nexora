@@ -53,6 +53,24 @@ describe('ImportColumnMapping', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows a duplicate-target warning when two headers map to the same field', () => {
+    render(
+      <ImportColumnMapping
+        headers={['col1', 'col2']}
+        mapping={{ col1: 'email', col2: 'email' }}
+        onChange={() => {}}
+      />,
+    );
+
+    const warnings = screen.getAllByRole('alert');
+    expect(warnings.length).toBe(2);
+    warnings.forEach((el) =>
+      expect(el).toHaveTextContent(
+        'lockey_contacts_import_mapping_duplicate_target',
+      ),
+    );
+  });
+
   it('fires onChange with the updated mapping when a select value changes', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

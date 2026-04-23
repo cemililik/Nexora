@@ -40,7 +40,7 @@ public sealed class UnlinkUserContactCommandTests : IDisposable
     public async Task Handle_LinkedUser_UnlinksAndEmitsManualReason()
     {
         var user = User.Create(_tenantId, "kc-1", "u@test.com", "U", "One");
-        user.LinkContact(Guid.NewGuid(), _actorUserId);
+        user.LinkContact(Guid.NewGuid(), UserId.From(_actorUserId));
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 
@@ -87,5 +87,6 @@ public sealed class UnlinkUserContactCommandTests : IDisposable
         var validator = new UnlinkUserContactValidator();
         var result = validator.Validate(new UnlinkUserContactCommand(Guid.Empty));
         result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.ErrorMessage == "lockey_identity_validation_user_id_required");
     }
 }

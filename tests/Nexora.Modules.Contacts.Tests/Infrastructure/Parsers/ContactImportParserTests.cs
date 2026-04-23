@@ -14,7 +14,7 @@ public sealed class ContactImportParserTests
         var csv = "First Name,Last Name,Email\nAda,Lovelace,ada@example.com\n";
         var bytes = Encoding.UTF8.GetBytes(csv);
 
-        var headers = ContactImportParser.ParseHeaders(bytes, "csv");
+        var headers = ContactImportParser.ParseHeaders(new MemoryStream(bytes), "csv");
 
         headers.Should().BeEquivalentTo(new[] { "First Name", "Last Name", "Email" });
     }
@@ -25,7 +25,7 @@ public sealed class ContactImportParserTests
         var csv = "FirstName,Email,Phone\nAda,ada@example.com,+1234\nGrace,grace@example.com,\n";
         var bytes = Encoding.UTF8.GetBytes(csv);
 
-        var rows = ContactImportParser.ParseRows(bytes, "csv");
+        var rows = ContactImportParser.ParseRows(new MemoryStream(bytes), "csv");
 
         rows.Should().HaveCount(2);
         rows[0]["FirstName"].Should().Be("Ada");
@@ -41,7 +41,7 @@ public sealed class ContactImportParserTests
         var csv = "FirstName,Email\n\"Ada,ada@example.com\n";
         var bytes = Encoding.UTF8.GetBytes(csv);
 
-        var act = () => ContactImportParser.ParseRows(bytes, "csv");
+        var act = () => ContactImportParser.ParseRows(new MemoryStream(bytes), "csv");
 
         act.Should().Throw<Exception>();
     }
@@ -53,7 +53,7 @@ public sealed class ContactImportParserTests
             ["FirstName", "LastName", "Email"],
             [["Ada", "Lovelace", "ada@example.com"]]);
 
-        var headers = ContactImportParser.ParseHeaders(bytes, "xlsx");
+        var headers = ContactImportParser.ParseHeaders(new MemoryStream(bytes), "xlsx");
 
         headers.Should().BeEquivalentTo(new[] { "FirstName", "LastName", "Email" });
     }
@@ -69,7 +69,7 @@ public sealed class ContactImportParserTests
                 ["", ""],
             ]);
 
-        var rows = ContactImportParser.ParseRows(bytes, "xlsx");
+        var rows = ContactImportParser.ParseRows(new MemoryStream(bytes), "xlsx");
 
         rows.Should().HaveCount(2);
         rows[0]["FirstName"].Should().Be("Ada");
@@ -84,7 +84,7 @@ public sealed class ContactImportParserTests
         var csv = "FirstName,Email,email\nAda,a@x.com,b@x.com\n";
         var bytes = Encoding.UTF8.GetBytes(csv);
 
-        var act = () => ContactImportParser.ParseHeaders(bytes, "csv");
+        var act = () => ContactImportParser.ParseHeaders(new MemoryStream(bytes), "csv");
 
         act.Should().Throw<FormatException>()
             .WithMessage("lockey_contacts_import_error_duplicate_headers");
@@ -96,7 +96,7 @@ public sealed class ContactImportParserTests
         var csv = "Email,EMAIL\na@x.com,b@x.com\n";
         var bytes = Encoding.UTF8.GetBytes(csv);
 
-        var act = () => ContactImportParser.ParseRows(bytes, "csv");
+        var act = () => ContactImportParser.ParseRows(new MemoryStream(bytes), "csv");
 
         act.Should().Throw<FormatException>()
             .WithMessage("lockey_contacts_import_error_duplicate_headers");
@@ -108,7 +108,7 @@ public sealed class ContactImportParserTests
         var csv = "Email\na@x.com\nb@x.com\nc@x.com\nd@x.com\n";
         var bytes = Encoding.UTF8.GetBytes(csv);
 
-        var rows = ContactImportParser.ParseRows(bytes, "csv", skip: 0, take: 2);
+        var rows = ContactImportParser.ParseRows(new MemoryStream(bytes), "csv", skip: 0, take: 2);
 
         rows.Should().HaveCount(2);
         rows[0]["Email"].Should().Be("a@x.com");

@@ -51,6 +51,36 @@ public sealed class ContactDuplicateMatcher(ContactsDbContext dbContext)
         return match?.Id.Value;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, Guid>> FindExistingByEmailsAsync(
+        Guid tenantId,
+        Guid organizationId,
+        IReadOnlyCollection<string> normalizedEmails,
+        CancellationToken ct)
+    {
+        if (normalizedEmails.Count == 0)
+            return new Dictionary<string, Guid>(0);
+
+        var matches = await dbContext.Contacts
+            .AsNoTracking()
+            .Where(c => c.TenantId == tenantId
+                     && c.OrganizationId == organizationId
+                     && c.Email != null
+                     && normalizedEmails.Contains(c.Email))
+            .Select(c => new { c.Email, c.Id })
+            .ToListAsync(ct);
+
+        // Multiple contacts with the same normalized email should never happen, but defensively
+        // keep the first hit so the dictionary contract (one id per email) holds.
+        var result = new Dictionary<string, Guid>(matches.Count);
+        foreach (var match in matches)
+        {
+            if (match.Email is not null && !result.ContainsKey(match.Email))
+                result[match.Email] = match.Id.Value;
+        }
+        return result;
+    }
+
     private static string? NormalizeEmail(string? email)
     {
         if (string.IsNullOrWhiteSpace(email))

@@ -7,6 +7,7 @@ using Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Notifications.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Events;
 using NSubstitute;
 
@@ -55,8 +56,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         var targetNotification = await _dbContext.Notifications
             .Include(n => n.Recipients)
             .FirstAsync(n => n.Id == targetNotificationId);
-        targetNotification.BodyRendered.Should().Be("[REDACTED]");
-        targetNotification.Recipients.Should().OnlyContain(r => r.RecipientAddress == "[REDACTED]");
+        targetNotification.BodyRendered.Should().Be(PiiRedactedPlaceholder.Value);
+        targetNotification.Recipients.Should().OnlyContain(r => r.RecipientAddress == PiiRedactedPlaceholder.Value);
 
         // Assert — unrelated untouched
         var unrelatedNotification = await _dbContext.Notifications
@@ -83,7 +84,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
             .FirstAsync(n => n.Id == notificationId);
         notification.Status.Should().Be(NotificationStatus.Queued);
         notification.Channel.Should().Be(NotificationChannel.Email);
-        notification.Subject.Should().Be("[REDACTED]",
+        notification.Subject.Should().Be(PiiRedactedPlaceholder.Value,
             "Subject may contain PII interpolations and must be scrubbed alongside BodyRendered");
         notification.TriggeredBy.Should().Be("test");
         notification.Recipients.Should().HaveCount(1);
@@ -113,7 +114,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
             .Include(n => n.Recipients)
             .FirstAsync();
         scrubbed.Recipients.Should().OnlyContain(r =>
-            r.RecipientAddress == "[REDACTED]" && r.FailureReason == null);
+            r.RecipientAddress == PiiRedactedPlaceholder.Value && r.FailureReason == null);
     }
 
     [Fact]
@@ -128,14 +129,14 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         // Act — first run scrubs
         await handler.HandleAsync(@event, CancellationToken.None);
         var afterFirstRun = await _dbContext.Notifications.AsNoTracking().FirstAsync();
-        afterFirstRun.BodyRendered.Should().Be("[REDACTED]");
+        afterFirstRun.BodyRendered.Should().Be(PiiRedactedPlaceholder.Value);
 
         // Act — second run (same EventId) must short-circuit via inbox guard
         await handler.HandleAsync(@event, CancellationToken.None);
 
         // Assert — values unchanged, and no extra MarkAsProcessed invocation for this EventId
         var afterSecondRun = await _dbContext.Notifications.AsNoTracking().FirstAsync();
-        afterSecondRun.BodyRendered.Should().Be("[REDACTED]");
+        afterSecondRun.BodyRendered.Should().Be(PiiRedactedPlaceholder.Value);
         _inboxGuard.Received(1).MarkAsProcessed(@event.EventId, nameof(ContactGdprDeletedIntegrationEvent));
     }
 

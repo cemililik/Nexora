@@ -88,8 +88,8 @@ public sealed class AuditEntry : Entity<AuditEntryId>
     public void RedactPayloadForGdpr(string redactionMarker)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(redactionMarker);
-        BeforeState = redactionMarker;
-        AfterState = redactionMarker;
-        Changes = redactionMarker;
+        if (BeforeState is not null) BeforeState = redactionMarker;
+        if (AfterState is not null) AfterState = redactionMarker;
+        if (Changes is not null) Changes = redactionMarker;
     }
 }

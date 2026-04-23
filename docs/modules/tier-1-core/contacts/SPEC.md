@@ -570,8 +570,10 @@ Completes synchronously within the request.
 **Mode: hard_delete** — `POST /contacts/{id}/gdpr/delete` enqueues the Hangfire job
 `contacts:gdpr-hard-delete` (queue `critical`). The job, within a single transaction:
 
-1. Executes `ExecuteDeleteAsync` in FK-safe order on eight child types:
-   `ContactAddress`, `ContactNote`, `ContactCustomField`, `ContactTag`,
+1. Hard-deletes seven child types (Addresses, Notes, CustomFields, Tags, Relationships,
+   CommunicationPreferences, Activities) then the `Contact` aggregate root; anonymizes
+   `ConsentRecord` per Article 17(3)(e). `ExecuteDeleteAsync` is invoked in FK-safe order
+   on: `ContactAddress`, `ContactNote`, `ContactCustomField`, `ContactTag`,
    `ContactRelationship`, `CommunicationPreference`, `ContactActivity`, then `Contact`.
 2. Anonymizes `ConsentRecord` rows (NOT deleted — Article 17(3)(e) retention for legal
    evidence): `IpAddress → null`, `Source → "REDACTED"`.
@@ -586,7 +588,7 @@ Completes synchronously within the request.
 | Documents | `Document.LinkedEntityId` nullified where `LinkedEntityType="Contact"` and matches. `SignatureRecipient` PII (Name/Email → `[REDACTED]`, IpAddress → `null`); signature blob + timestamps retained. |
 | Notifications | `NotificationRecipient.RecipientAddress → [REDACTED]`; parent `Notification.BodyRendered → [REDACTED]`; template_key + delivery status retained. |
 | Audit | `AuditEntry` rows matching `EntityType=Contact` and `EntityId=<contactId>` get `BeforeState`/`AfterState`/`Changes` replaced with `{"_redacted":true,"_reason":"gdpr_erasure",...}`; operational trace preserved. One new entry appended: `action=gdpr_erasure`. |
-| Identity (future) | `User.ContactId → null` when T-001 ships. Currently no-op. |
+| Identity | `User.ContactId` nulled on every matching user; emits `UserContactUnlinkedIntegrationEvent` with `Reason="gdpr_erasure"`. Shipped in T-001. |
 
 **Admin UI** (nexora-admin): Contact detail page exposes a destructive "GDPR Erasure"
 button gated by `contacts.contacts.admin`. Dialog requires a reason (10–500 chars) and
@@ -642,8 +644,9 @@ trail, it is exported separately via a platform admin endpoint (not subject-faci
 - **`Notification.BodyRendered` placeholder** — the scrub writes `[REDACTED]`
   instead of `null` because the column is currently non-nullable. Schema migration
   is follow-up: **T-017**.
-- **User↔Contact unlink handler** — Identity module will add an inbox consumer to
-  set `User.ContactId = null` once T-001 ships. Currently no-op.
+- **User↔Contact unlink handler** — Shipped in T-001: Identity module inbox consumer
+  sets `User.ContactId = null` on every matching user and emits
+  `UserContactUnlinkedIntegrationEvent` with `Reason="gdpr_erasure"`.
 
 ## API Endpoints
 
@@ -766,7 +769,7 @@ The core `Contact` entity is **domain-neutral** — it contains no NGO, educatio
 
 ### Mechanism: `contact_extensions` side table
 
-```
+```sql
 contact_extensions {
     id             uuid PK
     contact_id     uuid FK → contacts_contact.id

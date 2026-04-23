@@ -96,7 +96,7 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
     /// <exception cref="DomainException">
     /// Thrown when the user is a system account or already linked to a contact.
     /// </exception>
-    public void LinkContact(Guid contactId, Guid linkedByUserId)
+    public void LinkContact(Guid contactId, UserId linkedByUserId)
     {
         if (contactId == Guid.Empty)
             throw new DomainException("lockey_identity_user_link_contact_contact_id_required");
@@ -114,14 +114,15 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
     /// <summary>
     /// Removes the link between this user and its contact record. Idempotent — a no-op when not linked.
     /// </summary>
-    public void UnlinkContact()
+    /// <param name="unlinkedByUserId">The actor user who performed the unlink (for audit/event trail).</param>
+    public void UnlinkContact(UserId unlinkedByUserId)
     {
         if (ContactId is null)
             return;
 
         var previous = ContactId.Value;
         ContactId = null;
-        AddDomainEvent(new UserContactUnlinkedDomainEvent(Id, TenantId, previous));
+        AddDomainEvent(new UserContactUnlinkedDomainEvent(Id, TenantId, previous, unlinkedByUserId));
     }
 }
 

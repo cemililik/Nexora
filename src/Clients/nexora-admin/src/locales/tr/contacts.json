@@ -356,13 +356,14 @@
 
   "lockey_contacts_gdpr_erasure_button": "GDPR Silme",
   "lockey_contacts_gdpr_erasure_dialog_title": "Kişiyi kalıcı olarak sil",
-  "lockey_contacts_gdpr_erasure_dialog_warning": "Bu işlem GDPR Madde 17 silme hakkı talebini karşılar. CRM, Documents, Notifications ve Audit modüllerindeki tüm bağlı veriler silinir. Bu işlem geri alınamaz.",
+  "lockey_contacts_gdpr_erasure_dialog_warning": "Bu işlem GDPR Madde 17 silme hakkı talebini karşılar. CRM, Documents, Notifications ve Audit modüllerindeki bağlantılı kayıtlar modüllerin saklama politikalarına göre bağlantıdan koparılır veya redakte edilir (PII kaldırılır). Bu işlem geri alınamaz.",
   "lockey_contacts_gdpr_erasure_reason_label": "Sebep (zorunlu)",
   "lockey_contacts_gdpr_erasure_reason_placeholder": "Hukuki dayanağı açıklayın (veri sahibi talebi, mahkeme kararı, ...)",
   "lockey_contacts_gdpr_erasure_confirm_label": "Onaylamak için kişinin adını yazın",
   "lockey_contacts_gdpr_erasure_confirm_action": "Kalıcı olarak sil",
   "lockey_contacts_gdpr_erasure_cancel": "İptal",
   "lockey_contacts_gdpr_erasure_reason_required": "GDPR silme için sebep zorunludur.",
+  "lockey_contacts_gdpr_erasure_reason_too_long": "Sebep en fazla 500 karakter olmalıdır.",
   "lockey_contacts_gdpr_erasure_name_mismatch": "Yazılan ad kişinin görüntü adıyla eşleşmiyor.",
   "lockey_contacts_gdpr_erasure_already_processed": "Bu kişi için GDPR silme işlemi az önce yapıldı. Lütfen tekrar denemeden önce bekleyin.",
   "lockey_contacts_gdpr_erasure_already_anonymized_warning": "Bu kişi zaten anonimleştirilmiş. Devam ederseniz kalan kayıt kalıcı olarak silinir.",
@@ -511,7 +512,7 @@
   "lockey_contacts_gdpr_delete_completed": "Kişi verileri silindi (GDPR).",
   "lockey_contacts_gdpr_erasure_enqueued": "GDPR silme işlemi planlandı. Kişi kısa süre içinde kalıcı olarak silinecek.",
   "lockey_contacts_gdpr_erasure_completed": "Kişi için GDPR silme işlemi tamamlandı.",
-  "lockey_contacts_gdpr_erasure_failed": "GDPR silme işlemi başarısız. Operasyonlara bildirildi.",
+  "lockey_contacts_gdpr_erasure_failed": "GDPR silme işlemi başarısız. Operasyon ekibine bildirildi.",
   "lockey_contacts_import_job_started": "İçe aktarma başlatıldı. Tamamlandığında bildirim alacaksınız.",
   "lockey_contacts_import_upload_url_generated": "Yükleme URL'si oluşturuldu.",
   "lockey_contacts_export_job_started": "Dışa aktarma başlatıldı. Tamamlandığında bildirim alacaksınız.",
@@ -659,5 +660,9 @@
   "lockey_contacts_import_validation_email_required": "E-posta zorunludur.",
   "lockey_contacts_import_validation_email_invalid": "Geçersiz e-posta adresi.",
   "lockey_contacts_import_validation_phone_invalid": "Geçersiz telefon numarası.",
-  "lockey_contacts_import_validation_unknown_source_column": "Eşleme bilinmeyen bir kaynak sütuna referans veriyor."
+  "lockey_contacts_import_validation_unknown_source_column": "Eşleme bilinmeyen bir kaynak sütuna referans veriyor.",
+  "lockey_contacts_import_validation_name_or_company_required": "Her kişinin en az bir ad/soyad veya şirket adı olmalıdır.",
+  "lockey_contacts_import_mapping_duplicate_target": "Bu alana başka bir sütun zaten eşlendi. Birini seçin.",
+  "lockey_contacts_import_error_upload_failed": "Yükleme başarısız (HTTP {{status}}). Lütfen tekrar deneyin.",
+  "lockey_contacts_import_validation_field_none": "—"
 }

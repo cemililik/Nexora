@@ -41,18 +41,39 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         var contactIdString = @event.ContactId.ToString("D");
         var redactionMarker = BuildRedactionMarker(@event.DeletedAtUtc, @event.ErasedByUserId);
 
-        // Load all audit entries for this tenant that reference the erased contact.
         // Match by (EntityType = "Contact" AND EntityId = contactId) — this is the primary,
         // indexed path. Payload-scan matches are not reliable across free-form JSON columns.
-        var matchingEntries = await dbContext.AuditEntries
-            .Where(e => e.TenantId == @event.TenantId
-                && e.EntityType == EntityTypeContact
-                && e.EntityId == contactIdString)
-            .ToListAsync(ct);
-
-        foreach (var entry in matchingEntries)
+        // On relational providers we use ExecuteUpdateAsync to avoid loading the entire
+        // audit history into memory (OOM risk for contacts with extensive histories).
+        int redactedCount;
+        if (dbContext.Database.IsRelational())
         {
-            entry.RedactPayloadForGdpr(redactionMarker);
+            redactedCount = await dbContext.AuditEntries
+                .Where(e => e.TenantId == @event.TenantId
+                    && e.EntityType == EntityTypeContact
+                    && e.EntityId == contactIdString)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(e => e.BeforeState, e => e.BeforeState == null ? null : redactionMarker)
+                    .SetProperty(e => e.AfterState, e => e.AfterState == null ? null : redactionMarker)
+                    .SetProperty(e => e.Changes, e => e.Changes == null ? null : redactionMarker),
+                    ct);
+        }
+        else
+        {
+            // InMemory provider (tests) — ExecuteUpdateAsync is unsupported, fall back to the
+            // load + domain-method path. Keeps behaviour identical for test doubles.
+            var matchingEntries = await dbContext.AuditEntries
+                .Where(e => e.TenantId == @event.TenantId
+                    && e.EntityType == EntityTypeContact
+                    && e.EntityId == contactIdString)
+                .ToListAsync(ct);
+
+            foreach (var entry in matchingEntries)
+            {
+                entry.RedactPayloadForGdpr(redactionMarker);
+            }
+
+            redactedCount = matchingEntries.Count;
         }
 
         // Append the compliance record of the erasure itself.
@@ -88,7 +109,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         logger.LogInformation(
             "Redacted {RedactedCount} audit entries and appended gdpr_erasure record for contact {ContactId} in tenant {TenantId} (erased by {ErasedByUserId}, mode {Mode})",
-            matchingEntries.Count, @event.ContactId, @event.TenantId, @event.ErasedByUserId, @event.Mode);
+            redactedCount, @event.ContactId, @event.TenantId, @event.ErasedByUserId, @event.Mode);
     }
 
     private static string BuildRedactionMarker(DateTime deletedAtUtc, Guid erasedByUserId)

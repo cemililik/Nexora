@@ -103,9 +103,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
 
         foreach (var entry in redactedX)
         {
+            // BeforeState is non-null on both seeded entries, so it is always the redaction marker.
+            // AfterState / Changes were null on entryX2 and MUST remain null — the redaction path
+            // preserves nulls so downstream readers don't mistake "no payload" for "payload redacted".
             entry.BeforeState.Should().NotBeNull();
-            entry.AfterState.Should().NotBeNull();
-            entry.Changes.Should().NotBeNull();
 
             using var beforeDoc = JsonDocument.Parse(entry.BeforeState!);
             beforeDoc.RootElement.GetProperty("_redacted").GetBoolean().Should().BeTrue();

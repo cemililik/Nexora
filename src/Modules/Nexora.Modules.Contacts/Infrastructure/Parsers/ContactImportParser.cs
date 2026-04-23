@@ -16,9 +16,9 @@ public static class ContactImportParser
     private const string XlsxFormat = "xlsx";
 
     /// <summary>Detects and returns the header row of the uploaded file.</summary>
-    /// <param name="content">Raw file bytes.</param>
+    /// <param name="content">The uploaded file content as a readable stream.</param>
     /// <param name="format">Either <c>csv</c> or <c>xlsx</c> (case-insensitive).</param>
-    public static IReadOnlyList<string> ParseHeaders(byte[] content, string format)
+    public static IReadOnlyList<string> ParseHeaders(Stream content, string format)
     {
         return format.ToLowerInvariant() switch
         {
@@ -33,7 +33,7 @@ public static class ContactImportParser
     /// allow partial reads (e.g. preview of first 5 rows).
     /// </summary>
     public static List<IReadOnlyDictionary<string, string?>> ParseRows(
-        byte[] content,
+        Stream content,
         string format,
         int? skip = 0,
         int? take = null)
@@ -46,9 +46,9 @@ public static class ContactImportParser
         };
     }
 
-    private static List<string> ParseCsvHeaders(byte[] content)
+    private static List<string> ParseCsvHeaders(Stream content)
     {
-        using var reader = new StreamReader(new MemoryStream(content));
+        using var reader = new StreamReader(content, leaveOpen: true);
         using var csv = new CsvReader(reader, BuildCsvConfig());
 
         if (!csv.Read())
@@ -80,11 +80,11 @@ public static class ContactImportParser
     }
 
     private static List<IReadOnlyDictionary<string, string?>> ParseCsvRows(
-        byte[] content,
+        Stream content,
         int skip,
         int? take)
     {
-        using var reader = new StreamReader(new MemoryStream(content));
+        using var reader = new StreamReader(content, leaveOpen: true);
         using var csv = new CsvReader(reader, BuildCsvConfig());
 
         if (!csv.Read())
@@ -133,9 +133,9 @@ public static class ContactImportParser
         MissingFieldFound = null,
     };
 
-    private static List<string> ParseXlsxHeaders(byte[] content)
+    private static List<string> ParseXlsxHeaders(Stream content)
     {
-        using var workbook = new XLWorkbook(new MemoryStream(content));
+        using var workbook = new XLWorkbook(content);
         var worksheet = workbook.Worksheet(1);
         var headerRow = worksheet.Row(1);
         var lastHeaderCell = headerRow.LastCellUsed();
@@ -154,11 +154,11 @@ public static class ContactImportParser
     }
 
     private static List<IReadOnlyDictionary<string, string?>> ParseXlsxRows(
-        byte[] content,
+        Stream content,
         int skip,
         int? take)
     {
-        using var workbook = new XLWorkbook(new MemoryStream(content));
+        using var workbook = new XLWorkbook(content);
         var worksheet = workbook.Worksheet(1);
         var headerRow = worksheet.Row(1);
         var lastHeaderCell = headerRow.LastCellUsed();

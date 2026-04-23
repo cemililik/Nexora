@@ -323,6 +323,24 @@ public sealed class RequestGdprDeleteTests : IDisposable
         addressCount.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Handle_InvalidTenantContext_ReturnsFailure()
+    {
+        var badAccessor = new TenantContextAccessor();
+        badAccessor.SetTenant("not-a-guid", _orgId.ToString(), _userId.ToString());
+
+        var handler = new RequestGdprDeleteHandler(
+            _dbContext, badAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
+            NullLogger<RequestGdprDeleteHandler>.Instance);
+
+        var result = await handler.Handle(
+            new RequestGdprDeleteCommand(Guid.NewGuid(), "User request"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error!.Message.Key.Should().Be("lockey_contacts_error_invalid_tenant_context");
+    }
+
     private RequestGdprDeleteHandler CreateHandler() =>
         new(_dbContext, _tenantAccessor, _tenantConfiguration, _outbox, _backgroundJobClient,
             NullLogger<RequestGdprDeleteHandler>.Instance);

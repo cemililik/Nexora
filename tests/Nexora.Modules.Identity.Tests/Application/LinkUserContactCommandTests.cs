@@ -87,7 +87,7 @@ public sealed class LinkUserContactCommandTests : IDisposable
     public async Task Handle_AlreadyLinked_ReturnsFailure()
     {
         var user = User.Create(_tenantId, "kc-1", "u@test.com", "U", "One");
-        user.LinkContact(Guid.NewGuid(), _actorUserId);
+        user.LinkContact(Guid.NewGuid(), UserId.From(_actorUserId));
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync();
 

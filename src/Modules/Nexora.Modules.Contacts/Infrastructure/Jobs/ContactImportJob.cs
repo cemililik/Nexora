@@ -82,7 +82,8 @@ public sealed class ContactImportJob(
             var fileContent = await fileStorageService.GetObjectAsync(
                 bucketName, parameters.StorageKey, ct);
 
-            rows = ContactImportParser.ParseRows(fileContent, parameters.FileFormat);
+            using var contentStream = new MemoryStream(fileContent);
+            rows = ContactImportParser.ParseRows(contentStream, parameters.FileFormat);
         }
         catch (IOException ex)
         {
@@ -122,20 +123,36 @@ public sealed class ContactImportJob(
 
             var batch = rows.Skip(i).Take(BatchSize).ToList();
 
-            foreach (var rawRow in batch)
+            // Pre-compute mapped rows so the email set can be collected in one pass
+            // before hitting the database with a single bulk duplicate probe (avoids N+1).
+            var mappedBatch = batch.Select(r => ApplyMapping(r, columnMapping)).ToList();
+            var normalizedEmailSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var mapped in mappedBatch)
             {
-                var row = ApplyMapping(rawRow, columnMapping);
+                if (!string.IsNullOrWhiteSpace(mapped.Email))
+                    normalizedEmailSet.Add(mapped.Email.Trim().ToLowerInvariant());
+            }
+
+            var existingByEmail = normalizedEmailSet.Count == 0
+                ? new Dictionary<string, Guid>(0)
+                : await duplicateMatcher.FindExistingByEmailsAsync(tenantId, orgId, normalizedEmailSet, ct);
+
+            for (var j = 0; j < batch.Count; j++)
+            {
+                var row = mappedBatch[j];
 
                 try
                 {
-                    var existingId = await duplicateMatcher.FindExistingContactIdAsync(
-                        tenantId, orgId, row.Email, row.Phone, ct);
+                    var normalizedEmail = string.IsNullOrWhiteSpace(row.Email)
+                        ? null
+                        : row.Email.Trim().ToLowerInvariant();
 
-                    if (existingId is not null)
+                    if (normalizedEmail is not null
+                        && existingByEmail.ContainsKey(normalizedEmail))
                     {
                         logger.LogDebug(
                             "Skipping duplicate contact for ImportJob {ImportJobId} at row {RowIndex}",
-                            importJobId, i + batch.IndexOf(rawRow));
+                            importJobId, i + j);
                         errorCount++;
                         continue;
                     }
@@ -154,22 +171,22 @@ public sealed class ContactImportJob(
                 }
                 catch (DomainException ex)
                 {
-                    logger.LogWarning(ex, "Domain validation failed for row {RowIndex}", i + batch.IndexOf(rawRow));
+                    logger.LogWarning(ex, "Domain validation failed for row {RowIndex}", i + j);
                     errorCount++;
                 }
                 catch (FormatException ex)
                 {
-                    logger.LogWarning(ex, "Failed to parse row {RowIndex}", i + batch.IndexOf(rawRow));
+                    logger.LogWarning(ex, "Failed to parse row {RowIndex}", i + j);
                     errorCount++;
                 }
                 catch (ArgumentException ex)
                 {
-                    logger.LogWarning(ex, "Invalid data in row {RowIndex}", i + batch.IndexOf(rawRow));
+                    logger.LogWarning(ex, "Invalid data in row {RowIndex}", i + j);
                     errorCount++;
                 }
                 catch (InvalidOperationException ex)
                 {
-                    logger.LogWarning(ex, "Failed to import row {RowIndex}", i + batch.IndexOf(rawRow));
+                    logger.LogWarning(ex, "Failed to import row {RowIndex}", i + j);
                     errorCount++;
                 }
             }

@@ -356,5 +356,6 @@
   "lockey_identity_user_link_contact_empty_results": "Kişi bulunamadı.",
   "lockey_identity_user_link_contact_linked_hint": "Kullanıcı şu anda bu kişiye bağlı.",
   "lockey_identity_user_link_contact_not_linked_hint": "Henüz bir kişi bağlı değil.",
-  "lockey_identity_user_link_contact_system_account_hint": "Sistem hesapları (API istemcileri, botlar) kişilere bağlanamaz."
+  "lockey_identity_user_link_contact_system_account_hint": "Sistem hesapları (API istemcileri, botlar) kişilere bağlanamaz.",
+  "lockey_identity_error_invalid_tenant_context": "Geçersiz kiracı bağlamı nedeniyle istek işlenemedi."
 }

@@ -89,7 +89,10 @@ function setupHooks() {
 
 describe('ImportPage wizard', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    // resetAllMocks clears BOTH call history AND mock implementations so
+    // mutation stubs set in one test don't leak into the next. setupHooks()
+    // below re-establishes the default hook return values post-reset.
+    vi.resetAllMocks();
     fetchSpy.mockResolvedValue({ ok: true, status: 200 });
     setupHooks();
   });

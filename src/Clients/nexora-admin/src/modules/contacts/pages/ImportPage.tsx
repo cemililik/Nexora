@@ -156,7 +156,11 @@ export default function ImportPage() {
       setIsUploading(false);
 
       if (!uploadResponse.ok) {
-        throw new Error(`Upload failed: ${uploadResponse.status}`);
+        throw new Error(
+          t('lockey_contacts_import_error_upload_failed', {
+            status: uploadResponse.status,
+          }),
+        );
       }
 
       setStorageKey(uploadUrlData.storageKey);
@@ -466,7 +470,10 @@ export default function ImportPage() {
                     {validation.errors.map((err, idx) => (
                       <tr key={idx} className="border-t">
                         <td className="px-2 py-1">{err.rowNumber}</td>
-                        <td className="px-2 py-1">{err.fieldName ?? '—'}</td>
+                        <td className="px-2 py-1">
+                          {err.fieldName ??
+                            t('lockey_contacts_import_validation_field_none')}
+                        </td>
                         <td className="px-2 py-1">{t(err.errorKey)}</td>
                       </tr>
                     ))}

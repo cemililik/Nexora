@@ -42,11 +42,12 @@ public sealed class ValidateContactImportTests
     [Fact]
     public async Task Handle_AllValid_ReturnsZeroErrors()
     {
-        SetFile("Email,Phone\nada@example.com,+1234567\ngrace@example.com,+9876543\n");
+        SetFile("Email,Phone,CompanyName\nada@example.com,+1234567,Acme\ngrace@example.com,+9876543,Bravo\n");
         var mapping = new Dictionary<string, string>
         {
             ["Email"] = "email",
             ["Phone"] = "phone",
+            ["CompanyName"] = "companyName",
         };
 
         var result = await CreateHandler().Handle(
@@ -62,11 +63,12 @@ public sealed class ValidateContactImportTests
     [Fact]
     public async Task Handle_MissingEmail_ReportsRequiredError()
     {
-        SetFile("Email,Phone\n,+1234567\ngrace@example.com,+9876543\n");
+        SetFile("Email,Phone,CompanyName\n,+1234567,Acme\ngrace@example.com,+9876543,Bravo\n");
         var mapping = new Dictionary<string, string>
         {
             ["Email"] = "email",
             ["Phone"] = "phone",
+            ["CompanyName"] = "companyName",
         };
 
         var result = await CreateHandler().Handle(
@@ -82,8 +84,12 @@ public sealed class ValidateContactImportTests
     [Fact]
     public async Task Handle_InvalidEmailShape_ReportsInvalidError()
     {
-        SetFile("Email\nnot-an-email\n");
-        var mapping = new Dictionary<string, string> { ["Email"] = "email" };
+        SetFile("Email,CompanyName\nnot-an-email,Acme\n");
+        var mapping = new Dictionary<string, string>
+        {
+            ["Email"] = "email",
+            ["CompanyName"] = "companyName",
+        };
 
         var result = await CreateHandler().Handle(
             new ValidateContactImportCommand(StorageKey, "csv", mapping),
@@ -97,10 +103,11 @@ public sealed class ValidateContactImportTests
     [Fact]
     public async Task Handle_MappingReferencesUnknownSourceColumn_ReportsBatchError()
     {
-        SetFile("Email\nada@example.com\n");
+        SetFile("Email,CompanyName\nada@example.com,Acme\n");
         var mapping = new Dictionary<string, string>
         {
             ["Email"] = "email",
+            ["CompanyName"] = "companyName",
             ["DoesNotExist"] = "phone",
         };
 
@@ -116,13 +123,57 @@ public sealed class ValidateContactImportTests
     }
 
     [Fact]
+    public async Task Handle_RowWithOnlyEmail_NoNameNoCompany_ReportsNameOrCompanyRequired()
+    {
+        SetFile("Email,FirstName,LastName,CompanyName\nada@example.com,,,\n");
+        var mapping = new Dictionary<string, string>
+        {
+            ["Email"] = "email",
+            ["FirstName"] = "firstName",
+            ["LastName"] = "lastName",
+            ["CompanyName"] = "companyName",
+        };
+
+        var result = await CreateHandler().Handle(
+            new ValidateContactImportCommand(StorageKey, "csv", mapping),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Errors.Should().Contain(e =>
+            e.ErrorKey == "lockey_contacts_import_validation_name_or_company_required"
+            && e.RowNumber == 1);
+    }
+
+    [Fact]
+    public async Task Handle_RowWithCompanyOnly_NoNameErrors()
+    {
+        SetFile("Email,FirstName,LastName,CompanyName\nada@example.com,,,Acme Ltd\n");
+        var mapping = new Dictionary<string, string>
+        {
+            ["Email"] = "email",
+            ["FirstName"] = "firstName",
+            ["LastName"] = "lastName",
+            ["CompanyName"] = "companyName",
+        };
+
+        var result = await CreateHandler().Handle(
+            new ValidateContactImportCommand(StorageKey, "csv", mapping),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Errors.Should().NotContain(e =>
+            e.ErrorKey == "lockey_contacts_import_validation_name_or_company_required");
+    }
+
+    [Fact]
     public async Task Handle_SkippedTargetField_IgnoresColumn()
     {
-        SetFile("Email,Junk\nada@example.com,ignored\n");
+        SetFile("Email,Junk,CompanyName\nada@example.com,ignored,Acme\n");
         var mapping = new Dictionary<string, string>
         {
             ["Email"] = "email",
             ["Junk"] = "__skip__",
+            ["CompanyName"] = "companyName",
         };
 
         var result = await CreateHandler().Handle(

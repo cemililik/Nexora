@@ -9,7 +9,7 @@ public sealed class User_LinkContactTests
 {
     private readonly TenantId _tenantId = TenantId.New();
     private readonly Guid _contactId = Guid.NewGuid();
-    private readonly Guid _actorId = Guid.NewGuid();
+    private readonly UserId _actorId = UserId.New();
 
     [Fact]
     public void LinkContact_SetsContactId_AndRaisesEvent()
@@ -67,7 +67,7 @@ public sealed class User_LinkContactTests
         var user = User.Create(_tenantId, "kc-1", "u@test.com", "U", "One");
         user.ClearDomainEvents();
 
-        user.UnlinkContact();
+        user.UnlinkContact(_actorId);
 
         user.ContactId.Should().BeNull();
         user.DomainEvents.Should().BeEmpty();
@@ -80,7 +80,7 @@ public sealed class User_LinkContactTests
         user.LinkContact(_contactId, _actorId);
         user.ClearDomainEvents();
 
-        user.UnlinkContact();
+        user.UnlinkContact(_actorId);
 
         user.ContactId.Should().BeNull();
         user.DomainEvents.Should().ContainSingle()

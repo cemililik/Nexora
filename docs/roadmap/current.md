@@ -108,12 +108,12 @@ Phase 2 of the docs-restructure (five parallel agents) may now begin.
 **Docs restructure (Umbrix-style layout).** Phase 1 (solo, this agent) has produced:
 
 - This `current.md`, `roadmap/README.md`, `phases/README.md` (drafts).
-- Three foundation ADRs (above) in `Proposed` status.
+- Three foundation ADRs (above), now `Accepted` (maintainer promoted 2026-04-22).
 - `docs/_archive/migration-notes.md` with the full inventory, tier mapping, and 20-item
   execution plan for Phase 2 agents.
 
 **No existing files have been moved or deleted.** Phase 2 (five parallel agents) executes the
-migration after maintainer ADR promotion.
+migration (maintainer ADR promotion complete 2026-04-22).
 
 ---
 

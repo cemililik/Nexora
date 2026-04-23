@@ -9,6 +9,7 @@
 > **Dependencies**: None (foundational)
 
 ## Overview
+
 The Identity module is the **foundational module** of Nexora. It manages multi-tenancy, organizations, users, roles, and permissions. Every other module depends on it for authentication context, tenant resolution, and authorization checks. It integrates with Keycloak as the external identity provider and provides the internal permission/role engine.
 
 ## Domain Model
@@ -386,6 +387,7 @@ flowchart LR
 ## Use Cases
 
 ### UC-IDN-001: Create Tenant
+
 - **Actor**: Platform Admin
 - **Preconditions**: Admin is authenticated with platform admin role
 - **Flow**:
@@ -408,6 +410,7 @@ flowchart LR
   - Keycloak realm creation fails → rollback schema, status → Failed
 
 ### UC-IDN-002: Invite User
+
 - **Actor**: Org Admin
 - **Preconditions**: Actor has `admin.users.manage` permission for the organization
 - **Flow**:
@@ -422,6 +425,7 @@ flowchart LR
   - User can belong to multiple organizations with different roles
 
 ### UC-IDN-003: Resolve Tenant & Authorize Request
+
 - **Actor**: System (middleware)
 - **Preconditions**: Request has valid JWT
 - **Flow**:
@@ -440,6 +444,7 @@ flowchart LR
   - Missing org header: use user's default organization
 
 ### UC-IDN-004: Manage Roles & Permissions
+
 - **Actor**: Tenant Admin
 - **Preconditions**: Actor has `admin.roles.manage` permission
 - **Flow**:
@@ -453,6 +458,7 @@ flowchart LR
   - Permission changes take effect on next request (cache invalidation)
 
 ### UC-IDN-005: Switch Organization
+
 - **Actor**: User (with multi-org access)
 - **Preconditions**: User is authenticated
 - **Flow**:
@@ -467,6 +473,7 @@ flowchart LR
 ## API Endpoints
 
 ### Tenant Management (Platform Admin)
+
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | POST | `/api/v1/identity/tenants` | Create tenant | `platform.tenants.create` |
@@ -479,6 +486,7 @@ flowchart LR
 | POST | `/api/v1/identity/tenants/{id}/modules` | Install module | `platform.modules.manage` |
 
 ### Organization Management
+
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | POST | `/api/v1/identity/organizations` | Create organization | `admin.organizations.create` |
@@ -488,6 +496,7 @@ flowchart LR
 | GET | `/api/v1/identity/organizations/{id}/members` | List members | `admin.users.read` |
 
 ### User Management
+
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | POST | `/api/v1/identity/users/invite` | Invite user | `admin.users.manage` |
@@ -501,6 +510,7 @@ flowchart LR
 | GET | `/api/v1/identity/users/me/organizations` | List my organizations | Authenticated |
 
 ### Role & Permission Management
+
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
 | POST | `/api/v1/identity/roles` | Create role | `admin.roles.manage` |
@@ -519,6 +529,7 @@ flowchart LR
 ## Integration Points
 
 ### Events Produced
+
 | Event | Topic | Description |
 |-------|-------|-------------|
 | `identity.tenant.created` | `nexora.identity.tenants` | New tenant provisioned |
@@ -540,6 +551,7 @@ When a user's roles change (assign/revoke), permission cache is invalidated thro
 2. **Event-driven**: `UserRolesChangedIntegrationEvent` is published via Outbox → Kafka, and all application instances invalidate the user's cached permissions, ensuring cross-instance consistency
 
 ### Events Consumed
+
 | Event | Source | Action |
 |-------|--------|--------|
 | `ContactGdprDeletedIntegrationEvent` | Contacts | Nulls `User.ContactId` on every user in the event's tenant whose `ContactId` matches the erased contact; emits `UserContactUnlinkedIntegrationEvent` (`Reason = "gdpr_erasure"`) per unlinked user. Idempotent via `InboxGuard<IdentityDbContext>`. |
@@ -585,6 +597,7 @@ per user with `Reason = "gdpr_erasure"`. Wrapped in `InboxGuard<IdentityDbContex
 for exactly-once consumer semantics under at-least-once delivery.
 
 ### Dependencies
+
 - **Keycloak**: User authentication, realm management, token issuance
 - **Redis**: Permission cache, tenant cache, session management
 - **PostgreSQL**: Tenant registry (public schema), tenant data (tenant schemas)

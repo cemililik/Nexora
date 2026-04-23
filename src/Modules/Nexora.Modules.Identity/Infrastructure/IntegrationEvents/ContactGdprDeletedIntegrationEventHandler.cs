@@ -49,9 +49,11 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         var unlinkedAt = DateTime.UtcNow;
 
+        var unlinkedByUserId = UserId.From(@event.ErasedByUserId);
+
         foreach (var user in linkedUsers)
         {
-            user.UnlinkContact();
+            user.UnlinkContact(unlinkedByUserId);
 
             await outbox.EnqueueAsync(new UserContactUnlinkedIntegrationEvent
             {
