@@ -162,11 +162,44 @@ describe('ExportPage', () => {
       screen.getByText('lockey_contacts_export_status_completed'),
     ).toBeInTheDocument();
 
-    const downloadLink = screen.getByText('lockey_contacts_export_button_download')
-      .closest('a');
-    expect(downloadLink).not.toBeNull();
-    expect(downloadLink?.getAttribute('href')).toBe(
-      'https://minio.test/export/file.csv',
-    );
+    // The download control is a Button that triggers a programmatic anchor click with
+    // the `download` attribute (avoids popup-blocker suppression after async polling —
+    // see T-019 review). Verify the button renders, then spy on document.createElement
+    // to confirm the anchor is built with the right href + download when clicked.
+    const downloadButton = screen.getByText(
+      'lockey_contacts_export_button_download',
+    ) as HTMLElement;
+    expect(downloadButton).toBeInTheDocument();
+
+    let capturedHref: string | null = null;
+    let capturedDownload: string | null = null;
+    const originalCreate = document.createElement.bind(document);
+    const createSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+        const element = originalCreate(tagName, options) as HTMLElement;
+        if (tagName === 'a') {
+          // Capture on set so we see the final values the component wrote.
+          Object.defineProperty(element, 'href', {
+            set(v: string) { capturedHref = v; },
+            get() { return capturedHref ?? ''; },
+            configurable: true,
+          });
+          Object.defineProperty(element, 'download', {
+            set(v: string) { capturedDownload = v; },
+            get() { return capturedDownload ?? ''; },
+            configurable: true,
+          });
+          // Stub click so the test environment doesn't actually try to navigate.
+          element.click = () => {};
+        }
+        return element;
+      });
+
+    await user.click(downloadButton);
+
+    expect(capturedHref).toBe('https://minio.test/export/file.csv');
+    expect(capturedDownload).toBe('');
+    createSpy.mockRestore();
   });
 });
