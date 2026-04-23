@@ -5,6 +5,8 @@ public sealed record ExportJobDto(
     Guid JobId,
     string Status,
     string Format,
+    int TotalRows,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
-    string? DownloadUrl);
+    string? DownloadUrl,
+    string? ErrorDetails);

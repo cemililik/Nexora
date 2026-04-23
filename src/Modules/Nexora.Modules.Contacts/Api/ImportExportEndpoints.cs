@@ -75,13 +75,33 @@ public static class ImportExportEndpoints
         group.MapPost("/export", async (StartExportRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new StartContactExportCommand(
-                request.Format, request.StatusFilter, request.TypeFilter);
+                request.Format,
+                request.Fields,
+                request.CustomFieldIds,
+                request.StatusFilter,
+                request.TypeFilter,
+                request.DateFrom,
+                request.DateTo,
+                request.DateField);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Accepted(
-                    $"/api/v1/contacts/contacts/export",
-                    ApiEnvelope<ExportJobDto>.Success(result.Value!, result.Message))
+                    $"/api/v1/contacts/contacts/export/{result.Value!.JobId}",
+                    ApiEnvelope<ExportJobDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<ExportJobDto>.Fail(result.Error!));
+        });
+
+        group.MapGet("/export/{jobId:guid}", async (Guid jobId, ISender sender, CancellationToken ct) =>
+        {
+            var result = await sender.Send(new GetExportJobStatusQuery(jobId), ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<ExportJobDto>.Success(result.Value!))
+                : result.Error!.Message.Key switch
+                {
+                    "lockey_contacts_export_job_not_found" =>
+                        Results.NotFound(ApiEnvelope<ExportJobDto>.Fail(result.Error)),
+                    _ => Results.BadRequest(ApiEnvelope<ExportJobDto>.Fail(result.Error))
+                };
         });
     }
 }
@@ -113,5 +133,10 @@ public sealed record ValidateImportRequest(
 /// <summary>Request body for starting a contact export.</summary>
 public sealed record StartExportRequest(
     string Format,
+    IReadOnlyList<string>? Fields = null,
+    IReadOnlyList<Guid>? CustomFieldIds = null,
     string? StatusFilter = null,
-    string? TypeFilter = null);
+    string? TypeFilter = null,
+    DateTimeOffset? DateFrom = null,
+    DateTimeOffset? DateTo = null,
+    string? DateField = null);

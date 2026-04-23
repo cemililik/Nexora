@@ -4,6 +4,14 @@
 
 ---
 
+## Active task
+
+**T-003 — Contact export improvements** (Phase 1.5.6, Milestone C). Owner: cemililik. Status: **In Progress**.
+
+- Plan: [T-003.md §Implementation plan](../analysis/tasks/phase-1.5/T-003.md)
+- Scope: ExportJob entity + field picker + date range + vCard format + MinIO upload + ILocaleContext formatting + Notifications integration + status polling.
+- Execution split: backend first → commit → frontend (to avoid stream stalls).
+
 ## Prior active tasks (awaiting maintainer review)
 
 **T-002 — Contact import field-mapping wizard** (Phase 1.5.6, Milestone C). Status: **In Review**.
