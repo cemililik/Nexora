@@ -31,15 +31,21 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         }
 
         // Scope strictly to the tenant that emitted the event — cross-tenant users MUST NOT be touched.
-        TenantId? tenantId = null;
-        if (Guid.TryParse(@event.TenantId, out var tenantGuid))
-            tenantId = TenantId.From(tenantGuid);
+        if (!Guid.TryParse(@event.TenantId, out var tenantGuid))
+        {
+            logger.LogWarning(
+                "GDPR erasure event {EventId} has invalid TenantId {TenantId}; marking processed to prevent redelivery loop",
+                @event.EventId, @event.TenantId);
+            inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
+            await dbContext.SaveChangesAsync(ct);
+            return;
+        }
 
-        var linkedUsers = tenantId is null
-            ? new List<Domain.Entities.User>()
-            : await dbContext.Users
-                .Where(u => u.TenantId == tenantId && u.ContactId == @event.ContactId)
-                .ToListAsync(ct);
+        var tenantId = TenantId.From(tenantGuid);
+
+        var linkedUsers = await dbContext.Users
+            .Where(u => u.TenantId == tenantId && u.ContactId == @event.ContactId)
+            .ToListAsync(ct);
 
         var unlinkedAt = DateTime.UtcNow;
 
@@ -51,6 +57,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             {
                 TenantId = @event.TenantId,
                 UserId = user.Id.Value,
+                ContactId = @event.ContactId,
                 UnlinkedAtUtc = unlinkedAt,
                 Reason = "gdpr_erasure"
             }, ct);

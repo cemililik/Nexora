@@ -146,6 +146,40 @@ public sealed class RequestGdprExportTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_RelatedContactInDifferentTenant_ShouldNotLeakDisplayName()
+    {
+        // Arrange — cross-tenant regression guard. A relationship row pointing at a contact
+        // in ANOTHER tenant must not leak that other tenant's DisplayName via the join.
+        var subject = await SeedContact();
+
+        var foreignTenantId = Guid.NewGuid();
+        var foreignOrgId = Guid.NewGuid();
+        var foreignContact = Contact.Create(foreignTenantId, foreignOrgId, ContactType.Individual,
+            "Foreign", "Secret", null, "foreign@test.com", null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(foreignContact);
+        await _dbContext.SaveChangesAsync();
+
+        // Malicious relationship row in subject's tenant pointing at foreign contact.
+        var rel = ContactRelationship.Create(subject.Id, foreignContact.Id, RelationshipType.ContactOf);
+        await _dbContext.ContactRelationships.AddAsync(rel);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = new RequestGdprExportHandler(
+            _dbContext, _tenantAccessor, NullLogger<RequestGdprExportHandler>.Instance);
+
+        // Act
+        var result = await handler.Handle(
+            new RequestGdprExportCommand(subject.Id.Value),
+            CancellationToken.None);
+
+        // Assert — the foreign DisplayName must not appear in the export.
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Relationships.Should().NotContain(r =>
+            r.RelatedContactDisplayName == "Foreign Secret",
+            "cross-tenant DisplayName must never leak through a relationship join");
+    }
+
+    [Fact]
     public async Task Handle_ContactWithActivities_ShouldIncludeActivities()
     {
         // Arrange

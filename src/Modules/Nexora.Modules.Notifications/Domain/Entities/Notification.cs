@@ -128,12 +128,13 @@ public sealed class Notification : AuditableEntity<NotificationId>, IAggregateRo
     }
 
     /// <summary>
-    /// Redacts PII from the rendered body for GDPR erasure. Preserves audit-value
-    /// metadata (template key, status, timestamps, counts) while removing any
-    /// personal data that was interpolated into the rendered message.
+    /// Redacts PII from the rendered body and subject for GDPR erasure. Preserves
+    /// audit-value metadata (template key, status, timestamps, counts) while removing
+    /// any personal data that was interpolated into the rendered message or subject line.
     /// </summary>
     public void ScrubRenderedBody()
     {
         BodyRendered = PiiRedactedPlaceholder.Value;
+        Subject = PiiRedactedPlaceholder.Value;
     }
 }

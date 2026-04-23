@@ -77,15 +77,43 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         // Act
         await handler.HandleAsync(CreateEvent(contactId), CancellationToken.None);
 
-        // Assert — status, timestamps, channel, subject preserved
+        // Assert — status, timestamps, channel, triggered-by preserved; Subject scrubbed
         var notification = await _dbContext.Notifications
             .Include(n => n.Recipients)
             .FirstAsync(n => n.Id == notificationId);
         notification.Status.Should().Be(NotificationStatus.Queued);
         notification.Channel.Should().Be(NotificationChannel.Email);
-        notification.Subject.Should().Be("Subject");
+        notification.Subject.Should().Be("[REDACTED]",
+            "Subject may contain PII interpolations and must be scrubbed alongside BodyRendered");
         notification.TriggeredBy.Should().Be("test");
         notification.Recipients.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task HandleAsync_FailureReason_ShouldBeScrubbedAlongsideRecipientAddress()
+    {
+        // Arrange — failure_reason can contain PII (e.g., "Bounced: john@example.com unreachable").
+        var contactId = Guid.NewGuid();
+        var notification = Notification.Create(
+            _tenantId, NotificationChannel.Email, "Subject", "Body", "test");
+        var recipient = notification.AddRecipient(contactId, "user@example.com");
+        recipient.MarkSent("provider-msg-1");
+        recipient.MarkFailed("Bounced: user@example.com unreachable");
+        notification.ClearDomainEvents();
+        await _dbContext.Notifications.AddAsync(notification);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = CreateHandler();
+
+        // Act
+        await handler.HandleAsync(CreateEvent(contactId), CancellationToken.None);
+
+        // Assert
+        var scrubbed = await _dbContext.Notifications
+            .Include(n => n.Recipients)
+            .FirstAsync();
+        scrubbed.Recipients.Should().OnlyContain(r =>
+            r.RecipientAddress == "[REDACTED]" && r.FailureReason == null);
     }
 
     [Fact]
@@ -129,9 +157,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task HandleAsync_InvalidTenantId_ShouldNotProcess()
+    public async Task HandleAsync_InvalidTenantId_ShouldMarkProcessedToAvoidPoison()
     {
-        // Arrange
+        // Arrange — malformed TenantId must not spin in redelivery loops. The handler
+        // logs a warning and marks the event as processed so the broker stops retrying.
         var contactId = Guid.NewGuid();
         await SeedNotification(contactId, "user@example.com", "Body");
         var handler = CreateHandler();
@@ -148,10 +177,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         // Act
         await handler.HandleAsync(@event, CancellationToken.None);
 
-        // Assert — no scrubbing, inbox not marked
+        // Assert — no scrubbing, but inbox IS marked so the broker won't redeliver forever.
         var notification = await _dbContext.Notifications.FirstAsync();
         notification.BodyRendered.Should().Be("Body");
-        _inboxGuard.DidNotReceive().MarkAsProcessed(Arg.Any<Guid>(), Arg.Any<string>());
+        _inboxGuard.Received(1).MarkAsProcessed(@event.EventId, nameof(ContactGdprDeletedIntegrationEvent));
     }
 
     private ContactGdprDeletedIntegrationEventHandler CreateHandler() =>

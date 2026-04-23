@@ -149,19 +149,25 @@ public sealed class IdentityModuleMigration(
 
         foreach (var (module, resource, action, descriptionKey) in newPermissionsToEnsure)
         {
-            var exists = await dbContext.Permissions
-                .AnyAsync(p => p.Module == module && p.Resource == resource && p.Action == action, ct);
+            // Find or create the permission — even if it already exists, we still want to
+            // (idempotently) ensure the admin role has it assigned.
+            var permission = await dbContext.Permissions
+                .FirstOrDefaultAsync(p => p.Module == module && p.Resource == resource && p.Action == action, ct);
 
-            if (!exists)
+            if (permission is null)
             {
-                var permission = Permission.Create(module, resource, action, descriptionKey);
+                permission = Permission.Create(module, resource, action, descriptionKey);
                 await dbContext.Permissions.AddAsync(permission, ct);
-
-                var adminRole = await dbContext.Roles
-                    .Include(r => r.Permissions)
-                    .FirstOrDefaultAsync(r => r.IsSystemRole, ct);
-                adminRole?.AssignPermission(permission);
             }
+
+            // Pick the admin role deterministically by name (not just "any IsSystemRole" —
+            // multiple system roles could exist and FirstOrDefault would be non-deterministic).
+            var adminRole = await dbContext.Roles
+                .Include(r => r.Permissions)
+                .FirstOrDefaultAsync(r => r.Name == "Platform Admin", ct);
+
+            // AssignPermission is idempotent (entity guards against duplicates).
+            adminRole?.AssignPermission(permission);
         }
 
         // Seed platform-admin role if not exist

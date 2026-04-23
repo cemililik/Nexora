@@ -510,7 +510,6 @@
   "lockey_contacts_merge_completed": "Kişiler başarıyla birleştirildi.",
   "lockey_contacts_gdpr_delete_completed": "Kişi verileri silindi (GDPR).",
   "lockey_contacts_gdpr_erasure_enqueued": "GDPR silme işlemi planlandı. Kişi kısa süre içinde kalıcı olarak silinecek.",
-  "lockey_contacts_gdpr_erasure_already_processed": "Bu kişi için GDPR silme işlemi az önce yapıldı. Lütfen tekrar denemeden önce bekleyin.",
   "lockey_contacts_gdpr_erasure_completed": "Kişi için GDPR silme işlemi tamamlandı.",
   "lockey_contacts_gdpr_erasure_failed": "GDPR silme işlemi başarısız. Operasyonlara bildirildi.",
   "lockey_contacts_import_job_started": "İçe aktarma başlatıldı. Tamamlandığında bildirim alacaksınız.",
@@ -546,7 +545,6 @@
   "lockey_contacts_error_custom_field_name_duplicate": "Bu isimde bir özel alan zaten mevcut.",
   "lockey_contacts_error_custom_field_value_required": "Bu özel alan zorunludur.",
   "lockey_contacts_error_invalid_tenant_context": "Geçersiz kiracı bağlamı.",
-  "lockey_contacts_error_invalid_user_context": "GDPR silme işlemi kimliği doğrulanmış bir kullanıcı bağlamı gerektirir.",
   "lockey_contacts_error_invalid_organization_context": "Geçersiz organizasyon bağlamı.",
 
   "lockey_contacts_validation_first_name_required": "Ad zorunludur.",

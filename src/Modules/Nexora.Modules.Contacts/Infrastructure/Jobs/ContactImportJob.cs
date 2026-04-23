@@ -58,10 +58,11 @@ public sealed class ContactImportJob(
             return;
         }
 
-        // Idempotency guard — skip if already processed or in progress
-        if (importJob.Status is ImportJobStatus.Processing or ImportJobStatus.Completed)
+        // Idempotency guard — only skip if already completed. Processing is left resumable
+        // so Hangfire retries after a mid-job crash can pick up where the previous attempt left off.
+        if (importJob.Status == ImportJobStatus.Completed)
         {
-            logger.LogWarning("ImportJob {ImportJobId} already in {Status}, skipping", importJobId, importJob.Status);
+            logger.LogWarning("ImportJob {ImportJobId} already completed, skipping", importJobId);
             return;
         }
 
@@ -132,7 +133,9 @@ public sealed class ContactImportJob(
 
                     if (existingId is not null)
                     {
-                        logger.LogDebug("Skipping duplicate contact with email {Email}", row.Email);
+                        logger.LogDebug(
+                            "Skipping duplicate contact for ImportJob {ImportJobId} at row {RowIndex}",
+                            importJobId, i + batch.IndexOf(rawRow));
                         errorCount++;
                         continue;
                     }
@@ -182,8 +185,9 @@ public sealed class ContactImportJob(
                 processed, totalRows, successCount, errorCount);
         }
 
+        // Atomic: mark completed + enqueue outbox event in a single SaveChangesAsync
+        // so the job's terminal state and the downstream notification are never out of sync.
         importJob.MarkCompleted();
-        await dbContext.SaveChangesAsync(ct);
 
         await outbox.EnqueueAsync(new ContactImportCompletedIntegrationEvent
         {
@@ -193,6 +197,8 @@ public sealed class ContactImportJob(
             SuccessCount = successCount,
             ErrorCount = errorCount
         }, ct);
+
+        await dbContext.SaveChangesAsync(ct);
 
         logger.LogInformation(
             "Contact import completed. Total: {Total}, Success: {Success}, Errors: {Errors}",

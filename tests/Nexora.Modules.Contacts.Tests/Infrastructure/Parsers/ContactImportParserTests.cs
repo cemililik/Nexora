@@ -77,6 +77,32 @@ public sealed class ContactImportParserTests
     }
 
     [Fact]
+    public void ParseHeaders_CsvWithCaseOnlyDuplicate_ThrowsFormatException()
+    {
+        // "Email" and "email" differ only in case — this would silently collide in the
+        // case-insensitive row dictionary, so the parser rejects the file up front.
+        var csv = "FirstName,Email,email\nAda,a@x.com,b@x.com\n";
+        var bytes = Encoding.UTF8.GetBytes(csv);
+
+        var act = () => ContactImportParser.ParseHeaders(bytes, "csv");
+
+        act.Should().Throw<FormatException>()
+            .WithMessage("lockey_contacts_import_error_duplicate_headers");
+    }
+
+    [Fact]
+    public void ParseRows_CsvWithCaseOnlyDuplicate_ThrowsFormatException()
+    {
+        var csv = "Email,EMAIL\na@x.com,b@x.com\n";
+        var bytes = Encoding.UTF8.GetBytes(csv);
+
+        var act = () => ContactImportParser.ParseRows(bytes, "csv");
+
+        act.Should().Throw<FormatException>()
+            .WithMessage("lockey_contacts_import_error_duplicate_headers");
+    }
+
+    [Fact]
     public void ParseRows_Csv_RespectsTakeLimit()
     {
         var csv = "Email\na@x.com\nb@x.com\nc@x.com\nd@x.com\n";

@@ -34,15 +34,32 @@ public abstract class BaseDbContext(
     /// (Hangfire job scope, request scope).
     /// </summary>
     /// <returns>A disposable handle that resets the flag on <see cref="IDisposable.Dispose"/>.</returns>
-    public IDisposable EnterHardDeleteScope()
-    {
-        IsHardDeleteModeEnabled = true;
-        return new HardDeleteScope(this);
-    }
+    public IDisposable EnterHardDeleteScope() => new HardDeleteScope(this);
 
-    private sealed class HardDeleteScope(BaseDbContext context) : IDisposable
+    /// <summary>
+    /// Stores the previous value of <see cref="IsHardDeleteModeEnabled"/> and restores it on
+    /// dispose so nested scopes compose correctly (inner scope must not flip the flag off
+    /// while an outer scope is still active). Dispose is idempotent.
+    /// </summary>
+    private sealed class HardDeleteScope : IDisposable
     {
-        public void Dispose() => context.IsHardDeleteModeEnabled = false;
+        private readonly BaseDbContext _context;
+        private readonly bool _previousValue;
+        private bool _disposed;
+
+        public HardDeleteScope(BaseDbContext context)
+        {
+            _context = context;
+            _previousValue = context.IsHardDeleteModeEnabled;
+            context.IsHardDeleteModeEnabled = true;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _context.IsHardDeleteModeEnabled = _previousValue;
+            _disposed = true;
+        }
     }
 
     /// <summary>

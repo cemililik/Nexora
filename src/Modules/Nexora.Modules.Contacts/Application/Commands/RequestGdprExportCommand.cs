@@ -110,7 +110,7 @@ public sealed class RequestGdprExportHandler(
         var outboundRelationships = await dbContext.ContactRelationships
             .IgnoreQueryFilters()
             .Where(r => r.ContactId == contactId)
-            .Join(dbContext.Contacts.IgnoreQueryFilters(),
+            .Join(dbContext.Contacts.IgnoreQueryFilters().Where(c => c.TenantId == tenantId),
                 r => r.RelatedContactId, c => c.Id,
                 (r, c) => new ContactRelationshipDto(
                     r.Id.Value, r.ContactId.Value, r.RelatedContactId.Value,
@@ -121,7 +121,7 @@ public sealed class RequestGdprExportHandler(
         var inboundRelationships = await dbContext.ContactRelationships
             .IgnoreQueryFilters()
             .Where(r => r.RelatedContactId == contactId && r.ContactId != contactId)
-            .Join(dbContext.Contacts.IgnoreQueryFilters(),
+            .Join(dbContext.Contacts.IgnoreQueryFilters().Where(c => c.TenantId == tenantId),
                 r => r.ContactId, c => c.Id,
                 (r, c) => new ContactRelationshipDto(
                     r.Id.Value, r.ContactId.Value, r.RelatedContactId.Value,

@@ -100,11 +100,12 @@ public sealed class NotificationRecipient : AuditableEntity<NotificationRecipien
     }
 
     /// <summary>
-    /// Redacts the recipient address (email or phone) for GDPR erasure.
-    /// Delivery status and timestamps are preserved for audit purposes.
+    /// Redacts the recipient address (email or phone) and any failure-reason text for
+    /// GDPR erasure. Delivery status and timestamps are preserved for audit purposes.
     /// </summary>
     public void ScrubRecipientAddress()
     {
         RecipientAddress = PiiRedactedPlaceholder.Value;
+        FailureReason = null;
     }
 }

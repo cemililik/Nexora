@@ -58,6 +58,10 @@ public sealed class UnlinkUserContactHandler(
             return Result.Success(LocalizedMessage.Of("lockey_identity_user_link_contact_unlink_success"));
         }
 
+        // Capture the previously linked ContactId before clearing it so downstream consumers
+        // can correlate the unlink with the contact record.
+        var previousContactId = user.ContactId;
+
         user.UnlinkContact();
 
         var unlinkedAt = DateTime.UtcNow;
@@ -66,6 +70,7 @@ public sealed class UnlinkUserContactHandler(
         {
             TenantId = tenantContextAccessor.Current.TenantId,
             UserId = request.UserId,
+            ContactId = previousContactId,
             UnlinkedAtUtc = unlinkedAt,
             Reason = "manual"
         }, cancellationToken);

@@ -133,4 +133,16 @@ public sealed class Contact : AuditableEntity<ContactId>, IAggregateRoot
         MergedIntoId = primaryContactId;
         AddDomainEvent(new ContactMergedEvent(primaryContactId, Id));
     }
+
+    /// <summary>
+    /// Invariant guard invoked before GDPR hard-deletion. A merged contact must not be
+    /// erased directly — the merge target still references this row and its history is
+    /// consolidated there. Throws <see cref="DomainException"/> so the rule originates
+    /// from the domain layer (not infrastructure).
+    /// </summary>
+    public void EnsureCanBeErased()
+    {
+        if (Status == ContactStatus.Merged)
+            throw new DomainException("lockey_contacts_error_gdpr_delete_merged_contact");
+    }
 }

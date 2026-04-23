@@ -55,10 +55,28 @@ public static class ContactImportParser
             return [];
         csv.ReadHeader();
 
-        return csv.HeaderRecord?
+        var headers = csv.HeaderRecord?
             .Select(h => h?.Trim() ?? string.Empty)
             .Where(h => !string.IsNullOrEmpty(h))
             .ToList() ?? [];
+
+        EnsureNoDuplicateHeaders(headers);
+        return headers;
+    }
+
+    /// <summary>
+    /// Rejects header lists containing two or more entries that differ only in case
+    /// (e.g. <c>Email</c> and <c>email</c>) — they would collide in the
+    /// case-insensitive row dictionary and silently lose data.
+    /// </summary>
+    private static void EnsureNoDuplicateHeaders(IReadOnlyList<string> headers)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var header in headers)
+        {
+            if (!seen.Add(header))
+                throw new FormatException("lockey_contacts_import_error_duplicate_headers");
+        }
     }
 
     private static List<IReadOnlyDictionary<string, string?>> ParseCsvRows(
@@ -76,6 +94,8 @@ public static class ContactImportParser
         var headers = csv.HeaderRecord?
             .Select(h => h?.Trim() ?? string.Empty)
             .ToArray() ?? [];
+
+        EnsureNoDuplicateHeaders(headers.Where(h => !string.IsNullOrEmpty(h)).ToList());
 
         var result = new List<IReadOnlyDictionary<string, string?>>();
         var skipped = 0;
@@ -129,6 +149,7 @@ public static class ContactImportParser
             if (!string.IsNullOrEmpty(value))
                 headers.Add(value);
         }
+        EnsureNoDuplicateHeaders(headers);
         return headers;
     }
 
@@ -151,6 +172,8 @@ public static class ContactImportParser
             if (!string.IsNullOrEmpty(value))
                 headers.Add((value, col));
         }
+
+        EnsureNoDuplicateHeaders(headers.Select(h => h.Name).ToList());
 
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
         var result = new List<IReadOnlyDictionary<string, string?>>();

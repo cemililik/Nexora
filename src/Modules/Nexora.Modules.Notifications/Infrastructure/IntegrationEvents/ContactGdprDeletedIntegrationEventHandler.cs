@@ -32,9 +32,11 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         if (!Guid.TryParse(@event.TenantId, out var tenantId))
         {
-            logger.LogError(
-                "Invalid TenantId {TenantId} in ContactGdprDeletedIntegrationEvent {EventId}",
-                @event.TenantId, @event.EventId);
+            logger.LogWarning(
+                "GDPR erasure event {EventId} has invalid TenantId {TenantId}; marking processed to prevent redelivery loop",
+                @event.EventId, @event.TenantId);
+            inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
+            await dbContext.SaveChangesAsync(ct);
             return;
         }
 
@@ -82,8 +84,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
 
+        // Do NOT log @event.Reason — it is free-text user input and can contain PII
+        // (names, emails, phone numbers). EventId + ContactId + counts are sufficient for audit.
         logger.LogInformation(
-            "GDPR erasure for contact {ContactId} in tenant {TenantId}: scrubbed {RecipientCount} recipients across {NotificationCount} notifications (mode={Mode}, reason={Reason})",
-            @event.ContactId, tenantId, scrubbedRecipients, notifications.Count, @event.Mode, @event.Reason);
+            "GDPR erasure event {EventId} for contact {ContactId} in tenant {TenantId}: scrubbed {RecipientCount} recipients across {NotificationCount} notifications (mode={Mode})",
+            @event.EventId, @event.ContactId, tenantId, scrubbedRecipients, notifications.Count, @event.Mode);
     }
 }

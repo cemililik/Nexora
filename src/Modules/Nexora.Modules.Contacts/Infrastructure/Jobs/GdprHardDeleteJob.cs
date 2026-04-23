@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.Text.Json;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Contacts.Domain.Entities;
@@ -8,7 +10,6 @@ using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Events;
-using Nexora.SharedKernel.Domain.Exceptions;
 
 namespace Nexora.Modules.Contacts.Infrastructure.Jobs;
 
@@ -33,6 +34,8 @@ public sealed record GdprHardDeleteParams : JobParams
 /// Writes a <see cref="GdprErasureAudit"/> row and enqueues the
 /// <see cref="ContactGdprDeletedIntegrationEvent"/> atomically via the outbox.
 /// </summary>
+[Queue("critical")]
+[DisplayName("contacts:gdpr-hard-delete")]
 public sealed class GdprHardDeleteJob(
     ITenantContextAccessor tenantContextAccessor,
     ContactsDbContext dbContext,
@@ -59,8 +62,8 @@ public sealed class GdprHardDeleteJob(
             return;
         }
 
-        if (contact.Status == ContactStatus.Merged)
-            throw new DomainException("lockey_contacts_error_gdpr_delete_merged_contact");
+        // Invariant enforced on the entity so the domain rule remains authoritative.
+        contact.EnsureCanBeErased();
 
         var supportsTransactions = dbContext.Database.IsRelational();
         var transaction = supportsTransactions

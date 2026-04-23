@@ -276,7 +276,14 @@ export default function ImportPage() {
               </label>
               <Select
                 value={format}
-                onValueChange={(val: string) => setFormat(val as ExportFormat)}
+                onValueChange={(val: string) => {
+                  setFormat(val as ExportFormat);
+                  // Reset any previously selected file — its content-type may
+                  // no longer match the newly chosen format.
+                  setSelectedFile(null);
+                  setFileName('');
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                }}
               >
                 <SelectTrigger className="mt-1">
                   <SelectValue
@@ -410,7 +417,7 @@ export default function ImportPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <dl className="grid grid-cols-2 gap-4 text-sm">
+            <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-muted-foreground">
                   {t('lockey_contacts_import_validation_total_rows', {

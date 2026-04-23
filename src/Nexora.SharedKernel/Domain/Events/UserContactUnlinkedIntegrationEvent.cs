@@ -9,6 +9,12 @@ public sealed record UserContactUnlinkedIntegrationEvent : IntegrationEventBase
     /// <summary>The Identity user that was unlinked.</summary>
     public required Guid UserId { get; init; }
 
+    /// <summary>
+    /// The previously linked Contact identifier. Nullable because the unlink may have fired
+    /// from a cleanup path where no prior link existed at the moment of publication.
+    /// </summary>
+    public Guid? ContactId { get; init; }
+
     /// <summary>UTC timestamp when the unlink occurred.</summary>
     public required DateTime UnlinkedAtUtc { get; init; }
 

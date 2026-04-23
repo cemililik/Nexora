@@ -72,7 +72,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         (await _dbContext.Users.FindAsync(u3.Id))!.ContactId.Should().Be(otherContact);
 
         await _outbox.Received(2).EnqueueAsync(
-            Arg.Is<UserContactUnlinkedIntegrationEvent>(e => e.Reason == "gdpr_erasure"),
+            Arg.Is<UserContactUnlinkedIntegrationEvent>(e =>
+                e.Reason == "gdpr_erasure" && e.ContactId == contactId),
             Arg.Any<CancellationToken>());
 
         (await _dbContext.InboxMessages.AnyAsync(m => m.EventId == @event.EventId))

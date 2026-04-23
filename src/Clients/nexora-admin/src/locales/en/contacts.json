@@ -510,7 +510,6 @@
   "lockey_contacts_merge_completed": "Contacts merged successfully.",
   "lockey_contacts_gdpr_delete_completed": "Contact data deleted (GDPR).",
   "lockey_contacts_gdpr_erasure_enqueued": "GDPR erasure has been scheduled. The contact will be permanently deleted shortly.",
-  "lockey_contacts_gdpr_erasure_already_processed": "A GDPR erasure for this contact was just processed. Please wait a moment before retrying.",
   "lockey_contacts_gdpr_erasure_completed": "GDPR erasure completed for this contact.",
   "lockey_contacts_gdpr_erasure_failed": "GDPR erasure failed. Operations has been notified.",
   "lockey_contacts_import_job_started": "Import started. You will be notified when complete.",
@@ -546,7 +545,6 @@
   "lockey_contacts_error_custom_field_name_duplicate": "A custom field with this name already exists.",
   "lockey_contacts_error_custom_field_value_required": "This custom field is required.",
   "lockey_contacts_error_invalid_tenant_context": "Invalid tenant context.",
-  "lockey_contacts_error_invalid_user_context": "GDPR erasure requires an authenticated user context.",
   "lockey_contacts_error_invalid_organization_context": "Invalid organization context.",
 
   "lockey_contacts_validation_first_name_required": "First name is required.",

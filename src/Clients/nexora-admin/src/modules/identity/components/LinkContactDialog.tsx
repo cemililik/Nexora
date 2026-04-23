@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -27,10 +27,17 @@ export interface LinkContactDialogProps {
 export function LinkContactDialog({ userId, open, onOpenChange }: LinkContactDialogProps) {
   const { t } = useTranslation('identity');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Debounce search input to avoid firing a query on every keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search), 250);
+    return () => clearTimeout(id);
+  }, [search]);
+
   const contactsQuery = useContacts(
-    { page: 1, pageSize: 20, search: search.trim() || undefined },
+    { page: 1, pageSize: 20, search: debouncedSearch.trim() || undefined },
     { enabled: open },
   );
   const linkContact = useLinkContact(userId);
@@ -39,6 +46,7 @@ export function LinkContactDialog({ userId, open, onOpenChange }: LinkContactDia
 
   const reset = () => {
     setSearch('');
+    setDebouncedSearch('');
     setSelectedId(null);
   };
 
