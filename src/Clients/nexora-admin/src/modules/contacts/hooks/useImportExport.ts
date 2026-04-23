@@ -23,6 +23,10 @@ export const importKeys = {
   job: (jobId: string) => ['contacts', 'import', jobId] as const,
 };
 
+export const exportKeys = {
+  job: (jobId: string) => ['contacts', 'export', jobId] as const,
+};
+
 export function useGenerateImportUploadUrl() {
   const { handleApiError } = useApiError();
 
@@ -96,6 +100,24 @@ export function useStartExport() {
       toast.success(t('lockey_contacts_toast_export_started'));
     },
     onError: (err) => handleApiError(err),
+  });
+}
+
+export function useExportStatus(jobId: string) {
+  return useQuery({
+    queryKey: exportKeys.job(jobId),
+    queryFn: () =>
+      api.get<ExportJobDto>(
+        `/contacts/contacts/export/${encodeURIComponent(jobId)}`,
+      ),
+    enabled: !!jobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'Processing' || status === 'Pending') {
+        return 2000;
+      }
+      return false;
+    },
   });
 }
 

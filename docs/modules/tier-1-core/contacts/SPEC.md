@@ -496,6 +496,55 @@ sequenceDiagram
 **`ImportJob.ColumnMappingJson`** (nullable) persists the source → target mapping so
 the background job can re-apply it idempotently on retry.
 
+### UC-CON-004b: Export Contacts
+
+Implemented in T-003 (Phase 1.5.6). Admin submits an export request via
+`nexora-admin` that selects fields, date range, and filters; the API persists an
+`ExportJob`, enqueues a Hangfire job, and emits a notification + integration event
+when the file is ready in MinIO.
+
+- **Actor**: User with `contacts.contacts.read` permission
+- **Supported formats**: CSV (UTF-8), XLSX (Excel), vCard 3.0 (RFC 2426, `.vcf`)
+- **Business rules**:
+  - Field selection: core fields allowlist (firstName, lastName, email, phone,
+    mobile, website, companyName, taxId, title, type, status, source, language,
+    currency, createdAt, updatedAt) + custom field IDs.
+  - Date range optionally applied against `CreatedAt` or `UpdatedAt` (user picks).
+  - Locale-aware formatting for dates and numbers via `ILocaleContext`.
+  - Hangfire job runs on the `bulk` queue; descriptor `contacts:bulk-export`.
+  - Completion emits `ContactExportCompletedIntegrationEvent` via outbox and an
+    in-app notification with template key `lockey_contacts_notification_export_ready`.
+  - Download URL is a short-lived presigned MinIO URL generated on-demand when
+    `GET /export/{jobId}` returns a `Completed` job.
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant UI as nexora-admin<br/>(ExportPage)
+    participant API as Contacts API
+    participant Hangfire
+    participant MinIO
+    participant Notif as Notifications
+
+    Admin->>UI: Pick format, fields, date range, filters
+    UI->>API: POST /export { format, fields, customFieldIds, dateFrom, dateTo, dateField, statusFilter, typeFilter }
+    API->>API: Persist ExportJob (Queued)
+    API->>Hangfire: Enqueue ContactExportJob (queue: bulk)
+    API-->>UI: { jobId, status: Queued }
+    UI->>API: GET /export/{jobId} (poll 2s)
+    Hangfire->>MinIO: PUT generated file
+    Hangfire->>Notif: ContactExportCompletedIntegrationEvent (outbox)
+    API-->>UI: { status: Completed, downloadUrl }
+    Admin->>MinIO: GET downloadUrl (presigned)
+```
+
+**Endpoints:**
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| POST | `/api/v1/contacts/contacts/export` | Start an export job | `contacts.contacts.read` |
+| GET | `/api/v1/contacts/contacts/export/{jobId}` | Job status + presigned `downloadUrl` when complete | `contacts.contacts.read` |
+
 ### UC-CON-005: KVKK/GDPR Data Export & Deletion
 - **Actor**: Contact (via portal) or Admin
 - **Flow**:

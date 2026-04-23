@@ -6,13 +6,17 @@
 
 ## Active task
 
-**T-003 — Contact export improvements** (Phase 1.5.6, Milestone C). Owner: cemililik. Status: **In Progress**.
-
-- Plan: [T-003.md §Implementation plan](../analysis/tasks/phase-1.5/T-003.md)
-- Scope: ExportJob entity + field picker + date range + vCard format + MinIO upload + ILocaleContext formatting + Notifications integration + status polling.
-- Execution split: backend first → commit → frontend (to avoid stream stalls).
+_None. All Phase 1.5.6 Contacts tasks are awaiting maintainer review._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-003 — Contact export improvements** (Phase 1.5.6, Milestone C). Status: **In Review**.
+ExportJob entity + Hangfire `contacts:bulk-export` + CSV/XLSX/vCard 3.0 generators + MinIO
+presigned downloads + `ILocaleContext` formatting + `ContactExportCompletedIntegrationEvent`
+via outbox + status polling endpoint (`GET /export/{jobId}`). Frontend: `ExportFieldPicker`
+checkbox list, extended `ExportPage` (format/fields/date range/filters + status panel with
+download), `useExportStatus` polling hook, en + tr locale parity, SPEC §UC-CON-004b with
+Mermaid sequence. 33 backend tests + 6 frontend tests green; lint clean.
 
 **T-002 — Contact import field-mapping wizard** (Phase 1.5.6, Milestone C). Status: **In Review**.
 3-step wizard (upload/preview → mapping → validate → confirm), dynamic parser, `IContactDuplicateMatcher`
