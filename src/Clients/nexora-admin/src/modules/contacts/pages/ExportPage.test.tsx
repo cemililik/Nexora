@@ -93,7 +93,7 @@ describe('ExportPage', () => {
     await user.click(screen.getByText('lockey_contacts_export_button_submit'));
 
     expect(startExportMutate).toHaveBeenCalledTimes(1);
-    const [body] = startExportMutate.mock.calls[0];
+    const [body] = startExportMutate.mock.calls[0]!;
     expect(body).toEqual({ format: 'csv' });
   });
 
@@ -110,13 +110,13 @@ describe('ExportPage', () => {
     // Set dateFrom and dateTo via inputs.
     const dateInputs = document.querySelectorAll<HTMLInputElement>('input[type="date"]');
     expect(dateInputs.length).toBe(2);
-    await user.type(dateInputs[0], '2026-01-01');
-    await user.type(dateInputs[1], '2026-01-31');
+    await user.type(dateInputs[0]!, '2026-01-01');
+    await user.type(dateInputs[1]!, '2026-01-31');
 
     await user.click(screen.getByText('lockey_contacts_export_button_submit'));
 
     expect(startExportMutate).toHaveBeenCalledTimes(1);
-    const [body] = startExportMutate.mock.calls[0];
+    const [body] = startExportMutate.mock.calls[0]!;
     expect(body.format).toBe('csv');
     expect(body.fields).toEqual(['email']);
     expect(body.dateField).toBe('CreatedAt');
