@@ -377,7 +377,7 @@ reads the sub-object from the license cache.
 - [ ] Plan upgrade/downgrade
 - [ ] NMP frontend (tenant list, subscriptions, billing)
 - [ ] **Compliance caps editor** (ADR-0025): per-tenant toggles for `gdpr.hard_delete.enabled`,
-      `audit.retention.days`, `data.residency.region`, … with `allowed`/`forced` flags;
+      `audit.retention.days`, `data.residency.region`, … with `allowed`/`forced`/`value` flags;
       changes publish via the existing `PUT /api/internal/tenants/{id}/entitlements`
       channel under `compliance.caps`. Platform-scope permission:
       `platform.compliance.policy_manage`.
@@ -386,8 +386,8 @@ reads the sub-object from the license cache.
       since T-019; NMP.2 only adds the non-null implementation + DI swap in SaaS hosts.)
 - [ ] **Compliance-resolver metrics** deferred from T-019 land here so the metric schema
       can be finalized alongside the NMP cap channel:
-  `nexora_compliance_config_resolution_count{layer}` and
-  `nexora_compliance_policy_changes_total{key,scope,action}`. See
+  `nexora_compliance_config_resolution_count{layer=cap|tenant|org}` and
+  `nexora_compliance_policy_changes_total{key,scope}`. See
   `roadmap/phases/phase-NMP-track.md §NMP.2` for full bullet.
 
 ### NMP.3: Admin Panel Adaptation (After Phase 2 modules exist)

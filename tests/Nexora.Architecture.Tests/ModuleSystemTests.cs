@@ -1,4 +1,6 @@
+using Nexora.Infrastructure.Authorization;
 using Nexora.SharedKernel.Abstractions.Modules;
+using Nexora.SharedKernel.Authorization;
 
 namespace Nexora.Architecture.Tests;
 
@@ -59,6 +61,43 @@ public sealed class ModuleSystemTests
 
         moduleTypes.Should().NotBeEmpty("At least one module should be discoverable");
         moduleTypes.Should().Contain(t => t.Name == "IdentityModule");
+    }
+
+    /// <summary>
+    /// Behavioural counterpart to <c>PermissionRegistryBoundaryTests</c>: instantiates
+    /// every module that ships in the host and drives its <c>OnStartupAsync</c> through
+    /// a real <see cref="InMemoryPermissionRegistry"/>, then asserts that each module
+    /// contributed at least one <see cref="PermissionDefinition"/> whose <c>Module</c>
+    /// field matches the module's declared <c>Name</c>. Enforces T-020 / ADR-004 /
+    /// permissions.md §3 at runtime (not just by source-text regex).
+    /// </summary>
+    [Fact]
+    public async Task AllModules_MustRegisterAtLeastOnePermission()
+    {
+        var registry = new InMemoryPermissionRegistry();
+        var modules = new IModule[]
+        {
+            new Modules.Identity.IdentityModule(),
+            new Modules.Contacts.ContactsModule(),
+            new Modules.Documents.DocumentsModule(),
+            new Modules.Notifications.NotificationsModule(),
+            new Modules.Reporting.ReportingModule(),
+            new Modules.Audit.AuditModule(),
+        };
+
+        foreach (var module in modules)
+        {
+            await module.OnStartupAsync(registry, CancellationToken.None);
+        }
+
+        var missing = modules
+            .Where(m => registry.GetByModule(m.Name).Count == 0)
+            .Select(m => m.Name)
+            .ToArray();
+
+        missing.Should().BeEmpty(
+            "every module must register at least one permission via IPermissionRegistry in OnStartupAsync — see ADR-004 / permissions.md §3. Offenders: " +
+            string.Join(", ", missing));
     }
 
     [Fact]

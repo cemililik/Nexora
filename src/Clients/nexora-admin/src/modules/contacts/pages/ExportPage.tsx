@@ -26,6 +26,21 @@ import type {
 
 const ALL_SENTINEL = '__all__';
 
+/**
+ * Accepts http(s) absolute URLs and safe relative paths; rejects javascript:, data:,
+ * and anything else that could execute script on click. Used before assigning
+ * `anchor.href` on the download button.
+ */
+function isSafeDownloadUrl(url: string): boolean {
+  if (url.startsWith('/') && !url.startsWith('//')) return true;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 export default function ExportPage() {
   const { t, i18n } = useTranslation('contacts');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
@@ -167,13 +182,19 @@ export default function ExportPage() {
                   // suppress window.open in async callbacks (post-poll), but an anchor click
                   // triggered from a direct user gesture is allowed in every major browser.
                   if (!job.downloadUrl) return;
+                  if (!isSafeDownloadUrl(job.downloadUrl)) {
+                    // Defensive guard — server already issues a presigned URL on its own
+                    // bucket, but a stored/poisoned value containing javascript: or other
+                    // dangerous schemes must never be navigated to.
+                    return;
+                  }
                   const anchor = document.createElement('a');
                   anchor.href = job.downloadUrl;
                   anchor.download = '';
                   anchor.rel = 'noopener noreferrer';
                   document.body.appendChild(anchor);
                   anchor.click();
-                  document.body.removeChild(anchor);
+                  anchor.remove();
                 }}
               >
                 {t('lockey_contacts_export_button_download')}

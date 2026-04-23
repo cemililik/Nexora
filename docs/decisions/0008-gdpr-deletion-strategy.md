@@ -19,7 +19,7 @@ GDPR Article 17 ("Right to Erasure") requires physical removal of personal data 
 > resolution (platform cap → tenant default → org override) implemented in T-019.
 > Runtime semantics of the anonymize vs. hard-delete branch are unchanged — only the
 > configuration source moves from `ITenantConfiguration` to `IConfigurationResolver`.
-> A new tenant-scope permission `contacts.gdpr.settings.manage` gates toggling; the
+> A new tenant-scope permission `contacts.gdpr.settings_manage` gates toggling; the
 > existing `contacts.gdpr.delete` continues to gate executing. See ADR-0025 and T-019.
 
 We will implement GDPR deletion in **two phases**:

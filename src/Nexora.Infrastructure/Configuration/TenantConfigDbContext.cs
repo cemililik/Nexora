@@ -49,7 +49,13 @@ public sealed class TenantConfigDbContext(
             e.Property(c => c.Key).HasMaxLength(256).IsRequired();
             e.Property(c => c.OldValue).HasColumnType("jsonb");
             e.Property(c => c.NewValue).HasColumnType("jsonb");
-            e.Property(c => c.Reason).HasMaxLength(500);
+            e.Property(c => c.Reason).HasMaxLength(500).IsRequired();
+
+            // Compliance review queries filter by key + time window, often within an
+            // org. This composite covers the dominant access pattern; timestamp is
+            // descending so the recent-rows scan (LIMIT N) is a backwards index walk.
+            e.HasIndex(c => new { c.OrganizationId, c.Key, c.ChangedAtUtc })
+                .IsDescending(false, false, true);
         });
     }
 }

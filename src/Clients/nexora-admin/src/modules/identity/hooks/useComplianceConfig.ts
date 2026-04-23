@@ -34,11 +34,15 @@ export function useSetComplianceOverride(key: string) {
         `/settings/compliance/${encodeURIComponent(key)}`,
         body,
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complianceKeys.all });
-      toast.success(t('lockey_settings_compliance_override_saved'));
+    onSuccess: async () => {
+      // Return the invalidation promise so the mutation settles after the cache refresh
+      // and subsequent renders see fresh data; avoids floating-promise lint noise.
+      await queryClient.invalidateQueries({ queryKey: complianceKeys.all });
+      toast.success(t('lockey_identity_compliance_override_saved'));
     },
-    onError: (err) => handleApiError(err),
+    onError: (err) => {
+      handleApiError(err);
+    },
   });
 }
 
@@ -52,10 +56,12 @@ export function useClearComplianceOverride(key: string) {
       api.delete<ComplianceKeySummary>(
         `/settings/compliance/${encodeURIComponent(key)}?reason=${encodeURIComponent(reason)}`,
       ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complianceKeys.all });
-      toast.success(t('lockey_settings_compliance_override_cleared'));
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: complianceKeys.all });
+      toast.success(t('lockey_identity_compliance_override_cleared'));
     },
-    onError: (err) => handleApiError(err),
+    onError: (err) => {
+      handleApiError(err);
+    },
   });
 }

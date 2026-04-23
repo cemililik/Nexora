@@ -108,7 +108,7 @@ public sealed class ValidateContactImportHandler(
         var targetToSource = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (source, target) in request.ColumnMapping)
         {
-            if (string.IsNullOrWhiteSpace(target) || target == "__skip__")
+            if (string.IsNullOrWhiteSpace(target) || target == ImportColumnMapping.SkipSentinel)
                 continue;
             targetToSource[target] = source;
         }

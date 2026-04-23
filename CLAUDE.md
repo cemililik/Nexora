@@ -167,9 +167,10 @@ Nexora.Modules.{ModuleName}/
 
 ### Database
 - PostgreSQL 17, schema-per-tenant
-- **Migration-free schema evolution** — no EF Core migration files. Tables are created on first startup via `IRelationalDatabaseCreator`; incremental changes go into `ApplySchemaUpdatesAsync` in `DevelopmentSeed.cs` as idempotent SQL (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`). See `docs/standards/schema-migration.md`.
-- Strongly-typed IDs (never raw Guid/int in domain)
-- Schema changes are additive-only in production (no `DROP COLUMN`, no type/nullability tightening)
+- **Development schema evolution** — no EF Core migration files yet. Tables are created on first startup via `IRelationalDatabaseCreator`; incremental changes go into `ApplySchemaUpdatesAsync` in `DevelopmentSeed.cs` as idempotent SQL (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`). **`DevelopmentSeed` is guarded by `app.Environment.IsDevelopment()` and must never run against production.** See [`docs/standards/schema-migration.md`](docs/standards/schema-migration.md).
+- **Production schema evolution strategy: TBD** — tracked in a forthcoming ADR. Until that ADR lands, production DDL must not travel through `ApplySchemaUpdatesAsync`; the archived reference at [`docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md`](docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md) is the interim pointer.
+- Strongly-typed IDs (never raw Guid/int in domain).
+- Schema changes are additive-only (no `DROP COLUMN`, no type/nullability tightening) in both dev and production — the dev mechanism enforces this, and the production ADR will inherit the same rule.
 
 ## Tech Stack Quick Reference
 - Backend: .NET 10, ASP.NET Core, EF Core, MediatR, FluentValidation, Mapster

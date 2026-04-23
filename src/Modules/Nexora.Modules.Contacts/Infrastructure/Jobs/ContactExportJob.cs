@@ -94,15 +94,17 @@ public sealed class ContactExportJob(
             return;
         }
 
-        // Idempotency guard — only skip if already completed. Processing is left resumable
-        // so Hangfire retries after a mid-job crash can pick up where the previous attempt left
-        // off; otherwise a crashed Processing row would deadlock all subsequent retries.
-        if (exportJob.Status == ExportJobStatus.Completed)
+        // Idempotency guard — skip Completed or Failed terminal states; Processing means
+        // a mid-job Hangfire retry and must resume without re-running MarkProcessing,
+        // re-emitting the outbox event or re-sending the completion notification.
+        if (exportJob.Status is ExportJobStatus.Completed or ExportJobStatus.Failed)
         {
             logger.LogWarning(
-                "ExportJob {ExportJobId} already completed, skipping", exportJobId);
+                "ExportJob {ExportJobId} already in terminal state {Status}, skipping",
+                exportJobId, exportJob.Status);
             return;
         }
+        var startedFromQueued = exportJob.Status == ExportJobStatus.Queued;
 
         List<Contact> contacts;
         Dictionary<Guid, List<ContactCustomField>> customFieldsByContactId;
@@ -209,40 +211,48 @@ public sealed class ContactExportJob(
 
         exportJob.MarkCompleted(storageKey);
 
-        await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
+        // Outbox + completion notification MUST fire exactly once — only when this run
+        // performed the Queued→Processing→Completed transition. On a Hangfire resume
+        // (status was already Processing when we entered), the previous attempt may
+        // already have reached outbox.EnqueueAsync before crashing; re-emitting would
+        // produce duplicate events and duplicate notifications.
+        if (startedFromQueued)
         {
-            TenantId = parameters.TenantId,
-            JobId = exportJobId.Value,
-            TotalRows = totalRows,
-            Format = parameters.Format.ToLowerInvariant(),
-            StorageKey = storageKey,
-            TriggeredByUserId = parameters.TriggeredByUserId,
-            CompletedAtUtc = DateTime.UtcNow
-        }, ct);
+            await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
+            {
+                TenantId = parameters.TenantId,
+                JobId = exportJobId.Value,
+                TotalRows = totalRows,
+                Format = parameters.Format.ToLowerInvariant(),
+                StorageKey = storageKey,
+                TriggeredByUserId = parameters.TriggeredByUserId,
+                CompletedAtUtc = DateTime.UtcNow
+            }, ct);
 
-        if (parameters.TriggeredByUserId is { } userId)
-        {
-            try
+            if (parameters.TriggeredByUserId is { } userId)
             {
-                await notificationService.SendAsync(new SendNotificationRequest(
-                    TemplateCode: "lockey_contacts_notification_export_ready",
-                    Channel: "in_app",
-                    ContactId: userId,
-                    RecipientAddress: userId.ToString(),
-                    Variables: new Dictionary<string, string>
-                    {
-                        ["jobId"] = exportJobId.Value.ToString(),
-                        ["format"] = parameters.Format.ToLowerInvariant(),
-                        ["totalRows"] = totalRows.ToString(CultureInfo.InvariantCulture)
-                    },
-                    OrganizationId: orgId.ToString()), ct);
-            }
-            catch (InvalidOperationException ex)
-            {
-                logger.LogWarning(
-                    ex,
-                    "Failed to send export-ready notification for job {ExportJobId}; export itself succeeded",
-                    exportJobId);
+                try
+                {
+                    await notificationService.SendAsync(new SendNotificationRequest(
+                        TemplateCode: "lockey_contacts_notification_export_ready",
+                        Channel: "in_app",
+                        ContactId: userId,
+                        RecipientAddress: userId.ToString(),
+                        Variables: new Dictionary<string, string>
+                        {
+                            ["jobId"] = exportJobId.Value.ToString(),
+                            ["format"] = parameters.Format.ToLowerInvariant(),
+                            ["totalRows"] = totalRows.ToString(CultureInfo.InvariantCulture)
+                        },
+                        OrganizationId: orgId.ToString()), ct);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    logger.LogWarning(
+                        ex,
+                        "Failed to send export-ready notification for job {ExportJobId}; export itself succeeded",
+                        exportJobId);
+                }
             }
         }
 

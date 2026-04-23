@@ -26,7 +26,7 @@ public static class ImportExportEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<ImportUploadUrlDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<ImportUploadUrlDto>.Fail(result.Error!));
-        });
+        }).RequireAuthorization("contacts.import.execute");
 
         group.MapPost("/import/preview", async (PreviewImportRequest request, ISender sender, CancellationToken ct) =>
         {

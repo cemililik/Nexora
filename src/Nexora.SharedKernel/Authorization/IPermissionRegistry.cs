@@ -40,6 +40,13 @@ public interface IPermissionRegistry
     /// <summary>Returns <see langword="true"/> when <paramref name="name"/> has been registered.</summary>
     bool IsRegistered(string name);
 
+    /// <summary>
+    /// O(1) lookup by canonical name. Returns <see langword="true"/> and populates
+    /// <paramref name="definition"/> when the name is registered; otherwise returns
+    /// <see langword="false"/> and leaves <paramref name="definition"/> null.
+    /// </summary>
+    bool TryGetByName(string name, out PermissionDefinition? definition);
+
     /// <summary>All registered definitions, in registration order.</summary>
     IReadOnlyList<PermissionDefinition> GetAll();
 

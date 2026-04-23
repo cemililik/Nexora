@@ -114,7 +114,7 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 ## Pending decisions
 
 None currently open. ADR-0025 (org-scoped compliance config) was promoted to `Accepted`
-on 2026-04-23; T-019 unblocked and active.
+on 2026-04-23; T-019 unblocked, implementation shipped, now In Review (see Prior active tasks).
 
 The three Phase-1 foundation ADRs are **Accepted** (maintainer promoted 2026-04-22):
 

@@ -141,7 +141,7 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
 - Per-org compliance policy for multi-jurisdictional tenants.
 - Platform operator keeps a hard cap (no org can silently disable hard-delete where NMP
   requires it for EU tenants; no tenant admin can override a platform force-enable).
-- Separation of duties: new permission `contacts.gdpr.settings.manage` gates toggling;
+- Separation of duties: new permission `contacts.gdpr.settings_manage` gates toggling;
   existing `contacts.gdpr.delete` continues to gate executing. Holders of one do not
   automatically hold the other.
 - Admin panel survives the NMP migration: tenant toggles were never the intended long-term
@@ -179,21 +179,29 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
   NewValue jsonb, ChangedByUserId uuid, ChangedAtUtc timestamptz, Reason varchar(500) NULL)`.
   Every write through `IConfigurationResolver.SetAsync` creates an audit row atomically
   with the update in the same transaction.
-- **New permission:** `contacts.gdpr.settings.manage` (tenant-scope, seeded in
-  `IdentityModuleMigration`). Granted to Platform Admin and Tenant Admin by default;
-  **not** granted to Tenant User.
-- **New permission (platform-scope):** `platform.compliance.policy.manage` — NMP-side,
+- **New permission:** `contacts.gdpr.settings_manage` (tenant-scope, seeded by the
+  Identity module via `IPermissionRegistry` — underscore keeps the canonical
+  `{module}.{resource}.{action}` three-part form per permissions.md §1). Granted to
+  Platform Admin by default; **not** granted to Tenant User.
+- **New permission (platform-scope):** `platform.compliance.policy_manage` — NMP-side,
   controls who can set caps. Scope = `Platform` per ADR-0016 permission-tier model.
 - **Interface additions in `Nexora.SharedKernel.Abstractions.Configuration`:**
+
   ```csharp
   public interface IConfigurationResolver
   {
       Task<T?> GetAsync<T>(string key, CancellationToken ct = default);
       Task SetOrgOverrideAsync<T>(string key, T value, string reason, CancellationToken ct = default);
       Task ClearOrgOverrideAsync(string key, string reason, CancellationToken ct = default);
+      Task<ResolvedConfiguration<T>> GetResolvedAsync<T>(string key, CancellationToken ct = default);
   }
 
-  public sealed record ComplianceCap(bool Allowed, bool Forced);
+  // `Value` carries the cap's own serialized value when `Forced=true` (it wins the
+  // precedence ladder) OR as a last-resort default when no tenant/org layer supplies
+  // one. `null` means the cap only constrains whether an override may be set (the
+  // common case). `ComplianceCap.Permissive = (Allowed: true, Forced: false, Value: null)`
+  // is returned by `NullComplianceCapProvider` in dev / on-prem pre-NMP.
+  public sealed record ComplianceCap(bool Allowed, bool Forced, string? Value = null);
 
   public interface IComplianceCapProvider
   {
@@ -210,14 +218,14 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
   `ITenantContextAccessor`. Callers that MUST bypass org scope (rare, e.g. platform jobs
   that iterate tenants) get a new `ITenantConfiguration.GetTenantDefaultAsync<T>(key)` method
   that explicitly skips the org layer.
-- **Admin panel UI:** new page under `/settings/organization/compliance` — lists each
+- **Admin panel UI:** new page under `/identity/settings/compliance` — lists each
   compliance key, shows (tenant default | org override | effective value) with cap badge
-  (🔒 forced, 🚫 blocked, ⚙️ configurable). Requires `contacts.gdpr.settings.manage`.
+  (🔒 forced, 🚫 blocked, ⚙️ configurable). Requires `contacts.gdpr.settings_manage`.
 - **NMP UI:** new "Compliance caps" section under tenant detail page (NMP.2 milestone
-  extension). Requires `platform.compliance.policy.manage`.
+  extension). Requires `platform.compliance.policy_manage`.
 - **Rollout:**
   1. Phase 1.5.6 T-019 (this ADR's implementation task): resolver, new tables, admin UI,
-     `contacts.gdpr.settings.manage` permission, `NullComplianceCapProvider`. T-004's
+     `contacts.gdpr.settings_manage` permission, `NullComplianceCapProvider`. T-004's
      `RequestGdprDeleteHandler` reads through `IConfigurationResolver` — feature flag
      semantics unchanged for existing users.
   2. NMP.1 (parallel track): `NmpComplianceCapProvider` + NMP compliance caps editor.
@@ -225,7 +233,11 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
 - **Observability:**
   - Metric: `nexora_compliance_config_resolution_count{layer=cap|tenant|org}` — counts which layer won.
   - Metric: `nexora_compliance_policy_changes_total{key,scope}` — policy change rate.
-  - Log (`Information`): every `SetOrgOverrideAsync` with `{Key, OldValue, NewValue, UserId, OrgId, Reason}`.
+  - Log (`Information`): every `SetOrgOverrideAsync` with `{Key, TenantId, OrgId}` plus the
+    policy-audit row id so operators can join to the forensic trail. The free-text `Reason`
+    and the raw `OldValue`/`NewValue` stay in the audit table only — never in application
+    logs. `ChangedByUserId` is captured in audit and omitted from logs per the observability
+    standard's no-PII rule.
 - **Testing:**
   - Unit: resolver precedence (cap.forced > org > tenant > cap.default).
   - Unit: policy audit row written for every write.

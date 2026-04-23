@@ -43,7 +43,10 @@ public static class ComplianceConfigEndpoints
         var items = new List<ComplianceKeySummaryDto>(ManagedKeys.Length);
         foreach (var key in ManagedKeys)
         {
-            var resolved = await resolver.GetResolvedAsync<bool>(key, ct);
+            // Resolve with bool? so the summary can distinguish "unset" (null) from
+            // "set to false" — the admin UI renders these differently ("Not set" vs
+            // "Disabled").
+            var resolved = await resolver.GetResolvedAsync<bool?>(key, ct);
             items.Add(ToSummary(key, resolved));
         }
 
@@ -58,7 +61,7 @@ public static class ComplianceConfigEndpoints
         if (!IsManagedKey(key))
             return NotFound(key);
 
-        var resolved = await resolver.GetResolvedAsync<bool>(key, ct);
+        var resolved = await resolver.GetResolvedAsync<bool?>(key, ct);
         return Results.Ok(ApiEnvelope<ComplianceKeySummaryDto>.Success(ToSummary(key, resolved)));
     }
 
@@ -66,24 +69,17 @@ public static class ComplianceConfigEndpoints
         string key,
         SetComplianceOverrideRequest request,
         IConfigurationResolver resolver,
-        ILogger<ComplianceConfigEndpointsMarker> logger,
+        ILoggerFactory loggerFactory,
         CancellationToken ct)
     {
         if (!IsManagedKey(key))
             return NotFound(key);
 
-        if (string.IsNullOrWhiteSpace(request.Reason))
-        {
-            return Results.BadRequest(ApiEnvelope<object>.Fail(new Error(
-                LocalizedMessage.Of("lockey_validation_required",
-                    new Dictionary<string, string> { ["field"] = "Reason" }))));
-        }
-        if (request.Reason.Length > 500)
-        {
-            return Results.BadRequest(ApiEnvelope<object>.Fail(new Error(
-                LocalizedMessage.Of("lockey_validation_max_length",
-                    new Dictionary<string, string> { ["field"] = "Reason", ["max"] = "500" }))));
-        }
+        var logger = loggerFactory.CreateLogger("Nexora.Host.Endpoints.ComplianceConfig");
+
+        // Minimal APIs don't auto-invoke FluentValidation; Set and Clear share the same
+        // reason-shape rules so they go through ValidateReason below.
+        if (ValidateReason(request.Reason) is { } problem) return problem;
 
         try
         {
@@ -92,16 +88,19 @@ public static class ComplianceConfigEndpoints
         catch (ComplianceCapViolationException ex)
         {
             logger.LogWarning(ex,
-                "Compliance override rejected by platform cap for key {Key}", key);
+                "Compliance override rejected for key {Key} (forced={IsForced}, allowed={Allowed})",
+                ex.Key, ex.IsForced, ex.Allowed);
+            var meta = new Dictionary<string, string> { ["key"] = key };
+            if (ex.IsForced && ex.ForcedValue is not null)
+                meta["forcedValue"] = ex.ForcedValue;
             return Results.Conflict(ApiEnvelope<object>.Fail(new Error(
-                LocalizedMessage.Of(ex.LocalizationKey,
-                    new Dictionary<string, string> { ["key"] = key }))));
+                LocalizedMessage.Of(ex.LocalizationKey, meta))));
         }
 
-        var resolved = await resolver.GetResolvedAsync<bool>(key, ct);
+        var resolved = await resolver.GetResolvedAsync<bool?>(key, ct);
         return Results.Ok(ApiEnvelope<ComplianceKeySummaryDto>.Success(
             ToSummary(key, resolved),
-            LocalizedMessage.Of("lockey_settings_compliance_override_saved")));
+            LocalizedMessage.Of("lockey_identity_compliance_override_saved")));
     }
 
     private static async Task<IResult> ClearKeyAsync(
@@ -113,43 +112,61 @@ public static class ComplianceConfigEndpoints
         if (!IsManagedKey(key))
             return NotFound(key);
 
+        if (ValidateReason(reason) is { } problem) return problem;
+
+        await resolver.ClearOrgOverrideAsync(key, reason, ct);
+
+        var resolved = await resolver.GetResolvedAsync<bool?>(key, ct);
+        return Results.Ok(ApiEnvelope<ComplianceKeySummaryDto>.Success(
+            ToSummary(key, resolved),
+            LocalizedMessage.Of("lockey_identity_compliance_override_cleared")));
+    }
+
+    private static bool IsManagedKey(string key)
+        => Array.IndexOf(ManagedKeys, key) >= 0;
+
+    /// <summary>
+    /// Shared request-shape validation for the "reason" string used by both Set and
+    /// Clear endpoints. Returns <see langword="null"/> when the reason is valid, or a
+    /// <c>Results.BadRequest(ApiEnvelope...)</c> wrapping the localized error otherwise.
+    /// </summary>
+    private static IResult? ValidateReason(string? reason)
+    {
         if (string.IsNullOrWhiteSpace(reason))
         {
             return Results.BadRequest(ApiEnvelope<object>.Fail(new Error(
                 LocalizedMessage.Of("lockey_validation_required",
                     new Dictionary<string, string> { ["field"] = "Reason" }))));
         }
-
-        await resolver.ClearOrgOverrideAsync(key, reason, ct);
-
-        var resolved = await resolver.GetResolvedAsync<bool>(key, ct);
-        return Results.Ok(ApiEnvelope<ComplianceKeySummaryDto>.Success(
-            ToSummary(key, resolved),
-            LocalizedMessage.Of("lockey_settings_compliance_override_cleared")));
+        if (reason.Length > 500)
+        {
+            return Results.BadRequest(ApiEnvelope<object>.Fail(new Error(
+                LocalizedMessage.Of("lockey_validation_max_length",
+                    new Dictionary<string, string> { ["field"] = "Reason", ["max"] = "500" }))));
+        }
+        return null;
     }
-
-    private static bool IsManagedKey(string key)
-        => Array.IndexOf(ManagedKeys, key) >= 0;
 
     private static IResult NotFound(string key) =>
         Results.NotFound(ApiEnvelope<object>.Fail(new Error(
-            LocalizedMessage.Of("lockey_error_compliance_key_not_managed",
+            LocalizedMessage.Of("lockey_identity_error_compliance_key_not_managed",
                 new Dictionary<string, string> { ["key"] = key }))));
 
-    private static ComplianceKeySummaryDto ToSummary(string key, ResolvedConfiguration<bool> resolved) =>
-        new(
+    private static ComplianceKeySummaryDto ToSummary(string key, ResolvedConfiguration<bool?> resolved)
+    {
+        // `Effective` is bool? — may be null when no layer supplies a value; surface as
+        // `false` to the UI contract but `TenantDefault`/`OrgOverride` stay nullable so
+        // the UI can distinguish "not set" from "set to false".
+        var effective = resolved.Effective ?? false;
+        return new ComplianceKeySummaryDto(
             Key: key,
-            EffectiveValue: resolved.Effective,
+            EffectiveValue: effective,
             TenantDefault: resolved.TenantDefault,
             OrgOverride: resolved.OrgOverride,
             WinningLayer: resolved.WinningLayer.ToString(),
             CapAllowed: resolved.Cap.Allowed,
             CapForced: resolved.Cap.Forced);
-}
-
-/// <summary>Marker type used solely to resolve a typed <c>ILogger</c>.</summary>
-internal sealed class ComplianceConfigEndpointsMarker
-{
+    }
 }
 
 /// <summary>Request body for PUT /settings/compliance/{key}.</summary>
@@ -158,7 +175,8 @@ public sealed record SetComplianceOverrideRequest(bool Value, string Reason);
 /// <summary>
 /// Response row for compliance config endpoints. Shows each layer's contribution so the
 /// admin UI can render "tenant default / org override / effective / cap badge" without
-/// extra round-trips.
+/// extra round-trips. `TenantDefault` / `OrgOverride` are nullable so "not set" renders
+/// distinctly from "set to false".
 /// </summary>
 public sealed record ComplianceKeySummaryDto(
     string Key,

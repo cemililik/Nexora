@@ -31,8 +31,17 @@ public sealed class CompliancePolicyAuditEntry
 
     public Guid ChangedByUserId { get; set; }
 
-    public DateTime ChangedAtUtc { get; set; }
+    /// <summary>
+    /// UTC timestamp of the change. <see cref="DateTimeOffset"/> matches the
+    /// <c>timestamptz</c> column type and the project convention for audit timestamps
+    /// (see <c>OrgConfigEntry.UpdatedAt</c>, <c>TenantConfigEntry.UpdatedAt</c>).
+    /// </summary>
+    public DateTimeOffset ChangedAtUtc { get; set; }
 
-    /// <summary>Required free-text justification (max 500 chars).</summary>
-    public string? Reason { get; set; }
+    /// <summary>
+    /// Free-text justification for the change (max 500 chars). Required — the resolver
+    /// validates non-empty reason before calling <c>AppendAudit</c>, so the column is
+    /// enforced non-null at the schema level too.
+    /// </summary>
+    public string Reason { get; set; } = default!;
 }

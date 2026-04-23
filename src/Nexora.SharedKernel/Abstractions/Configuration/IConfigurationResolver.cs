@@ -34,6 +34,14 @@ public interface IConfigurationResolver
     /// Required free-text justification recorded in the policy audit trail for later
     /// compliance review. Max 500 characters.
     /// </param>
+    /// <exception cref="ComplianceCapViolationException">
+    /// Thrown when the platform cap rejects the override — either <c>cap.Allowed=false</c>
+    /// (no override permitted) or <c>cap.Forced=true</c> with a contradicting value.
+    /// Callers at the HTTP boundary (e.g. <c>ComplianceConfigEndpoints</c>) should convert
+    /// this to a localized 409/Conflict using <c>LocalizationKey</c>, <c>IsForced</c>, and
+    /// <c>ForcedValue</c> from the exception. The rejection is itself recorded in the
+    /// policy-audit table before the exception is raised.
+    /// </exception>
     Task SetOrgOverrideAsync<T>(string key, T value, string reason, CancellationToken ct = default);
 
     /// <summary>
@@ -43,6 +51,10 @@ public interface IConfigurationResolver
     /// <param name="reason">
     /// Required free-text justification, same semantics as <see cref="SetOrgOverrideAsync{T}"/>.
     /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when there is no organization in the current tenant context — clearing an
+    /// override requires a specific org scope.
+    /// </exception>
     Task ClearOrgOverrideAsync(string key, string reason, CancellationToken ct = default);
 
     /// <summary>

@@ -248,9 +248,7 @@ public static class DevelopmentSeed
         // (the single source of truth per ADR-004 / permissions.md §3 / T-020). Delegating
         // here keeps dev and prod seed paths in sync — no parallel permission list to drift.
         var identityModuleMigration = scope.ServiceProvider
-            .GetServices<IModuleMigration>()
-            .OfType<IdentityModuleMigration>()
-            .Single();
+            .GetRequiredService<IdentityModuleMigration>();
         await identityModuleMigration.SeedAsync(SchemaName);
         logger.LogInformation(
             "[DevSeed] Delegated permission + Platform Admin role seed to IdentityModuleMigration");
@@ -496,11 +494,18 @@ public static class DevelopmentSeed
                 "NewValue" jsonb,
                 "ChangedByUserId" uuid NOT NULL,
                 "ChangedAtUtc" timestamptz NOT NULL DEFAULT now(),
-                "Reason" varchar(500)
+                "Reason" varchar(500) NOT NULL DEFAULT ''
             )
             """,
+            // Legacy tenants may carry nullable Reason rows; tighten the column so new
+            // rows match the entity invariant. IF NOT NULL is not a valid clause, so
+            // backfill empties then set NOT NULL.
+            "UPDATE platform_compliance_policy_audit SET \"Reason\" = '' WHERE \"Reason\" IS NULL",
+            "ALTER TABLE platform_compliance_policy_audit ALTER COLUMN \"Reason\" SET NOT NULL",
             "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_TenantId_ChangedAtUtc\" ON platform_compliance_policy_audit (\"TenantId\", \"ChangedAtUtc\")",
             "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_Key\" ON platform_compliance_policy_audit (\"Key\")",
+            // Compliance-review lookup: recent changes for a given org + key.
+            "CREATE INDEX IF NOT EXISTS \"IX_platform_compliance_policy_audit_OrgKey_ChangedAt\" ON platform_compliance_policy_audit (\"OrganizationId\", \"Key\", \"ChangedAtUtc\" DESC)",
 
             // --- Contacts module: tables added after the initial CreateTables short-circuit ---
             // (EnsureModuleTablesAsync only runs CreateTablesAsync once per sentinel; entities
@@ -598,22 +603,31 @@ public static class DevelopmentSeed
             }
             catch (PostgresException ex) when (ex.SqlState == "23505")
             {
-                // Unique index creation may fail if duplicate data exists — skip gracefully
-                logger.LogWarning("[DevSeed] Skipped schema update due to existing data conflict: {Message}", ex.MessageText);
+                // Unique index creation may fail if duplicate data exists — skip gracefully.
+                logger.LogWarning(ex,
+                    "[DevSeed] Skipped schema update due to existing data conflict. {SkippedStatement}",
+                    Truncate(sql, 120));
             }
             catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
                 // Parent table does not exist yet — legitimate when a module's sentinel
-                // short-circuited initial CreateTables, leaving a later-added entity's table
-                // uncreated. The schema update is effectively a no-op for this tenant until
-                // the owning table is (re)created. Safe to skip.
-                logger.LogWarning(
-                    "[DevSeed] Skipped schema update because target relation is missing: {Message}",
-                    ex.MessageText);
+                // short-circuited initial CreateTables, leaving a later-added entity's
+                // table uncreated. The schema update is effectively a no-op for this
+                // tenant until the owning table is (re)created. Safe to skip.
+                logger.LogWarning(ex,
+                    "[DevSeed] Skipped schema update because target relation is missing. {SkippedStatement}",
+                    Truncate(sql, 120));
             }
         }
 
         logger.LogInformation("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);
+    }
+
+    /// <summary>Collapses a SQL statement to its first line for compact log output.</summary>
+    private static string Truncate(string sql, int max)
+    {
+        var firstLine = sql.Split('\n', 2)[0].Trim();
+        return firstLine.Length <= max ? firstLine : firstLine[..max] + "…";
     }
 
     private static async Task EnsureTenantModulesAsync(string connectionString, ILogger logger)

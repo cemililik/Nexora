@@ -1,17 +1,25 @@
 # Schema Migration Standard
 
-Nexora uses a **code-first, migration-free** schema management approach.
-There are no EF Core migration files. Schema evolution happens in two distinct phases,
-both enforced inside `DevelopmentSeed.cs`.
+Nexora uses a **code-first, migration-free** schema management approach for the dev
+and on-prem-preview environments. There are no EF Core migration files yet; schema
+evolution happens in two distinct phases, both enforced inside `DevelopmentSeed.cs`.
+
+> **Production strategy — TBD.** The mechanisms described here are explicitly
+> **development-only**: `DevelopmentSeed.SeedAsync` is guarded by
+> `app.Environment.IsDevelopment()` and must never run against production tenants.
+> The production schema-evolution strategy (EF Core migrations, Liquibase, or a
+> hybrid) will be documented in a forthcoming ADR and cross-referenced from §6.
+> Until then, any ALTER intended for production MUST travel through that future
+> ADR's pipeline, not through `ApplySchemaUpdatesAsync`.
 
 ---
 
 ## 0. At a Glance
 
-| Phase | When | Mechanism | Location |
-|-------|------|-----------|----------|
-| **Phase 1 — Initial creation** | First startup, table does not exist yet | `IRelationalDatabaseCreator.CreateTablesAsync()` | `EnsureIdentityTablesAsync` / `EnsureModuleTablesAsync<T>` |
-| **Phase 2 — Incremental changes** | Any subsequent startup | Raw SQL in `ApplySchemaUpdatesAsync` | `alterStatements` array inside that method |
+| Phase | When | Mechanism | Location | Runs in |
+|-------|------|-----------|----------|---------|
+| **Phase 1 — Initial creation** | First startup, table does not exist yet | `IRelationalDatabaseCreator.CreateTablesAsync()` | `EnsureIdentityTablesAsync` / `EnsureModuleTablesAsync<T>` | **Development-only** |
+| **Phase 2 — Incremental changes** | Any subsequent startup | Raw SQL in `ApplySchemaUpdatesAsync` | `alterStatements` array inside that method | **Development-only** |
 
 **Every change MUST be idempotent.** The seed runs on every container restart.
 
@@ -129,4 +137,4 @@ When you add a property to a domain entity:
 - **Do not** run `dotnet ef migrations add` — there are no migration files in this project and the toolchain is not wired up for them.
 - **Do not** modify the database manually without a matching code change in `ApplySchemaUpdatesAsync`; the next fresh-start will be out of sync.
 - **Do not** use `EnsureCreated()` or `Database.EnsureCreatedAsync()` — these are reserved for the Host-level seeder only.
-- **Do not** add production DDL in `DevelopmentSeed.cs` beyond what runs in Development mode — this file is guarded by `if (!app.Environment.IsDevelopment()) return;`. Production schema management is a separate concern tracked in `docs/architecture/INFRASTRUCTURE_STANDARDS.md`.
+- **Do not** add production DDL in `DevelopmentSeed.cs` beyond what runs in Development mode — this file is guarded by `if (!app.Environment.IsDevelopment()) return;`. Production schema management is **out of scope for this document** — the canonical production doc is scheduled (see the TBD note at the top of this file). Until that ADR lands, the archived reference at `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md` is the interim pointer.

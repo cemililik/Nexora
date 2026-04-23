@@ -54,6 +54,15 @@ public sealed class RequestGdprDeleteHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_user_context"));
         }
 
+        // Organization scope required — erasure targets a contact in the caller's
+        // organization only; prevents cross-org leakage when a user has access to
+        // multiple orgs under the same tenant.
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } organizationId)
+        {
+            logger.LogWarning("GDPR delete rejected — no organization in current context");
+            return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_organization_context"));
+        }
+
         // Debounce duplicate submissions — two rapid clicks / retries within a short window
         // should NOT produce two audit rows. Runs BEFORE the contact lookup so the second
         // call does not trip the "not found" branch once the contact has been soft-deleted
@@ -75,7 +84,9 @@ public sealed class RequestGdprDeleteHandler(
         var contactId = ContactId.From(request.ContactId);
 
         var contact = await dbContext.Contacts.FirstOrDefaultAsync(
-            c => c.Id == contactId && c.TenantId == tenantId,
+            c => c.Id == contactId
+                 && c.TenantId == tenantId
+                 && c.OrganizationId == organizationId,
             cancellationToken);
 
         if (contact is null)
@@ -200,9 +211,11 @@ public sealed class RequestGdprDeleteHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // No PII in logs: Reason is free-text and may contain identifying details —
+        // it lives in the GdprErasureAudit row only.
         logger.LogInformation(
-            "GDPR anonymize completed for contact {ContactId} by user {ErasedByUserId}. Reason: {Reason}",
-            contactId.Value, erasedByUserId, request.Reason);
+            "GDPR anonymize completed for contact {ContactId} (actor {ErasedByUserId})",
+            contactId.Value, erasedByUserId);
 
         return Result.Success(LocalizedMessage.Of("lockey_contacts_gdpr_delete_completed"));
     }

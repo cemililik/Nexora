@@ -16,5 +16,5 @@ public sealed record ContactImportCompletedIntegrationEvent : IntegrationEventBa
     public required int ErrorCount { get; init; }
 
     /// <summary>Gets the number of rows skipped because a matching contact already exists.</summary>
-    public int SkippedCount { get; init; }
+    public required int SkippedCount { get; init; }
 }

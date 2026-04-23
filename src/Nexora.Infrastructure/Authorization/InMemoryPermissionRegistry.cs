@@ -52,6 +52,18 @@ public sealed class InMemoryPermissionRegistry : IPermissionRegistry
     public bool IsRegistered(string name) => _byName.ContainsKey(name);
 
     /// <inheritdoc />
+    public bool TryGetByName(string name, out PermissionDefinition? definition)
+    {
+        if (_byName.TryGetValue(name, out var found))
+        {
+            definition = found;
+            return true;
+        }
+        definition = null;
+        return false;
+    }
+
+    /// <inheritdoc />
     public IReadOnlyList<PermissionDefinition> GetAll()
     {
         lock (_orderLock)

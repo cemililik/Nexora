@@ -66,7 +66,7 @@ export default function TenantListPage() {
         icon={Building2}
         title={t('lockey_identity_empty_tenants')}
         action={
-          hasPermission('identity.tenants.create')
+          hasPermission('identity.tenants.manage')
             ? { label: t('lockey_identity_tenants_create'), onClick: () => navigate('/identity/tenants/create') }
             : undefined
         }

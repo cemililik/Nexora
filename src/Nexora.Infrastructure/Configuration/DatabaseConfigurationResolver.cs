@@ -26,6 +26,13 @@ public sealed class DatabaseConfigurationResolver(
         L2Ttl = TimeSpan.FromMinutes(15)
     };
 
+    /// <summary>
+    /// Suffix appended to the Reason of a rejected <c>cap.Forced</c> override attempt so
+    /// operators (and tests) can distinguish forced-cap rejections from genuine override
+    /// writes. Exposed as a constant so production and test code share one source of truth.
+    /// </summary>
+    public const string CapForcedRejectedSuffix = "[rejected: cap.Forced]";
+
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default)
     {
@@ -67,7 +74,7 @@ public sealed class DatabaseConfigurationResolver(
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Key == key, ct);
         var tenantPresent = tenantEntry is not null;
-        var tenantDefault = tenantPresent ? Deserialize<T>(tenantEntry!.Value) : default;
+        var tenantDefault = tenantPresent ? Deserialize<T>(tenantEntry!.Value, key) : default;
 
         var orgPresent = false;
         T? orgOverride = default;
@@ -79,7 +86,7 @@ public sealed class DatabaseConfigurationResolver(
             if (orgEntry is not null)
             {
                 orgPresent = true;
-                orgOverride = Deserialize<T>(orgEntry.Value);
+                orgOverride = Deserialize<T>(orgEntry.Value, key);
             }
         }
 
@@ -92,7 +99,7 @@ public sealed class DatabaseConfigurationResolver(
 
         if (cap.Forced && cap.Value is not null)
         {
-            effective = Deserialize<T>(cap.Value);
+            effective = Deserialize<T>(cap.Value, key);
             winner = ResolutionLayer.Cap;
         }
         else if (orgPresent)
@@ -107,7 +114,7 @@ public sealed class DatabaseConfigurationResolver(
         }
         else if (cap.Value is not null)
         {
-            effective = Deserialize<T>(cap.Value);
+            effective = Deserialize<T>(cap.Value, key);
             winner = ResolutionLayer.Cap;
         }
         else
@@ -142,19 +149,32 @@ public sealed class DatabaseConfigurationResolver(
         var cap = await capProvider.GetCapAsync(key, ct);
         if (!cap.Allowed)
         {
+            // Mirror the cap.Forced rejection path — record an audit row so the
+            // forensic trail captures blocked attempts as well.
+            AppendAudit(new AuditContext(
+                tenantId, orgId, key,
+                OldValue: null, NewValue: JsonSerializer.Serialize(value),
+                ChangedByUserId: userId,
+                Reason: $"{reason} {CapBlockedRejectedSuffix}"));
+            await dbContext.SaveChangesAsync(ct);
+            await InvalidateCacheAsync(key, orgId, ct);
+
             logger.LogWarning(
-                "Org override rejected for {Key} — platform cap disallows it (tenant {TenantId}, org {OrgId})",
+                "Org override rejected for {Key} (tenant {TenantId}, org {OrgId}) — platform cap disallows it",
                 key, tenantId, orgId);
             throw new ComplianceCapViolationException(
-                key, "lockey_error_compliance_cap_blocks_override");
+                key, "lockey_identity_error_compliance_cap_blocks_override",
+                isForced: cap.Forced, forcedValue: cap.Value, allowed: cap.Allowed);
         }
         if (cap.Forced)
         {
             // Forced caps collapse org overrides. Record the attempt (so the auditor sees
             // someone tried) but do not persist — the cap's own value keeps winning.
-            await AppendAuditAsync(tenantId, orgId, key,
-                oldValue: null, newValue: JsonSerializer.Serialize(value),
-                userId, $"{reason} [rejected: cap.Forced]", ct);
+            AppendAudit(new AuditContext(
+                tenantId, orgId, key,
+                OldValue: null, NewValue: JsonSerializer.Serialize(value),
+                ChangedByUserId: userId,
+                Reason: $"{reason} {CapForcedRejectedSuffix}"));
             await dbContext.SaveChangesAsync(ct);
             await InvalidateCacheAsync(key, orgId, ct);
             return;
@@ -183,15 +203,23 @@ public sealed class DatabaseConfigurationResolver(
             existing.UpdatedBy = userId.ToString();
         }
 
-        await AppendAuditAsync(tenantId, orgId, key, oldJson, json, userId, reason, ct);
+        AppendAudit(new AuditContext(
+            tenantId, orgId, key,
+            OldValue: oldJson, NewValue: json,
+            ChangedByUserId: userId, Reason: reason));
         await dbContext.SaveChangesAsync(ct);
 
         await InvalidateCacheAsync(key, orgId, ct);
 
+        // NO PII rule (see permissions.md / observability standard): Reason, raw values,
+        // and ChangedByUserId stay in the audit table only; logs carry scope + key only.
         logger.LogInformation(
-            "Org override saved for {Key} in tenant {TenantId} org {OrgId} by {UserId}",
-            key, tenantId, orgId, userId);
+            "Org override saved for {Key} (tenant {TenantId}, org {OrgId})",
+            key, tenantId, orgId);
     }
+
+    /// <summary>Suffix appended to rejected <c>cap.Allowed=false</c> attempts in the audit trail.</summary>
+    public const string CapBlockedRejectedSuffix = "[rejected: cap.Allowed=false]";
 
     /// <inheritdoc />
     public async Task ClearOrgOverrideAsync(
@@ -222,14 +250,17 @@ public sealed class DatabaseConfigurationResolver(
         var oldJson = existing.Value;
         dbContext.OrgOverrides.Remove(existing);
 
-        await AppendAuditAsync(tenantId, orgId, key, oldJson, newValue: null, userId, reason, ct);
+        AppendAudit(new AuditContext(
+            tenantId, orgId, key,
+            OldValue: oldJson, NewValue: null,
+            ChangedByUserId: userId, Reason: reason));
         await dbContext.SaveChangesAsync(ct);
 
         await InvalidateCacheAsync(key, orgId, ct);
 
         logger.LogInformation(
-            "Org override cleared for {Key} in tenant {TenantId} org {OrgId} by {UserId}",
-            key, tenantId, orgId, userId);
+            "Org override cleared for {Key} (tenant {TenantId}, org {OrgId})",
+            key, tenantId, orgId);
     }
 
     private (Guid TenantId, Guid? OrgId) ResolveContextIds()
@@ -250,25 +281,34 @@ public sealed class DatabaseConfigurationResolver(
         return guid;
     }
 
-    private Task AppendAuditAsync(
-        Guid tenantId, Guid? orgId, string key,
-        string? oldValue, string? newValue, Guid userId, string reason,
-        CancellationToken ct)
+    private void AppendAudit(AuditContext ctx)
     {
         dbContext.PolicyAudit.Add(new CompliancePolicyAuditEntry
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            OrganizationId = orgId,
-            Key = key,
-            OldValue = oldValue,
-            NewValue = newValue,
-            ChangedByUserId = userId,
-            ChangedAtUtc = DateTime.UtcNow,
-            Reason = reason
+            TenantId = ctx.TenantId,
+            OrganizationId = ctx.OrganizationId,
+            Key = ctx.Key,
+            OldValue = ctx.OldValue,
+            NewValue = ctx.NewValue,
+            ChangedByUserId = ctx.ChangedByUserId,
+            ChangedAtUtc = DateTimeOffset.UtcNow,
+            Reason = ctx.Reason
         });
-        return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Parameter-bag record for <see cref="AppendAudit"/> — keeps the helper's signature
+    /// stable even as audit fields grow. Internal to the resolver; not exposed.
+    /// </summary>
+    private sealed record AuditContext(
+        Guid TenantId,
+        Guid? OrganizationId,
+        string Key,
+        string? OldValue,
+        string? NewValue,
+        Guid ChangedByUserId,
+        string Reason);
 
     private async Task InvalidateCacheAsync(string key, Guid? orgId, CancellationToken ct)
     {
@@ -282,7 +322,7 @@ public sealed class DatabaseConfigurationResolver(
     // for nullable-safe caching; raw nullable value types would round-trip as boxed defaults.
     private sealed record CachedResolution<T>(T? Value);
 
-    private static T? Deserialize<T>(string? json)
+    private T? Deserialize<T>(string? json, string key)
     {
         if (string.IsNullOrEmpty(json))
             return default;
@@ -290,8 +330,11 @@ public sealed class DatabaseConfigurationResolver(
         {
             return JsonSerializer.Deserialize<T>(json);
         }
-        catch (JsonException)
+        catch (JsonException ex)
         {
+            logger.LogWarning(ex,
+                "Failed to deserialize configuration for Key {Key} (RawLength={RawLength})",
+                key, json.Length);
             return default;
         }
     }

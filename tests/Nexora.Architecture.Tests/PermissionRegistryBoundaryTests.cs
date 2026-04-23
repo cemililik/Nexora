@@ -11,8 +11,30 @@ namespace Nexora.Architecture.Tests;
 /// </summary>
 public sealed class PermissionRegistryBoundaryTests
 {
-    private static readonly string RepoSrcRoot =
-        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src"));
+    private static readonly string RepoSrcRoot = FindRepoSrcRoot();
+
+    /// <summary>
+    /// Walks upwards from the test assembly directory until a sentinel identifies the
+    /// repository root (<c>Nexora.sln</c> or <c>.git</c>). Throws with a clear message
+    /// when nothing is found so the test fails loudly instead of pointing at the wrong
+    /// folder (which would let the regex scans silently pass on empty content).
+    /// </summary>
+    private static string FindRepoSrcRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "Nexora.sln")) ||
+                Directory.Exists(Path.Combine(dir.FullName, ".git")))
+            {
+                return Path.Combine(dir.FullName, "src");
+            }
+            dir = dir.Parent;
+        }
+        throw new InvalidOperationException(
+            "Could not locate repository root (no Nexora.sln or .git ancestor found) starting from " +
+            AppContext.BaseDirectory);
+    }
 
     [Fact]
     public void DevelopmentSeed_MustNotContainHardcodedPermissionCreate()
@@ -56,6 +78,8 @@ public sealed class PermissionRegistryBoundaryTests
     public void DevelopmentSeed_MustNotContainCreateDefaultPermissions()
     {
         var path = Path.Combine(RepoSrcRoot, "Nexora.Host", "DevelopmentSeed.cs");
+        File.Exists(path).Should().BeTrue("DevelopmentSeed.cs must exist for this assertion");
+
         var content = File.ReadAllText(path);
         content.Should().NotMatchRegex(
             @"private\s+static\s+Permission\[\]\s+CreateDefaultPermissions",

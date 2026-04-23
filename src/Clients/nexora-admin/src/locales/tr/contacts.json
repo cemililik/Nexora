@@ -153,6 +153,7 @@
   "lockey_contacts_import_form_file_format": "Dosya Formatı",
   "lockey_contacts_import_form_file_content": "Dosya İçeriği",
   "lockey_contacts_import_status_pending": "Beklemede",
+  "lockey_contacts_import_status_queued": "Kuyruğa Alındı",
   "lockey_contacts_import_status_processing": "İşleniyor",
   "lockey_contacts_import_status_completed": "Tamamlandı",
   "lockey_contacts_import_status_failed": "Başarısız",
@@ -160,7 +161,7 @@
   "lockey_contacts_import_col_processed": "İşlenen",
   "lockey_contacts_import_col_success": "Başarılı",
   "lockey_contacts_import_col_errors": "Hatalar",
-  "lockey_contacts_import_col_skipped": "Atlananlar (tekrar kayıtlar)",
+  "lockey_contacts_import_col_skipped": "Atlananlar (yinelenen kayıtlar)",
 
   "lockey_contacts_export_title": "Kişileri Dışa Aktar",
   "lockey_contacts_export_description": "Kişileri bir dosyaya dışa aktarın.",

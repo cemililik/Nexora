@@ -52,15 +52,18 @@ public sealed class ConfigurationResolverBoundaryTests
 
     private static IEnumerable<(string Name, System.Reflection.Assembly Assembly)> EnumerateModuleAssemblies()
     {
-        // Assemblies referenced by this test project — see Nexora.Architecture.Tests.csproj.
-        // Reporting/Audit have their own architecture tests in other suites and are omitted
-        // here to avoid a fan-out of transitive project references just for this assertion.
+        // All six modules + Host — these are the assemblies that could legitimately
+        // need configuration values and must be forced through the resolver rather
+        // than reaching into the DbContext or entity types directly.
         var candidates = new[]
         {
             typeof(Nexora.Modules.Identity.IdentityModule).Assembly,
             typeof(Nexora.Modules.Contacts.ContactsModule).Assembly,
             typeof(Nexora.Modules.Documents.DocumentsModule).Assembly,
             typeof(Nexora.Modules.Notifications.NotificationsModule).Assembly,
+            typeof(Nexora.Modules.Reporting.ReportingModule).Assembly,
+            typeof(Nexora.Modules.Audit.AuditModule).Assembly,
+            typeof(Nexora.Host.DevelopmentSeed).Assembly,
         };
 
         foreach (var asm in candidates)

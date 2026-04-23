@@ -78,23 +78,22 @@ public sealed class ContactDuplicateMatcherTests : IDisposable
     }
 
     [Fact]
-    public async Task FindExistingByEmailsAsync_CallerPassesRawEmails_NormalizesBeforeProbe()
+    public async Task FindExistingByEmailsAsync_UnnormalizedProbe_DoesNotMatch()
     {
-        // Contract: matcher trusts the caller to pre-normalize. The ContactImportJob
-        // normalizes via `Trim().ToLowerInvariant()` before building its probe set, and
-        // stored emails are always lowercase — so a lowercase-only probe suffices.
-        // This test documents that behaviour so a future regression (e.g. removing the
-        // caller's normalization) is caught explicitly.
+        // Contract: FindExistingByEmailsAsync does NOT normalize — it trusts the caller
+        // (ContactImportJob pre-normalizes via `Trim().ToLowerInvariant()` before the
+        // bulk probe). If a caller ever regresses and sends raw emails, we want the test
+        // suite to fail here rather than silently miss duplicates in production.
         var contact = Contact.Create(_tenantId, _orgId, ContactType.Individual,
             "Grace", "Hopper", null, "grace@example.com", null, ContactSource.Manual);
         await _dbContext.Contacts.AddAsync(contact);
         await _dbContext.SaveChangesAsync();
 
-        var probe = new[] { "grace@example.com" };
-        var result = await _matcher.FindExistingByEmailsAsync(_tenantId, _orgId, probe, CancellationToken.None);
+        var unnormalizedProbe = new[] { "  Grace@Example.COM  " };
+        var result = await _matcher.FindExistingByEmailsAsync(_tenantId, _orgId, unnormalizedProbe, CancellationToken.None);
 
-        result.Should().HaveCount(1);
-        result["grace@example.com"].Should().Be(contact.Id.Value);
+        result.Should().BeEmpty(
+            "the bulk API intentionally skips normalization; callers must pre-normalize");
     }
 
     [Fact]

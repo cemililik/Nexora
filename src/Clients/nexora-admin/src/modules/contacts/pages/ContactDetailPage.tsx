@@ -1604,7 +1604,7 @@ function GdprTab({ contactId, t, i18n }: GdprTabProps) {
             { reason: reasonValue.trim() },
             {
               onSuccess: () => { setShowDeleteConfirm(false); reset(); },
-              onError: () => setShowDeleteConfirm(false),
+              onError: () => { setShowDeleteConfirm(false); },
             },
           );
         }}

@@ -99,6 +99,11 @@ public sealed class ImportJob : Entity<ImportJobId>
             throw new ArgumentOutOfRangeException(
                 nameof(processedRows), "ProcessedRows cannot exceed TotalRows.");
 
+        // Invariant: every processed row falls into exactly one of success/error/skipped.
+        // Mis-accounting breaks reporting and the reconciliation checks in notifications.
+        if (successCount + errorCount + skippedCount != processedRows)
+            throw new DomainException("lockey_contacts_error_invalid_progress_counts");
+
         ProcessedRows = processedRows;
         SuccessCount = successCount;
         ErrorCount = errorCount;

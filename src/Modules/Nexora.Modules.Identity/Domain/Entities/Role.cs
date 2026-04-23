@@ -80,8 +80,11 @@ public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
     public int RemovePermissionsByIds(IReadOnlyCollection<PermissionId> permissionIds)
     {
         if (permissionIds.Count == 0) return 0;
+        // Build an O(1) lookup once so the filter below avoids O(n*m) Contains scans
+        // on the _permissions list.
+        var lookup = permissionIds as ISet<PermissionId> ?? permissionIds.ToHashSet();
         var toRemove = _permissions
-            .Where(rp => permissionIds.Contains(rp.PermissionId))
+            .Where(rp => lookup.Contains(rp.PermissionId))
             .ToList();
         foreach (var rp in toRemove)
         {

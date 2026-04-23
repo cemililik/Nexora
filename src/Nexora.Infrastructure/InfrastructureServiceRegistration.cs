@@ -121,7 +121,10 @@ public static class InfrastructureServiceRegistration
         // override). NullComplianceCapProvider is the default; SaaS deployments replace it
         // with NmpComplianceCapProvider in NMP.2.
         services.AddScoped<IConfigurationResolver, DatabaseConfigurationResolver>();
-        services.AddSingleton<IComplianceCapProvider, NullComplianceCapProvider>();
+        // Scoped (not singleton) so future tenant-aware implementations (NmpComplianceCapProvider
+        // in NMP.2) can take scoped dependencies like TenantConfigDbContext. NullComplianceCapProvider
+        // is stateless and works fine as scoped; no behavioural change here.
+        services.AddScoped<IComplianceCapProvider, NullComplianceCapProvider>();
 
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>

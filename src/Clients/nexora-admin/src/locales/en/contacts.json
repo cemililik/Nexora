@@ -153,6 +153,7 @@
   "lockey_contacts_import_form_file_format": "File Format",
   "lockey_contacts_import_form_file_content": "File Content",
   "lockey_contacts_import_status_pending": "Pending",
+  "lockey_contacts_import_status_queued": "Queued",
   "lockey_contacts_import_status_processing": "Processing",
   "lockey_contacts_import_status_completed": "Completed",
   "lockey_contacts_import_status_failed": "Failed",

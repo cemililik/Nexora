@@ -57,8 +57,12 @@ public sealed class IdentityModule : IModule
         // Permission-based authorization — loads user permissions from Identity DB
         services.AddScoped<IUserPermissionService, UserPermissionService>();
 
-        // Register module migration for tenant provisioning
-        services.AddSingleton<IModuleMigration, IdentityModuleMigration>();
+        // Register module migration for tenant provisioning. Register as both the
+        // interface (for tenant-provisioning iteration) and the concrete type (so
+        // DevelopmentSeed can resolve the Identity migration directly to delegate
+        // permission + role seeding).
+        services.AddSingleton<IdentityModuleMigration>();
+        services.AddSingleton<IModuleMigration>(sp => sp.GetRequiredService<IdentityModuleMigration>());
 
         // Keycloak Admin API
         services.Configure<KeycloakOptions>(configuration.GetSection(KeycloakOptions.SectionName));
