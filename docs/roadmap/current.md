@@ -6,9 +6,20 @@
 
 ## Active task
 
-_None. T-005, T-006, T-017, T-018 all moved to In Review — see Prior active tasks._
+_None. T-021 moved to In Review — next batch entry (ADR-0027) is documentation-only._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-021 — Fix stray `HasFilter("\"IsDeleted\" = false")` on non-soft-deletable Contacts
+configs** (Phase 1.5.6, Milestone C — T-018 follow-up). Status: **In Review**.
+Drops the dead filter predicate from `ContactTagConfiguration` and
+`ContactCustomFieldConfiguration`; entities extend `Entity<T>`, not
+`AuditableEntity<T>`, so the `IsDeleted` column never existed on those tables
+and the filter was silently dropped at CREATE INDEX time in dev. T-018's
+integration test simplified: plain `IRelationalDatabaseCreator.CreateTablesAsync()`
+replaces the statement-by-statement 42703-skipping workaround; two helper methods
+(~60 LoC) removed. Full suite green. No DDL change in the live dev DB because
+the index was already unfiltered there.
 
 **T-006 — `nexora demo:load` CLI command** (Phase 1.5.7, Milestone C).
 Status: **In Review**. CLI dispatcher intercepts before `WebApplication.CreateBuilder`
@@ -58,15 +69,6 @@ mutations flow through already-audited paths. Discovered a pre-existing
 `HasFilter` drift on `ContactTag` / `ContactCustomField` unique indexes (logged
 in the task status log for maintainer triage; integration test has a targeted
 42703 skip with a TODO). Full suite green (~1945 backend + 98 frontend).
-
-## Pending follow-ups (for maintainer triage)
-
-- Pre-existing `HasFilter("\"IsDeleted\" = false")` drift on
-  `ContactTagConfiguration` and `ContactCustomFieldConfiguration` — those
-  entities extend `Entity<T>`, not `AuditableEntity<T>`, so the filter references
-  a column that does not exist. Dev works only because its schema has been
-  patched by hand; a fresh Testcontainers Postgres fails with 42703. Surfaces
-  as a workaround in T-018's integration test; should be fixed in its own task.
 
 
 **T-020 — Permission seed consolidation via IPermissionRegistry** (Phase 1.5.6, Milestone C).

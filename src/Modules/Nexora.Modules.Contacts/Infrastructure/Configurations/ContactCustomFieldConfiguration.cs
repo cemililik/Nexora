@@ -18,6 +18,12 @@ public sealed class ContactCustomFieldConfiguration : IEntityTypeConfiguration<C
         builder.Property(cf => cf.FieldDefinitionId).HasConversion(id => id.Value, v => CustomFieldDefinitionId.From(v));
         builder.Property(cf => cf.Value).HasMaxLength(1000);
 
-        builder.HasIndex(cf => new { cf.ContactId, cf.FieldDefinitionId }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        // T-021: no HasFilter — ContactCustomField extends Entity<T>, not
+        // AuditableEntity<T>, so the "IsDeleted" column does not exist on
+        // contacts_custom_field_values. The filter was a no-op silently dropped
+        // by Postgres at CREATE INDEX time on a fresh schema and is not needed
+        // semantically: custom-field values are hard-deleted when a contact's
+        // assignment changes.
+        builder.HasIndex(cf => new { cf.ContactId, cf.FieldDefinitionId }).IsUnique();
     }
 }

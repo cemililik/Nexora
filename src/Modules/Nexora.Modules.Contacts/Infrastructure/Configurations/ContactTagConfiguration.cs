@@ -17,6 +17,11 @@ public sealed class ContactTagConfiguration : IEntityTypeConfiguration<ContactTa
         builder.Property(ct => ct.ContactId).HasConversion(id => id.Value, v => ContactId.From(v));
         builder.Property(ct => ct.TagId).HasConversion(id => id.Value, v => TagId.From(v));
 
-        builder.HasIndex(ct => new { ct.ContactId, ct.TagId, ct.OrganizationId }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        // T-021: no HasFilter — ContactTag extends Entity<T>, not AuditableEntity<T>,
+        // so the "IsDeleted" column does not exist on contacts_contact_tags. The
+        // filter was dead code silently dropped by Postgres at CREATE INDEX time on
+        // a fresh schema and is not needed semantically: rows are hard-deleted
+        // directly when a contact/tag link is removed.
+        builder.HasIndex(ct => new { ct.ContactId, ct.TagId, ct.OrganizationId }).IsUnique();
     }
 }

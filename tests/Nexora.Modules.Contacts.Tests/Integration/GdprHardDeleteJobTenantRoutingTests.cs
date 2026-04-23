@@ -143,38 +143,11 @@ public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
         // Drive Npgsql's RelationalDatabaseCreator directly — this mirrors what
         // DevelopmentSeed.EnsureModuleTablesAsync does in dev (EnsureCreatedAsync
         // wants a migrations history table + trips on global query filters, so we
-        // skip it).
-        //
-        // KNOWN PRE-EXISTING BUG (out of T-018 scope): two Contacts configurations
-        // declare `HasFilter("\"IsDeleted\" = false")` on entities that don't extend
-        // AuditableEntity and therefore have no IsDeleted column
-        // (ContactTagConfiguration, ContactCustomFieldConfiguration — both dating back
-        // to commit 006a8ea "feat: implement global soft delete infrastructure").
-        // Dev works because the live schema pre-dates the filter and its table shape
-        // has been patched by raw SQL since; a fresh Testcontainers Postgres exposes
-        // the drift.
-        //
-        // `IRelationalDatabaseCreator.CreateTablesAsync` wraps everything in one
-        // transaction, so the single bad CREATE INDEX rolls the tables back too.
-        // Execute the DDL script statement-by-statement outside a transaction so the
-        // broken-index statements can fail in isolation without rolling back tables.
-        // Follow-up task will remove the stray HasFilter calls.
-        var script = db.Database.GenerateCreateScript();
-        await using var conn = new NpgsqlConnection(_postgres.GetConnectionString());
-        await conn.OpenAsync();
-        foreach (var statement in SplitDdlStatements(script))
-        {
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = statement;
-            try
-            {
-                await cmd.ExecuteNonQueryAsync();
-            }
-            catch (Npgsql.PostgresException ex) when (ex.SqlState == "42703")
-            {
-                // column missing on a HasFilter'd partial index — skip.
-            }
-        }
+        // skip it). T-021 removed the pre-existing HasFilter drift on
+        // ContactTag / ContactCustomField, so CreateTablesAsync now runs end-to-end
+        // in its single transaction without any column-missing failures.
+        var creator = db.GetService<IRelationalDatabaseCreator>();
+        await creator.CreateTablesAsync();
 
         var contact = Contact.Create(
             tenantId: tenantId,
@@ -201,78 +174,6 @@ public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
         return await db.Contacts
             .IgnoreQueryFilters()
             .AnyAsync(c => c.Id == contactId);
-    }
-
-    /// <summary>
-    /// Splits EF's generated create script into individual statements. EF wraps some
-    /// statements in dollar-quoted blocks like <c>$EF$ ... $EF$</c>; a naive semicolon
-    /// split tears those apart. We walk the string tracking whether we are inside a
-    /// dollar-quoted region so the splitter only acts on top-level statement
-    /// terminators.
-    /// </summary>
-    private static IEnumerable<string> SplitDdlStatements(string script)
-    {
-        var sb = new System.Text.StringBuilder();
-        string? openTag = null;
-        int i = 0;
-        while (i < script.Length)
-        {
-            if (openTag is null)
-            {
-                // Look for a dollar-quote open tag (e.g. $EF$, $$, $tag$).
-                if (script[i] == '$')
-                {
-                    var end = script.IndexOf('$', i + 1);
-                    if (end > i)
-                    {
-                        var candidate = script.Substring(i, end - i + 1);
-                        // A valid tag is $...$ where the inner is an identifier or empty.
-                        if (IsValidDollarTag(candidate))
-                        {
-                            sb.Append(candidate);
-                            openTag = candidate;
-                            i = end + 1;
-                            continue;
-                        }
-                    }
-                }
-                if (script[i] == ';' && (i + 1 >= script.Length || script[i + 1] == '\n' || script[i + 1] == '\r'))
-                {
-                    var stmt = sb.ToString().Trim();
-                    if (!string.IsNullOrWhiteSpace(stmt))
-                        yield return stmt;
-                    sb.Clear();
-                    i++;
-                    continue;
-                }
-            }
-            else if (i + openTag.Length <= script.Length &&
-                     script.Substring(i, openTag.Length) == openTag)
-            {
-                sb.Append(openTag);
-                i += openTag.Length;
-                openTag = null;
-                continue;
-            }
-
-            sb.Append(script[i]);
-            i++;
-        }
-
-        var tail = sb.ToString().Trim();
-        if (!string.IsNullOrWhiteSpace(tail))
-            yield return tail;
-    }
-
-    private static bool IsValidDollarTag(string candidate)
-    {
-        if (candidate.Length < 2 || candidate[0] != '$' || candidate[^1] != '$') return false;
-        var inner = candidate[1..^1];
-        if (inner.Length == 0) return true;
-        if (!char.IsLetter(inner[0]) && inner[0] != '_') return false;
-        foreach (var c in inner)
-            if (!char.IsLetterOrDigit(c) && c != '_') return false;
-        return true;
     }
 
     private ContactsDbContext BuildDbContext(ITenantContextAccessor accessor)
