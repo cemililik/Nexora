@@ -35,6 +35,10 @@ public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : 
         // We only seed platform defaults that are specific to Contacts compliance flags.
         using var scope = serviceProvider.CreateScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+        // Single-argument SetTenant is intentional and correct per T-018 /
+        // ITenantConfiguration contract: the config store is tenant-scoped and does
+        // NOT require an organization id. The seed runs per-tenant (not per-org), so
+        // there is no meaningful org at this stage of startup anyway.
         accessor.SetTenant(ExtractTenantId(schemaName));
 
         // Hard fail if ITenantConfiguration is not registered — production misconfiguration

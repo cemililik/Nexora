@@ -6,9 +6,33 @@
 
 ## Active task
 
-_None. T-019 and T-020 both moved to In Review — see Prior active tasks._
+_None. T-018 moved to In Review — see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-018 — Verify NexoraJob tenant context + org propagation for tenant-scoped seed**
+(Phase 1.5.6, Milestone C — T-004 follow-up). Status: **In Review**. Adds two
+integration tests against a real Postgres 17 container proving `GdprHardDeleteJob`
+routes to the correct tenant schema and that `NexoraJob.RunAsync` logs the tenant
+id before any DB work. Three architecture guards in `NexoraJobBoundaryTests`
+(source-level SetTenant-before-ExecuteAsync check, `RunAsync` non-virtual, no
+subclass-shadowing). XML-doc contract on `ITenantConfiguration` makes the
+tenant-scoped (no-org) semantics load-bearing. New audit-coverage.md §2 subsection
+documents that platform-init writes are deliberately not audited — operator
+mutations flow through already-audited paths. Discovered a pre-existing
+`HasFilter` drift on `ContactTag` / `ContactCustomField` unique indexes (logged
+in the task status log for maintainer triage; integration test has a targeted
+42703 skip with a TODO). Full suite green (~1945 backend + 98 frontend).
+
+## Pending follow-ups (for maintainer triage)
+
+- Pre-existing `HasFilter("\"IsDeleted\" = false")` drift on
+  `ContactTagConfiguration` and `ContactCustomFieldConfiguration` — those
+  entities extend `Entity<T>`, not `AuditableEntity<T>`, so the filter references
+  a column that does not exist. Dev works only because its schema has been
+  patched by hand; a fresh Testcontainers Postgres fails with 42703. Surfaces
+  as a workaround in T-018's integration test; should be fixed in its own task.
+
 
 **T-020 — Permission seed consolidation via IPermissionRegistry** (Phase 1.5.6, Milestone C).
 Status: **In Review**. Code-to-standard alignment with ADR-004 and `permissions.md` §3.

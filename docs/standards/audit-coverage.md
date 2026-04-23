@@ -45,6 +45,24 @@ SHOULD be audited.
 would want reconstructed (bulk exports, PII disclosure, admin-initiated views of another
 user's data).
 
+### Platform-init writes are out of scope (T-018)
+
+`IModuleMigration.SeedAsync` implementations run at tenant provisioning time and write
+platform defaults (e.g. `ContactsModuleMigration.SeedAsync` setting
+`gdpr.hard_delete.enabled = false`). These writes are **deliberately not audited**
+because:
+
+- They are not user actions — there is no actor to record.
+- They are idempotent and converge to a known baseline value per tenant, so
+  "who set this?" has a well-defined answer ("the platform, at seed time").
+- The moment that baseline value is mutated by an operator, the mutation flows
+  through `IConfigurationResolver.SetOrgOverrideAsync` (org scope) or the admin
+  settings endpoints (tenant scope) — **both of those paths DO audit**, so the
+  first real "who turned this on?" event always has a user attached.
+
+Future module migrations MUST follow the same contract: seed platform defaults
+silently; audit only when an operator mutates them later.
+
 ## 3. Baseline Matrix
 
 This matrix is the **minimum** — modules may exceed it.
