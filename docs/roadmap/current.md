@@ -174,6 +174,16 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 
 ## Pending decisions
 
+**ADR-0027 — Production schema-migration strategy** (Proposed 2026-04-23). Closes
+the "Production strategy — TBD" marker in `docs/standards/schema-migration.md`
+and CLAUDE.md. Chooses EF Core Migrations (module-scoped, per-tenant rollout per
+`migration-orchestration.md`) with a CI release-gate that asserts every DDL line
+in `DevelopmentSeed.ApplySchemaUpdatesAsync` has a matching EF migration before
+the release cut. Rejects Liquibase/Flyway (two-system drift), continuing
+`ApplySchemaUpdatesAsync` in prod (no version history, no additive-only CI), and
+bespoke versioned SQL files (rebuilds EF without its ecosystem). Unblocks T-011
+(MigrationRunner). Related: ADR-0001, ADR-0002, ADR-0003.
+
 **ADR-0026 — Cross-module PII payload scan for GDPR erasure** (Proposed 2026-04-23).
 Captures the design decision that T-010 is blocked on: per-module
 `IContactReferenceLocator` with declared JSON paths (chosen), vs. full-table regex

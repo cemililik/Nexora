@@ -69,3 +69,4 @@ answerable from the Git log alone.
 | [0024](./0024-signalr-for-events-realtime.md) | SignalR for Events Real-Time Features | Accepted |
 | [0025](./0025-org-scoped-compliance-config-with-platform-caps.md) | Org-Scoped Compliance Config with Platform-Level Caps | Accepted |
 | [0026](./0026-cross-module-pii-payload-scan-for-gdpr-erasure.md) | Cross-Module PII Payload Scan for GDPR Erasure | Proposed |
+| [0027](./0027-production-schema-migration-strategy.md) | Production Schema-Migration Strategy | Proposed |
