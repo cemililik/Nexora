@@ -126,6 +126,14 @@ public static class InfrastructureServiceRegistration
         // is stateless and works fine as scoped; no behavioural change here.
         services.AddScoped<IComplianceCapProvider, NullComplianceCapProvider>();
 
+        // T-005 Demo Data Framework — orchestrator + tenant-scoped idempotency marker store.
+        services.AddDbContext<Modules.DemoSeedMarkerDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
+        services.AddScoped<IDemoDataSeeder, Modules.DemoDataSeeder>();
+
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>
         {

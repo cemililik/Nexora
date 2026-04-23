@@ -599,6 +599,19 @@ public static class DevelopmentSeed
             // placeholder for real content. Dropping NOT NULL is additive per
             // schema-migration.md §2 rule 2 (nullability relaxation is allowed).
             "ALTER TABLE notifications_notifications ALTER COLUMN \"BodyRendered\" DROP NOT NULL",
+
+            // --- T-005: Demo Data Framework idempotency marker (tenant schema) ---
+            // Recorded per (TenantId, ModuleName, Scenario) after a module's
+            // SeedDemoDataAsync completes successfully. Subsequent runs short-circuit.
+            """
+            CREATE TABLE IF NOT EXISTS platform_demo_seed_markers (
+                "TenantId" uuid NOT NULL,
+                "ModuleName" varchar(100) NOT NULL,
+                "Scenario" varchar(50) NOT NULL,
+                "SeededAt" timestamptz NOT NULL DEFAULT now(),
+                PRIMARY KEY ("TenantId", "ModuleName", "Scenario")
+            )
+            """,
         };
 
         foreach (var sql in alterStatements)

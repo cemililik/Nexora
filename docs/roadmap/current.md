@@ -6,9 +6,22 @@
 
 ## Active task
 
-_None. T-017 and T-018 both moved to In Review — see Prior active tasks._
+_None. T-005, T-017, T-018 all moved to In Review — see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-005 — `IModule.SeedDemoDataAsync` + orchestrator** (Phase 1.5.7, Milestone C).
+Status: **In Review**. Foundation-only: `IModule.SeedDemoDataAsync` (default
+no-op via C# default interface method, so all existing modules compile
+unchanged), `TenantDemoSeedContext` with a scoped `IServiceProvider`, a
+`DemoDataSeeder` orchestrator that topologically sorts by
+`IModule.Dependencies` and runs each module in its own DI scope, a
+`platform_demo_seed_markers` tenant-schema table for per-(tenant, module,
+scenario) idempotency. 8 unit tests (ordering / idempotency / scenario
+separation / broken-sibling isolation / cycle + missing-dep detection / tenant
+validation) + 2 architecture tests (no cross-module Infrastructure deps + contract
+signature lock). T-007 ships scenario content; T-006 ships the CLI.
+Full suite green (~1953 backend tests).
 
 **T-017 — Notifications BodyRendered nullable migration** (Phase 1.5.6, Milestone C —
 T-004 follow-up). Status: **In Review**. Drops NOT NULL on

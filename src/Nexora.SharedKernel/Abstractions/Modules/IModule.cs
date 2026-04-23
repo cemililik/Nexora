@@ -51,6 +51,33 @@ public interface IModule
 
     /// <summary>Run when module is uninstalled for a tenant</summary>
     Task OnUninstallAsync(TenantInstallContext context, CancellationToken ct);
+
+    /// <summary>
+    /// Seeds demo content for the module into the tenant named by
+    /// <paramref name="context"/>. Called by <c>IDemoDataSeeder</c> (T-005) after
+    /// <see cref="OnInstallAsync"/> has provisioned the module's tables. The
+    /// default implementation is a no-op so modules without demo data compile
+    /// unchanged.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Modules MUST scope all writes to the current tenant and MUST NOT reach
+    /// into another module's DbContext — that is enforced by
+    /// <c>DemoDataSeedingBoundaryTests</c>. The orchestrator guarantees
+    /// per-<c>(tenantId, moduleName, scenario)</c> idempotency via the
+    /// <c>platform_demo_seed_markers</c> table; modules should treat the call as
+    /// "this is the first time demo data is being seeded for this tenant +
+    /// scenario" and can skip their own dedup checks.
+    /// </para>
+    /// <para>
+    /// The <c>Scenario</c> is a string identifier chosen by the orchestrator
+    /// caller (T-006 CLI / T-008 admin UI). "general" and "ngo" are the initial
+    /// scenarios declared by T-007; modules MAY support a subset and return
+    /// immediately for unknown values.
+    /// </para>
+    /// </remarks>
+    Task SeedDemoDataAsync(TenantDemoSeedContext context, CancellationToken ct)
+        => Task.CompletedTask;
 }
 
 /// <summary>
@@ -72,6 +99,20 @@ public sealed record TenantInstallContext(
     string TenantId,
     string SchemaName,
     string? OrganizationId);
+
+/// <summary>
+/// Context provided to modules during demo-data seeding (T-005). Carries the
+/// tenant identity plus a scoped <see cref="IServiceProvider"/> so the module
+/// can resolve its own DbContext / repositories without reaching outside its
+/// own assembly. The orchestrator owns the scope lifetime; modules MUST NOT
+/// dispose <see cref="ScopedServices"/>.
+/// </summary>
+public sealed record TenantDemoSeedContext(
+    string TenantId,
+    string SchemaName,
+    string? OrganizationId,
+    IServiceProvider ScopedServices,
+    string Scenario);
 
 /// <summary>
 /// Scheduler for recurring/scheduled jobs.
