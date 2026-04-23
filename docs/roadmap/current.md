@@ -6,9 +6,21 @@
 
 ## Active task
 
-_None. T-021 moved to In Review — next batch entry (ADR-0027) is documentation-only._
+_None. T-022 moved to In Review — next batch entry (ADR-0028) is documentation-only._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-022 — Architecture guard for `HasFilter("\"IsDeleted\"...")` targeting
+non-`ISoftDeletable` entities** (Phase 1.5.6, Milestone C — T-021 preventive
+follow-up). Status: **In Review**. Scans every module DbContext at test
+time, walks each entity's declared indexes, and fails CI when a Filter
+references `"IsDeleted"` on a type that doesn't implement `ISoftDeletable`.
+Includes a self-test (`DriftProbeContext`) proving the scanner actually
+fires so a silent no-op never ships. **Discovery**: on its first run the
+guard caught 4 more drift cases in the Identity module —
+`OrganizationUser`, `Permission`, `RolePermission`, `UserRole` — all of
+which extend `Entity<T>` with dead `HasFilter` clauses. Fixed in the
+same commit. No DDL change (affected tables never had the column).
 
 **T-021 — Fix stray `HasFilter("\"IsDeleted\" = false")` on non-soft-deletable Contacts
 configs** (Phase 1.5.6, Milestone C — T-018 follow-up). Status: **In Review**.

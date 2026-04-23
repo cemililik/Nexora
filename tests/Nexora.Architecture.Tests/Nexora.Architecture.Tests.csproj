@@ -14,6 +14,11 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="FluentAssertions" Version="7.2.0" />
+    <!-- T-022: arch test SoftDeleteFilterBoundaryTests constructs module DbContexts
+         for runtime model inspection. UseInMemory drives the DriftProbeContext
+         self-test; Npgsql (pulled transitively via module project refs) drives the
+         production-path scan. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageReference Include="xunit" Version="2.9.2" />
