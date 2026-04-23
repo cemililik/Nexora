@@ -30,12 +30,11 @@ public sealed record RequestGdprDeleteCommand(Guid ContactId, string Reason) : I
 public sealed class RequestGdprDeleteHandler(
     ContactsDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
-    ITenantConfiguration tenantConfiguration,
+    IConfigurationResolver configurationResolver,
     IOutbox outbox,
     IBackgroundJobClient backgroundJobClient,
     ILogger<RequestGdprDeleteHandler> logger) : ICommandHandler<RequestGdprDeleteCommand>
 {
-    private const string HardDeleteFlagKey = "gdpr.hard_delete.enabled";
     private const int ErasureDebounceSeconds = 60;
 
     public async Task<Result> Handle(
@@ -53,6 +52,15 @@ public sealed class RequestGdprDeleteHandler(
         {
             logger.LogWarning("GDPR delete rejected — no valid user context for actor");
             return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_user_context"));
+        }
+
+        // Organization scope required — erasure targets a contact in the caller's
+        // organization only; prevents cross-org leakage when a user has access to
+        // multiple orgs under the same tenant.
+        if (tenantContextAccessor.Current.TryGetOrganizationGuid() is not { } organizationId)
+        {
+            logger.LogWarning("GDPR delete rejected — no organization in current context");
+            return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_invalid_organization_context"));
         }
 
         // Debounce duplicate submissions — two rapid clicks / retries within a short window
@@ -76,7 +84,9 @@ public sealed class RequestGdprDeleteHandler(
         var contactId = ContactId.From(request.ContactId);
 
         var contact = await dbContext.Contacts.FirstOrDefaultAsync(
-            c => c.Id == contactId && c.TenantId == tenantId,
+            c => c.Id == contactId
+                 && c.TenantId == tenantId
+                 && c.OrganizationId == organizationId,
             cancellationToken);
 
         if (contact is null)
@@ -91,7 +101,11 @@ public sealed class RequestGdprDeleteHandler(
             return Result.Failure(LocalizedMessage.Of("lockey_contacts_error_gdpr_delete_merged_contact"));
         }
 
-        var hardDeleteEnabled = await tenantConfiguration.GetAsync<bool>(HardDeleteFlagKey, cancellationToken);
+        // ADR-0025 — resolver honours the three-tier precedence: platform cap → tenant
+        // default → org override. No-org callers (e.g. platform jobs) still get the
+        // tenant default because the resolver skips the org layer when orgId is null.
+        var hardDeleteEnabled = await configurationResolver.GetAsync<bool>(
+            ComplianceKey.GdprHardDeleteEnabled, cancellationToken);
 
         if (hardDeleteEnabled)
         {
@@ -169,15 +183,18 @@ public sealed class RequestGdprDeleteHandler(
         };
         var childCountsJson = JsonSerializer.Serialize(childCounts);
 
-        var deletedAtUtc = DateTime.UtcNow;
-
-        dbContext.GdprErasureAudits.Add(GdprErasureAudit.Create(
+        // Build the audit record first so its internal DateTime.UtcNow timestamp becomes the
+        // single source of truth for "when was this erasure performed". The outbox event reuses
+        // the exact same value below, keeping the audit row and the integration event aligned
+        // down to the tick — both are committed in the SaveChangesAsync at the end.
+        var audit = GdprErasureAudit.Create(
             tenantId: tenantId,
             contactId: request.ContactId,
             erasedByUserId: erasedByUserId,
             reason: request.Reason,
             mode: "anonymized",
-            childCountsJson: childCountsJson));
+            childCountsJson: childCountsJson);
+        dbContext.GdprErasureAudits.Add(audit);
 
         await outbox.EnqueueAsync(new ContactGdprDeletedIntegrationEvent
         {
@@ -185,7 +202,7 @@ public sealed class RequestGdprDeleteHandler(
             ContactId = request.ContactId,
             Reason = request.Reason,
             Mode = "anonymized",
-            DeletedAtUtc = deletedAtUtc,
+            DeletedAtUtc = audit.ErasedAtUtc,
             ErasedByUserId = erasedByUserId
         }, cancellationToken);
 
@@ -194,9 +211,11 @@ public sealed class RequestGdprDeleteHandler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // No PII in logs: Reason is free-text and may contain identifying details —
+        // it lives in the GdprErasureAudit row only.
         logger.LogInformation(
-            "GDPR anonymize completed for contact {ContactId} by user {ErasedByUserId}. Reason: {Reason}",
-            contactId.Value, erasedByUserId, request.Reason);
+            "GDPR anonymize completed for contact {ContactId} (actor {ErasedByUserId})",
+            contactId.Value, erasedByUserId);
 
         return Result.Success(LocalizedMessage.Of("lockey_contacts_gdpr_delete_completed"));
     }

@@ -94,13 +94,17 @@ public sealed class ContactExportJob(
             return;
         }
 
-        // Idempotency guard — skip if already processed or in progress.
-        if (exportJob.Status is ExportJobStatus.Processing or ExportJobStatus.Completed)
+        // Idempotency guard — skip Completed or Failed terminal states; Processing means
+        // a mid-job Hangfire retry and must resume without re-running MarkProcessing,
+        // re-emitting the outbox event or re-sending the completion notification.
+        if (exportJob.Status is ExportJobStatus.Completed or ExportJobStatus.Failed)
         {
             logger.LogWarning(
-                "ExportJob {ExportJobId} already in {Status}, skipping", exportJobId, exportJob.Status);
+                "ExportJob {ExportJobId} already in terminal state {Status}, skipping",
+                exportJobId, exportJob.Status);
             return;
         }
+        var startedFromQueued = exportJob.Status == ExportJobStatus.Queued;
 
         List<Contact> contacts;
         Dictionary<Guid, List<ContactCustomField>> customFieldsByContactId;
@@ -174,7 +178,17 @@ public sealed class ContactExportJob(
         }
 
         var totalRows = contacts.Count;
-        exportJob.MarkProcessing(totalRows);
+        if (exportJob.Status == ExportJobStatus.Queued)
+        {
+            exportJob.MarkProcessing(totalRows);
+        }
+        else
+        {
+            // Resume path: refresh TotalRows so the outbox event and completion
+            // notification report the row count this run actually produced, not a
+            // stale value frozen during a crashed prior attempt.
+            exportJob.UpdateTotalRows(totalRows);
+        }
         await dbContext.SaveChangesAsync(ct);
 
         var culture = ResolveCulture(localeContext.Locale);
@@ -204,6 +218,11 @@ public sealed class ContactExportJob(
 
         exportJob.MarkCompleted(storageKey);
 
+        // Always emit the outbox event — the outbox+MarkCompleted SaveChangesAsync below
+        // is atomic, so if a prior attempt had persisted the event, it would also have
+        // persisted Completed and we wouldn't have reached this path (the early-return
+        // guard above skips terminal states). Downstream consumers are inbox-guarded
+        // (ADR-014) so a retry that re-emits is safely deduplicated.
         await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
         {
             TenantId = parameters.TenantId,
@@ -215,7 +234,22 @@ public sealed class ContactExportJob(
             CompletedAtUtc = DateTime.UtcNow
         }, ct);
 
-        if (parameters.TriggeredByUserId is { } userId)
+        // Completion notification fires only on the Queued-origin path. On resume we do
+        // not re-send because the original attempt may have already notified the user.
+        // Planned idempotent follow-up (see T-010 / T-017 backlog):
+        //   1. Remove this inline SendAsync call.
+        //   2. Add a ContactExportCompletedNotificationHandler subscribing to
+        //      ContactExportCompletedIntegrationEvent via the standard inbox table.
+        //   3. Use a stable dedupe key of the form
+        //        $"contacts:export-ready:{jobId}"
+        //      — jobId is assigned at Queue time, survives retries unchanged, and is
+        //      unique per export. The inbox primary key (MessageId, Consumer) will
+        //      collapse duplicates no matter how many times the event is redelivered.
+        // Until that lands, the startedFromQueued guard prevents duplicate at-most-once
+        // notification on resume at the cost of possibly missing notification when a
+        // crash happens between MarkProcessing and SendAsync — acceptable trade-off
+        // given the user can see completion on the status page.
+        if (startedFromQueued && parameters.TriggeredByUserId is { } userId)
         {
             try
             {

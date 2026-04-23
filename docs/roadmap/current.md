@@ -6,9 +6,31 @@
 
 ## Active task
 
-_None. All Phase 1.5.6 Contacts tasks are awaiting maintainer review._
+_None. T-019 and T-020 both moved to In Review — see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-020 — Permission seed consolidation via IPermissionRegistry** (Phase 1.5.6, Milestone C).
+Status: **In Review**. Code-to-standard alignment with ADR-004 and `permissions.md` §3.
+`IPermissionRegistry` + `InMemoryPermissionRegistry` added. All 6 modules now register their
+own permissions in `OnStartupAsync`. `IdentityModuleMigration.SeedAsync` reads the registry
+(hardcoded cross-module list removed). `DevelopmentSeed.CreateDefaultPermissions()` deleted.
+Role seed enforces scope rule: tenant "Platform Admin" gets **only** `PermissionScope.Tenant`
+permissions; 5 pre-existing Platform-scope assignments auto-stripped on first post-deploy
+startup. 10 new registry unit tests + 3 architecture boundary tests (no hardcoded perm
+strings outside module `OnStartupAsync`). Full suite green (951 passing). No new ADR — this
+task closes the tech debt that ADR-004 (Accepted) had already foreseen.
+
+**T-019 — Org-scoped compliance config with platform caps** (Phase 1.5.6, Milestone C).
+Status: **In Review**. ADR-0025 implementation: `IConfigurationResolver` (3-tier
+precedence cap → tenant → org) + `DatabaseConfigurationResolver` with L1/L2 cache +
+`NullComplianceCapProvider`. Two new tenant-schema tables (`platform_org_config`,
+`platform_compliance_policy_audit`). Two new permissions (`contacts.gdpr.settings_manage`
+tenant + `platform.compliance.policy_manage` platform). `RequestGdprDeleteHandler` swapped
+to resolver — behaviour unchanged. Admin compliance settings page at
+`/identity/settings/compliance` + 30 new en/tr lockey keys. 11 resolver unit tests +
+1 architecture test + 13 updated GDPR tests; full suites green. Runtime smoke: 34
+schema statements applied, no errors.
 
 **T-003 — Contact export improvements** (Phase 1.5.6, Milestone C). Status: **In Review**.
 ExportJob entity + Hangfire `contacts:bulk-export` + CSV/XLSX/vCard 3.0 generators + MinIO
@@ -91,7 +113,10 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 
 ## Pending decisions
 
-None. The three Phase-1 foundation ADRs are **Accepted** (maintainer promoted 2026-04-22):
+None currently open. ADR-0025 (org-scoped compliance config) was promoted to `Accepted`
+on 2026-04-23; T-019 unblocked, implementation shipped, now In Review (see Prior active tasks).
+
+The three Phase-1 foundation ADRs are **Accepted** (maintainer promoted 2026-04-22):
 
 | ADR | Title | Status |
 |-----|-------|--------|

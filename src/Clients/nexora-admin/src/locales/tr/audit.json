@@ -78,6 +78,7 @@
 
   "lockey_audit_module_display_name": "Denetim",
   "lockey_audit_permission_logs_read": "Denetim kayıtlarını görüntüle",
+  "lockey_audit_permission_logs_write": "Denetim kayıtlarına yazma",
   "lockey_audit_permission_logs_export": "Denetim kayıtlarını dışa aktar",
   "lockey_audit_permission_settings_read": "Denetim ayarlarını görüntüle",
   "lockey_audit_permission_settings_manage": "Denetim ayarlarını yönet",

@@ -12,6 +12,9 @@ public sealed record ContactImportCompletedIntegrationEvent : IntegrationEventBa
     /// <summary>Gets the number of successfully imported rows.</summary>
     public required int SuccessCount { get; init; }
 
-    /// <summary>Gets the number of rows that failed to import.</summary>
+    /// <summary>Gets the number of rows that failed to import (invalid data).</summary>
     public required int ErrorCount { get; init; }
+
+    /// <summary>Gets the number of rows skipped because a matching contact already exists.</summary>
+    public required int SkippedCount { get; init; }
 }

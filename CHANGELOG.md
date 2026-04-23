@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 1.5.6 — Permission seed consolidation (ADR-004 enforcement, T-020).**
+  New `IPermissionRegistry` interface in SharedKernel + singleton `InMemoryPermissionRegistry`
+  in Infrastructure. `IModule.OnStartupAsync(IPermissionRegistry, CancellationToken)` — every
+  module now declares its own permissions in its own `OnStartupAsync` (Identity, Contacts,
+  Documents, Notifications, Reporting, Audit). `IdentityModuleMigration.SeedAsync` reads from
+  the registry instead of a hardcoded cross-module list. `DevelopmentSeed.CreateDefaultPermissions()`
+  deleted — dev tenant delegates to `IdentityModuleMigration.SeedAsync`. Role seed now enforces
+  `permissions.md` §2 scope rule: tenant-side "Platform Admin" role is **only** granted
+  `PermissionScope.Tenant` permissions; any pre-existing Platform-scope assignments are
+  automatically stripped on next startup (idempotent). New `Role.RemovePermissionsByIds`
+  bulk-revoke API.
+
+- **Phase 1.5.6 — Organization-scoped compliance config with platform caps (ADR-0025, T-019).**
+  Three-tier resolver (platform cap → tenant default → org override) replacing tenant-global
+  reads for compliance-sensitive keys. New `IConfigurationResolver` interface in SharedKernel,
+  `DatabaseConfigurationResolver` in Infrastructure, `NullComplianceCapProvider` (SaaS swaps to
+  `NmpComplianceCapProvider` in NMP.2). New permission `contacts.gdpr.settings_manage` (tenant
+  scope) separates policy toggling from erasure execution. Platform-scope permission
+  `platform.compliance.policy_manage` reserved for NMP. New tenant-schema tables:
+  `platform_org_config`, `platform_compliance_policy_audit`. Admin panel compliance settings page
+  at `/identity/settings/compliance`. `gdpr.hard_delete.enabled` now resolves per org; runtime
+  behaviour of the anonymize vs. hard-delete branch is unchanged (ADR-008 amended). Wire format
+  for NMP → CRM caps documented in `docs/architecture/MANAGEMENT_PORTAL.md`.
 - Transactional Outbox pattern with per-module DbContext atomicity (OutboxService<TContext>)
 - Inbox pattern for idempotent event consumption (InboxGuard<TContext>)
 - OutboxProcessor BackgroundService (polling-based, configurable)

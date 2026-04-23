@@ -71,7 +71,7 @@ public sealed class GetImportJobStatusTests : IDisposable
         var importJob = ImportJob.Create(
             _tenantId, _orgId, "test.csv", "csv", $"{_orgId}/contacts/imports/abc/test.csv", "user-1");
         importJob.MarkProcessing(100);
-        importJob.UpdateProgress(100, 95, 5);
+        importJob.UpdateProgress(100, 90, 5, 5);
         importJob.MarkCompleted();
         await _dbContext.ImportJobs.AddAsync(importJob);
         await _dbContext.SaveChangesAsync();
@@ -88,8 +88,9 @@ public sealed class GetImportJobStatusTests : IDisposable
         result.IsSuccess.Should().BeTrue();
         result.Value!.Status.Should().Be("Completed");
         result.Value.TotalRows.Should().Be(100);
-        result.Value.SuccessCount.Should().Be(95);
+        result.Value.SuccessCount.Should().Be(90);
         result.Value.ErrorCount.Should().Be(5);
+        result.Value.SkippedCount.Should().Be(5);
         result.Value.CompletedAt.Should().NotBeNull();
     }
 

@@ -138,6 +138,15 @@ try
     // OpenAPI
     builder.Services.AddOpenApi();
 
+    // Minimal API JSON options — accept string form for C# enums on the wire. Frontend
+    // sends e.g. `{ "EventType": "Login" }`; without the string-enum converter the default
+    // System.Text.Json expects numeric values and rejects string payloads with a 500.
+    builder.Services.ConfigureHttpJsonOptions(options =>
+    {
+        options.SerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
+
     // Infrastructure (EF Core, Dapr, Hangfire, MediatR, etc.)
     builder.Services.AddNexoraInfrastructure(builder.Configuration);
 
@@ -206,6 +215,9 @@ try
 
     // Outbox admin endpoints
     app.MapOutboxStatusEndpoints();
+
+    // Compliance config endpoints (ADR-0025: org-scope toggles + platform caps)
+    app.MapComplianceConfigEndpoints();
 
     // Module endpoints
     app.MapNexoraModuleEndpoints();

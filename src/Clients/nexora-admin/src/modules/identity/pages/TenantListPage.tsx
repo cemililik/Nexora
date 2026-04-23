@@ -66,7 +66,7 @@ export default function TenantListPage() {
         icon={Building2}
         title={t('lockey_identity_empty_tenants')}
         action={
-          hasPermission('identity.tenants.create')
+          hasPermission('identity.tenants.manage')
             ? { label: t('lockey_identity_tenants_create'), onClick: () => navigate('/identity/tenants/create') }
             : undefined
         }
@@ -115,9 +115,11 @@ export default function TenantListPage() {
             {t('lockey_identity_tenants_description')}
           </p>
         </div>
-        <Button type="button" asChild>
-          <Link to="/identity/tenants/create">{t('lockey_identity_tenants_create')}</Link>
-        </Button>
+        {hasPermission('identity.tenants.manage') && (
+          <Button type="button" asChild>
+            <Link to="/identity/tenants/create">{t('lockey_identity_tenants_create')}</Link>
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">

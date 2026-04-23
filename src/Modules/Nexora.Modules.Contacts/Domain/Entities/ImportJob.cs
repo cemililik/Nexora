@@ -19,7 +19,13 @@ public sealed class ImportJob : Entity<ImportJobId>
     public int TotalRows { get; private set; }
     public int ProcessedRows { get; private set; }
     public int SuccessCount { get; private set; }
+
+    /// <summary>Rows that failed validation or creation (invalid data).</summary>
     public int ErrorCount { get; private set; }
+
+    /// <summary>Rows skipped because a contact with the same normalized email already exists.</summary>
+    public int SkippedCount { get; private set; }
+
     public string? ErrorDetails { get; private set; }
     public string? HangfireJobId { get; private set; }
     public string? ColumnMappingJson { get; private set; }
@@ -79,23 +85,30 @@ public sealed class ImportJob : Entity<ImportJobId>
     }
 
     /// <summary>Updates the progress counters during processing.</summary>
-    public void UpdateProgress(int processedRows, int successCount, int errorCount)
+    public void UpdateProgress(int processedRows, int successCount, int errorCount, int skippedCount)
     {
         if (Status != ImportJobStatus.Processing)
             throw new InvalidOperationException(
                 $"Cannot update progress when status is {Status}. Expected: Processing.");
 
-        if (processedRows < 0 || successCount < 0 || errorCount < 0)
-            throw new ArgumentOutOfRangeException(
-                nameof(processedRows), "Progress counters must be non-negative.");
+        // DomainException (not ArgumentOutOfRangeException) — these are entity invariants
+        // violated by the caller; we surface lockey keys so the error surfaces localized
+        // at the boundary.
+        if (processedRows < 0 || successCount < 0 || errorCount < 0 || skippedCount < 0)
+            throw new DomainException("lockey_contacts_error_import_progress_negative");
 
         if (TotalRows > 0 && processedRows > TotalRows)
-            throw new ArgumentOutOfRangeException(
-                nameof(processedRows), "ProcessedRows cannot exceed TotalRows.");
+            throw new DomainException("lockey_contacts_error_import_processed_exceeds_total");
+
+        // Invariant: every processed row falls into exactly one of success/error/skipped.
+        // Mis-accounting breaks reporting and the reconciliation checks in notifications.
+        if (successCount + errorCount + skippedCount != processedRows)
+            throw new DomainException("lockey_contacts_error_invalid_progress_counts");
 
         ProcessedRows = processedRows;
         SuccessCount = successCount;
         ErrorCount = errorCount;
+        SkippedCount = skippedCount;
     }
 
     /// <summary>Marks the job as successfully completed.</summary>

@@ -18,6 +18,7 @@ using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Audit;
@@ -101,8 +102,12 @@ public sealed class AuditModule : IModule
     }
 
     /// <inheritdoc />
-    public Task OnStartupAsync(CancellationToken ct)
+    public Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct)
     {
+        registry.Register("audit", "logs", "read",  "lockey_audit_permission_logs_read");
+        registry.Register("audit", "logs", "write", "lockey_audit_permission_logs_write");
+        registry.Register("audit", "settings", "read",   "lockey_audit_permission_settings_read");
+        registry.Register("audit", "settings", "manage", "lockey_audit_permission_settings_manage");
         return Task.CompletedTask;
     }
 

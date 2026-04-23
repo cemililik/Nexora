@@ -14,6 +14,14 @@ GDPR Article 17 ("Right to Erasure") requires physical removal of personal data 
 
 > **Amendment note:** The Phase 1.5.6 hard-delete evolution is captured as an amendment to this ADR (see T-004 and the Phase 1.5 task series) and not as a separate superseding ADR — no material decision change, only a phase progression.
 
+> **Amendment (2026-04-23, ADR-0025):** The `gdpr.hard_delete.enabled` feature flag moves
+> from tenant-global scope to **organization scope with platform-level caps**. Three-tier
+> resolution (platform cap → tenant default → org override) implemented in T-019.
+> Runtime semantics of the anonymize vs. hard-delete branch are unchanged — only the
+> configuration source moves from `ITenantConfiguration` to `IConfigurationResolver`.
+> A new tenant-scope permission `contacts.gdpr.settings_manage` gates toggling; the
+> existing `contacts.gdpr.delete` continues to gate executing. See ADR-0025 and T-019.
+
 We will implement GDPR deletion in **two phases**:
 
 ### Phase 1 (Interim — Current)

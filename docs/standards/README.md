@@ -40,6 +40,7 @@ Standards without an ADR reference are grandfathered from the initial Nexora rul
 | 10 | [multi-currency.md](multi-currency.md) | Money value object, exchange rates, cross-module usage, display rules |
 | 11 | [documentation-style.md](documentation-style.md) | Mermaid mandate, ADR immutability, module-spec required diagrams, linking |
 | 12 | [ux-ui.md](ux-ui.md) | Tab layout mandate, shared component inventory, empty/loading states, accessibility |
+| 13 | [schema-migration.md](schema-migration.md) | Migration-free schema evolution: `ApplySchemaUpdatesAsync` pattern, idempotency rules, type mapping |
 
 > **Note:** The UPPERCASE files in this directory (e.g. `CODING_STANDARDS.md`) are the legacy
 > layout and remain in place until a maintainer retires them. New contributors should treat the

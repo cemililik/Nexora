@@ -306,9 +306,36 @@ New table `platform_license_cache`:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| PUT | /api/internal/tenants/{id}/entitlements | Push updated entitlements |
+| PUT | /api/internal/tenants/{id}/entitlements | Push updated entitlements (includes `compliance.caps` sub-object — see ADR-0025) |
 | PUT | /api/internal/tenants/{id}/status | Change tenant status |
 | GET | /api/internal/tenants/{id}/usage | Get usage metrics |
+
+### NMP Compliance Caps Contract
+
+Extension of the existing entitlements channel — **no new transport**. Platform-level
+policy caps (GDPR hard-delete, retention windows, data residency, audit verbosity, …)
+ride inside `EntitlementsJson.compliance.caps`. Each key is resolved by the CRM
+runtime's `IConfigurationResolver` per the 3-tier precedence defined in ADR-0025.
+
+```json
+{
+  "compliance": {
+    "caps": {
+      "gdpr.hard_delete.enabled": { "allowed": true,  "forced": false },
+      "audit.retention.days":     { "allowed": true,  "forced": true, "value": 365 },
+      "data.residency.region":    { "allowed": false, "forced": true, "value": "eu-west" }
+    }
+  }
+}
+```
+
+- `allowed: false` — org admins CANNOT enable this key (override is rejected at resolver).
+- `forced: true` — cap value wins regardless of tenant default / org override.
+- `value` — cap's own effective value when `forced=true` or when no lower tier sets one.
+
+In dev and on-prem pre-NMP, `NullComplianceCapProvider` returns a permissive cap
+(`allowed=true, forced=false`) for every key. `NmpComplianceCapProvider` (NMP.2)
+reads the sub-object from the license cache.
 
 ## 7. Admin Panel Changes
 
@@ -349,6 +376,19 @@ New table `platform_license_cache`:
 - [ ] Invoice entity + webhook handlers
 - [ ] Plan upgrade/downgrade
 - [ ] NMP frontend (tenant list, subscriptions, billing)
+- [ ] **Compliance caps editor** (ADR-0025): per-tenant toggles for `gdpr.hard_delete.enabled`,
+      `audit.retention.days`, `data.residency.region`, … with `allowed`/`forced`/`value` flags;
+      changes publish via the existing `PUT /api/internal/tenants/{id}/entitlements`
+      channel under `compliance.caps`. Platform-scope permission:
+      `platform.compliance.policy_manage`.
+- [ ] `NmpComplianceCapProvider` replaces `NullComplianceCapProvider` in SaaS deployments —
+      reads caps from license cache, no new wire contract. (CRM-side interface is stable
+      since T-019; NMP.2 only adds the non-null implementation + DI swap in SaaS hosts.)
+- [ ] **Compliance-resolver metrics** deferred from T-019 land here so the metric schema
+      can be finalized alongside the NMP cap channel:
+  `nexora_compliance_config_resolution_count{layer=cap|tenant|org}` and
+  `nexora_compliance_policy_changes_total{key,scope}`. See
+  `roadmap/phases/phase-NMP-track.md §NMP.2` for full bullet.
 
 ### NMP.3: Admin Panel Adaptation (After Phase 2 modules exist)
 

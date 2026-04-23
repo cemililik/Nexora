@@ -16,7 +16,7 @@ export type RelationshipType =
   | 'GuardianOf'
   | 'WardOf';
 export type TagCategory = 'Donor' | 'Parent' | 'Volunteer' | 'Vendor' | 'Student' | 'Staff';
-export type ImportJobStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
+export type ImportJobStatus = 'Pending' | 'Queued' | 'Processing' | 'Completed' | 'Failed';
 export type ExportJobStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed';
 export type ExportFormat = 'csv' | 'xlsx' | 'vcard';
 export type ExportDateField = 'CreatedAt' | 'UpdatedAt';
@@ -188,6 +188,7 @@ export interface ImportJobDto {
   processedRows: number;
   successCount: number;
   errorCount: number;
+  skippedCount: number;
   createdAt: string;
   completedAt?: string;
 }

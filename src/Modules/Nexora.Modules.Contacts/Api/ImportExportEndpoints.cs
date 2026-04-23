@@ -12,6 +12,14 @@ namespace Nexora.Modules.Contacts.Api;
 /// <summary>Minimal API endpoints for contact import and export operations.</summary>
 public static class ImportExportEndpoints
 {
+    // Permission policy names — single source of truth for the RequireAuthorization
+    // calls on this module's endpoints. Kept here (rather than a cross-module
+    // ContactsPermissions class) because the strings are enforced module-locally;
+    // the authoritative declarations still live in ContactsModule.OnStartupAsync.
+    private const string ImportExecute = "contacts.import.execute";
+    private const string ExportExecute = "contacts.export.execute";
+    private const string ContactRead = "contacts.contact.read";
+
     /// <summary>Maps import/export endpoints.</summary>
     public static void MapImportExportEndpoints(this IEndpointRouteBuilder endpoints)
     {
@@ -26,7 +34,7 @@ public static class ImportExportEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<ImportUploadUrlDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<ImportUploadUrlDto>.Fail(result.Error!));
-        });
+        }).RequireAuthorization(ImportExecute);
 
         group.MapPost("/import/preview", async (PreviewImportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -35,7 +43,7 @@ public static class ImportExportEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<ContactImportPreviewDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<ContactImportPreviewDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.write");
+        }).RequireAuthorization(ImportExecute);
 
         group.MapPost("/import/validate", async (ValidateImportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -45,7 +53,7 @@ public static class ImportExportEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope<ContactImportValidationDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<ContactImportValidationDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.write");
+        }).RequireAuthorization(ImportExecute);
 
         group.MapPost("/import", async (ConfirmImportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -57,7 +65,7 @@ public static class ImportExportEndpoints
                     $"/api/v1/contacts/contacts/import/{result.Value!.JobId}",
                     ApiEnvelope<ImportJobDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<ImportJobDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.write");
+        }).RequireAuthorization(ImportExecute);
 
         group.MapGet("/import/{jobId:guid}", async (Guid jobId, ISender sender, CancellationToken ct) =>
         {
@@ -70,7 +78,7 @@ public static class ImportExportEndpoints
                         Results.NotFound(ApiEnvelope<ImportJobDto>.Fail(result.Error)),
                     _ => Results.BadRequest(ApiEnvelope<ImportJobDto>.Fail(result.Error))
                 };
-        }).RequireAuthorization("contacts.contacts.read");
+        }).RequireAuthorization(ContactRead);
 
         group.MapPost("/export", async (StartExportRequest request, ISender sender, CancellationToken ct) =>
         {
@@ -89,7 +97,7 @@ public static class ImportExportEndpoints
                     $"/api/v1/contacts/contacts/export/{result.Value!.JobId}",
                     ApiEnvelope<ExportJobDto>.Success(result.Value, result.Message))
                 : Results.BadRequest(ApiEnvelope<ExportJobDto>.Fail(result.Error!));
-        }).RequireAuthorization("contacts.contacts.read");
+        }).RequireAuthorization(ExportExecute);
 
         group.MapGet("/export/{jobId:guid}", async (Guid jobId, ISender sender, CancellationToken ct) =>
         {
@@ -102,7 +110,7 @@ public static class ImportExportEndpoints
                         Results.NotFound(ApiEnvelope<ExportJobDto>.Fail(result.Error)),
                     _ => Results.BadRequest(ApiEnvelope<ExportJobDto>.Fail(result.Error))
                 };
-        }).RequireAuthorization("contacts.contacts.read");
+        }).RequireAuthorization(ContactRead);
     }
 }
 

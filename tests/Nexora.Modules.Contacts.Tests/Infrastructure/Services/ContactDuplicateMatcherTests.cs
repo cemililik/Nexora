@@ -62,6 +62,41 @@ public sealed class ContactDuplicateMatcherTests : IDisposable
     }
 
     [Fact]
+    public async Task FindExistingContactIdAsync_EmailCaseDiffers_StillDetectedAsDuplicate()
+    {
+        // Seed with canonically-lowercased email (the Contact factory / normalization path).
+        var existing = Contact.Create(_tenantId, _orgId, ContactType.Individual,
+            "Ada", "Lovelace", null, "ada@example.com", null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(existing);
+        await _dbContext.SaveChangesAsync();
+
+        // Probe with an upper-case + whitespace-padded variant that is semantically identical.
+        var match = await _matcher.FindExistingContactIdAsync(
+            _tenantId, _orgId, "  Ada@Example.COM  ", phone: null, CancellationToken.None);
+
+        match.Should().Be(existing.Id.Value);
+    }
+
+    [Fact]
+    public async Task FindExistingByEmailsAsync_UnnormalizedProbe_DoesNotMatch()
+    {
+        // Contract: FindExistingByEmailsAsync does NOT normalize — it trusts the caller
+        // (ContactImportJob pre-normalizes via `Trim().ToLowerInvariant()` before the
+        // bulk probe). If a caller ever regresses and sends raw emails, we want the test
+        // suite to fail here rather than silently miss duplicates in production.
+        var contact = Contact.Create(_tenantId, _orgId, ContactType.Individual,
+            "Grace", "Hopper", null, "grace@example.com", null, ContactSource.Manual);
+        await _dbContext.Contacts.AddAsync(contact);
+        await _dbContext.SaveChangesAsync();
+
+        var unnormalizedProbe = new[] { "  Grace@Example.COM  " };
+        var result = await _matcher.FindExistingByEmailsAsync(_tenantId, _orgId, unnormalizedProbe, CancellationToken.None);
+
+        result.Should().BeEmpty(
+            "the bulk API intentionally skips normalization; callers must pre-normalize");
+    }
+
+    [Fact]
     public async Task FindExistingByEmailsAsync_OtherOrganization_NotReturned()
     {
         var otherOrg = Guid.NewGuid();

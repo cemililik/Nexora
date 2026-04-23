@@ -39,6 +39,7 @@ public sealed class GetImportJobStatusHandler(
             importJob.ProcessedRows,
             importJob.SuccessCount,
             importJob.ErrorCount,
+            importJob.SkippedCount,
             importJob.CreatedAt,
             importJob.CompletedAt);
 

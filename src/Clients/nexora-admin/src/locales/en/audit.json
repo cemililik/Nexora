@@ -78,6 +78,7 @@
 
   "lockey_audit_module_display_name": "Audit",
   "lockey_audit_permission_logs_read": "View audit logs",
+  "lockey_audit_permission_logs_write": "Write audit logs",
   "lockey_audit_permission_logs_export": "Export audit logs",
   "lockey_audit_permission_settings_read": "View audit settings",
   "lockey_audit_permission_settings_manage": "Manage audit settings",

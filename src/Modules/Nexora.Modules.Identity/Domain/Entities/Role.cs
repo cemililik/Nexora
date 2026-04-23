@@ -70,4 +70,27 @@ public sealed class Role : AuditableEntity<RoleId>, IAggregateRoot
             AddDomainEvent(new RolePermissionChangedEvent(Id, permissionId, PermissionAction.Revoked));
         }
     }
+
+    /// <summary>
+    /// Bulk-revokes any of this role's permissions whose IDs appear in
+    /// <paramref name="permissionIds"/>. Idempotent — returns the number of rows removed.
+    /// Used by seed-time scope enforcement (ADR-004 / permissions.md §2) to strip
+    /// Platform-scope perms accidentally assigned to tenant roles by legacy seeds.
+    /// </summary>
+    public int RemovePermissionsByIds(IReadOnlyCollection<PermissionId> permissionIds)
+    {
+        if (permissionIds.Count == 0) return 0;
+        // Build an O(1) lookup once so the filter below avoids O(n*m) Contains scans
+        // on the _permissions list.
+        var lookup = permissionIds as ISet<PermissionId> ?? permissionIds.ToHashSet();
+        var toRemove = _permissions
+            .Where(rp => lookup.Contains(rp.PermissionId))
+            .ToList();
+        foreach (var rp in toRemove)
+        {
+            _permissions.Remove(rp);
+            AddDomainEvent(new RolePermissionChangedEvent(Id, rp.PermissionId, PermissionAction.Revoked));
+        }
+        return toRemove.Count;
+    }
 }

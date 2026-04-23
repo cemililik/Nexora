@@ -258,7 +258,7 @@ cat > /tmp/user-attrs.json << 'USEREOF'
     "org_id":["00000000-0000-0000-0000-000000000001"],
     "organizations":["00000000-0000-0000-0000-000000000001"],
     "permissions":[
-      "identity.tenants.read","identity.tenants.create","identity.tenants.update","identity.tenants.delete",
+      "identity.tenants.read","identity.tenants.manage",
       "identity.organizations.read","identity.organizations.create","identity.organizations.update","identity.organizations.delete",
       "identity.users.read","identity.users.create","identity.users.update","identity.users.delete",
       "identity.roles.read","identity.roles.create","identity.roles.update","identity.roles.delete",
@@ -269,7 +269,7 @@ cat > /tmp/user-attrs.json << 'USEREOF'
       "contacts.note.create","contacts.note.update","contacts.note.read","contacts.note.delete",
       "contacts.relationship.create","contacts.relationship.delete",
       "contacts.import.execute","contacts.export.execute",
-      "contacts.gdpr.export","contacts.gdpr.delete","contacts.merge.execute",
+      "contacts.gdpr.export","contacts.gdpr.delete","contacts.gdpr.settings_manage","contacts.merge.execute",
       "documents.document.read","documents.document.upload","documents.document.update","documents.document.delete",
       "documents.folder.read","documents.folder.manage",
       "documents.signature.read","documents.signature.create","documents.signature.manage",
@@ -282,7 +282,7 @@ cat > /tmp/user-attrs.json << 'USEREOF'
       "reporting.execution.run","reporting.execution.read",
       "reporting.schedule.manage",
       "reporting.dashboard.read","reporting.dashboard.manage",
-      "audit.logs.read","audit.logs.export","audit.settings.read","audit.settings.manage"
+      "audit.logs.read","audit.logs.write","audit.settings.read","audit.settings.manage"
     ]
   }
 }
@@ -303,6 +303,14 @@ curl -s -o /dev/null -w " -> Attributes: HTTP %{http_code}\n" \
   -H "Content-Type: application/json" \
   -d @/tmp/user-update.json
 
+# Count permissions from the user-update JSON before cleanup — avoids a hardcoded
+# number that silently lies when the list changes.
+PERM_COUNT=$(python3 -c "
+import json
+with open('/tmp/user-update.json') as f:
+    print(len(json.load(f)['attributes']['permissions']))
+")
+
 # Cleanup
 rm -f /tmp/profile.json /tmp/user-attrs.json /tmp/user-update.json
 
@@ -316,7 +324,7 @@ echo "  Clients:     nexora-admin (public, PKCE)"
 echo "               nexora-portal (confidential)"
 echo "               nexora-api (confidential, service account)"
 echo "  Test user:  admin@nexora.dev / ****"
-echo "  Permissions: 63 (all modules)"
+echo "  Permissions: $PERM_COUNT (all modules)"
 echo ""
 echo "  Admin Console: http://localhost:8080/admin"
 echo "  Account:       http://localhost:8080/realms/$REALM/account"

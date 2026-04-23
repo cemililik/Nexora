@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useUiStore } from '@/shared/lib/stores/uiStore';
+import { isSafeDownloadUrl } from '@/shared/lib/urlSafety';
 import { useApiError } from '@/shared/hooks/useApiError';
 import { useUnsavedChangesGuard } from '@/shared/hooks/useUnsavedChangesGuard';
 import { useExportStatus, useStartExport } from '../hooks/useImportExport';
@@ -160,14 +161,33 @@ export default function ExportPage() {
             </dl>
 
             {status === 'Completed' && job?.downloadUrl && (
-              <Button type="button" asChild>
-                <a
-                  href={job.downloadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {t('lockey_contacts_export_button_download')}
-                </a>
+              <Button
+                type="button"
+                onClick={() => {
+                  // Programmatic anchor click with the `download` attribute. Popup-blockers
+                  // suppress window.open in async callbacks (post-poll), but an anchor click
+                  // triggered from a direct user gesture is allowed in every major browser.
+                  if (!job.downloadUrl) return;
+                  if (!isSafeDownloadUrl(job.downloadUrl)) {
+                    // Defensive guard — server already issues a presigned URL on its own
+                    // bucket, but a stored/poisoned value containing javascript: or other
+                    // dangerous schemes must never be navigated to.
+                    return;
+                  }
+                  const anchor = document.createElement('a');
+                  anchor.href = job.downloadUrl;
+                  anchor.download = '';
+                  anchor.rel = 'noopener noreferrer';
+                  // Cross-origin presigned URLs can make the browser ignore the
+                  // `download` attribute and navigate in the current tab. Forcing a new
+                  // tab keeps the admin SPA state (auth, unsaved form, polling) intact.
+                  anchor.target = '_blank';
+                  document.body.appendChild(anchor);
+                  anchor.click();
+                  anchor.remove();
+                }}
+              >
+                {t('lockey_contacts_export_button_download')}
               </Button>
             )}
 

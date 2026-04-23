@@ -113,9 +113,13 @@ public sealed class ContactImportJob(
         var totalRows = rows.Count;
         var successCount = 0;
         var errorCount = 0;
+        var skippedCount = 0;
 
-        importJob.MarkProcessing(totalRows);
-        await dbContext.SaveChangesAsync(ct);
+        if (importJob.Status == ImportJobStatus.Queued)
+        {
+            importJob.MarkProcessing(totalRows);
+            await dbContext.SaveChangesAsync(ct);
+        }
 
         for (var i = 0; i < totalRows; i += BatchSize)
         {
@@ -153,7 +157,7 @@ public sealed class ContactImportJob(
                         logger.LogDebug(
                             "Skipping duplicate contact for ImportJob {ImportJobId} at row {RowIndex}",
                             importJobId, i + j);
-                        errorCount++;
+                        skippedCount++;
                         continue;
                     }
 
@@ -194,12 +198,12 @@ public sealed class ContactImportJob(
             await dbContext.SaveChangesAsync(ct);
 
             var processed = Math.Min(i + BatchSize, totalRows);
-            importJob.UpdateProgress(processed, successCount, errorCount);
+            importJob.UpdateProgress(processed, successCount, errorCount, skippedCount);
             await dbContext.SaveChangesAsync(ct);
 
             logger.LogInformation(
-                "Import progress: {Processed}/{Total} (success: {Success}, errors: {Errors})",
-                processed, totalRows, successCount, errorCount);
+                "Import progress: {Processed}/{Total} (success: {Success}, errors: {Errors}, skipped: {Skipped})",
+                processed, totalRows, successCount, errorCount, skippedCount);
         }
 
         // Atomic: mark completed + enqueue outbox event in a single SaveChangesAsync
@@ -212,14 +216,15 @@ public sealed class ContactImportJob(
             ImportJobId = parameters.ImportJobId,
             TotalRows = totalRows,
             SuccessCount = successCount,
-            ErrorCount = errorCount
+            ErrorCount = errorCount,
+            SkippedCount = skippedCount
         }, ct);
 
         await dbContext.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "Contact import completed. Total: {Total}, Success: {Success}, Errors: {Errors}",
-            totalRows, successCount, errorCount);
+            "Contact import completed. Total: {Total}, Success: {Success}, Errors: {Errors}, Skipped: {Skipped}",
+            totalRows, successCount, errorCount, skippedCount);
     }
 
     private static IReadOnlyDictionary<string, string>? DeserializeMapping(string? json)

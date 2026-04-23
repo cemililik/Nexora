@@ -12,6 +12,7 @@ using Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Domain.Events;
 
 namespace Nexora.Modules.Contacts;
@@ -106,10 +107,31 @@ public sealed class ContactsModule : IModule
     }
 
     /// <inheritdoc />
-    public Task OnStartupAsync(CancellationToken ct)
+    public Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct)
     {
-        // Contacts module permissions are seeded centrally in IdentityModuleMigration.SeedAsync()
-        // (20 permissions: contact CRUD, tag CRUD, custom-field, note, relationship, import, export, gdpr, merge).
+        // Contacts module permissions (ADR-004 / permissions.md §3). All Tenant-scope.
+        registry.Register("contacts", "contact", "read",   "lockey_contacts_permission_contact_read");
+        registry.Register("contacts", "contact", "create", "lockey_contacts_permission_contact_create");
+        registry.Register("contacts", "contact", "update", "lockey_contacts_permission_contact_update");
+        registry.Register("contacts", "contact", "delete", "lockey_contacts_permission_contact_delete");
+        registry.Register("contacts", "tag", "read",   "lockey_contacts_permission_tag_read");
+        registry.Register("contacts", "tag", "create", "lockey_contacts_permission_tag_create");
+        registry.Register("contacts", "tag", "update", "lockey_contacts_permission_tag_update");
+        registry.Register("contacts", "tag", "delete", "lockey_contacts_permission_tag_delete");
+        registry.Register("contacts", "custom-field", "read",   "lockey_contacts_permission_custom_field_read");
+        registry.Register("contacts", "custom-field", "manage", "lockey_contacts_permission_custom_field_manage");
+        registry.Register("contacts", "note", "read",   "lockey_contacts_permission_note_read");
+        registry.Register("contacts", "note", "create", "lockey_contacts_permission_note_create");
+        registry.Register("contacts", "note", "update", "lockey_contacts_permission_note_update");
+        registry.Register("contacts", "note", "delete", "lockey_contacts_permission_note_delete");
+        registry.Register("contacts", "relationship", "create", "lockey_contacts_permission_relationship_create");
+        registry.Register("contacts", "relationship", "delete", "lockey_contacts_permission_relationship_delete");
+        registry.Register("contacts", "import", "execute", "lockey_contacts_permission_import_execute");
+        registry.Register("contacts", "export", "execute", "lockey_contacts_permission_export_execute");
+        registry.Register("contacts", "gdpr", "export",          "lockey_contacts_permission_gdpr_export");
+        registry.Register("contacts", "gdpr", "delete",          "lockey_contacts_permission_gdpr_delete");
+        registry.Register("contacts", "gdpr", "settings_manage", "lockey_contacts_permission_gdpr_settings_manage");
+        registry.Register("contacts", "merge", "execute", "lockey_contacts_permission_merge_execute");
         return Task.CompletedTask;
     }
 

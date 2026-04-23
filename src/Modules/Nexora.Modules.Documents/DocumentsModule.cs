@@ -16,6 +16,7 @@ using Nexora.Modules.Documents.Infrastructure.Services;
 using Nexora.SharedKernel.Abstractions.Jobs;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Authorization;
 using Nexora.SharedKernel.Domain.Events;
 using DocumentService = Nexora.Modules.Documents.Infrastructure.Services.DocumentService;
 
@@ -116,12 +117,19 @@ public sealed class DocumentsModule : IModule
     }
 
     /// <inheritdoc />
-    public Task OnStartupAsync(CancellationToken ct)
+    public Task OnStartupAsync(IPermissionRegistry registry, CancellationToken ct)
     {
-        // Documents module permissions are seeded centrally in IdentityModuleMigration.SeedAsync()
-        // (8 permissions: documents.document.read, documents.document.upload, documents.document.update,
-        //  documents.document.delete, documents.folder.manage, documents.template.manage,
-        //  documents.signature.read, documents.signature.create).
+        registry.Register("documents", "document", "read",   "lockey_documents_permission_document_read");
+        registry.Register("documents", "document", "upload", "lockey_documents_permission_document_upload");
+        registry.Register("documents", "document", "update", "lockey_documents_permission_document_update");
+        registry.Register("documents", "document", "delete", "lockey_documents_permission_document_delete");
+        registry.Register("documents", "folder", "read",   "lockey_documents_permission_folder_read");
+        registry.Register("documents", "folder", "manage", "lockey_documents_permission_folder_manage");
+        registry.Register("documents", "signature", "read",   "lockey_documents_permission_signature_read");
+        registry.Register("documents", "signature", "create", "lockey_documents_permission_signature_create");
+        registry.Register("documents", "signature", "manage", "lockey_documents_permission_signature_manage");
+        registry.Register("documents", "template", "read",   "lockey_documents_permission_template_read");
+        registry.Register("documents", "template", "manage", "lockey_documents_permission_template_manage");
         return Task.CompletedTask;
     }
 

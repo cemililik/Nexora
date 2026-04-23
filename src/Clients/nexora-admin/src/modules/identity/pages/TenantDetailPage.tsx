@@ -98,12 +98,12 @@ export default function TenantDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          {hasPermission('identity.tenants.update') && canActivate && (
+          {hasPermission('identity.tenants.manage') && canActivate && (
             <Button type="button" onClick={() => updateStatus.activate()}>
               {t('lockey_identity_action_activate')}
             </Button>
           )}
-          {hasPermission('identity.tenants.update') && canSuspend && (
+          {hasPermission('identity.tenants.manage') && canSuspend && (
             <Button
               type="button"
               variant="outline"
@@ -112,7 +112,7 @@ export default function TenantDetailPage() {
               {t('lockey_identity_action_suspend')}
             </Button>
           )}
-          {hasPermission('identity.tenants.update') && canTerminate && (
+          {hasPermission('identity.tenants.manage') && canTerminate && (
             <Button
               type="button"
               variant="destructive"
@@ -309,7 +309,7 @@ export default function TenantDetailPage() {
               </SelectContent>
             </Select>
           </div>
-          {hasPermission('identity.tenants.update') && (
+          {hasPermission('identity.tenants.manage') && (
             <Button
               type="button"
               disabled={updateSettings.isPending}
