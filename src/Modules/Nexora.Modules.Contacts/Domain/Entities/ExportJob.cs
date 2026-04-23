@@ -100,6 +100,23 @@ public sealed class ExportJob : Entity<ExportJobId>
         TotalRows = totalRows;
     }
 
+    /// <summary>
+    /// Refreshes the planned row count while the job is in <see cref="ExportJobStatus.Processing"/>.
+    /// Used by job resume paths so the outbox payload and completion notification report the
+    /// latest query result (e.g. when concurrent writes have added / removed rows since the
+    /// original MarkProcessing transition).
+    /// </summary>
+    public void UpdateTotalRows(int totalRows)
+    {
+        if (Status != ExportJobStatus.Processing)
+            throw new InvalidOperationException(
+                $"Cannot update TotalRows when status is {Status}. Expected: Processing.");
+        if (totalRows < 0)
+            throw new ArgumentOutOfRangeException(nameof(totalRows), "TotalRows must be non-negative.");
+
+        TotalRows = totalRows;
+    }
+
     /// <summary>Marks the job as completed and records the storage key of the generated file.</summary>
     public void MarkCompleted(string storageKey)
     {

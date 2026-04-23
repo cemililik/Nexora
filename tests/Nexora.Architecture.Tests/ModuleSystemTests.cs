@@ -15,6 +15,7 @@ public sealed class ModuleSystemTests
         _ = typeof(Modules.Documents.DocumentsModule).Assembly;
         _ = typeof(Modules.Notifications.NotificationsModule).Assembly;
         _ = typeof(Modules.Reporting.ReportingModule).Assembly;
+        _ = typeof(Modules.Audit.AuditModule).Assembly;
     }
     [Fact]
     public void IdentityModule_ShouldImplementIModule()
@@ -72,7 +73,7 @@ public sealed class ModuleSystemTests
     /// permissions.md §3 at runtime (not just by source-text regex).
     /// </summary>
     [Fact]
-    public async Task AllModules_MustRegisterAtLeastOnePermission()
+    public async Task AllModules_OnStartup_ShouldRegisterAtLeastOnePermission()
     {
         var registry = new InMemoryPermissionRegistry();
         var modules = new IModule[]

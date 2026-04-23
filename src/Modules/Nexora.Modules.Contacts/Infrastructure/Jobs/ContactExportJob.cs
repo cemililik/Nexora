@@ -181,8 +181,15 @@ public sealed class ContactExportJob(
         if (exportJob.Status == ExportJobStatus.Queued)
         {
             exportJob.MarkProcessing(totalRows);
-            await dbContext.SaveChangesAsync(ct);
         }
+        else
+        {
+            // Resume path: refresh TotalRows so the outbox event and completion
+            // notification report the row count this run actually produced, not a
+            // stale value frozen during a crashed prior attempt.
+            exportJob.UpdateTotalRows(totalRows);
+        }
+        await dbContext.SaveChangesAsync(ct);
 
         var culture = ResolveCulture(localeContext.Locale);
         var selectedFields = parameters.Fields is { Count: > 0 }
@@ -211,48 +218,49 @@ public sealed class ContactExportJob(
 
         exportJob.MarkCompleted(storageKey);
 
-        // Outbox + completion notification MUST fire exactly once — only when this run
-        // performed the Queued→Processing→Completed transition. On a Hangfire resume
-        // (status was already Processing when we entered), the previous attempt may
-        // already have reached outbox.EnqueueAsync before crashing; re-emitting would
-        // produce duplicate events and duplicate notifications.
-        if (startedFromQueued)
+        // Always emit the outbox event — the outbox+MarkCompleted SaveChangesAsync below
+        // is atomic, so if a prior attempt had persisted the event, it would also have
+        // persisted Completed and we wouldn't have reached this path (the early-return
+        // guard above skips terminal states). Downstream consumers are inbox-guarded
+        // (ADR-014) so a retry that re-emits is safely deduplicated.
+        await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
         {
-            await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
-            {
-                TenantId = parameters.TenantId,
-                JobId = exportJobId.Value,
-                TotalRows = totalRows,
-                Format = parameters.Format.ToLowerInvariant(),
-                StorageKey = storageKey,
-                TriggeredByUserId = parameters.TriggeredByUserId,
-                CompletedAtUtc = DateTime.UtcNow
-            }, ct);
+            TenantId = parameters.TenantId,
+            JobId = exportJobId.Value,
+            TotalRows = totalRows,
+            Format = parameters.Format.ToLowerInvariant(),
+            StorageKey = storageKey,
+            TriggeredByUserId = parameters.TriggeredByUserId,
+            CompletedAtUtc = DateTime.UtcNow
+        }, ct);
 
-            if (parameters.TriggeredByUserId is { } userId)
+        // Completion notification fires only on the Queued-origin path. On resume we do
+        // not re-send because the original attempt may have already notified the user;
+        // a follow-up refactor moves this into the ContactExportCompletedIntegrationEvent
+        // consumer (inbox-guarded) so notification becomes idempotent end-to-end.
+        if (startedFromQueued && parameters.TriggeredByUserId is { } userId)
+        {
+            try
             {
-                try
-                {
-                    await notificationService.SendAsync(new SendNotificationRequest(
-                        TemplateCode: "lockey_contacts_notification_export_ready",
-                        Channel: "in_app",
-                        ContactId: userId,
-                        RecipientAddress: userId.ToString(),
-                        Variables: new Dictionary<string, string>
-                        {
-                            ["jobId"] = exportJobId.Value.ToString(),
-                            ["format"] = parameters.Format.ToLowerInvariant(),
-                            ["totalRows"] = totalRows.ToString(CultureInfo.InvariantCulture)
-                        },
-                        OrganizationId: orgId.ToString()), ct);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    logger.LogWarning(
-                        ex,
-                        "Failed to send export-ready notification for job {ExportJobId}; export itself succeeded",
-                        exportJobId);
-                }
+                await notificationService.SendAsync(new SendNotificationRequest(
+                    TemplateCode: "lockey_contacts_notification_export_ready",
+                    Channel: "in_app",
+                    ContactId: userId,
+                    RecipientAddress: userId.ToString(),
+                    Variables: new Dictionary<string, string>
+                    {
+                        ["jobId"] = exportJobId.Value.ToString(),
+                        ["format"] = parameters.Format.ToLowerInvariant(),
+                        ["totalRows"] = totalRows.ToString(CultureInfo.InvariantCulture)
+                    },
+                    OrganizationId: orgId.ToString()), ct);
+            }
+            catch (InvalidOperationException ex)
+            {
+                logger.LogWarning(
+                    ex,
+                    "Failed to send export-ready notification for job {ExportJobId}; export itself succeeded",
+                    exportJobId);
             }
         }
 

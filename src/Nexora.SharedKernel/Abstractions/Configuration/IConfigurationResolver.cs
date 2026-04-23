@@ -42,6 +42,11 @@ public interface IConfigurationResolver
     /// <c>ForcedValue</c> from the exception. The rejection is itself recorded in the
     /// policy-audit table before the exception is raised.
     /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the caller lacks an organization in the current tenant context
+    /// (org overrides are inherently scoped to an org) or when there is no
+    /// authenticated user id to attribute the change to in the audit row.
+    /// </exception>
     Task SetOrgOverrideAsync<T>(string key, T value, string reason, CancellationToken ct = default);
 
     /// <summary>

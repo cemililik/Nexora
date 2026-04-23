@@ -72,6 +72,7 @@ files have been archived to `docs/_archive/standards-legacy/`.
     - UI loaded dynamically based on installed modules
 
 ### Observability & Error Handling (rules inline)
+
 - Structured logging with Serilog + `ILogger<T>` — PascalCase named parameters, no string interpolation
 - Two-tier error model: `Result.Failure()` for expected errors, exceptions for unexpected
 - `DomainException` only from domain entities — handlers use `Result.Failure()`
@@ -85,6 +86,7 @@ files have been archived to `docs/_archive/standards-legacy/`.
 - **NEVER** use `catch(Exception)` in module code — only in `GlobalExceptionHandler` and `NexoraJob`
 
 ### Frontend & API Integration (rules inline — no standalone doc yet)
+
 - TypeScript strict, functional components, no `any`
 - State: TanStack Query (server) + Zustand (client) + React Hook Form (forms)
 - Styling: Tailwind CSS 4 + shadcn/ui, `cn()` utility
@@ -92,11 +94,14 @@ files have been archived to `docs/_archive/standards-legacy/`.
 - API responses are `ApiEnvelope<T>` — always unwrap `data` field
 - Error messages are `lockey_` keys — resolve with `t(key, meta)` and the `useApiError` hook
 - File upload: presigned URL pattern — no direct multipart uploads
-- Full reference (legacy, still accurate for patterns): `docs/_archive/standards-legacy/FRONTEND_STANDARDS.md` and `docs/_archive/standards-legacy/API_INTEGRATION_STANDARDS.md`
+- Canonical standards: `docs/standards/` — read these first.
+- Archived/legacy (reference only, may be out of date): `docs/_archive/standards-legacy/FRONTEND_STANDARDS.md` and `docs/_archive/standards-legacy/API_INTEGRATION_STANDARDS.md`. Treat as historical context, not normative.
 - Integration guide: `docs/guides/API_INTEGRATION_GUIDE.md`
 
 ### Infrastructure (rules inline — no standalone doc yet)
-- Full reference (legacy): `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md`
+
+- Canonical standards: `docs/standards/` — read these first when an item has a canonical doc.
+- Archived/legacy (reference only, may be out of date): `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md`. Treat as historical context until a canonical infrastructure standard lands.
 
 ## Solution Structure
 ```
@@ -183,7 +188,11 @@ Nexora.Modules.{ModuleName}/
 - Observability: OpenTelemetry, Grafana, Loki, Tempo
 
 ## Infrastructure Standards
-**Legacy spec (still accurate)**: `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md`
+
+**Canonical standards: `docs/standards/`** — read these first. A dedicated
+infrastructure standard has not yet landed; until it does, the archived file
+at `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md` is historical
+reference only (may be out of date).
 
 ### Cache
 - Use **only** `ICacheService` for caching — never `IDistributedCache`, `IMemoryCache`, or `DaprClient` directly
@@ -250,10 +259,11 @@ Nexora.Modules.{ModuleName}/
   - Hard delete is allowed ONLY for: GDPR compliance, join-table reconciliation (removing orphaned many-to-many rows), and uninstall/orphan cleanup (removing data for deprovisioned modules or tenants)
 
 ## When Writing Frontend Code
-**UX/UI standard**: `docs/standards/ux-ui.md`
-**Integration guide**: `docs/guides/API_INTEGRATION_GUIDE.md`
-**Legacy spec (still accurate for patterns)**: `docs/_archive/standards-legacy/FRONTEND_STANDARDS.md`
-**Legacy API standard (still accurate)**: `docs/_archive/standards-legacy/API_INTEGRATION_STANDARDS.md`
+
+**Canonical standards: `docs/standards/`** — read these first.
+**UX/UI standard**: `docs/standards/ux-ui.md` (canonical).
+**Integration guide**: `docs/guides/API_INTEGRATION_GUIDE.md`.
+**Archived/legacy (reference only, may be out of date)**: `docs/_archive/standards-legacy/FRONTEND_STANDARDS.md` and `docs/_archive/standards-legacy/API_INTEGRATION_STANDARDS.md`. Treat as historical context, not normative.
 
 ### UX/UI Layout Rules
 - Detail pages MUST use **custom underline tab layout** (`<button>` with `border-b-2`) — NOT shadcn/Radix Tabs, NOT card-based side-by-side

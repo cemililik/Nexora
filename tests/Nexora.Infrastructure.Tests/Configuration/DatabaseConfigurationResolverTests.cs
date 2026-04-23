@@ -179,15 +179,19 @@ public sealed class DatabaseConfigurationResolverTests : IDisposable
     }
 
     [Fact]
-    public async Task SetOrgOverride_CapForced_RecordsAttemptWithoutPersisting()
+    public async Task SetOrgOverride_CapForced_ThrowsViolation_AndRecordsAttempt()
     {
         _capProvider.GetCapAsync(Key, Arg.Any<CancellationToken>())
             .Returns(new ComplianceCap(Allowed: true, Forced: true, Value: "true"));
 
         var resolver = CreateResolver();
 
-        await resolver.SetOrgOverrideAsync(Key, false, "trying to disable");
+        var act = () => resolver.SetOrgOverrideAsync(Key, false, "trying to disable");
 
+        (await act.Should().ThrowAsync<ComplianceCapViolationException>())
+            .Where(ex => ex.Key == Key && ex.IsForced && ex.ForcedValue == "true");
+
+        // Override not persisted; audit row is — forensic trail captures blocked attempts.
         (await _dbContext.OrgOverrides.AnyAsync()).Should().BeFalse();
         var audit = await _dbContext.PolicyAudit.SingleAsync();
         audit.Reason.Should().Contain(DatabaseConfigurationResolver.CapForcedRejectedSuffix);

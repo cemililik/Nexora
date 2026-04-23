@@ -27,12 +27,17 @@ public sealed record PermissionDefinition
     public PermissionScope Scope { get; }
 
     /// <summary>
-    /// Constructs a <see cref="PermissionDefinition"/>. Validates that each segment is
-    /// non-empty and does NOT contain a '.' — the dotted form is the computed
-    /// <see cref="Name"/>; pre-dotted segments would produce malformed canonical names
-    /// that still parse but point to a different permission than intended.
+    /// Constructs a <see cref="PermissionDefinition"/>. Validates each segment against the
+    /// canonical shape from <c>docs/standards/permissions.md</c> §1: lowercase
+    /// letters/digits with <c>_</c> / <c>-</c> allowed inside (no whitespace, no dots,
+    /// no uppercase, no leading digit). <see cref="DescriptionKey"/> must be a valid
+    /// lockey — i.e. begin with <c>lockey_</c> — so backend responses can only surface
+    /// translatable messages.
     /// </summary>
-    /// <exception cref="ArgumentException">When any segment is empty, whitespace-only, or contains '.'.</exception>
+    /// <exception cref="ArgumentException">
+    /// When a segment violates the canonical shape or the description key is missing /
+    /// whitespace / does not start with <c>lockey_</c>.
+    /// </exception>
     public PermissionDefinition(
         string Module,
         string Resource,
@@ -43,7 +48,7 @@ public sealed record PermissionDefinition
         ValidateSegment(Module, nameof(Module));
         ValidateSegment(Resource, nameof(Resource));
         ValidateSegment(Action, nameof(Action));
-        ArgumentException.ThrowIfNullOrWhiteSpace(DescriptionKey);
+        ValidateDescriptionKey(DescriptionKey, nameof(DescriptionKey));
 
         this.Module = Module;
         this.Resource = Resource;
@@ -55,11 +60,31 @@ public sealed record PermissionDefinition
     /// <summary>Canonical dotted name used in authorization policies and DB rows.</summary>
     public string Name => $"{Module}.{Resource}.{Action}";
 
+    // Accepts lowercase letters followed by lowercase alphanumerics, `_` or `-`.
+    // Mirrors the permission naming rules in permissions.md §1 while allowing
+    // existing project tokens like `custom-field` (resource) and `settings_manage`
+    // (action with underscore) to validate cleanly.
+    private static readonly System.Text.RegularExpressions.Regex SegmentPattern =
+        new("^[a-z][a-z0-9_-]*$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private static void ValidateSegment(string value, string paramName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
-        if (value.Contains('.', StringComparison.Ordinal))
+        if (!SegmentPattern.IsMatch(value))
             throw new ArgumentException(
-                $"Permission segment must not contain '.': '{value}' is invalid.", paramName);
+                $"Permission segment '{value}' is invalid: must match [a-z][a-z0-9_-]* " +
+                "(lowercase, no whitespace, no '.'). See permissions.md §1.",
+                paramName);
+    }
+
+    private static void ValidateDescriptionKey(string value, string paramName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, paramName);
+        if (!value.StartsWith("lockey_", StringComparison.Ordinal))
+            throw new ArgumentException(
+                $"Permission DescriptionKey '{value}' must start with 'lockey_' — " +
+                "backend responses surface translation keys, not literal strings. " +
+                "See localization.md.",
+                paramName);
     }
 }

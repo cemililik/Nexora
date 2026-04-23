@@ -34,9 +34,9 @@ public sealed class InMemoryPermissionRegistryTests
     public void GetByModule_ReturnsOnlyThatModule()
     {
         var registry = new InMemoryPermissionRegistry();
-        registry.Register("crm", "lead", "read", "k1");
-        registry.Register("crm", "pipeline", "read", "k2");
-        registry.Register("finance", "invoice", "read", "k3");
+        registry.Register("crm", "lead", "read", "lockey_test_k1");
+        registry.Register("crm", "pipeline", "read", "lockey_test_k2");
+        registry.Register("finance", "invoice", "read", "lockey_test_k3");
 
         var crm = registry.GetByModule("crm");
 
@@ -48,9 +48,9 @@ public sealed class InMemoryPermissionRegistryTests
     public void GetByScope_FiltersCorrectly()
     {
         var registry = new InMemoryPermissionRegistry();
-        registry.Register("identity", "tenants", "read", "k1", PermissionScope.Platform);
-        registry.Register("identity", "users", "read", "k2", PermissionScope.Tenant);
-        registry.Register("identity", "users", "write", "k3", PermissionScope.Tenant);
+        registry.Register("identity", "tenants", "read", "lockey_test_k1", PermissionScope.Platform);
+        registry.Register("identity", "users", "read", "lockey_test_k2", PermissionScope.Tenant);
+        registry.Register("identity", "users", "write", "lockey_test_k3", PermissionScope.Tenant);
 
         registry.GetByScope(PermissionScope.Platform).Should().ContainSingle();
         registry.GetByScope(PermissionScope.Tenant).Should().HaveCount(2);
@@ -60,9 +60,9 @@ public sealed class InMemoryPermissionRegistryTests
     public void Register_PreservesOrder()
     {
         var registry = new InMemoryPermissionRegistry();
-        registry.Register("a", "r", "x", "k1");
-        registry.Register("b", "r", "x", "k2");
-        registry.Register("c", "r", "x", "k3");
+        registry.Register("a", "r", "x", "lockey_test_k1");
+        registry.Register("b", "r", "x", "lockey_test_k2");
+        registry.Register("c", "r", "x", "lockey_test_k3");
 
         registry.GetAll().Select(d => d.Module)
             .Should().ContainInOrder("a", "b", "c");

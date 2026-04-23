@@ -192,6 +192,10 @@ export default function ExportPage() {
                   anchor.href = job.downloadUrl;
                   anchor.download = '';
                   anchor.rel = 'noopener noreferrer';
+                  // Cross-origin presigned URLs can make the browser ignore the
+                  // `download` attribute and navigate in the current tab. Forcing a new
+                  // tab keeps the admin SPA state (auth, unsaved form, polling) intact.
+                  anchor.target = '_blank';
                   document.body.appendChild(anchor);
                   anchor.click();
                   anchor.remove();

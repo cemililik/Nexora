@@ -91,13 +91,14 @@ public sealed class ImportJob : Entity<ImportJobId>
             throw new InvalidOperationException(
                 $"Cannot update progress when status is {Status}. Expected: Processing.");
 
+        // DomainException (not ArgumentOutOfRangeException) — these are entity invariants
+        // violated by the caller; we surface lockey keys so the error surfaces localized
+        // at the boundary.
         if (processedRows < 0 || successCount < 0 || errorCount < 0 || skippedCount < 0)
-            throw new ArgumentOutOfRangeException(
-                nameof(processedRows), "Progress counters must be non-negative.");
+            throw new DomainException("lockey_contacts_error_import_progress_negative");
 
         if (TotalRows > 0 && processedRows > TotalRows)
-            throw new ArgumentOutOfRangeException(
-                nameof(processedRows), "ProcessedRows cannot exceed TotalRows.");
+            throw new DomainException("lockey_contacts_error_import_processed_exceeds_total");
 
         // Invariant: every processed row falls into exactly one of success/error/skipped.
         // Mis-accounting breaks reporting and the reconciliation checks in notifications.

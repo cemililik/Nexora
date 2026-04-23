@@ -23,6 +23,7 @@ Heuristics:
 """
 
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -69,6 +70,10 @@ def psql_columns(schema: str, table: str) -> set[str]:
     _validate_identifier(schema, 'schema')
     _validate_identifier(table, 'table')
 
+    # psql's `:'name'` variable substitution is only available in -f / interactive
+    # mode, not in -tAc one-shot. With identifiers already validated against
+    # [A-Za-z0-9_-]+ (no quotes, no spaces, no semicolons), string-interpolating
+    # into the query is safe — the validator is the injection barrier.
     sql = (
         "SELECT column_name FROM information_schema.columns "
         f"WHERE table_schema='{schema}' AND table_name='{table}';"
@@ -99,7 +104,7 @@ def collect_configs() -> list[str]:
         configs += glob.glob(pat, recursive=True)
     configs = [c for c in configs
                if 'Configuration' in os.path.basename(c)
-               and '/Configurations/' in c]
+               and 'Configurations' in pathlib.PurePath(c).parts]
     return sorted(configs)
 
 
@@ -134,7 +139,7 @@ def find_entity_file(config_file: str, entity_name: str) -> str | None:
         module_matches = glob.glob(
             f'{module_root}/**/{entity_name}.cs', recursive=True)
         # Exclude configuration files themselves.
-        module_matches = [m for m in module_matches if '/Configurations/' not in m]
+        module_matches = [m for m in module_matches if 'Configurations' not in pathlib.PurePath(m).parts]
         if len(module_matches) == 1:
             return module_matches[0]
         if len(module_matches) > 1:
@@ -150,7 +155,7 @@ def find_entity_file(config_file: str, entity_name: str) -> str | None:
     all_matches: list[str] = []
     for pat in patterns:
         all_matches += [m for m in glob.glob(pat, recursive=True)
-                        if '/Configurations/' not in m]
+                        if 'Configurations' not in pathlib.PurePath(m).parts]
     all_matches = list(dict.fromkeys(all_matches))  # de-dup preserving order
     if len(all_matches) == 1:
         return all_matches[0]
@@ -209,7 +214,7 @@ def get_props(entity_file: str) -> tuple[set[str], set[str]]:
         else:
             settable.add(name)
 
-    for type_frag, name in readonly_raw + expr_readonly_raw:
+    for _, name in readonly_raw + expr_readonly_raw:
         readonly.add(name)
 
     return settable, readonly

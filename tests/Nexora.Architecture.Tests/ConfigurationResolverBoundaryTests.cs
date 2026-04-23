@@ -21,7 +21,7 @@ public sealed class ConfigurationResolverBoundaryTests
     /// <c>TenantConfigEntry</c>, <c>OrgConfigEntry</c>, or <c>TenantConfigDbContext</c>.
     /// </summary>
     [Fact]
-    public void ModuleCode_MustNotReferenceConfigurationEntitiesDirectly()
+    public void ModuleCode_ReferencingConfigTables_ShouldBeRejected()
     {
         // Scan every module assembly (not the Infrastructure project itself) + Host.
         var offenders = new List<string>();

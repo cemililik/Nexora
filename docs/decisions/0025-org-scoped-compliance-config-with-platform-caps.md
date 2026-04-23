@@ -68,7 +68,7 @@ the central constraint.
      as a `ComplianceCap` object:
      `{ "gdpr.hard_delete.enabled": { "allowed": true|false, "forced": true|false } }`
      where `allowed=false` means an org CANNOT turn it on, and `forced=true` means an org
-     CANNOT turn it off. `NullLicenseVerifier` returns "all allowed, none forced" in dev.
+     CANNOT turn it off. `NullComplianceCapProvider` returns "all allowed, none forced" in dev.
    - **Tenant default**. Remains in `platform_tenant_config` (tenant schema). Same shape as
      today: `(Key, Value, UpdatedAt)`. Org admins read-through when they have no override.
    - **Org override**. New table `platform_org_config` in the tenant schema:
@@ -126,7 +126,7 @@ Reasoning anchored to the drivers:
 
 - The multi-org jurisdiction driver is only served by a real org scope (Options A, B).
 - The separation-of-duties + NMP-ownership drivers eliminate Option B (no cap layer).
-- The "NMP not required in Phase 1.5" driver is met by letting `NullLicenseVerifier`
+- The "NMP not required in Phase 1.5" driver is met by letting `NullComplianceCapProvider`
   return a permissive cap until NMP.1 is deployed — the resolver already has a cap
   layer so wiring NMP in later is a single impl swap, not a schema migration.
 
@@ -164,8 +164,8 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
 
 - `ITenantConfiguration` becomes a thin wrapper over `IConfigurationResolver` for
   backward compatibility. Eventually deprecated.
-- Dev and on-prem keep working without NMP thanks to `NullLicenseVerifier` returning a
-  permissive `ComplianceCap`.
+- Dev and on-prem keep working without NMP thanks to `NullComplianceCapProvider`
+  returning `ComplianceCap.Permissive`.
 
 ## Implementation notes
 
@@ -177,8 +177,9 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
 - **New policy-audit table (tenant schema):** `platform_compliance_policy_audit`
   `(Id uuid PK, TenantId uuid, OrganizationId uuid NULL, "Key" varchar(256), OldValue jsonb,
   NewValue jsonb, ChangedByUserId uuid, ChangedAtUtc timestamptz, Reason varchar(500) NULL)`.
-  Every write through `IConfigurationResolver.SetAsync` creates an audit row atomically
-  with the update in the same transaction.
+  Every write through `IConfigurationResolver.SetOrgOverrideAsync` /
+  `ClearOrgOverrideAsync` creates an audit row atomically with the update in the same
+  transaction.
 - **New permission:** `contacts.gdpr.settings_manage` (tenant-scope, seeded by the
   Identity module via `IPermissionRegistry` — underscore keeps the canonical
   `{module}.{resource}.{action}` three-part form per permissions.md §1). Granted to

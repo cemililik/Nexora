@@ -126,9 +126,11 @@ When you add a property to a domain entity:
 1. **Idempotency** — restart the API container (`docker compose restart nexora-api`) and confirm no errors. The seed must be re-runnable without failure.
 2. **First-run** — `docker compose down -v && docker compose up` simulates a fresh database. Phase 1 creates tables; Phase 2 applies all incremental changes in order.
 3. **Column presence** — confirm via psql or pgAdmin after each restart:
+
    ```sql
    \d "tenant_00000000-0000-0000-0000-000000000001".{module}_{table}
    ```
+
 
 ---
 

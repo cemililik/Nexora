@@ -130,8 +130,11 @@ export const api = {
     return unwrapEnvelope(response.data);
   },
 
-  async delete<T = void>(url: string): Promise<T> {
-    const resp = await apiClient.delete<ApiEnvelope<T>>(url);
+  async delete<T = void>(url: string, data?: unknown): Promise<T> {
+    // axios DELETE supports a request body via the `data` config — used when the
+    // operation carries an auditable payload (e.g. GDPR / compliance reason) that
+    // must not leak into query strings, referrers, or access logs.
+    const resp = await apiClient.delete<ApiEnvelope<T>>(url, data !== undefined ? { data } : undefined);
     if (resp.status === 204 || resp.data?.data == null) {
       return undefined as T;
     }

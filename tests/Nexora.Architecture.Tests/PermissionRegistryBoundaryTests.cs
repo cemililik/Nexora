@@ -37,7 +37,7 @@ public sealed class PermissionRegistryBoundaryTests
     }
 
     [Fact]
-    public void DevelopmentSeed_MustNotContainHardcodedPermissionCreate()
+    public void DevelopmentSeed_HardcodedPermissionCreate_ShouldNotExist()
     {
         var path = Path.Combine(RepoSrcRoot, "Nexora.Host", "DevelopmentSeed.cs");
         File.Exists(path).Should().BeTrue("DevelopmentSeed.cs must exist");
@@ -51,7 +51,7 @@ public sealed class PermissionRegistryBoundaryTests
     }
 
     [Fact]
-    public void IdentityModuleMigration_MustNotContainCrossModulePermissionCreate()
+    public void IdentityModuleMigration_CrossModulePermissionCreate_ShouldNotExist()
     {
         var path = Path.Combine(
             RepoSrcRoot, "Modules", "Nexora.Modules.Identity",
@@ -75,7 +75,7 @@ public sealed class PermissionRegistryBoundaryTests
     }
 
     [Fact]
-    public void DevelopmentSeed_MustNotContainCreateDefaultPermissions()
+    public void DevelopmentSeed_CreateDefaultPermissionsMethod_ShouldNotExist()
     {
         var path = Path.Combine(RepoSrcRoot, "Nexora.Host", "DevelopmentSeed.cs");
         File.Exists(path).Should().BeTrue("DevelopmentSeed.cs must exist for this assertion");

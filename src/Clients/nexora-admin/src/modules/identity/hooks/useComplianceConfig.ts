@@ -53,8 +53,11 @@ export function useClearComplianceOverride(key: string) {
 
   return useMutation({
     mutationFn: (reason: string) =>
+      // Reason travels in the DELETE body (not the query string) so free-text
+      // justification doesn't leak into access logs, referrer headers, or history.
       api.delete<ComplianceKeySummary>(
-        `/settings/compliance/${encodeURIComponent(key)}?reason=${encodeURIComponent(reason)}`,
+        `/settings/compliance/${encodeURIComponent(key)}`,
+        { reason },
       ),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: complianceKeys.all });

@@ -366,6 +366,7 @@
   "lockey_identity_compliance_empty_description": "Bu organizasyon için henüz uyumluluk ayarı bulunmuyor.",
   "lockey_identity_compliance_load_failed": "Uyumluluk ayarları yüklenemedi",
   "lockey_identity_compliance_load_failed_description": "Birazdan tekrar deneyin; sorun devam ederse yöneticinize başvurun.",
+  "lockey_identity_compliance_retry": "Tekrar dene",
   "lockey_identity_compliance_effective_value": "Geçerli değer",
   "lockey_identity_compliance_tenant_default": "Kiracı varsayılanı",
   "lockey_identity_compliance_org_override": "Organizasyon geçersiz kılması",

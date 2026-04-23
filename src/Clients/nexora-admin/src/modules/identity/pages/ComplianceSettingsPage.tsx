@@ -29,7 +29,7 @@ import type { ComplianceKeySummary } from '../types/compliance';
 export default function ComplianceSettingsPage() {
   const { t } = useTranslation('identity');
   const setBreadcrumbs = useUiStore((s) => s.setBreadcrumbs);
-  const { data, isLoading, isError } = useComplianceConfig();
+  const { data, isLoading, isError, refetch } = useComplianceConfig();
 
   useEffect(() => {
     setBreadcrumbs([
@@ -45,6 +45,10 @@ export default function ComplianceSettingsPage() {
         icon={AlertCircle}
         title={t('lockey_identity_compliance_load_failed')}
         description={t('lockey_identity_compliance_load_failed_description')}
+        action={{
+          label: t('lockey_identity_compliance_retry'),
+          onClick: () => { void refetch(); },
+        }}
       />
     );
   }
@@ -144,10 +148,13 @@ function ComplianceRow({ item }: ComplianceRowProps) {
                 />
               </FormField>
               <div className="flex flex-wrap items-center gap-2">
+                {/* Mutual lockout: if either mutation is in flight, both buttons are disabled
+                    and the handlers re-check before invoking to guard against double taps. */}
                 <Button
                   type="button"
-                  disabled={!reason.trim() || setOverride.isPending}
+                  disabled={!reason.trim() || setOverride.isPending || clearOverride.isPending}
                   onClick={() => {
+                    if (setOverride.isPending || clearOverride.isPending) return;
                     setOverride.mutate(
                       { value: !item.effectiveValue, reason: reason.trim() },
                       { onSuccess: () => { setReason(''); } },
@@ -162,8 +169,9 @@ function ComplianceRow({ item }: ComplianceRowProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={!reason.trim() || clearOverride.isPending}
+                    disabled={!reason.trim() || setOverride.isPending || clearOverride.isPending}
                     onClick={() => {
+                      if (setOverride.isPending || clearOverride.isPending) return;
                       clearOverride.mutate(reason.trim(), {
                         onSuccess: () => { setReason(''); },
                       });

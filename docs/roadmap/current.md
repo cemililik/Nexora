@@ -6,7 +6,7 @@
 
 ## Active task
 
-_None. T-020 moved to In Review — see Prior active tasks._
+_None. T-019 and T-020 both moved to In Review — see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
 

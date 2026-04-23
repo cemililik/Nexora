@@ -169,7 +169,8 @@ public sealed class DatabaseConfigurationResolver(
         if (cap.Forced)
         {
             // Forced caps collapse org overrides. Record the attempt (so the auditor sees
-            // someone tried) but do not persist — the cap's own value keeps winning.
+            // someone tried) but surface the block to the caller — returning silently
+            // would misreport 200 OK while the override never took effect.
             AppendAudit(new AuditContext(
                 tenantId, orgId, key,
                 OldValue: null, NewValue: JsonSerializer.Serialize(value),
@@ -177,7 +178,13 @@ public sealed class DatabaseConfigurationResolver(
                 Reason: $"{reason} {CapForcedRejectedSuffix}"));
             await dbContext.SaveChangesAsync(ct);
             await InvalidateCacheAsync(key, orgId, ct);
-            return;
+
+            logger.LogWarning(
+                "Org override rejected for {Key} (tenant {TenantId}, org {OrgId}) — platform cap is Forced",
+                key, tenantId, orgId);
+            throw new ComplianceCapViolationException(
+                key, "lockey_identity_error_compliance_cap_blocks_override",
+                isForced: true, forcedValue: cap.Value, allowed: cap.Allowed);
         }
 
         var json = JsonSerializer.Serialize(value);

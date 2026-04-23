@@ -196,10 +196,14 @@ describe('ExportPage', () => {
         return element;
       });
 
-    await user.click(downloadButton);
-
-    expect(capturedHref).toBe('https://minio.test/export/file.csv');
-    expect(capturedDownload).toBe('');
-    createSpy.mockRestore();
+    try {
+      await user.click(downloadButton);
+      expect(capturedHref).toBe('https://minio.test/export/file.csv');
+      expect(capturedDownload).toBe('');
+    } finally {
+      // Always restore the global stub even when an assertion throws — otherwise
+      // subsequent tests inherit the spy and behave unpredictably.
+      createSpy.mockRestore();
+    }
   });
 });

@@ -115,9 +115,11 @@ export default function TenantListPage() {
             {t('lockey_identity_tenants_description')}
           </p>
         </div>
-        <Button type="button" asChild>
-          <Link to="/identity/tenants/create">{t('lockey_identity_tenants_create')}</Link>
-        </Button>
+        {hasPermission('identity.tenants.manage') && (
+          <Button type="button" asChild>
+            <Link to="/identity/tenants/create">{t('lockey_identity_tenants_create')}</Link>
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-4">

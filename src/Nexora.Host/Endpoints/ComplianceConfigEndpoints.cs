@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Abstractions.Configuration;
 using Nexora.SharedKernel.Localization;
@@ -105,16 +106,16 @@ public static class ComplianceConfigEndpoints
 
     private static async Task<IResult> ClearKeyAsync(
         string key,
-        string reason,
+        [FromBody] ClearComplianceOverrideRequest request,
         IConfigurationResolver resolver,
         CancellationToken ct)
     {
         if (!IsManagedKey(key))
             return NotFound(key);
 
-        if (ValidateReason(reason) is { } problem) return problem;
+        if (ValidateReason(request.Reason) is { } problem) return problem;
 
-        await resolver.ClearOrgOverrideAsync(key, reason, ct);
+        await resolver.ClearOrgOverrideAsync(key, request.Reason, ct);
 
         var resolved = await resolver.GetResolvedAsync<bool?>(key, ct);
         return Results.Ok(ApiEnvelope<ComplianceKeySummaryDto>.Success(
@@ -171,6 +172,13 @@ public static class ComplianceConfigEndpoints
 
 /// <summary>Request body for PUT /settings/compliance/{key}.</summary>
 public sealed record SetComplianceOverrideRequest(bool Value, string Reason);
+
+/// <summary>
+/// Request body for DELETE /settings/compliance/{key}. The reason travels in the body
+/// rather than a query string so free-text justification (potentially PII) does not
+/// leak into access logs, browser history, or referrer headers.
+/// </summary>
+public sealed record ClearComplianceOverrideRequest(string Reason);
 
 /// <summary>
 /// Response row for compliance config endpoints. Shows each layer's contribution so the
