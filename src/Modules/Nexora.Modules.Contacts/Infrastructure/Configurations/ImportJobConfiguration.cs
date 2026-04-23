@@ -21,6 +21,7 @@ public sealed class ImportJobConfiguration : IEntityTypeConfiguration<ImportJob>
         builder.Property(j => j.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(j => j.ErrorDetails).HasColumnType("jsonb");
         builder.Property(j => j.HangfireJobId).HasMaxLength(100);
+        builder.Property(j => j.ColumnMappingJson).HasColumnType("text").IsRequired(false);
         builder.Property(j => j.CreatedBy).HasMaxLength(200);
 
         builder.HasIndex(j => new { j.TenantId, j.Status });

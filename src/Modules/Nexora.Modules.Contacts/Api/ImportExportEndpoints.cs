@@ -28,10 +28,29 @@ public static class ImportExportEndpoints
                 : Results.BadRequest(ApiEnvelope<ImportUploadUrlDto>.Fail(result.Error!));
         });
 
+        group.MapPost("/import/preview", async (PreviewImportRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var command = new PreviewContactImportCommand(request.StorageKey, request.FileFormat);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<ContactImportPreviewDto>.Success(result.Value!, result.Message))
+                : Results.BadRequest(ApiEnvelope<ContactImportPreviewDto>.Fail(result.Error!));
+        });
+
+        group.MapPost("/import/validate", async (ValidateImportRequest request, ISender sender, CancellationToken ct) =>
+        {
+            var mapping = request.ColumnMapping ?? new Dictionary<string, string>();
+            var command = new ValidateContactImportCommand(request.StorageKey, request.FileFormat, mapping);
+            var result = await sender.Send(command, ct);
+            return result.IsSuccess
+                ? Results.Ok(ApiEnvelope<ContactImportValidationDto>.Success(result.Value!, result.Message))
+                : Results.BadRequest(ApiEnvelope<ContactImportValidationDto>.Fail(result.Error!));
+        });
+
         group.MapPost("/import", async (ConfirmImportRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new StartContactImportCommand(
-                request.FileName, request.FileFormat, request.StorageKey);
+                request.FileName, request.FileFormat, request.StorageKey, request.ColumnMapping);
             var result = await sender.Send(command, ct);
             return result.IsSuccess
                 ? Results.Accepted(
@@ -77,7 +96,19 @@ public sealed record GenerateImportUploadUrlRequest(
 public sealed record ConfirmImportRequest(
     string FileName,
     string FileFormat,
-    string StorageKey);
+    string StorageKey,
+    IReadOnlyDictionary<string, string>? ColumnMapping = null);
+
+/// <summary>Request body for previewing an uploaded import file.</summary>
+public sealed record PreviewImportRequest(
+    string StorageKey,
+    string FileFormat);
+
+/// <summary>Request body for pre-flight validating a mapped import.</summary>
+public sealed record ValidateImportRequest(
+    string StorageKey,
+    string FileFormat,
+    IReadOnlyDictionary<string, string>? ColumnMapping);
 
 /// <summary>Request body for starting a contact export.</summary>
 public sealed record StartExportRequest(

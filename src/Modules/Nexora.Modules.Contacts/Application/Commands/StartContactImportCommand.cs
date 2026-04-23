@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentValidation;
 using Hangfire;
 using Microsoft.Extensions.Logging;
@@ -14,11 +15,16 @@ using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Contacts.Application.Commands;
 
-/// <summary>Command to start a contact import job from a previously uploaded file.</summary>
+/// <summary>
+/// Command to start a contact import job from a previously uploaded file.
+/// <paramref name="ColumnMapping"/> maps source header → target Contact field
+/// (or <c>__skip__</c>). When null, the job treats source headers as identity mappings.
+/// </summary>
 public sealed record StartContactImportCommand(
     string FileName,
     string FileFormat,
-    string StorageKey) : ICommand<ImportJobDto>;
+    string StorageKey,
+    IReadOnlyDictionary<string, string>? ColumnMapping = null) : ICommand<ImportJobDto>;
 
 /// <summary>Validates contact import input.</summary>
 public sealed class StartContactImportValidator : AbstractValidator<StartContactImportCommand>
@@ -86,6 +92,12 @@ public sealed class StartContactImportHandler(
         var userId = tenantContextAccessor.Current.UserId;
         var importJob = ImportJob.Create(
             tenantId, orgId, request.FileName, request.FileFormat, request.StorageKey, userId);
+
+        if (request.ColumnMapping is { Count: > 0 })
+        {
+            var mappingJson = JsonSerializer.Serialize(request.ColumnMapping);
+            importJob.SetColumnMapping(mappingJson);
+        }
 
         // CONSISTENCY: Enqueue-in-same-transaction rule.
         // Hangfire.Enqueue returns the job ID synchronously. We attach it to the entity

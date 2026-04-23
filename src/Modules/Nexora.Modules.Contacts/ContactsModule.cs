@@ -51,6 +51,8 @@ public sealed class ContactsModule : IModule
 
         // Register domain services
         services.AddScoped<Domain.Services.DuplicateDetectionService>();
+        services.AddScoped<Domain.Services.IContactDuplicateMatcher,
+            Infrastructure.Services.ContactDuplicateMatcher>();
 
         // Register activity contributor aggregator for 360-degree view
         services.AddScoped<ContactActivityContributorAggregator>();

@@ -10,6 +10,10 @@ import type {
   ImportUploadUrlDto,
   GenerateImportUploadUrlRequest,
   ConfirmImportRequest,
+  PreviewImportRequest,
+  ContactImportPreviewDto,
+  ValidateImportRequest,
+  ContactImportValidationDto,
   StartExportRequest,
   GdprDeleteRequest,
   GdprExportDto,
@@ -25,6 +29,26 @@ export function useGenerateImportUploadUrl() {
   return useMutation({
     mutationFn: (data: GenerateImportUploadUrlRequest) =>
       api.post<ImportUploadUrlDto>('/contacts/contacts/import/upload-url', data),
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function usePreviewImport() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (data: PreviewImportRequest) =>
+      api.post<ContactImportPreviewDto>('/contacts/contacts/import/preview', data),
+    onError: (err) => handleApiError(err),
+  });
+}
+
+export function useValidateImport() {
+  const { handleApiError } = useApiError();
+
+  return useMutation({
+    mutationFn: (data: ValidateImportRequest) =>
+      api.post<ContactImportValidationDto>('/contacts/contacts/import/validate', data),
     onError: (err) => handleApiError(err),
   });
 }

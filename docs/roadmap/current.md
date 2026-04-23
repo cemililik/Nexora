@@ -6,6 +6,12 @@
 
 ## Prior active tasks (awaiting maintainer review)
 
+**T-002 — Contact import field-mapping wizard** (Phase 1.5.6, Milestone C). Status: **In Review**.
+3-step wizard (upload/preview → mapping → validate → confirm), dynamic parser, `IContactDuplicateMatcher`
+extraction, `[Queue("bulk")]` + `contacts:bulk-import` descriptor, `ColumnMappingJson` persisted on `ImportJob`,
+42 new locale keys en+tr parity, SPEC §UC-CON-004 rewritten with Mermaid sequence. 138 backend + 7 frontend
+tests green.
+
 **T-001 — User ↔ Contact linking** (Phase 1.5.6, Milestone C). Status: **In Review**.
 Identity `User.ContactId?` + link/unlink commands + `UserContactLinkedIntegrationEvent`
 via outbox; system-account rejection enforced at domain + handler + UI; GDPR erasure

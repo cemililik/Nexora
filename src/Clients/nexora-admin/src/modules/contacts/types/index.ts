@@ -300,6 +300,36 @@ export interface ConfirmImportRequest {
   fileName: string;
   fileFormat: string;
   storageKey: string;
+  columnMapping?: Record<string, string>;
+}
+
+export interface PreviewImportRequest {
+  storageKey: string;
+  fileFormat: string;
+}
+
+export interface ContactImportPreviewDto {
+  headers: string[];
+  rows: Array<Record<string, string | null>>;
+  totalRowCount: number;
+}
+
+export interface ValidateImportRequest {
+  storageKey: string;
+  fileFormat: string;
+  columnMapping: Record<string, string>;
+}
+
+export interface ContactImportValidationErrorDto {
+  rowNumber: number;
+  errorKey: string;
+  fieldName?: string | null;
+}
+
+export interface ContactImportValidationDto {
+  totalRows: number;
+  errorCount: number;
+  errors: ContactImportValidationErrorDto[];
 }
 
 export interface StartExportRequest {

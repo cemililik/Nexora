@@ -430,20 +430,71 @@ flowchart LR
   - All historical data preserved on primary contact
   - Secondary contact kept for redirect purposes (not deleted)
 
-### UC-CON-004: Import Contacts (CSV/Excel)
+### UC-CON-004: Import Contacts (CSV/Excel) — 3-step wizard
+
+Implemented as a three-step wizard (T-002, Phase 1.5.6) replacing the legacy
+fixed-column CSV upload. Admin flows through Upload → Mapping → Validate → Confirm.
+
 - **Actor**: User with `contacts.contacts.write` permission
-- **Flow**:
-  1. User uploads CSV/Excel file
-  2. System parses and validates column mapping
-  3. System runs duplicate detection per row
-  4. System presents preview: new contacts, updates, duplicates
-  5. User confirms import strategy (skip duplicates, merge, create all)
-  6. System processes import in background (Hangfire job)
-  7. System sends notification when complete with summary
 - **Business Rules**:
-  - Maximum 10,000 contacts per import
-  - Required fields validated per row
+  - Required fields (email) validated per row at the Validate step
+  - Duplicates detected via the shared `IContactDuplicateMatcher` service during
+    the Confirm/Import phase (not at Validate)
   - Import is atomic per batch (all or nothing per 100-row chunk)
+  - Hangfire job runs on the `bulk` queue; job descriptor `contacts:bulk-import`
+  - Completion emits `ContactImportCompletedIntegrationEvent` via outbox
+
+```mermaid
+sequenceDiagram
+    actor Admin
+    participant UI as nexora-admin<br/>(ImportPage)
+    participant API as Contacts API
+    participant MinIO
+    participant Hangfire
+    participant DB as Contacts DB
+    participant Notif as Notifications
+
+    Admin->>UI: Upload file
+    UI->>API: POST /import/upload-url
+    API-->>UI: { uploadUrl, storageKey }
+    UI->>MinIO: PUT file
+    UI->>API: POST /import/preview { storageKey }
+    API->>MinIO: GET file (first N rows)
+    API-->>UI: { headers, rows, totalRowCount }
+    Admin->>UI: Map columns
+    UI->>API: POST /import/validate { columnMapping }
+    API->>MinIO: GET file (full parse)
+    API-->>UI: { totalRows, errorCount, errors[] }
+    Admin->>UI: Confirm start
+    UI->>API: POST /import { columnMapping }
+    API->>Hangfire: Enqueue ContactImportJob (queue: bulk)
+    API-->>UI: { jobId, status: Queued }
+    UI->>API: GET /import/{jobId} (poll 2s)
+    Hangfire->>DB: Batch insert contacts (duplicate matcher)
+    Hangfire->>Notif: ContactImportCompletedIntegrationEvent (outbox)
+```
+
+**Validation error keys** returned by `POST /import/validate`:
+
+| Key | Meaning |
+|---|---|
+| `lockey_contacts_import_validation_email_required` | Required email column missing |
+| `lockey_contacts_import_validation_email_invalid` | Email does not match standard format |
+| `lockey_contacts_import_validation_phone_invalid` | Phone does not match expected shape |
+| `lockey_contacts_import_validation_unknown_source_column` | Mapping references a header not in the file |
+
+**Endpoints:**
+
+| Method | Path | Purpose | Auth |
+|---|---|---|---|
+| POST | `/api/v1/contacts/contacts/import/upload-url` | Presigned upload URL | `contacts.contacts.write` |
+| POST | `/api/v1/contacts/contacts/import/preview` | Parse first 5 rows | `contacts.contacts.write` |
+| POST | `/api/v1/contacts/contacts/import/validate` | Pre-flight validation with mapping | `contacts.contacts.write` |
+| POST | `/api/v1/contacts/contacts/import` | Confirm + enqueue Hangfire job | `contacts.contacts.write` |
+| GET | `/api/v1/contacts/contacts/import/{jobId}` | Job status polling | `contacts.contacts.read` |
+
+**`ImportJob.ColumnMappingJson`** (nullable) persists the source → target mapping so
+the background job can re-apply it idempotently on retry.
 
 ### UC-CON-005: KVKK/GDPR Data Export & Deletion
 - **Actor**: Contact (via portal) or Admin
@@ -578,9 +629,12 @@ trail, it is exported separately via a platform admin endpoint (not subject-faci
 ### Import/Export
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| POST | `/api/v1/contacts/import` | Upload import file | `contacts.contacts.write` |
-| GET | `/api/v1/contacts/import/{jobId}` | Check import status | `contacts.contacts.read` |
-| POST | `/api/v1/contacts/export` | Request export | `contacts.contacts.read` |
+| POST | `/api/v1/contacts/contacts/import/upload-url` | Generate presigned upload URL | `contacts.contacts.write` |
+| POST | `/api/v1/contacts/contacts/import/preview` | Parse first 5 rows for wizard preview | `contacts.contacts.write` |
+| POST | `/api/v1/contacts/contacts/import/validate` | Pre-flight validation with mapping | `contacts.contacts.write` |
+| POST | `/api/v1/contacts/contacts/import` | Confirm + enqueue import | `contacts.contacts.write` |
+| GET | `/api/v1/contacts/contacts/import/{jobId}` | Poll import status | `contacts.contacts.read` |
+| POST | `/api/v1/contacts/contacts/export` | Request export | `contacts.contacts.read` |
 
 ### Relationships
 | Method | Path | Description | Auth |
