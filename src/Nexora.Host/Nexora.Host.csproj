@@ -5,6 +5,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- T-006: expose CLI internals (DemoLoadOptions, parser, IConsole) to the
+         Infrastructure.Tests assembly so the command is testable without making
+         its parser public API. -->
+    <InternalsVisibleTo Include="Nexora.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Nexora.SharedKernel\Nexora.SharedKernel.csproj" />
     <ProjectReference Include="..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Identity\Nexora.Modules.Identity.csproj" />

@@ -6,9 +6,21 @@
 
 ## Active task
 
-_None. T-005, T-017, T-018 all moved to In Review — see Prior active tasks._
+_None. T-005, T-006, T-017, T-018 all moved to In Review — see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-006 — `nexora demo:load` CLI command** (Phase 1.5.7, Milestone C).
+Status: **In Review**. CLI dispatcher intercepts before `WebApplication.CreateBuilder`
+so CLI runs never start the web host (`TryDispatch` returns false for unknown
+argv → web host still boots normally). `demo:load --tenant=<guid>
+--scenario=<name> [--dry-run]` parses both `--k=v` and `--k v` forms, probes
+`pg_namespace` for the tenant schema (clear error + usage-exit code when
+missing), runs `IDemoDataSeeder`, and surfaces a per-module summary with an
+exit code that distinguishes usage errors (1), partial failures (2), and
+success (0). 9 unit tests cover the parser, dispatcher fall-through, dry-run,
+schema probe, success, and partial-failure paths. Tenant auto-provisioning +
+E2E shell-out test deferred with rationale in the task status log.
 
 **T-005 — `IModule.SeedDemoDataAsync` + orchestrator** (Phase 1.5.7, Milestone C).
 Status: **In Review**. Foundation-only: `IModule.SeedDemoDataAsync` (default

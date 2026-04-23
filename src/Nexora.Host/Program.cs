@@ -22,6 +22,16 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
 
+// T-006: short-circuit CLI verbs before any web-host machinery spins up.
+// TryDispatch returns false for normal (non-CLI) invocations so the web host
+// still runs on `dotnet run --project src/Nexora.Host` exactly as before.
+if (Nexora.Host.Cli.CliDispatcher.TryDispatch(args, out int cliExitCode))
+{
+    Log.CloseAndFlush();
+    Environment.Exit(cliExitCode);
+    return;
+}
+
 try
 {
     var builder = WebApplication.CreateBuilder(args);

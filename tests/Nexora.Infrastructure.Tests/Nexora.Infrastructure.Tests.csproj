@@ -24,6 +24,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
+    <!-- T-006: CLI dispatcher + DemoLoadCommand live in Nexora.Host; the test
+         assembly pulls in the Host project so we can exercise the CLI parser
+         and command runner without shelling out. -->
+    <ProjectReference Include="..\..\src\Nexora.Host\Nexora.Host.csproj" />
   </ItemGroup>
 
   <ItemGroup>
