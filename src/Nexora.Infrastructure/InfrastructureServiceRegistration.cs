@@ -96,8 +96,14 @@ public static class InfrastructureServiceRegistration
         });
         // IOutbox registered per-module as OutboxService<TContext> for transactional atomicity
         services.AddHostedService<OutboxProcessor>();
+        // T-023: the readiness probe now covers Postgres + the Dapr sidecar in
+        // addition to the outbox. Keycloak and MinIO stay transitive via Dapr
+        // — see T-023's task file for rationale.
+        services.AddHttpClient(Messaging.DaprSidecarHealthCheck.HttpClientName);
         services.AddHealthChecks()
-            .AddCheck<OutboxHealthCheck>("outbox", tags: ["ready"]);
+            .AddCheck<OutboxHealthCheck>("outbox", tags: ["ready"])
+            .AddCheck<Persistence.PostgresHealthCheck>("postgres", tags: ["ready"])
+            .AddCheck<Messaging.DaprSidecarHealthCheck>("dapr-sidecar", tags: ["ready"]);
 
         // Secrets
         services.AddScoped<ISecretProvider, DaprSecretProvider>();

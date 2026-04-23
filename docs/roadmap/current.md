@@ -6,9 +6,20 @@
 
 ## Active task
 
-_None. T-022 moved to In Review — next batch entry (ADR-0028) is documentation-only._
+_None. T-023 moved to In Review — last batch entry is T-024._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-023 — `/health/ready` dependency-level diagnostics** (Phase 1.5,
+observability). Status: **In Review**. `AddHealthChecks` now registers
+`PostgresHealthCheck` (SELECT 1 with 2s timeout) and `DaprSidecarHealthCheck`
+(HTTP GET `/v1.0/healthz` with 1s timeout) alongside the existing
+`OutboxHealthCheck`. Both surface `latency_ms` + impl-specific data in the
+envelope so Grafana can chart readiness without a separate metric. Keycloak +
+MinIO stay transitive via Dapr (rationale in task file). 7 unit tests cover
+every branch (missing config, unreachable host, timeout, 503, thrown exception,
+cancellation, URL construction). No endpoint-shape change — existing
+ResponseWriter serializes the new checks automatically.
 
 **T-022 — Architecture guard for `HasFilter("\"IsDeleted\"...")` targeting
 non-`ISoftDeletable` entities** (Phase 1.5.6, Milestone C — T-021 preventive
