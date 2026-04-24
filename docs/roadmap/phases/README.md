@@ -12,7 +12,7 @@ Acceptance criteria, ADR ledger, Informs**.
 | Phase | File | Status | Tier focus |
 |-------|------|--------|-----------|
 | 1 — Foundation | `phase-1-foundation.md` *(retrospective)* | Done | Tier 1 |
-| 1.5 — Bridge | `phase-1.5-bridge.md` | In Progress | Tier 1 cross-cutting |
+| 1.5 — Bridge | `phase-1.5-bridge.md` | Scaffolding Done (Portal pilot + Demo-Data scenarios/UI/cleanup carry to Phase 2) | Tier 1 cross-cutting |
 | 2 — Enterprise Core | `phase-2-enterprise.md` | Next | Tier 2 |
 | 2.5 — HR | `phase-2.5-hr.md` | Planned | Tier 2 |
 | 3a — NGO Edition | `phase-3a-ngo.md` | Planned | Tier 3a |

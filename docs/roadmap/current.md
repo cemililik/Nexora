@@ -50,25 +50,32 @@ as any phase transition, ADR promotion, or active-milestone change.
 
 ## Active phase
 
-**Phase 1.5 — Bridge** (in progress, ~80% complete)
+**Phase 1.5 — Bridge** (scaffolding complete as of 2026-04-24; Phase 2 entry-ready)
 
 Goal: Close the gap between the Phase 1 Core Platform and Phase 2 Enterprise Core by delivering
 cross-cutting plumbing (outbox/inbox, cache invalidation, localization, portal extension points,
 audit enhancements, demo data framework) plus the last set of Contacts module enhancements.
 
-See [`phases/phase-1.5-bridge.md`](phases/phase-1.5-bridge.md) (to be written by Phase 2 Agent A)
-for scope and exit bar. Legacy reference: `docs/roadmap/ROADMAP.md` §1.5 and §1.5.1–1.5.7.
+See [`phases/phase-1.5-bridge.md`](phases/phase-1.5-bridge.md) for the full scope, exit bar,
+and milestone breakdown. Legacy reference: `docs/roadmap/ROADMAP.md` §1.5 and §1.5.1–1.5.7.
 
-### Active milestones (as of this writing)
+### Milestone status (as of 2026-04-24)
 
-- Outbox/Inbox + cache cross-instance invalidation — **Done** (shipped in Phase 1.5.1)
-- Tenant permission isolation (backend) — **Done** (shipped in Phase 1.5.2; Platform Admin
-  separation deferred to NMP)
+- Outbox/Inbox + cache cross-instance invalidation — **Done** (Phase 1.5.1)
+- Tenant permission isolation (backend) — **Done** (Phase 1.5.2; Platform Admin separation
+  deferred to NMP)
 - Localization resolution — **Done** (Phase 1.5.3; Phase 3 defers tax-receipt templates)
-- Portal UI extension points — **In Progress** (pilot via ADR-017 in Phase 2)
+- Portal UI extension points (Phase 1.5.4) — **Scaffolding Done** (slots, tabs, permission
+  filter, error boundary, unit tests all shipped; no module contributes to a slot yet —
+  end-to-end pilot is Phase 2 Milestone A per [ADR-0017](../decisions/0017-portal-extension-architecture.md)
+  "First pilot" section)
 - Audit Module enhancements (Phase 1.5.5) — **Done**
-- Contacts enhancements (Phase 1.5.6) — **Done** (T-001..T-004 + T-017..T-022 closed 2026-04-24; cross-module PII payload scan follow-up tracked as T-010)
-- Demo Data Framework (Phase 1.5.7) — **Foundation Done** (T-005 + T-006 closed; T-007 scenarios / T-008 admin UI / T-009 cleanup remain as follow-ups)
+- Contacts enhancements (Phase 1.5.6) — **Done** (T-001..T-004 + T-017..T-022 closed 2026-04-24;
+  cross-module PII payload scan follow-up tracked as T-010, unblocked by ADR-0026)
+- Demo Data Framework (Phase 1.5.7) — **Foundation Done** (T-005 orchestrator + T-006 CLI
+  closed; T-007 scenarios / T-008 admin UI / T-009 cleanup carry over to Phase 2 — they do
+  not block Phase 2 entry because the foundation lets Phase 2 modules declare demo content
+  from day one)
 
 ---
 
@@ -81,11 +88,13 @@ phase (2.5).
 
 ### Entry criteria (must hold before Phase 2 starts)
 
-1. Phase 1.5 exit bar met: outbox/inbox, localization, portal extension points in place.
-2. **ADR-015, ADR-016, ADR-017 promoted from `Proposed` → `Accepted`** by the maintainer.
+1. Phase 1.5 exit bar met: outbox/inbox ✅, localization ✅, portal extension points
+   **scaffold** ✅ (pilot is Milestone A's own work, not an entry gate), Contacts
+   enhancements ✅, Demo Data Framework foundation ✅ — **all met as of 2026-04-24**.
+2. **ADR-0015, ADR-0016, ADR-0017 Accepted** ✅ (maintainer promoted 2026-04-22).
 3. `docs/` restructure (this initiative) complete through Phase 2 (five parallel agent outputs
-   in `In Review`, maintainer verified).
-4. Demo Data Framework scaffold (1.5.7) available so Phase 2 modules can declare demo seeds.
+   in `In Review`, maintainer verified) — **pending**.
+4. Demo Data Framework scaffold (1.5.7) available so Phase 2 modules can declare demo seeds ✅.
 
 ### Pilot commitment
 
