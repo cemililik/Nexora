@@ -263,13 +263,19 @@ public sealed class ContactExportJob(
 
     private static CultureInfo ResolveCulture(string locale)
     {
-        try
+        // Belt-and-suspenders: locale → en-US → InvariantCulture. The last
+        // fallback matters when the .NET runtime is in globalization-invariant
+        // mode (e.g. Alpine container missing icu-libs) — `en-US` would also
+        // throw there. InvariantCulture always resolves.
+        return TryGet(locale)
+            ?? TryGet("en-US")
+            ?? CultureInfo.InvariantCulture;
+
+        static CultureInfo? TryGet(string? name)
         {
-            return CultureInfo.GetCultureInfo(locale);
-        }
-        catch (CultureNotFoundException)
-        {
-            return CultureInfo.GetCultureInfo("en-US");
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            try { return CultureInfo.GetCultureInfo(name); }
+            catch (CultureNotFoundException) { return null; }
         }
     }
 

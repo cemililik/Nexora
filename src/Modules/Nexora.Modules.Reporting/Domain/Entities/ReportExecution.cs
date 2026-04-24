@@ -45,7 +45,19 @@ public sealed class ReportExecution : AuditableEntity<ReportExecutionId>, IAggre
 
     public void MarkRunning(string? hangfireJobId = null)
     {
-        if (Status != ReportStatus.Queued)
+        // Idempotent across Hangfire retries. Valid starting states:
+        //   Queued  — first attempt: normal initial transition.
+        //   Running — previous attempt crashed between MarkRunning's
+        //             SaveChanges and MarkCompleted / MarkFailed.
+        //             Re-asserting Running is a safe no-op.
+        //   Failed  — previous attempt called MarkFailed in its catch
+        //             before rethrowing; Hangfire's retry reloads the
+        //             execution and must be allowed to re-run. Transition
+        //             Failed → Running so MarkCompleted on this attempt
+        //             can finalise without tripping its own state guard.
+        // Only Completed is terminal — an already-Completed execution must
+        // not be resumed (the result file + outbox event have shipped).
+        if (Status == ReportStatus.Completed)
             throw new DomainException("lockey_reporting_error_execution_not_queued");
         Status = ReportStatus.Running;
         HangfireJobId = hangfireJobId;

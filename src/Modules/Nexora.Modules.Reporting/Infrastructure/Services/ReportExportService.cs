@@ -60,13 +60,20 @@ public sealed class ReportExportService(ILocaleContext localeContext)
 
     private CultureInfo ResolveCulture()
     {
-        try
+        // Belt-and-suspenders: try the tenant's configured locale, then en-US,
+        // then InvariantCulture. The final fallback is load-bearing — if the
+        // runtime is in globalization-invariant mode (e.g. an Alpine-based
+        // container that was missing icu-libs), even `en-US` will throw
+        // CultureNotFoundException. InvariantCulture always exists.
+        return TryGetCulture(localeContext.Locale)
+            ?? TryGetCulture("en-US")
+            ?? CultureInfo.InvariantCulture;
+
+        static CultureInfo? TryGetCulture(string? name)
         {
-            return CultureInfo.GetCultureInfo(localeContext.Locale);
-        }
-        catch (CultureNotFoundException)
-        {
-            return CultureInfo.GetCultureInfo("en-US");
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            try { return CultureInfo.GetCultureInfo(name); }
+            catch (CultureNotFoundException) { return null; }
         }
     }
 

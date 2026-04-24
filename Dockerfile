@@ -39,8 +39,13 @@ RUN dotnet publish src/Nexora.Host/Nexora.Host.csproj -c Release -o /app --no-re
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS runtime
 WORKDIR /app
 
-# curl is needed for HEALTHCHECK; installed from the base image's Alpine package repository (not version-pinned)
-RUN apk add --no-cache curl \
+# Alpine-based .NET images default to globalization-invariant mode; install
+# icu-libs + tzdata + opt OUT of invariant mode so `CultureInfo.GetCultureInfo(...)`
+# can resolve `en-US`, `tr-TR`, etc. Without this, ReportExportService and the
+# ContactExportJob's locale-aware formatters throw CultureNotFoundException at
+# runtime. `tzdata` is added so `TimeZoneInfo.FindSystemTimeZoneById(...)` works
+# for the tenant timezone settings (Europe/Istanbul etc.).
+RUN apk add --no-cache curl icu-libs icu-data-full tzdata \
     && addgroup -S nexora && adduser -S nexora -G nexora
 USER nexora
 
@@ -48,6 +53,7 @@ COPY --from=build /app .
 
 ENV ASPNETCORE_URLS=http://+:5000
 ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 EXPOSE 5000
 

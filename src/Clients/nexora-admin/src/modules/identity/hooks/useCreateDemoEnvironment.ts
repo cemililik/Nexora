@@ -75,6 +75,11 @@ export function useCreateDemoEnvironment() {
         queryKey: moduleKeys.all(variables.tenantId),
       });
     },
-    onError: handleApiError,
+    // Keep the (err) => handleApiError(err) wrapper: `handleApiError`'s
+    // signature is (error, setError?) for form integration, and passing
+    // it directly to TanStack's onError (which receives (error, variables,
+    // context)) causes a TS2322 under strict mode because the second
+    // arg types collide.
+    onError: (err) => handleApiError(err),
   });
 }
