@@ -36,96 +36,18 @@ public sealed class PermissionRegistryBoundaryTests
             AppContext.BaseDirectory);
     }
 
-    /// <summary>
-    /// Strips <c>// line</c> and <c>/* block */</c> comments while preserving string
-    /// literals. Used by the IdentityModuleMigration scan, which must still see string
-    /// tokens ("contacts", "documents", …) as potential violations.
-    /// </summary>
-    private static string StripComments(string source)
-    {
-        var sb = new System.Text.StringBuilder(source.Length);
-        int i = 0;
-        while (i < source.Length)
-        {
-            char c = source[i];
-            char next = i + 1 < source.Length ? source[i + 1] : '\0';
-            if (c == '/' && next == '/')
-            {
-                while (i < source.Length && source[i] != '\n') i++;
-                continue;
-            }
-            if (c == '/' && next == '*')
-            {
-                i += 2;
-                while (i + 1 < source.Length && !(source[i] == '*' && source[i + 1] == '/')) i++;
-                i = Math.Min(i + 2, source.Length);
-                continue;
-            }
-            sb.Append(c);
-            i++;
-        }
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// Roslyn-lite stripper: removes <c>// line</c> and <c>/* block */</c> comments plus
-    /// string literals (<c>"…"</c>, <c>@"…"</c>) so regex scans only see executable code. Without this, a commented-out example
-    /// or a string containing <c>Permission.Create(</c> would mask a genuine violation as
-    /// a false positive OR a false negative — either way, the boundary test lies.
-    /// Not a real parser; adequate for our grep-style guards against a single well-known
-    /// call shape and a handful of module-name string constants.
-    /// </summary>
-    private static string StripCommentsAndStrings(string source)
-    {
-        var sb = new System.Text.StringBuilder(source.Length);
-        int i = 0;
-        while (i < source.Length)
-        {
-            char c = source[i];
-            char next = i + 1 < source.Length ? source[i + 1] : '\0';
-
-            if (c == '/' && next == '/')
-            {
-                while (i < source.Length && source[i] != '\n') i++;
-                continue;
-            }
-            if (c == '/' && next == '*')
-            {
-                i += 2;
-                while (i + 1 < source.Length && !(source[i] == '*' && source[i + 1] == '/')) i++;
-                i = Math.Min(i + 2, source.Length);
-                continue;
-            }
-            // Verbatim string literal @"..." — "" is an escaped quote.
-            if (c == '@' && next == '"')
-            {
-                i += 2;
-                while (i < source.Length)
-                {
-                    if (source[i] == '"' && i + 1 < source.Length && source[i + 1] == '"') { i += 2; continue; }
-                    if (source[i] == '"') { i++; break; }
-                    i++;
-                }
-                continue;
-            }
-            // Regular string literal "..." — \" is an escape.
-            if (c == '"')
-            {
-                i++;
-                while (i < source.Length)
-                {
-                    if (source[i] == '\\' && i + 1 < source.Length) { i += 2; continue; }
-                    if (source[i] == '"') { i++; break; }
-                    if (source[i] == '\n') break;
-                    i++;
-                }
-                continue;
-            }
-            sb.Append(c);
-            i++;
-        }
-        return sb.ToString();
-    }
+    // Stripper helpers extracted to Helpers/SourceTextStripper so the
+    // architecture-test suite shares one implementation. Two flavours:
+    //   StripComments(...)         — comments only; strings preserved
+    //                                  (use when the scan target IS a string,
+    //                                  e.g. forbidden module-name tokens).
+    //   StripCommentsAndStrings(.) — both stripped (use when the scan target
+    //                                  is executable code only, e.g. method
+    //                                  declarations or call shapes).
+    private static string StripComments(string source) =>
+        Helpers.SourceTextStripper.StripComments(source);
+    private static string StripCommentsAndStrings(string source) =>
+        Helpers.SourceTextStripper.StripCommentsAndStrings(source);
 
     [Fact]
     public void DevelopmentSeed_HardcodedPermissionCreate_ShouldNotExist()

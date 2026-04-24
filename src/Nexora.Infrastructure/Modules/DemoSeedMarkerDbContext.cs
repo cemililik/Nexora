@@ -39,7 +39,12 @@ public sealed class DemoSeedMarkerDbContext(
 
         modelBuilder.Entity<DemoSeedMarker>(e =>
         {
-            e.ToTable("platform_demo_seed_markers");
+            // Table name dropped the historical "platform_" prefix: the row
+            // lives in the tenant schema (BaseDbContext sets HasDefaultSchema
+            // to the tenant), so the prefix was misleading. Rename is safe
+            // because the table just shipped (T-005) and no production
+            // tenant has been provisioned with the old name yet.
+            e.ToTable("demo_seed_markers");
             e.HasKey(m => new { m.TenantId, m.ModuleName, m.Scenario });
             e.Property(m => m.ModuleName).HasMaxLength(100);
             e.Property(m => m.Scenario).HasMaxLength(50);

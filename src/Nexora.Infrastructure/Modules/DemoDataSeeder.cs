@@ -13,7 +13,7 @@ namespace Nexora.Infrastructure.Modules;
 /// <see cref="IModule"/> in dependency order, creates a DI scope per module,
 /// pushes tenant context onto the ambient accessor, then calls
 /// <see cref="IModule.SeedDemoDataAsync"/>. Marker rows in
-/// <c>platform_demo_seed_markers</c> short-circuit subsequent runs.
+/// <c>demo_seed_markers</c> short-circuit subsequent runs.
 /// </summary>
 public sealed class DemoDataSeeder(
     IServiceScopeFactory scopeFactory,

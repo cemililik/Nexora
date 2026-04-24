@@ -7,7 +7,7 @@ namespace Nexora.SharedKernel.Abstractions.Modules;
 /// <para>
 /// Walks <see cref="IModule"/>s in dependency order, opens a scope per module,
 /// calls <see cref="IModule.SeedDemoDataAsync"/>, and records per-module
-/// completion markers in the tenant's <c>platform_demo_seed_markers</c> table so
+/// completion markers in the tenant's <c>demo_seed_markers</c> table so
 /// re-invocation is a safe no-op for already-seeded modules.
 /// </para>
 /// </summary>

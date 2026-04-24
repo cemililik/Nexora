@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.RegularExpressions;
+using Nexora.Architecture.Tests.Helpers;
 
 namespace Nexora.Architecture.Tests;
 
@@ -79,7 +80,11 @@ public sealed class NexoraJobBoundaryTests
 
         foreach (var file in jobFiles)
         {
-            var content = File.ReadAllText(file);
+            // Strip comments + string literals before scanning so the regex
+            // never false-hits on a multi-line doc comment that mentions
+            // RunAsync(...) in prose, or on a sample string literal embedded
+            // in a test fixture under Modules/**/Jobs/.
+            var content = SourceTextStripper.StripCommentsAndStrings(File.ReadAllText(file));
             if (runAsyncDecl.IsMatch(content))
                 offenders.Add(Path.GetRelativePath(RepoSrcRoot, file));
         }

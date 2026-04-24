@@ -76,7 +76,7 @@ no-op via C# default interface method, so all existing modules compile
 unchanged), `TenantDemoSeedContext` with a scoped `IServiceProvider`, a
 `DemoDataSeeder` orchestrator that topologically sorts by
 `IModule.Dependencies` and runs each module in its own DI scope, a
-`platform_demo_seed_markers` tenant-schema table for per-(tenant, module,
+`demo_seed_markers` tenant-schema table for per-(tenant, module,
 scenario) idempotency. 8 unit tests (ordering / idempotency / scenario
 separation / broken-sibling isolation / cycle + missing-dep detection / tenant
 validation) + 2 architecture tests (no cross-module Infrastructure deps + contract

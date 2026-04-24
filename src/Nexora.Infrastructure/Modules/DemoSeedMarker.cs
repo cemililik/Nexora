@@ -33,10 +33,11 @@ public sealed class DemoSeedMarker
     /// because a freshly-constructed marker means "we are about to start" —
     /// defaulting to <see cref="DemoSeedMarkerStatus.Seeded"/> would silently
     /// mark un-run seeds as complete, which is the opposite of the contract.
-    /// Mutable so the orchestrator can advance the row from InProgress to
-    /// Seeded in a single SaveChanges per stage.
+    /// Setter is <c>internal</c> so only <c>DemoDataSeeder</c> (same assembly)
+    /// can advance the row from InProgress to Seeded — external code reads
+    /// the marker via the orchestrator API, never mutates it directly.
     /// </summary>
-    public DemoSeedMarkerStatus Status { get; set; } = DemoSeedMarkerStatus.InProgress;
+    public DemoSeedMarkerStatus Status { get; internal set; } = DemoSeedMarkerStatus.InProgress;
 
     /// <summary>
     /// UTC timestamp of the InProgress transition (i.e., when the orchestrator
@@ -44,16 +45,18 @@ public sealed class DemoSeedMarker
     /// Distinct from <see cref="CompletedAt"/> so an operator inspecting a
     /// stuck InProgress marker can answer "when did this attempt start?" and
     /// "did it ever complete?" with two separate columns.
+    /// Setter is <c>internal</c> — see <see cref="Status"/> rationale.
     /// </summary>
-    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset StartedAt { get; internal set; }
 
     /// <summary>
     /// UTC timestamp when the marker was promoted to
     /// <see cref="DemoSeedMarkerStatus.Seeded"/>. <c>null</c> while
     /// <see cref="Status"/> is <see cref="DemoSeedMarkerStatus.InProgress"/>.
-    /// Always set in UTC.
+    /// Always set in UTC. Setter is <c>internal</c> — see <see cref="Status"/>
+    /// rationale.
     /// </summary>
-    public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; internal set; }
 }
 
 /// <summary>

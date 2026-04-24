@@ -268,3 +268,47 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
 - `docs/standards/permissions.md` — `{module}.{resource}.{action}` naming
 - T-004 — GDPR Article 17 hard delete (In Review; this work is its runtime gate)
 - T-019 — Implementation of this ADR (org-scoped config + caps)
+
+## Amendment 1 — `cap.Allowed=false` short-circuits lower layers
+
+**Date:** 2026-04-23
+
+**What:** When `IComplianceCapProvider.GetCapAsync(...)` returns
+`Allowed = false`, `IConfigurationResolver` resolves to `cap.Value`
+(or `default(T)` when `cap.Value` is null) and **skips the org-override
+and tenant-default layers entirely**. The pre-amendment behaviour read
+the lower layers first and only blocked *writes* via the cap; this
+allowed a stale org override left over from before a cap tightened to
+keep leaking through reads.
+
+**Why:** The original three-tier ladder `cap.forced > org > tenant >
+cap.default` only honoured the cap on writes (`SetOrgOverrideAsync`)
+when `Allowed = false`. Reads of an existing override from before the
+cap was tightened still returned the old value — a real correctness
+gap in the EU-tenant compliance flow that ADR-0023 gates on. The
+amended ladder is `cap.forced > (cap.blocked → cap.value) > org >
+tenant > cap.default`: when the cap blocks, neither org nor tenant
+contribute.
+
+**Consequence for callers:**
+
+- `cap.Allowed = false` with `cap.Value = null` resolves to
+  `default(T)` — for `bool` that is `false`, for `int?` that is `null`,
+  for reference types `null`. Document call sites that depend on the
+  defaulted value (T-019's `gdpr.hard_delete.enabled` reads as
+  `false` under a forced-disable cap, which is the intended outcome).
+- A tenant whose cap tightens does not need a manual purge of stale org
+  overrides — the resolver stops returning them at the next read. The
+  audit table still preserves the override row for forensic purposes;
+  the resolver simply doesn't surface it.
+
+**Test coverage:**
+`Get_CapAllowedFalse_IgnoresLowerLayers_EvenIfPresent` +
+`SetOrgOverride_CapDisallows_AuditRecordsPriorOverrideAsOldValue`
+in `tests/Nexora.Infrastructure.Tests/Configuration/DatabaseConfigurationResolverTests.cs`
+— both green from commit `576ff65`.
+
+**Scope:** This is a clarification of behaviour the original ADR
+described but did not specify in normative terms. No code change is
+required by this amendment; the change shipped in `576ff65` and this
+amendment captures the reasoning for future readers.

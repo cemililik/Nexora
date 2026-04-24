@@ -2,15 +2,28 @@ namespace Nexora.SharedKernel.Abstractions.Configuration;
 
 /// <summary>
 /// Three-tier configuration resolver: platform cap → tenant default → organization
-/// override. Precedence is <c>cap.forced &gt; org &gt; tenant &gt; cap.default</c>.
+/// override. Precedence is
+/// <c>cap.forced &gt; (cap.blocked → cap.value) &gt; org &gt; tenant &gt; cap.default</c>.
 /// Replaces direct reads of <see cref="ITenantConfiguration"/> for keys that are
 /// organization-scoped or subject to platform policy caps.
 /// </summary>
 /// <remarks>
-/// See ADR-0025 (Org-Scoped Compliance Config with Platform-Level Caps).
+/// See ADR-0025 (Org-Scoped Compliance Config with Platform-Level Caps), in
+/// particular Amendment 1 covering the <c>cap.Allowed = false</c> short-circuit.
 /// <para>
 /// The tenant + organization context is resolved implicitly from the request-scoped
 /// <c>ITenantContextAccessor</c> — callers do not pass IDs explicitly.
+/// </para>
+/// <para>
+/// <b>cap.Allowed = false default behaviour:</b> when the cap blocks a key and
+/// <c>cap.Value</c> is <see langword="null"/>, the resolver returns
+/// <c>default(T)</c> — for <see cref="bool"/> that is <see langword="false"/>;
+/// for nullable value types and reference types it is <see langword="null"/>;
+/// for non-nullable value types like <see cref="int"/> it is <c>0</c>. Call
+/// sites whose business rule depends on the defaulted value (e.g. T-019's
+/// <c>gdpr.hard_delete.enabled</c> reading as <see langword="false"/> under a
+/// forced-disable cap) MUST be aware that this is the explicit blocked
+/// outcome, not "no value found".
 /// </para>
 /// </remarks>
 public interface IConfigurationResolver

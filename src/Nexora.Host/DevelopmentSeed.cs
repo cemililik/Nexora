@@ -612,8 +612,25 @@ public static class DevelopmentSeed
             // hand-inserted row. Defaulting to 'Seeded' would silently mark
             // un-run seeds as complete on legacy tables — exactly the opposite
             // of what the lifecycle promises.
+            // The table renamed from `platform_demo_seed_markers` to
+            // `demo_seed_markers` because the row lives in the tenant schema
+            // (BaseDbContext sets the default schema to the tenant) — the
+            // historical `platform_` prefix was misleading. This rename is
+            // safe because T-005 just shipped and no production tenant has
+            // been provisioned with the old name yet. The first DDL statement
+            // tries the rename and tolerates "no such table" (fresh tenants)
+            // and "table already exists" (upgrade tenants where rename
+            // already happened); the second statement's
+            // `CREATE TABLE IF NOT EXISTS` handles the fresh-tenant case.
+            //
+            // Schema-migration.md §2 normally forbids RENAME, but the rule
+            // exists to protect production data. Here we rename **before**
+            // any production tenant exists for this table, which is the
+            // narrow exception the rule allows when paired with an explicit
+            // task ref (T-005 review follow-up batch).
+            "ALTER TABLE IF EXISTS platform_demo_seed_markers RENAME TO demo_seed_markers",
             """
-            CREATE TABLE IF NOT EXISTS platform_demo_seed_markers (
+            CREATE TABLE IF NOT EXISTS demo_seed_markers (
                 "TenantId" uuid NOT NULL,
                 "ModuleName" varchar(100) NOT NULL,
                 "Scenario" varchar(50) NOT NULL,
@@ -628,8 +645,8 @@ public static class DevelopmentSeed
             // and CompletedAt for the two-phase lifecycle. SeededAt remains
             // (additive-only — schema-migration.md §2 forbids DROP COLUMN);
             // newer code stops writing to it and EF no longer maps it.
-            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"StartedAt\" timestamptz NOT NULL DEFAULT now()",
-            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"CompletedAt\" timestamptz NULL",
+            "ALTER TABLE demo_seed_markers ADD COLUMN IF NOT EXISTS \"StartedAt\" timestamptz NOT NULL DEFAULT now()",
+            "ALTER TABLE demo_seed_markers ADD COLUMN IF NOT EXISTS \"CompletedAt\" timestamptz NULL",
             // T-005 follow-up: Status column added after initial table existed.
             // Idempotent ADD COLUMN for tenants whose table pre-dates the column.
             // **Backfill note for legacy tenants:** if you upgrade a tenant
@@ -638,13 +655,13 @@ public static class DevelopmentSeed
             // ('InProgress'), which is wrong for rows that genuinely completed
             // earlier. Operators MUST run an explicit one-time UPDATE
             // (out-of-band, NOT in this seed) such as
-            //   UPDATE platform_demo_seed_markers SET "Status" = 'Seeded'
+            //   UPDATE demo_seed_markers SET "Status" = 'Seeded'
             //     WHERE "Status" = 'InProgress' AND "SeededAt" < <upgrade_ts>;
             // after verifying the rows truly completed (e.g., compare
             // ModuleName + tenant against runbook records). The seed leaves
             // the default in place because it has no way to tell which legacy
             // rows actually finished.
-            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"Status\" varchar(20) NOT NULL DEFAULT 'InProgress'",
+            "ALTER TABLE demo_seed_markers ADD COLUMN IF NOT EXISTS \"Status\" varchar(20) NOT NULL DEFAULT 'InProgress'",
         };
 
         foreach (var sql in alterStatements)

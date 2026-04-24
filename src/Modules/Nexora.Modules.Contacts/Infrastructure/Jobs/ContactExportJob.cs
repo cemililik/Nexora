@@ -236,7 +236,7 @@ public sealed class ContactExportJob(
 
         // Completion notification fires only on the Queued-origin path. On resume we do
         // not re-send because the original attempt may have already notified the user.
-        // Planned idempotent follow-up (see T-010 / T-017 backlog):
+        // Planned idempotent follow-up — tracked as T-028:
         //   1. Remove this inline SendAsync call.
         //   2. Add a ContactExportCompletedNotificationHandler subscribing to
         //      ContactExportCompletedIntegrationEvent via the standard inbox table.
