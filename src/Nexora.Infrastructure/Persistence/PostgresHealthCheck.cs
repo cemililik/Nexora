@@ -47,7 +47,12 @@ public sealed class PostgresHealthCheck(IConfiguration configuration) : IHealthC
 
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1";
-            cmd.CommandTimeout = (int)Timeout.TotalSeconds;
+            // Defensive int conversion: a sub-second TimeSpan would truncate
+            // to 0 — which Npgsql treats as "infinite timeout", the opposite
+            // of what we want. Math.Max(1, …) + Math.Ceiling guarantees we
+            // never accidentally disable the timeout. The linked CTS above
+            // is the primary timeout; this is belt-and-braces.
+            cmd.CommandTimeout = Math.Max(1, (int)Math.Ceiling(Timeout.TotalSeconds));
             var scalar = await cmd.ExecuteScalarAsync(timeoutCts.Token);
 
             sw.Stop();
@@ -104,8 +109,14 @@ public sealed class PostgresHealthCheck(IConfiguration configuration) : IHealthC
         }
 
         HealthCheckResult Unhealthy(Exception ex)
+            // Description deliberately stays generic — same rationale as
+            // DaprSidecarHealthCheck: never echo a server-supplied message
+            // into the readiness envelope (can leak SQL fragments, server
+            // hostnames, internal infra info). The exception is attached
+            // for in-process logging via the framework; data carries the
+            // type name + latency for dashboards.
             => HealthCheckResult.Unhealthy(
-                $"Postgres probe failed: {ex.Message}",
+                "Postgres probe failed",
                 exception: ex,
                 data: new Dictionary<string, object>
                 {

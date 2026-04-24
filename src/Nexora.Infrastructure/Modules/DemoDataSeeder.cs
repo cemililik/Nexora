@@ -126,30 +126,45 @@ public sealed class DemoDataSeeder(
         DemoSeedMarker marker;
         if (existing is not null)
         {
-            // Tracked-entity re-query, only StartedAt + Status change. EF
-            // emits a column-narrow UPDATE.
-            marker = await markerDb.Markers.FirstAsync(
+            // Re-query as a tracked entity. Use FirstOrDefaultAsync (NOT
+            // FirstAsync) because the row CAN have been deleted between the
+            // bulk-fetch and this point — operator dropped the marker, a
+            // parallel cleanup ran, the schema was reset, etc. When that
+            // happens, fall through to the Add path so the seed completes
+            // instead of throwing InvalidOperationException at the operator.
+            var tracked = await markerDb.Markers.FirstOrDefaultAsync(
                 m => m.TenantId == tenantGuid &&
                      m.ModuleName == module.Name &&
                      m.Scenario == scenario,
                 ct);
-            marker.Status = DemoSeedMarkerStatus.InProgress;
-            marker.StartedAt = DateTimeOffset.UtcNow;
-            marker.CompletedAt = null;
+            if (tracked is not null)
+            {
+                marker = tracked;
+                marker.Status = DemoSeedMarkerStatus.InProgress;
+                marker.StartedAt = DateTimeOffset.UtcNow;
+                marker.CompletedAt = null;
+            }
+            else
+            {
+                marker = NewInProgressMarker();
+                markerDb.Markers.Add(marker);
+            }
         }
         else
         {
-            marker = new DemoSeedMarker
-            {
-                TenantId = tenantGuid,
-                ModuleName = module.Name,
-                Scenario = scenario,
-                Status = DemoSeedMarkerStatus.InProgress,
-                StartedAt = DateTimeOffset.UtcNow,
-                CompletedAt = null
-            };
+            marker = NewInProgressMarker();
             markerDb.Markers.Add(marker);
         }
+
+        DemoSeedMarker NewInProgressMarker() => new()
+        {
+            TenantId = tenantGuid,
+            ModuleName = module.Name,
+            Scenario = scenario,
+            Status = DemoSeedMarkerStatus.InProgress,
+            StartedAt = DateTimeOffset.UtcNow,
+            CompletedAt = null
+        };
 
         try
         {
@@ -241,15 +256,25 @@ public sealed class DemoDataSeeder(
     private async Task<List<IModule>> FilterInstalledAsync(
         IList<IModule> ordered, Guid tenantGuid, CancellationToken ct)
     {
+        // Probe for IModuleAvailability WITHOUT opening a scope first — the
+        // common Phase 1.5 path is "no implementation registered" and there
+        // is no point materialising an async scope + tenant context just to
+        // discover that. If the service is missing, return the full ordered
+        // list directly.
+        using (var probeScope = scopeFactory.CreateScope())
+        {
+            if (probeScope.ServiceProvider.GetService<IModuleAvailability>() is null)
+            {
+                return ordered.ToList();
+            }
+        }
+
+        // Implementation IS registered — now we need a tenant-context-bound
+        // async scope to call its API.
         await using var scope = scopeFactory.CreateAsyncScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
         accessor.SetTenant(tenantGuid.ToString());
-
-        var availability = scope.ServiceProvider.GetService<IModuleAvailability>();
-        if (availability is null)
-        {
-            return ordered.ToList();
-        }
+        var availability = scope.ServiceProvider.GetRequiredService<IModuleAvailability>();
 
         var installed = (await availability.GetInstalledModulesAsync(ct))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);

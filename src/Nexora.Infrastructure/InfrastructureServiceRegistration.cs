@@ -140,7 +140,14 @@ public static class InfrastructureServiceRegistration
             var connStr = configuration.GetConnectionString("Default");
             options.UseNpgsql(connStr);
         });
-        services.AddScoped<IDemoDataSeeder, Modules.DemoDataSeeder>();
+        // DemoDataSeeder owns its scopes (uses IServiceScopeFactory + creates
+        // an async scope per module + per filter/markers query), so the
+        // orchestrator instance itself is stateless and safe to share. Singleton
+        // matches its lifecycle requirements — its three ctor deps
+        // (IServiceScopeFactory, IEnumerable<IModule>, ILogger<T>) are all
+        // root-resolvable. Scoped registration would force a fresh seeder per
+        // tenant request without any benefit.
+        services.AddSingleton<IDemoDataSeeder, Modules.DemoDataSeeder>();
 
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>

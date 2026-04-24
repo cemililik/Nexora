@@ -50,35 +50,53 @@ public static class DemoLoadCommand
         }
         catch (ArgumentException ex)
         {
-            WriteFailure(ex);
+            WriteFailure(ex, parsed.Verbose);
             return CliDispatcher.UsageError;
         }
         catch (InvalidOperationException ex)
         {
-            WriteFailure(ex);
+            WriteFailure(ex, parsed.Verbose);
             return CliDispatcher.UsageError;
         }
         catch (DbException ex)
         {
-            WriteFailure(ex);
+            WriteFailure(ex, parsed.Verbose);
             return CliDispatcher.PartialFailure;
         }
         catch (System.Net.Http.HttpRequestException ex)
         {
-            WriteFailure(ex);
+            WriteFailure(ex, parsed.Verbose);
             return CliDispatcher.PartialFailure;
         }
         catch (SocketException ex)
         {
-            WriteFailure(ex);
+            WriteFailure(ex, parsed.Verbose);
             return CliDispatcher.PartialFailure;
         }
     }
 
-    private static void WriteFailure(Exception ex)
+    /// <summary>
+    /// Surface a CLI failure to stderr without leaking server-supplied
+    /// details by default. The default line is generic — only the exception
+    /// type name (e.g. <c>NpgsqlException</c>) is printed, NOT the message
+    /// (which can contain DB connection details, SQL fragments, or other
+    /// internal information). When the operator passes <c>--verbose</c>,
+    /// the underlying message is included for debugging.
+    /// </summary>
+    private static void WriteFailure(Exception ex, bool verbose)
     {
-        Console.Error.WriteLine($"demo:load failed: {ex.Message}");
-        Console.Error.WriteLine($"  ({ex.GetType().Name})");
+        if (verbose)
+        {
+            Console.Error.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                CliLocalization.T("lockey_cli_demoload_failed_verbose_template"),
+                ex.Message, ex.GetType().Name));
+            return;
+        }
+        Console.Error.WriteLine(string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            CliLocalization.T("lockey_cli_demoload_failed_generic"),
+            ex.GetType().Name));
     }
 
     internal static async Task<int> RunAsync(
@@ -93,15 +111,18 @@ public static class DemoLoadCommand
         if (!options.IsValid(out var usageError))
         {
             console.WriteLine(usageError);
-            console.WriteLine("Usage: demo:load --tenant=<guid> --scenario=<name> [--dry-run]");
+            console.WriteLine(CliLocalization.T("lockey_cli_demoload_usage_hint"));
             return CliDispatcher.UsageError;
         }
 
-        // Async disposal honours hosted services / DbContexts that implement
-        // IAsyncDisposable.
-        await using var host = (IAsyncDisposable)hostFactory();
-        var typedHost = (IHost)host;
-        await using var scope = typedHost.Services.CreateAsyncScope();
+        // Synchronous `using` for both host and scope. The host is built but
+        // never started (DemoLoadHostFactory.Build does not call StartAsync),
+        // so there are no hosted services to drain — synchronous IDisposable
+        // is sufficient. Avoids the (IAsyncDisposable) cast which would
+        // throw InvalidCastException on hosts that ship without IAsyncDisposable.
+        // DbContext async disposal still happens via CreateAsyncScope below.
+        using var host = hostFactory();
+        await using var scope = host.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
 
         // Tenant schema precheck — a CLI run against a tenant that was never
@@ -111,16 +132,25 @@ public static class DemoLoadCommand
         var probe = tenantSchemaProbe ?? DefaultTenantSchemaProbeAsync;
         if (!await probe(services, options.TenantId!.Value, ct))
         {
-            console.WriteLine($"Tenant schema 'tenant_{options.TenantId.Value}' does not exist.");
-            console.WriteLine("Provision the tenant first via the Identity admin API; demo:load does not auto-provision.");
+            console.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                CliLocalization.T("lockey_cli_demoload_tenant_schema_missing_template"),
+                options.TenantId.Value));
+            console.WriteLine(CliLocalization.T("lockey_cli_demoload_tenant_schema_missing_pointer"));
             return CliDispatcher.UsageError;
         }
 
         if (options.DryRun)
         {
-            console.WriteLine($"[dry-run] demo:load tenant={options.TenantId} scenario={options.Scenario}");
-            console.WriteLine($"[dry-run] would iterate IModule.SeedDemoDataAsync over {CountModules(services)} modules and write idempotency markers on success.");
-            console.WriteLine("[dry-run] no changes made.");
+            console.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                CliLocalization.T("lockey_cli_demoload_dryrun_header_template"),
+                options.TenantId, options.Scenario));
+            console.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                CliLocalization.T("lockey_cli_demoload_dryrun_plan_template"),
+                CountModules(services)));
+            console.WriteLine(CliLocalization.T("lockey_cli_demoload_dryrun_no_changes"));
             return 0;
         }
 
@@ -128,18 +158,27 @@ public static class DemoLoadCommand
         var result = await seeder.SeedAsync(
             options.TenantId!.Value.ToString(), options.Scenario!, ct);
 
-        console.WriteLine($"demo:load completed for tenant {options.TenantId} scenario {options.Scenario}:");
+        console.WriteLine(string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            CliLocalization.T("lockey_cli_demoload_completed_template"),
+            options.TenantId, options.Scenario));
         foreach (var outcome in result.Modules)
         {
             var label = outcome.Status switch
             {
-                DemoSeedStatus.Seeded => "seeded",
-                DemoSeedStatus.AlreadySeeded => "already-seeded",
-                DemoSeedStatus.NoOp => "no-op (no demo content)",
-                DemoSeedStatus.Failed => $"FAILED — {outcome.ErrorMessage}",
+                DemoSeedStatus.Seeded => CliLocalization.T("lockey_cli_demoload_outcome_seeded"),
+                DemoSeedStatus.AlreadySeeded => CliLocalization.T("lockey_cli_demoload_outcome_already_seeded"),
+                DemoSeedStatus.NoOp => CliLocalization.T("lockey_cli_demoload_outcome_noop"),
+                DemoSeedStatus.Failed => string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    CliLocalization.T("lockey_cli_demoload_outcome_failed_template"),
+                    outcome.ErrorMessage),
                 _ => outcome.Status.ToString()
             };
-            console.WriteLine($"  - {outcome.ModuleName}: {label}");
+            console.WriteLine(string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                CliLocalization.T("lockey_cli_demoload_outcome_line_template"),
+                outcome.ModuleName, label));
         }
 
         return result.Modules.Any(m => m.Status == DemoSeedStatus.Failed)
@@ -157,12 +196,14 @@ public static class DemoLoadCommand
         Guid? tenantId = null;
         string? scenario = null;
         bool dryRun = false;
+        bool verbose = false;
         var unknown = new List<string>();
 
         for (int i = 0; i < args.Length; i++)
         {
             var a = args[i];
             if (a == "--dry-run") { dryRun = true; continue; }
+            if (a == "--verbose" || a == "-v") { verbose = true; continue; }
 
             if (TryConsumeFlag(args, ref i, a, "--tenant", out var tenantValue))
             {
@@ -182,7 +223,7 @@ public static class DemoLoadCommand
             unknown.Add(a);
         }
 
-        return new DemoLoadOptions(tenantId, scenario, dryRun, unknown);
+        return new DemoLoadOptions(tenantId, scenario, dryRun, verbose, unknown);
     }
 
     /// <summary>
@@ -275,6 +316,7 @@ internal sealed record DemoLoadOptions(
     Guid? TenantId,
     string? Scenario,
     bool DryRun,
+    bool Verbose,
     IReadOnlyList<string> UnknownArgs)
 {
     public bool IsValid(out string error)

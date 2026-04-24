@@ -18,23 +18,43 @@ namespace Nexora.Architecture.Tests;
 /// </summary>
 public sealed class SoftDeleteFilterBoundaryTests
 {
-    private static readonly (string ContextTypeName, Type ContextType)[] ModuleDbContexts =
-    [
-        ("ContactsDbContext", typeof(Nexora.Modules.Contacts.Infrastructure.ContactsDbContext)),
-        ("DocumentsDbContext", typeof(Nexora.Modules.Documents.Infrastructure.DocumentsDbContext)),
-        ("NotificationsDbContext", typeof(Nexora.Modules.Notifications.Infrastructure.NotificationsDbContext)),
-        ("ReportingDbContext", typeof(Nexora.Modules.Reporting.Infrastructure.ReportingDbContext)),
-        ("AuditDbContext", typeof(Nexora.Modules.Audit.Infrastructure.AuditDbContext)),
-        ("IdentityDbContext", typeof(Nexora.Modules.Identity.Infrastructure.IdentityDbContext)),
-        ("PlatformDbContext", typeof(Nexora.Modules.Identity.Infrastructure.PlatformDbContext)),
-    ];
+    /// <summary>
+    /// Discovers every concrete <see cref="DbContext"/> across module
+    /// assemblies via reflection. A new module (e.g. <c>BillingDbContext</c>
+    /// shipped with the Phase-2 Subscription module) gets covered
+    /// automatically — there is no hardcoded list to forget to update.
+    /// The seed assemblies are the same project refs the architecture test
+    /// project already has, so no extra wiring is needed.
+    /// </summary>
+    private static IEnumerable<(string ContextTypeName, Type ContextType)> ModuleDbContexts()
+    {
+        var seedAssemblies = new[]
+        {
+            typeof(Nexora.Modules.Contacts.ContactsModule).Assembly,
+            typeof(Nexora.Modules.Documents.DocumentsModule).Assembly,
+            typeof(Nexora.Modules.Notifications.NotificationsModule).Assembly,
+            typeof(Nexora.Modules.Reporting.ReportingModule).Assembly,
+            typeof(Nexora.Modules.Audit.AuditModule).Assembly,
+            typeof(Nexora.Modules.Identity.IdentityModule).Assembly,
+        };
+
+        foreach (var assembly in seedAssemblies)
+        {
+            foreach (var type in assembly.GetTypes())
+            {
+                if (type.IsAbstract) continue;
+                if (!typeof(DbContext).IsAssignableFrom(type)) continue;
+                yield return (type.Name, type);
+            }
+        }
+    }
 
     [Fact]
     public void HasFilter_ReferencingIsDeleted_ShouldOnlyTargetSoftDeletableEntities()
     {
         var offenders = new List<string>();
 
-        foreach (var (contextName, contextType) in ModuleDbContexts)
+        foreach (var (contextName, contextType) in ModuleDbContexts())
         {
             foreach (var offender in ScanContext(contextName, contextType))
                 offenders.Add(offender);

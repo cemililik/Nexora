@@ -41,7 +41,11 @@ public sealed class PostgresHealthCheckTests
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
         result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Description.Should().StartWith("Postgres probe");
+        // Description is the generic safe string — server-supplied error
+        // text never appears in the readiness envelope. Detail rides in the
+        // exception (in-process logging) and the data dictionary.
+        result.Description.Should().Be("Postgres probe failed");
+        result.Data.Should().ContainKey("error_type");
         result.Data.Should().ContainKey("latency_ms");
     }
 

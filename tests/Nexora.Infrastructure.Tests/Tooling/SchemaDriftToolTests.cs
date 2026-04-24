@@ -81,6 +81,13 @@ public sealed class SchemaDriftToolTests
                 $"--- stderr (partial) ---{Environment.NewLine}{stderrSb}");
         }
 
+        // The timed WaitForExit can return true before the async output /
+        // error event handlers have flushed their last line. Calling the
+        // parameterless WaitForExit() explicitly drains the async event pump
+        // so the stdout/stderr StringBuilders are guaranteed complete before
+        // we read ExitCode and compose any failure message.
+        proc.WaitForExit();
+
         if (proc.ExitCode != 0)
         {
             var combined =

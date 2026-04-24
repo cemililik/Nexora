@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 
 namespace Nexora.Host.Cli;
 
@@ -10,11 +11,25 @@ namespace Nexora.Host.Cli;
 /// <c>ILocalizationService</c>; the runtime translation pipeline is therefore
 /// off-limits at this seam. To keep the project's "no hardcoded user-facing
 /// strings" invariant, every string the CLI prints maps to a <c>lockey_</c>
-/// key here, and this class returns the English fallback for the current
-/// process locale. Translations for <c>tr</c> (and any future locale) live in
-/// <see cref="Translations"/> as in-process dictionaries — they are NOT
-/// extracted from the runtime locale store because the runtime store is
-/// itself unavailable at this seam.
+/// key here, and this class returns the localized fallback for the current
+/// process locale.
+/// </para>
+/// <para>
+/// <b>Source of truth:</b> the canonical strings live in two JSON files —
+/// <c>Cli/Locales/host.en.json</c> and <c>Cli/Locales/host.tr.json</c> —
+/// shipped next to the host binary via the <c>Content</c> entries in
+/// <c>Nexora.Host.csproj</c>. Translators edit those files directly; the
+/// build copies them into the output and publish directories.
+/// <c>CliLocalizationParityTests</c> (Nexora.Host.Tests) asserts the in-memory
+/// map matches every code-referenced lockey in both locales.
+/// </para>
+/// <para>
+/// Loading happens once at first use via <see cref="AppContext.BaseDirectory"/>.
+/// Embedded-resource loading was attempted first but Microsoft.NET.Sdk.Web
+/// silently drops <c>EmbeddedResource</c> entries for <c>*.json</c> paths
+/// under arbitrary subfolders; the disk-based approach sidesteps that quirk
+/// and has the side-benefit of letting an operator hot-edit a locale on
+/// a deployed host without re-publishing.
 /// </para>
 /// <para>
 /// Runtime DI consumers continue to use <c>ILocalizationService</c> /
@@ -25,19 +40,33 @@ namespace Nexora.Host.Cli;
 internal static class CliLocalization
 {
     /// <summary>
+    /// Path within the binary output where the locale JSONs land — see the
+    /// <c>Content Include</c> entries in <c>Nexora.Host.csproj</c>. Stored
+    /// as a static readonly (not a private const) so the naming rule treats
+    /// it as a field and the underscore-prefix convention applies — the
+    /// project linter does not differentiate const from field.
+    /// </summary>
+    private static readonly string _localesSubdirectory = "Cli/Locales";
+
+    private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> _bundles =
+        new(LoadBundles, isThreadSafe: true);
+
+    /// <summary>
     /// Resolve <paramref name="lockey"/> for the current culture. Falls back
     /// to <c>en</c> when the culture has no entry, and to the lockey itself
-    /// when neither has one (so a missing translation surfaces as the key).
+    /// when neither has one (so a missing translation surfaces as the key —
+    /// loud, not silent).
     /// </summary>
     public static string T(string lockey)
     {
+        var bundles = _bundles.Value;
         var culture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        if (Translations.TryGetValue(culture, out var bundle) &&
+        if (bundles.TryGetValue(culture, out var bundle) &&
             bundle.TryGetValue(lockey, out var translated))
         {
             return translated;
         }
-        if (Translations.TryGetValue("en", out var en) &&
+        if (bundles.TryGetValue("en", out var en) &&
             en.TryGetValue(lockey, out var enText))
         {
             return enText;
@@ -45,35 +74,37 @@ internal static class CliLocalization
         return lockey;
     }
 
-    private static readonly Dictionary<string, Dictionary<string, string>> Translations = new()
+    /// <summary>
+    /// Read-only view of the loaded translations — used by the parity test
+    /// to assert every code-referenced lockey is present in both locales.
+    /// Internal so it doesn't bleed into the public CLI surface.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> Bundles
+        => _bundles.Value;
+
+    private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> LoadBundles()
     {
-        ["en"] = new Dictionary<string, string>
+        var localesDir = Path.Combine(AppContext.BaseDirectory, _localesSubdirectory);
+        var dict = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
         {
-            ["lockey_cli_usage_title"] = "Nexora host CLI",
-            ["lockey_cli_usage_commands_header"] = "Commands:",
-            ["lockey_cli_usage_demoload_signature"] = "  demo:load --tenant=<guid> --scenario=<name> [--dry-run]",
-            ["lockey_cli_usage_demoload_description_l1"] = "      Runs IDemoDataSeeder for the given tenant+scenario. Requires",
-            ["lockey_cli_usage_demoload_description_l2"] = "      the tenant schema to already exist — tenant provisioning is a",
-            ["lockey_cli_usage_demoload_description_l3"] = "      separate admin API (see docs/roadmap/phases/phase-1.5-bridge.md).",
-            ["lockey_cli_usage_exitcodes_header"] = "Exit codes:",
-            ["lockey_cli_usage_exitcode_success"] = "  0  success (or all modules already seeded)",
-            ["lockey_cli_usage_exitcode_usage_template"] = "  {0}  usage / validation error",
-            ["lockey_cli_usage_exitcode_partial_template"] = "  {0}  one or more modules failed during seeding",
-            ["lockey_cli_demoload_cancelled"] = "demo:load cancelled.",
-        },
-        ["tr"] = new Dictionary<string, string>
+            ["en"] = ReadFromDisk(Path.Combine(localesDir, "host.en.json")),
+            ["tr"] = ReadFromDisk(Path.Combine(localesDir, "host.tr.json")),
+        };
+        return dict;
+    }
+
+    private static IReadOnlyDictionary<string, string> ReadFromDisk(string path)
+    {
+        if (!File.Exists(path))
         {
-            ["lockey_cli_usage_title"] = "Nexora host CLI",
-            ["lockey_cli_usage_commands_header"] = "Komutlar:",
-            ["lockey_cli_usage_demoload_signature"] = "  demo:load --tenant=<guid> --scenario=<name> [--dry-run]",
-            ["lockey_cli_usage_demoload_description_l1"] = "      Verilen tenant+senaryo için IDemoDataSeeder çalıştırır. Tenant",
-            ["lockey_cli_usage_demoload_description_l2"] = "      şemasının zaten mevcut olması gerekir — tenant sağlama ayrı bir",
-            ["lockey_cli_usage_demoload_description_l3"] = "      admin API'sidir (bkz. docs/roadmap/phases/phase-1.5-bridge.md).",
-            ["lockey_cli_usage_exitcodes_header"] = "Çıkış kodları:",
-            ["lockey_cli_usage_exitcode_success"] = "  0  başarı (veya tüm modüller zaten seed edilmiş)",
-            ["lockey_cli_usage_exitcode_usage_template"] = "  {0}  kullanım / doğrulama hatası",
-            ["lockey_cli_usage_exitcode_partial_template"] = "  {0}  bir veya daha fazla modül seed sırasında başarısız oldu",
-            ["lockey_cli_demoload_cancelled"] = "demo:load iptal edildi.",
-        },
-    };
+            throw new InvalidOperationException(
+                $"CLI locale file '{path}' is missing. Confirm the Content entry in Nexora.Host.csproj " +
+                "(Cli/Locales/host.{en,tr}.json with CopyToOutputDirectory=PreserveNewest) and that the " +
+                "build copied the JSON into the output directory.");
+        }
+        using var stream = File.OpenRead(path);
+        return JsonSerializer.Deserialize<Dictionary<string, string>>(stream)
+            ?? throw new InvalidOperationException(
+                $"CLI locale file '{path}' deserialized to null — file is empty or malformed.");
+    }
 }

@@ -26,20 +26,69 @@ namespace Nexora.Modules.Contacts.Tests.Integration;
 /// provider used elsewhere in the module's tests cannot catch schema-routing bugs
 /// because it has no concept of schemas.
 /// </summary>
-[Trait("Category", "Integration")]
-public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
+/// <summary>
+/// xUnit fixture that owns the shared <see cref="PostgreSqlContainer"/>
+/// across every test in <see cref="GdprHardDeleteJobTenantRoutingTests"/>.
+/// Container startup is the single most expensive line in the suite (~5 s
+/// on a warm runner); paying it once per class instead of once per [Fact]
+/// keeps the integration test runtime bounded as more cases are added.
+///
+/// <para>
+/// Tenant / org / user GUIDs are NOT held on the fixture — each test gets
+/// fresh GUIDs via the test class constructor (xUnit constructs a new
+/// test instance per [Fact]). Sharing those state guids across tests would
+/// reuse the same per-tenant schemas and trip "relation already exists"
+/// errors on the second test's <c>CreateTablesAsync</c>.
+/// </para>
+/// </summary>
+public sealed class GdprHardDeleteJobTenantRoutingFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres =
+    public PostgreSqlContainer Postgres { get; } =
         new PostgreSqlBuilder("postgres:17-alpine").Build();
 
+    public Task InitializeAsync() => Postgres.StartAsync();
+
+    public Task DisposeAsync() => Postgres.DisposeAsync().AsTask();
+}
+
+[Trait("Category", "Integration")]
+public sealed class GdprHardDeleteJobTenantRoutingTests
+    : IClassFixture<GdprHardDeleteJobTenantRoutingFixture>, IAsyncLifetime
+{
+    private readonly PostgreSqlContainer _postgres;
+    // Per-test GUIDs (xUnit constructs a new test instance per [Fact]).
+    // Each test's schemas live for the test's lifetime and are dropped in
+    // DisposeAsync so the shared container's state stays clean — without
+    // the cleanup, the EF model cache (keyed on schema) holds onto the
+    // previous test's HasDefaultSchema even after the test class instance
+    // dies, and CreateTablesAsync attempts to recreate tables in the
+    // same physical schema → 42P07 "relation already exists".
     private readonly Guid _tenantAId = Guid.NewGuid();
     private readonly Guid _tenantBId = Guid.NewGuid();
     private readonly Guid _orgId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
 
-    public Task InitializeAsync() => _postgres.StartAsync();
+    public GdprHardDeleteJobTenantRoutingTests(GdprHardDeleteJobTenantRoutingFixture fixture)
+    {
+        _postgres = fixture.Postgres;
+    }
 
-    public Task DisposeAsync() => _postgres.DisposeAsync().AsTask();
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    public async Task DisposeAsync()
+    {
+        // Drop the per-test tenant schemas so the next [Fact] starts clean.
+        // Identifier-safe: tenant_<guid> shape is generated inside this class,
+        // never from external input.
+        await using var conn = new NpgsqlConnection(_postgres.GetConnectionString());
+        await conn.OpenAsync();
+        foreach (var tid in new[] { _tenantAId, _tenantBId })
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"DROP SCHEMA IF EXISTS \"tenant_{tid}\" CASCADE";
+            await cmd.ExecuteNonQueryAsync();
+        }
+    }
 
     [Fact]
     public async Task GdprHardDeleteJob_RunsUnderTenantA_OnlyTouchesTenantASchema()
@@ -138,7 +187,7 @@ public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
         await using var jobDbContext = BuildDbContextRecordingAccess(spy);
         var job = new GdprHardDeleteJob(
             spy, jobDbContext, Substitute.For<IOutbox>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GdprHardDeleteJob>.Instance);
+            NullLogger<GdprHardDeleteJob>.Instance);
 
         await job.RunAsync(new GdprHardDeleteParams
         {
