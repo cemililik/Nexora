@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed  <!-- Proposed | Accepted | Superseded by NNNN -->
+Accepted  <!-- Proposed | Accepted | Superseded by NNNN -->
 
 ## Date
 
