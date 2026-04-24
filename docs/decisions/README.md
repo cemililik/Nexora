@@ -72,3 +72,4 @@ answerable from the Git log alone.
 | [0027](./0027-production-schema-migration-strategy.md) | Production Schema-Migration Strategy | Accepted |
 | [0028](./0028-module-uninstall-data-retention-contract.md) | Module Uninstall Data-Retention Contract | Accepted |
 | [0029](./0029-cap-blocked-short-circuits-lower-layers.md) | `cap.blocked` Short-Circuits Lower Layers in the Compliance-Config Resolver | Accepted |
+| [0030](./0030-license-hot-reload-mechanism.md) | License Hot-Reload Mechanism (polling + SIGHUP) | Accepted |

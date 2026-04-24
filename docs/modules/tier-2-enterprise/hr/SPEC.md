@@ -1,7 +1,12 @@
 # HR Core
 
-**Tier:** 2 — Enterprise Core
+**Tier:** 2 — Enterprise Core (per [ADR-0016](../../../decisions/0016-module-tier-classification.md))
 **Module ID:** `hr`
+**Phase:** **2.5** — HR Core splits out of Phase 2 Enterprise Core into its
+own phase ([phase-2.5-hr.md](../../../roadmap/phases/phase-2.5-hr.md)).
+The Tier-2 classification above governs isolation rules, permission scope,
+and cross-module-dependency constraints; the Phase assignment is the roadmap
+slot (after CRM + Finance + Subscription + Projects land in Phase 2).
 **Status:** In Review — Prompt 3 HR Agent, 2026-04-22
 
 > Revision history: rewritten 2026-04-22 from the legacy "HR & Payroll" draft to a
