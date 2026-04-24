@@ -17,6 +17,9 @@ public sealed class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
         builder.Property(ur => ur.OrganizationUserId).HasConversion(id => id.Value, v => OrganizationUserId.From(v));
         builder.Property(ur => ur.RoleId).HasConversion(id => id.Value, v => RoleId.From(v));
         builder.Property(ur => ur.AssignedAt).HasColumnName("AssignedAt");
-        builder.HasIndex(ur => new { ur.OrganizationUserId, ur.RoleId }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        // T-022: no HasFilter — UserRole extends Entity<T>, not AuditableEntity<T>,
+        // so no IsDeleted column exists. User ↔ Role assignments are hard-deleted
+        // when a role is unassigned.
+        builder.HasIndex(ur => new { ur.OrganizationUserId, ur.RoleId }).IsUnique();
     }
 }

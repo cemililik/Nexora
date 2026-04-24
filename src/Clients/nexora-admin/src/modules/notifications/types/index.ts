@@ -33,7 +33,10 @@ export interface NotificationDetailDto {
   templateId?: string;
   channel: NotificationChannel;
   subject: string;
-  bodyRendered: string;
+  // Nullable per T-017: GDPR scrub path stores null (not a placeholder) at end
+  // of hot retention so an auditor reading the column can distinguish an erased
+  // row from real content. Renderers MUST null-check.
+  bodyRendered: string | null;
   status: NotificationStatus;
   triggeredBy: string;
   triggeredByUserId?: string;

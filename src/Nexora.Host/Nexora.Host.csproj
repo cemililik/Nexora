@@ -5,6 +5,38 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- T-006: expose CLI internals (DemoLoadOptions, parser, IConsole,
+         CliLocalization) to the Nexora.Host.Tests assembly so the command
+         is testable without promoting the parser surface to public API. -->
+    <InternalsVisibleTo Include="Nexora.Host.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CLI lockey JSON files ship next to the host binary as content
+         (CopyToOutputDirectory=PreserveNewest). CliLocalization loads them
+         at startup via AppContext.BaseDirectory.
+         Background: Microsoft.NET.Sdk.Web silently drops EmbeddedResource
+         entries for *.json paths under arbitrary subfolders (verified —
+         GetManifestResourceNames returns 0 even with explicit Include +
+         LogicalName + Content/None Remove). Disk-based loading sidesteps
+         the SDK quirk, ships the file with the binary on publish, and
+         keeps it editable on a deployed host without a re-publish. -->
+    <!-- Microsoft.NET.Sdk.Web auto-includes *.json as Content; using
+         <Content Include> would error NETSDK1022 (duplicate item).
+         <Content Update> sets metadata on the auto-included items so the
+         JSONs are copied into bin/ and the publish dir without re-declaring
+         them. -->
+    <Content Update="Cli/Locales/host.en.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Update="Cli/Locales/host.tr.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Nexora.SharedKernel\Nexora.SharedKernel.csproj" />
     <ProjectReference Include="..\Nexora.Infrastructure\Nexora.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Nexora.Modules.Identity\Nexora.Modules.Identity.csproj" />

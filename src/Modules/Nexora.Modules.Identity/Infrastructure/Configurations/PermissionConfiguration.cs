@@ -18,7 +18,10 @@ public sealed class PermissionConfiguration : IEntityTypeConfiguration<Permissio
         builder.Property(p => p.Module).HasMaxLength(50).IsRequired();
         builder.Property(p => p.Resource).HasMaxLength(50).IsRequired();
         builder.Property(p => p.Action).HasMaxLength(50).IsRequired();
-        builder.HasIndex(p => new { p.Module, p.Resource, p.Action }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        // T-022: no HasFilter — Permission extends Entity<T>, not AuditableEntity<T>,
+        // so no IsDeleted column exists. Permissions are seeded via IPermissionRegistry
+        // and removed via hard-delete when a module unregisters them.
+        builder.HasIndex(p => new { p.Module, p.Resource, p.Action }).IsUnique();
         builder.Property(p => p.Description).HasMaxLength(500);
 
         builder.Property(p => p.Scope)

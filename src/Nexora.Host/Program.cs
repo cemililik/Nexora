@@ -22,6 +22,17 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
 
+// T-006: short-circuit CLI verbs before any web-host machinery spins up.
+// TryDispatch returns false for normal (non-CLI) invocations so the web host
+// still runs on `dotnet run --project src/Nexora.Host` exactly as before.
+// Top-level returns flow to Main's int return — no Environment.Exit, so the
+// process exit code is set by the runtime as designed.
+if (Nexora.Host.Cli.CliDispatcher.TryDispatch(args, out int cliExitCode))
+{
+    Log.CloseAndFlush();
+    return cliExitCode;
+}
+
 try
 {
     var builder = WebApplication.CreateBuilder(args);
@@ -241,10 +252,12 @@ try
     await app.RunModuleStartupAsync();
 
     app.Run();
+    return 0;
 }
 catch (Exception ex)
 {
     Log.Fatal(ex, "Application terminated unexpectedly");
+    return 1;
 }
 finally
 {

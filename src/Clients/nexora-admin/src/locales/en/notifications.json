@@ -46,6 +46,7 @@
   "lockey_notifications_filter_all_statuses": "All Statuses",
 
   "lockey_notifications_detail_body": "Body",
+  "lockey_notifications_body_erased": "Body erased per GDPR retention policy.",
   "lockey_notifications_detail_template": "Template",
   "lockey_notifications_detail_opened": "Opened",
   "lockey_notifications_detail_clicked": "Clicked",

@@ -57,7 +57,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
                              .Select(r => r.NotificationId)
                              .Contains(n.Id))
                 .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(n => n.BodyRendered, PiiRedactedPlaceholder.Value)
+                    // T-017: BodyRendered is nullable — write null so auditors can
+                    // distinguish an erased row from real content. Subject stays a
+                    // placeholder (column remains NOT NULL) to preserve listing UX.
+                    .SetProperty(n => n.BodyRendered, (string?)null)
                     .SetProperty(n => n.Subject, PiiRedactedPlaceholder.Value),
                     ct);
 

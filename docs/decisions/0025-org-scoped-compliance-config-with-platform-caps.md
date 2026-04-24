@@ -2,11 +2,11 @@
 
 ## Status
 
-Accepted
+Superseded by ADR-0029
 
 ## Date
 
-2026-04-23 (Proposed), 2026-04-23 (Accepted by maintainer)
+2026-04-23 (Proposed), 2026-04-23 (Accepted by maintainer), 2026-04-24 (Superseded)
 
 ## Context
 
@@ -268,3 +268,5 @@ source moves from `ITenantConfiguration` to the new `IConfigurationResolver`.
 - `docs/standards/permissions.md` — `{module}.{resource}.{action}` naming
 - T-004 — GDPR Article 17 hard delete (In Review; this work is its runtime gate)
 - T-019 — Implementation of this ADR (org-scoped config + caps)
+- ADR-0029 — Supersedes this ADR's resolution ladder (adds the
+  `cap.blocked → cap.value` short-circuit before lower layers)

@@ -97,7 +97,11 @@ export default function NotificationDetailPage() {
       <div className="rounded-lg border p-4">
         <h2 className="mb-2 text-lg font-medium">{t('lockey_notifications_detail_body')}</h2>
         <div className="whitespace-pre-wrap rounded bg-muted p-3 text-sm">
-          {notification.bodyRendered}
+          {notification.bodyRendered ?? (
+            <span className="italic text-muted-foreground">
+              {t('lockey_notifications_body_erased')}
+            </span>
+          )}
         </div>
       </div>
 

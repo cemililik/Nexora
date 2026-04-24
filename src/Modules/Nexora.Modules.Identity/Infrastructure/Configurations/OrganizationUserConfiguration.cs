@@ -17,7 +17,10 @@ public sealed class OrganizationUserConfiguration : IEntityTypeConfiguration<Org
         builder.Property(ou => ou.UserId).HasConversion(id => id.Value, v => UserId.From(v));
         builder.Property(ou => ou.OrganizationId).HasConversion(id => id.Value, v => OrganizationId.From(v));
         builder.Property(ou => ou.JoinedAt);
-        builder.HasIndex(ou => new { ou.UserId, ou.OrganizationId }).IsUnique().HasFilter("\"IsDeleted\" = false");
+        // T-022: no HasFilter — OrganizationUser extends Entity<T>, not
+        // AuditableEntity<T>, so no IsDeleted column exists on this table.
+        // The join is hard-deleted when a user leaves an org.
+        builder.HasIndex(ou => new { ou.UserId, ou.OrganizationId }).IsUnique();
 
         builder.HasMany(ou => ou.UserRoles).WithOne().HasForeignKey(ur => ur.OrganizationUserId);
         builder.Navigation(ou => ou.UserRoles).UsePropertyAccessMode(PropertyAccessMode.Field);

@@ -96,8 +96,16 @@ public static class InfrastructureServiceRegistration
         });
         // IOutbox registered per-module as OutboxService<TContext> for transactional atomicity
         services.AddHostedService<OutboxProcessor>();
+        // T-023: the readiness probe now covers Postgres + the Dapr sidecar in
+        // addition to the outbox. Keycloak and MinIO stay transitive via Dapr
+        // — see T-023's task file for rationale.
+        services.AddHttpClient(
+            Messaging.DaprSidecarHealthCheck.HttpClientName,
+            c => c.Timeout = Messaging.DaprSidecarHealthCheck.ProbeTimeout);
         services.AddHealthChecks()
-            .AddCheck<OutboxHealthCheck>("outbox", tags: ["ready"]);
+            .AddCheck<OutboxHealthCheck>("outbox", tags: ["ready"])
+            .AddCheck<Persistence.PostgresHealthCheck>("postgres", tags: ["ready"])
+            .AddCheck<Messaging.DaprSidecarHealthCheck>("dapr-sidecar", tags: ["ready"]);
 
         // Secrets
         services.AddScoped<ISecretProvider, DaprSecretProvider>();
@@ -125,6 +133,21 @@ public static class InfrastructureServiceRegistration
         // in NMP.2) can take scoped dependencies like TenantConfigDbContext. NullComplianceCapProvider
         // is stateless and works fine as scoped; no behavioural change here.
         services.AddScoped<IComplianceCapProvider, NullComplianceCapProvider>();
+
+        // T-005 Demo Data Framework — orchestrator + tenant-scoped idempotency marker store.
+        services.AddDbContext<Modules.DemoSeedMarkerDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
+        // DemoDataSeeder owns its scopes (uses IServiceScopeFactory + creates
+        // an async scope per module + per filter/markers query), so the
+        // orchestrator instance itself is stateless and safe to share. Singleton
+        // matches its lifecycle requirements — its three ctor deps
+        // (IServiceScopeFactory, IEnumerable<IModule>, ILogger<T>) are all
+        // root-resolvable. Scoped registration would force a fresh seeder per
+        // tenant request without any benefit.
+        services.AddSingleton<IDemoDataSeeder, Modules.DemoDataSeeder>();
 
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>

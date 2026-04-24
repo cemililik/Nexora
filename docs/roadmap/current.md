@@ -6,9 +6,107 @@
 
 ## Active task
 
-_None. T-019 and T-020 both moved to In Review — see Prior active tasks._
+_None. All 6 tasks in the review-independent batch moved to In Review —
+see Prior active tasks._
 
 ## Prior active tasks (awaiting maintainer review)
+
+**T-024 — `check-schema-drift.py` CI integration via an opt-in xUnit wrapper**
+(Phase 1.5, tooling). Status: **In Review**. `SchemaDriftToolTests` (tagged
+`Category=Tooling`) wraps the existing Python drift detector using
+`[SkippableFact]`. Default PR CI: Skipped with a one-liner pointing at
+`NEXORA_SCHEMA_DRIFT_ENABLED=1`. Opt-in: shells out to
+`python3 tools/check-schema-drift.py`, fails with the full stdout + stderr
+when exit code is non-zero so the CI log names the drifted column. Precondition
+misses (python3 not on PATH, script not found) surface as Skipped — drift is
+the only failure mode. Verified in both paths: default Skipped (confirmed in
+run output — 1 Skipped across Infrastructure.Tests); opt-in against the live
+dev DB passes (confirms T-021 + T-022 cleanup held — zero drift detected).
+`docs/standards/schema-migration.md` §5 gains a new Testing bullet.
+
+**T-023 — `/health/ready` dependency-level diagnostics** (Phase 1.5,
+observability). Status: **In Review**. `AddHealthChecks` now registers
+`PostgresHealthCheck` (SELECT 1 with 2s timeout) and `DaprSidecarHealthCheck`
+(HTTP GET `/v1.0/healthz` with 1s timeout) alongside the existing
+`OutboxHealthCheck`. Both surface `latency_ms` + impl-specific data in the
+envelope so Grafana can chart readiness without a separate metric. Keycloak +
+MinIO stay transitive via Dapr (rationale in task file). 7 unit tests cover
+every branch (missing config, unreachable host, timeout, 503, thrown exception,
+cancellation, URL construction). No endpoint-shape change — existing
+ResponseWriter serializes the new checks automatically.
+
+**T-022 — Architecture guard for `HasFilter("\"IsDeleted\"...")` targeting
+non-`ISoftDeletable` entities** (Phase 1.5.6, Milestone C — T-021 preventive
+follow-up). Status: **In Review**. Scans every module DbContext at test
+time, walks each entity's declared indexes, and fails CI when a Filter
+references `"IsDeleted"` on a type that doesn't implement `ISoftDeletable`.
+Includes a self-test (`DriftProbeContext`) proving the scanner actually
+fires so a silent no-op never ships. **Discovery**: on its first run the
+guard caught 4 more drift cases in the Identity module —
+`OrganizationUser`, `Permission`, `RolePermission`, `UserRole` — all of
+which extend `Entity<T>` with dead `HasFilter` clauses. Fixed in the
+same commit. No DDL change (affected tables never had the column).
+
+**T-021 — Fix stray `HasFilter("\"IsDeleted\" = false")` on non-soft-deletable Contacts
+configs** (Phase 1.5.6, Milestone C — T-018 follow-up). Status: **In Review**.
+Drops the dead filter predicate from `ContactTagConfiguration` and
+`ContactCustomFieldConfiguration`; entities extend `Entity<T>`, not
+`AuditableEntity<T>`, so the `IsDeleted` column never existed on those tables
+and the filter was silently dropped at CREATE INDEX time in dev. T-018's
+integration test simplified: plain `IRelationalDatabaseCreator.CreateTablesAsync()`
+replaces the statement-by-statement 42703-skipping workaround; two helper methods
+(~60 LoC) removed. Full suite green. No DDL change in the live dev DB because
+the index was already unfiltered there.
+
+**T-006 — `nexora demo:load` CLI command** (Phase 1.5.7, Milestone C).
+Status: **In Review**. CLI dispatcher intercepts before `WebApplication.CreateBuilder`
+so CLI runs never start the web host (`TryDispatch` returns false for unknown
+argv → web host still boots normally). `demo:load --tenant=<guid>
+--scenario=<name> [--dry-run]` parses both `--k=v` and `--k v` forms, probes
+`pg_namespace` for the tenant schema (clear error + usage-exit code when
+missing), runs `IDemoDataSeeder`, and surfaces a per-module summary with an
+exit code that distinguishes usage errors (1), partial failures (2), and
+success (0). 9 unit tests cover the parser, dispatcher fall-through, dry-run,
+schema probe, success, and partial-failure paths. Tenant auto-provisioning +
+E2E shell-out test deferred with rationale in the task status log.
+
+**T-005 — `IModule.SeedDemoDataAsync` + orchestrator** (Phase 1.5.7, Milestone C).
+Status: **In Review**. Foundation-only: `IModule.SeedDemoDataAsync` (default
+no-op via C# default interface method, so all existing modules compile
+unchanged), `TenantDemoSeedContext` with a scoped `IServiceProvider`, a
+`DemoDataSeeder` orchestrator that topologically sorts by
+`IModule.Dependencies` and runs each module in its own DI scope, a
+`demo_seed_markers` tenant-schema table for per-(tenant, module,
+scenario) idempotency. 8 unit tests (ordering / idempotency / scenario
+separation / broken-sibling isolation / cycle + missing-dep detection / tenant
+validation) + 2 architecture tests (no cross-module Infrastructure deps + contract
+signature lock). T-007 ships scenario content; T-006 ships the CLI.
+Full suite green at snapshot `d7aa007`: 1960 passed + 2 skipped (Identity slow-query opt-in + T-024 schema-drift opt-in) across 11 test assemblies.
+
+**T-017 — Notifications BodyRendered nullable migration** (Phase 1.5.6, Milestone C —
+T-004 follow-up). Status: **In Review**. Drops NOT NULL on
+`notifications_notifications.BodyRendered` via `ApplySchemaUpdatesAsync`; EF config
+`IsRequired(false)`; `Notification.ScrubRenderedBody()` now writes null (Subject keeps
+its placeholder because its column stays NOT NULL); handler `SetProperty(n => n.BodyRendered, (string?)null)`;
+`NotificationDetailDto.BodyRendered` is now `string?`; SPEC §PII retention references
+T-017 and explains the null-body / placeholder-subject split. Manually verified: the
+ALTER ran clean against the dev tenant schema, `\d` confirms nullable. Tests updated
+— 247 Notifications tests + full suite green.
+
+**T-018 — Verify NexoraJob tenant context + org propagation for tenant-scoped seed**
+(Phase 1.5.6, Milestone C — T-004 follow-up). Status: **In Review**. Adds two
+integration tests against a real Postgres 17 container proving `GdprHardDeleteJob`
+routes to the correct tenant schema and that `NexoraJob.RunAsync` logs the tenant
+id before any DB work. Three architecture guards in `NexoraJobBoundaryTests`
+(source-level SetTenant-before-ExecuteAsync check, `RunAsync` non-virtual, no
+subclass-shadowing). XML-doc contract on `ITenantConfiguration` makes the
+tenant-scoped (no-org) semantics load-bearing. New audit-coverage.md §2 subsection
+documents that platform-init writes are deliberately not audited — operator
+mutations flow through already-audited paths. Discovered a pre-existing
+`HasFilter` drift on `ContactTag` / `ContactCustomField` unique indexes (logged
+in the task status log for maintainer triage; integration test has a targeted
+42703 skip with a TODO; T-021 has since cleaned that up). Full suite green at snapshot `d7aa007`: 1960 passed + 2 skipped backend across 11 assemblies, 98 frontend tests.
+
 
 **T-020 — Permission seed consolidation via IPermissionRegistry** (Phase 1.5.6, Milestone C).
 Status: **In Review**. Code-to-standard alignment with ADR-004 and `permissions.md` §3.
@@ -85,7 +183,8 @@ for scope and exit bar. Legacy reference: `docs/roadmap/ROADMAP.md` §1.5 and §
 - Portal UI extension points — **In Progress** (pilot via ADR-017 in Phase 2)
 - Audit Module enhancements (Phase 1.5.5) — **Done**
 - Contacts enhancements (Phase 1.5.6) — **In Progress** (5 open items; see migration-notes §2.1)
-- Demo Data Framework (Phase 1.5.7) — **Not started**
+- Demo Data Framework (Phase 1.5.7) — **In Review** (foundation T-005 + CLI T-006
+  shipped In Review; T-007 scenarios / T-008 admin UI / T-009 cleanup not started)
 
 ---
 
@@ -113,7 +212,48 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 
 ## Pending decisions
 
-None currently open. ADR-0025 (org-scoped compliance config) was promoted to `Accepted`
+**ADR-0029 — `cap.blocked` short-circuits lower layers in the compliance-config
+resolver** (Proposed 2026-04-24). Supersedes ADR-0025's resolution ladder.
+Normative change: when `cap.Allowed = false`, the resolver returns
+`cap.Value` (or `default(T)` when null) and skips org + tenant layers
+entirely — closes the Article 17 / ADR-0023 EU-tenant gate where a stale
+pre-cap org override could leak through reads. Already shipped in `576ff65`;
+this ADR is the normative record (moved out of the inline Amendment 1 block
+that originally sat in ADR-0025 — ADR-immutability rule treats behavioural
+changes as superseding, not amending). Maintainer promotion unblocks nothing
+new (code is live) but establishes the canonical decision doc.
+
+**ADR-0028 — Module uninstall data-retention contract** (Proposed 2026-04-23).
+Formalizes the current rename-and-retain uninstall pattern: 30-day default
+retention (configurable via resolver key `modules.uninstall.retention_days`,
+cap-bounded per ADR-0025), mandatory `platform:purge-uninstalled-modules`
+cleanup job, dependency-cascade guard, GDPR Article 17 escape hatch that
+honours erasure against `_del_{timestamp}` renamed tables, extended
+`ModuleUninstalledIntegrationEvent` carrying canonical + renamed table names.
+Rejects immediate hard-delete (no recovery, long-lock risk) and per-module
+policy sprawl (breaks cross-module reasoning). Three follow-up tasks scoped
+in the ADR (T-025 cleanup job, T-026 cascade guard, T-027 GDPR handler).
+
+**ADR-0027 — Production schema-migration strategy** (Proposed 2026-04-23). Closes
+the "Production strategy — TBD" marker in `docs/standards/schema-migration.md`
+and CLAUDE.md. Chooses EF Core Migrations (module-scoped, per-tenant rollout per
+`migration-orchestration.md`) with a CI release-gate that asserts every DDL line
+in `DevelopmentSeed.ApplySchemaUpdatesAsync` has a matching EF migration before
+the release cut. Rejects Liquibase/Flyway (two-system drift), continuing
+`ApplySchemaUpdatesAsync` in prod (no version history, no additive-only CI), and
+bespoke versioned SQL files (rebuilds EF without its ecosystem). Unblocks T-011
+(MigrationRunner). Related: ADR-0001, ADR-0002, ADR-0003.
+
+**ADR-0026 — Cross-module PII payload scan for GDPR erasure** (Proposed 2026-04-23).
+Captures the design decision that T-010 is blocked on: per-module
+`IContactReferenceLocator` with declared JSON paths (chosen), vs. full-table regex
+scan / write-time structured tagging / no-op. The ADR identifies false-positive
+safety as the decisive driver — a regex scan for the erased contact's name would
+almost certainly redact unrelated audit rows ("paid Jon's invoice" colliding with
+a contact named "Jon"), which would itself be a data-integrity incident. Maintainer
+promotion to Accepted unblocks T-010. Related: T-010, ADR-0008, ADR-0023.
+
+ADR-0025 (org-scoped compliance config) was promoted to `Accepted`
 on 2026-04-23; T-019 unblocked, implementation shipped, now In Review (see Prior active tasks).
 
 The three Phase-1 foundation ADRs are **Accepted** (maintainer promoted 2026-04-22):
