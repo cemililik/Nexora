@@ -120,10 +120,23 @@ Prerequisite: Reporting Engine (Phase 1) + CRM (Phase 2.1).
 
 ### Milestone A — Portal Extension pilot (ADR-017)
 
-Pick **one** Tier-2 module (CRM or Subscription, maintainer's call) to pilot the full
-Portal Extension manifest: tier declaration, slot contributions, permission wiring,
-locale namespace, marketplace-compatible manifest. Outcomes inform
-`docs/architecture/portal-extensions.md`.
+**Pilot module: CRM** (selected 2026-04-24 per the authority granted in ADR-0017
+"First pilot"). The module pilots the full Portal Extension manifest: tier
+declaration, slot contributions (at minimum: tab into Contacts 360° for
+lead/activity history, dashboard sidebar widget for "Recent leads"),
+permission wiring, locale namespace, marketplace-compatible manifest shape.
+
+**Why CRM over Subscription:** CRM exercises more of the ADR-0017 surface —
+it contributes into multiple host slots (Contacts 360° tabs, dashboard widgets,
+nav entries) whereas Subscription is largely self-contained around a payments
+portal. A richer contribution footprint produces more lessons for the
+retrospective. CRM also sits on the critical path for Phase 3a (donor
+pipelines) and Phase 3b (enrollment pipelines), so early delivery unblocks
+downstream phases. Subscription's entanglement with external payment providers
+(Stripe + iyzico + proration + revenue-recognition) would couple the pilot
+outcome to payment-gateway state — a weaker test of the manifest itself.
+
+Outcomes inform `docs/architecture/portal-extensions.md`.
 
 ### Milestone B — Tier-2 modules shipped
 

@@ -93,13 +93,23 @@ phase (2.5).
    enhancements ✅, Demo Data Framework foundation ✅ — **all met as of 2026-04-24**.
 2. **ADR-0015, ADR-0016, ADR-0017 Accepted** ✅ (maintainer promoted 2026-04-22).
 3. `docs/` restructure (this initiative) complete through Phase 2 (five parallel agent outputs
-   in `In Review`, maintainer verified) — **pending**.
+   in `In Review`, maintainer verified) ✅ — **met as of 2026-04-24**. All five agent
+   outputs are in place and have been consumed by the Phase 1.5 work that shipped on top
+   of them (7 phase files including phase-2-enterprise, 14 standards, 29 ADRs under the
+   new numbering, 4 tier folders with module specs, architecture docs including
+   portal-extensions.md, analysis/tasks infrastructure). Verification happened in-place
+   as the Phase 1.5 batch (T-001..T-024) depended on and refined each agent's output.
 4. Demo Data Framework scaffold (1.5.7) available so Phase 2 modules can declare demo seeds ✅.
 
 ### Pilot commitment
 
-Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier-2 module
-(CRM or Subscription, TBD by the maintainer). Lessons feed back into `docs/architecture/portal-extensions.md`.
+Phase 2 Milestone A pilots the Portal Extension manifest (ADR-0017) with **CRM**
+(selected 2026-04-24). CRM exercises more of the manifest surface than
+Subscription — multiple slot contributions (Contacts 360° tab, dashboard
+widgets), no external-payment-gateway entanglement, and sits on the critical
+path for Phase 3a/3b downstream dependencies. See
+[`phases/phase-2-enterprise.md`](phases/phase-2-enterprise.md) §Milestone A for
+the full rationale. Lessons feed back into `docs/architecture/portal-extensions.md`.
 
 ---
 
