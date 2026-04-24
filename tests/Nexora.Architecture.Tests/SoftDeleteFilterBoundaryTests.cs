@@ -84,6 +84,7 @@ public sealed class SoftDeleteFilterBoundaryTests
         accessor.SetTenant(Guid.NewGuid().ToString());
 
         DbContext? ctx = null;
+        var ctorErrors = new List<string>();
         foreach (var ctor in contextType
             .GetConstructors()
             .OrderByDescending(c => c.GetParameters().Length))
@@ -96,15 +97,26 @@ public sealed class SoftDeleteFilterBoundaryTests
                 ctx = (DbContext)ctor.Invoke(args);
                 break;
             }
-            catch
+            // Capture every attempted ctor's failure so a "could not construct"
+            // result can name the actual exception(s) instead of swallowing
+            // them and producing a generic message that hides infrastructure
+            // bugs as if they were filter-drift findings.
+            catch (Exception ex)
             {
-                // Next ctor.
+                var inner = ex is System.Reflection.TargetInvocationException tie ? tie.InnerException ?? ex : ex;
+                ctorErrors.Add(
+                    $"  ctor({string.Join(", ", ctor.GetParameters().Select(p => p.ParameterType.Name))}) → {inner.GetType().Name}: {inner.Message}");
             }
         }
 
         if (ctx is null)
         {
-            yield return $"{contextName}: could not construct DbContext for model inspection (no compatible ctor)";
+            // Distinct prefix ("CTOR-FAILURE") so the test failure message
+            // separates "could not even construct DbContext" from
+            // "constructed fine, found a HasFilter drift". The two failure
+            // classes need different remediation.
+            yield return $"CTOR-FAILURE :: {contextName}: no compatible constructor succeeded.\n" +
+                         string.Join("\n", ctorErrors);
             yield break;
         }
 

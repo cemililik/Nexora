@@ -8,7 +8,7 @@
     <!-- T-006: expose CLI internals (DemoLoadOptions, parser, IConsole) to the
          Infrastructure.Tests assembly so the command is testable without making
          its parser public API. -->
-    <InternalsVisibleTo Include="Nexora.Infrastructure.Tests" />
+    <InternalsVisibleTo Include="Nexora.Host.Tests" />
   </ItemGroup>
 
   <ItemGroup>

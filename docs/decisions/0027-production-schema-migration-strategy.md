@@ -96,8 +96,11 @@ that are *only* needed for the dev fast-reset cycle.
     `DropColumn`, `RenameColumn`, type-narrowing `AlterColumn`.
   - Idempotent migration runner + advisory locks already designed in
     `migration-orchestration.md` §2 — this ADR formalizes it.
-  - Rollback is a forward migration: `20260601_RemoveX` is just another
-    additive PR, reviewed the same way.
+  - Rollback is a new forward migration, guarded by the `[Destructive]`
+    attribute contract (see §Implementation notes): an additive
+    `20260601_RemoveX` PR carries `[Destructive]` + the originating task ref
+    so the additive-only CI test admits it explicitly. Reviewed the same way
+    as any other migration; no implicit "down" path is ever generated.
 - Cons
   - Dev-to-prod bridge is real discipline: engineers must remember to author
     the migration alongside the `ApplySchemaUpdatesAsync` change. Mitigated
@@ -177,6 +180,41 @@ sorting on the version prefix.
 
 **Adopt Option 1 — EF Core Migrations, module-scoped, with an explicit
 dev-to-prod bridge and CI-enforced additive-only policy.**
+
+The end-to-end shape:
+
+```mermaid
+flowchart LR
+    subgraph Dev["Dev loop (60-second iteration)"]
+        ASUA["DevelopmentSeed.ApplySchemaUpdatesAsync<br/>idempotent raw SQL"]
+    end
+
+    subgraph CI["Release-cut CI gate"]
+        DRIFT["SchemaDriftTests<br/>(every ASUA DDL has a matching migration)"]
+        ADD["MigrationTests<br/>(additive-only, [Destructive] = explicit consent)"]
+    end
+
+    subgraph PerModule["Per-module migration files"]
+        M1["src/Modules/Nexora.Modules.X/Migrations/*.cs"]
+        M2["__ef_migrations_X (per tenant schema)"]
+    end
+
+    subgraph Prod["Production rollout (per migration-orchestration.md)"]
+        RUN["MigrationRunner.MigrateAllModulesAsync"]
+        LOCK["pg_advisory_lock(tenant_id)<br/>topological per-module order"]
+        MAX["max 10 parallel tenants, page size 50"]
+    end
+
+    ASUA -. "engineer authors matching migration" .-> M1
+    ASUA -.-> DRIFT
+    M1 -.-> DRIFT
+    M1 -.-> ADD
+    DRIFT --> RUN
+    ADD --> RUN
+    RUN --> LOCK
+    LOCK --> M2
+    LOCK --> MAX
+```
 
 The dev path (`ApplySchemaUpdatesAsync` in `DevelopmentSeed`) stays exactly
 as it is, because the single-commit `docker compose down -v && up` cycle is
@@ -267,10 +305,14 @@ Concrete pointers for implementers:
      --output-dir Migrations`.
   3. CI runs both tests; PR green or red tells you whether the bridge is
      healthy.
-- **Rollback policy**: forward-only. A production migration that needs
-  undoing is a new additive migration (`Remove<ColumnName>` writes a
-  `DropColumn` — permitted with `[Destructive]` + explicit task reference).
-  Step-back migrations are blocked by the additive-only test because
+- **Rollback policy**: forward-only. A migration that needs undoing is a
+  *new forward migration* (`Remove<ColumnName>` writes a `DropColumn`).
+  The additive-only CI gate only permits that statement when the new
+  migration carries the `[Destructive]` attribute and a Status-log entry on
+  the originating task — the attribute is the explicit consent gate, the
+  task ref is the audit breadcrumb. Pros §Decision drivers' "Rollback is a
+  new forward migration, guarded by the `[Destructive]` attribute contract"
+  is exactly this rule. Step-back migrations remain blocked because
   step-back in a schema-per-tenant world is operationally ambiguous (some
   tenants advance, others stay).
 - **Observability**:

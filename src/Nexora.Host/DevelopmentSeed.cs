@@ -605,19 +605,46 @@ public static class DevelopmentSeed
             // 'InProgress' before the module runs, promoted to 'Seeded' after
             // success. Future runs short-circuit on 'Seeded' and retry on
             // 'InProgress'.
+            //
+            // Column DEFAULT is 'InProgress' — matches the lifecycle (a new row
+            // means "we're about to start"). The seeder ALWAYS writes Status
+            // explicitly via EF, so the default only governs the (rare)
+            // hand-inserted row. Defaulting to 'Seeded' would silently mark
+            // un-run seeds as complete on legacy tables — exactly the opposite
+            // of what the lifecycle promises.
             """
             CREATE TABLE IF NOT EXISTS platform_demo_seed_markers (
                 "TenantId" uuid NOT NULL,
                 "ModuleName" varchar(100) NOT NULL,
                 "Scenario" varchar(50) NOT NULL,
-                "Status" varchar(20) NOT NULL DEFAULT 'Seeded',
+                "Status" varchar(20) NOT NULL DEFAULT 'InProgress',
+                "StartedAt" timestamptz NOT NULL DEFAULT now(),
+                "CompletedAt" timestamptz NULL,
                 "SeededAt" timestamptz NOT NULL DEFAULT now(),
                 PRIMARY KEY ("TenantId", "ModuleName", "Scenario")
             )
             """,
+            // T-005 review follow-up: split SeededAt into distinct StartedAt
+            // and CompletedAt for the two-phase lifecycle. SeededAt remains
+            // (additive-only — schema-migration.md §2 forbids DROP COLUMN);
+            // newer code stops writing to it and EF no longer maps it.
+            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"StartedAt\" timestamptz NOT NULL DEFAULT now()",
+            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"CompletedAt\" timestamptz NULL",
             // T-005 follow-up: Status column added after initial table existed.
             // Idempotent ADD COLUMN for tenants whose table pre-dates the column.
-            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"Status\" varchar(20) NOT NULL DEFAULT 'Seeded'",
+            // **Backfill note for legacy tenants:** if you upgrade a tenant
+            // whose marker table was created before this column existed, the
+            // ADD COLUMN populates every existing row with the DEFAULT
+            // ('InProgress'), which is wrong for rows that genuinely completed
+            // earlier. Operators MUST run an explicit one-time UPDATE
+            // (out-of-band, NOT in this seed) such as
+            //   UPDATE platform_demo_seed_markers SET "Status" = 'Seeded'
+            //     WHERE "Status" = 'InProgress' AND "SeededAt" < <upgrade_ts>;
+            // after verifying the rows truly completed (e.g., compare
+            // ModuleName + tenant against runbook records). The seed leaves
+            // the default in place because it has no way to tell which legacy
+            // rows actually finished.
+            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"Status\" varchar(20) NOT NULL DEFAULT 'InProgress'",
         };
 
         foreach (var sql in alterStatements)

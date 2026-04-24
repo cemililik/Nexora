@@ -117,13 +117,25 @@ public sealed class DemoDataSeeder(
         // Atomicity is best-effort across the module-side work and the marker
         // write — modules MUST be idempotent regardless. The marker just
         // narrows the "rerun a module that already finished" window.
+        //
+        // The `existing` reference was loaded with AsNoTracking() in the
+        // bulk-fetch path, so we DO NOT call Update(existing) (that attaches
+        // a detached entity and EF marks every column modified — full-column
+        // UPDATE). Instead, re-query inside this scope for a tracked entity
+        // and mutate that, OR for the new-marker path, Add a tracked entity.
         DemoSeedMarker marker;
         if (existing is not null)
         {
-            marker = existing;
+            // Tracked-entity re-query, only StartedAt + Status change. EF
+            // emits a column-narrow UPDATE.
+            marker = await markerDb.Markers.FirstAsync(
+                m => m.TenantId == tenantGuid &&
+                     m.ModuleName == module.Name &&
+                     m.Scenario == scenario,
+                ct);
             marker.Status = DemoSeedMarkerStatus.InProgress;
-            marker.SeededAt = DateTimeOffset.UtcNow;
-            markerDb.Markers.Update(marker);
+            marker.StartedAt = DateTimeOffset.UtcNow;
+            marker.CompletedAt = null;
         }
         else
         {
@@ -133,7 +145,8 @@ public sealed class DemoDataSeeder(
                 ModuleName = module.Name,
                 Scenario = scenario,
                 Status = DemoSeedMarkerStatus.InProgress,
-                SeededAt = DateTimeOffset.UtcNow
+                StartedAt = DateTimeOffset.UtcNow,
+                CompletedAt = null
             };
             markerDb.Markers.Add(marker);
         }
@@ -197,7 +210,7 @@ public sealed class DemoDataSeeder(
 
         // Module finished cleanly — promote marker to Seeded.
         marker.Status = DemoSeedMarkerStatus.Seeded;
-        marker.SeededAt = DateTimeOffset.UtcNow;
+        marker.CompletedAt = DateTimeOffset.UtcNow;
         try
         {
             await markerDb.SaveChangesAsync(ct);
@@ -275,9 +288,15 @@ public sealed class DemoDataSeeder(
     {
         var concrete = module.GetType();
         // Find the interface map for IModule on the concrete type.
+        // Use the (name, flags, binder, types, modifiers) overload so the
+        // signature is matched exactly — guards against future overloads
+        // making the parameterless GetMethod throw AmbiguousMatchException.
         var ifaceMethod = typeof(IModule).GetMethod(
-            nameof(IModule.SeedDemoDataAsync),
-            BindingFlags.Public | BindingFlags.Instance)!;
+            name: nameof(IModule.SeedDemoDataAsync),
+            bindingAttr: BindingFlags.Public | BindingFlags.Instance,
+            binder: null,
+            types: new[] { typeof(TenantDemoSeedContext), typeof(CancellationToken) },
+            modifiers: null)!;
 
         var map = concrete.GetInterfaceMap(typeof(IModule));
         for (int i = 0; i < map.InterfaceMethods.Length; i++)

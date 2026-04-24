@@ -44,7 +44,8 @@ public sealed class DemoSeedMarkerDbContext(
             e.Property(m => m.ModuleName).HasMaxLength(100);
             e.Property(m => m.Scenario).HasMaxLength(50);
             e.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
-            e.Property(m => m.SeededAt).IsRequired();
+            e.Property(m => m.StartedAt).IsRequired();
+            e.Property(m => m.CompletedAt); // nullable
         });
     }
 }

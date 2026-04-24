@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Sockets;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
@@ -10,6 +11,14 @@ namespace Nexora.Infrastructure.Persistence;
 /// Postgres instance. Runs <c>SELECT 1</c> against the <c>Default</c> connection
 /// string with a 2-second timeout. Uses <see cref="NpgsqlConnection"/> directly
 /// (not EF Core) so a mis-wired DbContext cannot mask a real connectivity issue.
+///
+/// <para>
+/// <b>Cancellation contract:</b> caller-cancelled probes (when the supplied
+/// <paramref name="ct"/> is cancelled) propagate <see cref="OperationCanceledException"/>
+/// — the framework treats those distinctly from "infrastructure unhealthy".
+/// Internal timeout (probe exceeded the 2-second budget) is reported as
+/// Unhealthy with a clear description.
+/// </para>
 /// </summary>
 public sealed class PostgresHealthCheck(IConfiguration configuration) : IHealthCheck
 {
@@ -28,11 +37,11 @@ public sealed class PostgresHealthCheck(IConfiguration configuration) : IHealthC
         }
 
         var sw = Stopwatch.StartNew();
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(Timeout);
+
         try
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(Timeout);
-
             await using var conn = new NpgsqlConnection(connectionString);
             await conn.OpenAsync(timeoutCts.Token);
 
@@ -51,20 +60,57 @@ public sealed class PostgresHealthCheck(IConfiguration configuration) : IHealthC
                 $"Postgres reachable ({sw.Elapsed.TotalMilliseconds:F1} ms)",
                 data: data);
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        // Caller cancelled — propagate so the framework treats it as
+        // "probe was abandoned", not "Postgres is broken".
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            sw.Stop();
+            throw;
+        }
+        // Internal timeout (linked CTS fired) — distinct unhealthy reason.
+        catch (OperationCanceledException)
         {
             sw.Stop();
             return HealthCheckResult.Unhealthy(
                 $"Postgres probe timed out after {Timeout.TotalSeconds:F0}s",
                 data: new Dictionary<string, object> { ["latency_ms"] = sw.Elapsed.TotalMilliseconds });
         }
-        catch (Exception ex)
+        catch (NpgsqlException ex)
         {
             sw.Stop();
-            return HealthCheckResult.Unhealthy(
+            return Unhealthy(ex);
+        }
+        catch (SocketException ex)
+        {
+            sw.Stop();
+            return Unhealthy(ex);
+        }
+        catch (TimeoutException ex)
+        {
+            sw.Stop();
+            return Unhealthy(ex);
+        }
+        catch (ArgumentException ex)
+        {
+            // Malformed connection string surfaces as ArgumentException at
+            // NpgsqlConnection construction.
+            sw.Stop();
+            return Unhealthy(ex);
+        }
+        catch (FormatException ex)
+        {
+            sw.Stop();
+            return Unhealthy(ex);
+        }
+
+        HealthCheckResult Unhealthy(Exception ex)
+            => HealthCheckResult.Unhealthy(
                 $"Postgres probe failed: {ex.Message}",
                 exception: ex,
-                data: new Dictionary<string, object> { ["latency_ms"] = sw.Elapsed.TotalMilliseconds });
-        }
+                data: new Dictionary<string, object>
+                {
+                    ["latency_ms"] = sw.Elapsed.TotalMilliseconds,
+                    ["error_type"] = ex.GetType().Name
+                });
     }
 }

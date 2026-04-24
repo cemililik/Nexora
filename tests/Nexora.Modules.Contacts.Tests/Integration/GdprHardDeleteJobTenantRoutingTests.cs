@@ -149,41 +149,45 @@ public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
             ErasedByUserId = _userId
         }, CancellationToken.None);
 
-        spy.SetTenantCalls.Should().NotBeEmpty(
+        spy.SetTenantCallSequences.Should().NotBeEmpty(
             "NexoraJob.RunAsync must invoke SetTenant before delegating to ExecuteAsync.");
-        spy.FirstCurrentReadAt.Should().NotBeNull(
+        spy.FirstCurrentReadSequence.Should().NotBeNull(
             "the DbContext under test reads Current at least once during ExecuteAsync — the test would not exercise the contract otherwise.");
-        spy.SetTenantCalls.First().Should().BeBefore(spy.FirstCurrentReadAt!.Value,
+        spy.SetTenantCallSequences.First().Should().BeLessThan(spy.FirstCurrentReadSequence!.Value,
             "SetTenant MUST be invoked before any DB query inside ExecuteAsync; otherwise schema-per-tenant routing breaks.");
     }
 
     // --- Helpers ------------------------------------------------------------------
 
     /// <summary>
-    /// <see cref="ITenantContextAccessor"/> double that records the timestamp of
-    /// every <c>SetTenant</c> call and the first read of <c>Current</c>. The
-    /// SetTenant-before-DB test compares the two so an accidental override that
-    /// queries DB before pushing tenant context fails with a clear ordering
-    /// violation instead of an obscure schema-not-found error downstream.
+    /// <see cref="ITenantContextAccessor"/> double that records a strictly
+    /// monotonic sequence number on every <c>SetTenant</c> call and on the
+    /// first read of <c>Current</c>. The SetTenant-before-DB test compares
+    /// the two sequence numbers — sequence comparison is deadlock-free and
+    /// cannot flake on coarse system-clock granularity (Windows
+    /// DateTimeOffset.UtcNow ticks at ~15 ms, so two events fired within
+    /// the same tick used to compare equal under the old timestamp-based
+    /// implementation).
     /// </summary>
     private sealed class RecordingTenantContextAccessor : ITenantContextAccessor
     {
         private readonly TenantContextAccessor _inner = new();
-        public List<DateTimeOffset> SetTenantCalls { get; } = new();
-        public DateTimeOffset? FirstCurrentReadAt { get; private set; }
+        private long _sequence;
+        public List<long> SetTenantCallSequences { get; } = new();
+        public long? FirstCurrentReadSequence { get; private set; }
 
         public ITenantContext Current
         {
             get
             {
-                FirstCurrentReadAt ??= DateTimeOffset.UtcNow;
+                FirstCurrentReadSequence ??= System.Threading.Interlocked.Increment(ref _sequence);
                 return _inner.Current;
             }
         }
 
         public void SetTenant(string tenantId, string? organizationId = null, string? userId = null)
         {
-            SetTenantCalls.Add(DateTimeOffset.UtcNow);
+            SetTenantCallSequences.Add(System.Threading.Interlocked.Increment(ref _sequence));
             _inner.SetTenant(tenantId, organizationId, userId);
         }
     }

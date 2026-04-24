@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -26,28 +28,65 @@ public static class DemoLoadCommand
         var parsed = ParseArgs(argv);
         try
         {
-            return RunAsync(parsed, () => DemoLoadHostFactory.Build(argv), tenantSchemaProbe: null)
+            return RunAsync(parsed, () => DemoLoadHostFactory.Build(argv),
+                    tenantSchemaProbe: null)
                 .ConfigureAwait(false).GetAwaiter().GetResult();
         }
-        catch (Exception ex)
+        // CLI is the OUTERMOST process boundary — by design (ADR's
+        // "no catch(Exception) in module code" rule applies inside modules,
+        // not at the process entry point). We narrow to the families the
+        // demo:load pipeline actually produces and let anything else
+        // (StackOverflowException, OutOfMemoryException, AccessViolation, etc.)
+        // bubble so the process crashes loudly instead of swallowing fatal
+        // CLR conditions. Explicit families:
+        //   ArgumentException / InvalidOperationException → usage / config
+        //   OperationCanceledException                    → caller cancelled
+        //   DbException (incl. Npgsql)                    → infrastructure
+        //   HttpRequestException / SocketException        → infrastructure
+        catch (OperationCanceledException)
         {
-            // Friendly CLI contract: never let raw stack traces escape to the
-            // operator. Usage / validation failures (bad flag, missing tenant
-            // schema, DI mis-config) are UsageError; anything else is a
-            // partial-failure signal so an operator script can branch on it.
-            Console.Error.WriteLine($"demo:load failed: {ex.Message}");
-            Console.Error.WriteLine($"  ({ex.GetType().Name})");
-            return ex is ArgumentException or InvalidOperationException
-                ? CliDispatcher.UsageError
-                : CliDispatcher.PartialFailure;
+            Console.Error.WriteLine(CliLocalization.T("lockey_cli_demoload_cancelled"));
+            return CliDispatcher.UsageError;
         }
+        catch (ArgumentException ex)
+        {
+            WriteFailure(ex);
+            return CliDispatcher.UsageError;
+        }
+        catch (InvalidOperationException ex)
+        {
+            WriteFailure(ex);
+            return CliDispatcher.UsageError;
+        }
+        catch (DbException ex)
+        {
+            WriteFailure(ex);
+            return CliDispatcher.PartialFailure;
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            WriteFailure(ex);
+            return CliDispatcher.PartialFailure;
+        }
+        catch (SocketException ex)
+        {
+            WriteFailure(ex);
+            return CliDispatcher.PartialFailure;
+        }
+    }
+
+    private static void WriteFailure(Exception ex)
+    {
+        Console.Error.WriteLine($"demo:load failed: {ex.Message}");
+        Console.Error.WriteLine($"  ({ex.GetType().Name})");
     }
 
     internal static async Task<int> RunAsync(
         DemoLoadOptions options,
         Func<IHost> hostFactory,
-        Func<IServiceProvider, Guid, Task<bool>>? tenantSchemaProbe,
-        IConsole? console = null)
+        Func<IServiceProvider, Guid, CancellationToken, Task<bool>>? tenantSchemaProbe,
+        IConsole? console = null,
+        CancellationToken ct = default)
     {
         console ??= SystemConsole.Instance;
 
@@ -58,8 +97,11 @@ public static class DemoLoadCommand
             return CliDispatcher.UsageError;
         }
 
-        using var host = hostFactory();
-        using var scope = host.Services.CreateScope();
+        // Async disposal honours hosted services / DbContexts that implement
+        // IAsyncDisposable.
+        await using var host = (IAsyncDisposable)hostFactory();
+        var typedHost = (IHost)host;
+        await using var scope = typedHost.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
 
         // Tenant schema precheck — a CLI run against a tenant that was never
@@ -67,7 +109,7 @@ public static class DemoLoadCommand
         // inside the seeder's first DbContext resolution. Tests inject a probe;
         // production uses the default Postgres pg_namespace lookup.
         var probe = tenantSchemaProbe ?? DefaultTenantSchemaProbeAsync;
-        if (!await probe(services, options.TenantId!.Value))
+        if (!await probe(services, options.TenantId!.Value, ct))
         {
             console.WriteLine($"Tenant schema 'tenant_{options.TenantId.Value}' does not exist.");
             console.WriteLine("Provision the tenant first via the Identity admin API; demo:load does not auto-provision.");
@@ -84,7 +126,7 @@ public static class DemoLoadCommand
 
         var seeder = services.GetRequiredService<IDemoDataSeeder>();
         var result = await seeder.SeedAsync(
-            options.TenantId!.Value.ToString(), options.Scenario!);
+            options.TenantId!.Value.ToString(), options.Scenario!, ct);
 
         console.WriteLine($"demo:load completed for tenant {options.TenantId} scenario {options.Scenario}:");
         foreach (var outcome in result.Modules)
@@ -180,7 +222,8 @@ public static class DemoLoadCommand
         return true;
     }
 
-    private static async Task<bool> DefaultTenantSchemaProbeAsync(IServiceProvider services, Guid tenantId)
+    private static async Task<bool> DefaultTenantSchemaProbeAsync(
+        IServiceProvider services, Guid tenantId, CancellationToken ct)
     {
         // Use TenantConfigDbContext's underlying connection so we honour Npgsql
         // pooling, retry policy, and the application's connection-string
@@ -201,7 +244,7 @@ public static class DemoLoadCommand
         var conn = dbContext.Database.GetDbConnection();
         var ownedOpen = conn.State != System.Data.ConnectionState.Open;
         if (ownedOpen)
-            await conn.OpenAsync();
+            await conn.OpenAsync(ct);
 
         try
         {
@@ -211,7 +254,7 @@ public static class DemoLoadCommand
             p.ParameterName = "@name";
             p.Value = $"tenant_{tenantId}";
             cmd.Parameters.Add(p);
-            var result = await cmd.ExecuteScalarAsync();
+            var result = await cmd.ExecuteScalarAsync(ct);
             return result is not null;
         }
         finally

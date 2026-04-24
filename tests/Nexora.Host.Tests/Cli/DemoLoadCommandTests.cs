@@ -4,7 +4,7 @@ using Nexora.Host.Cli;
 using Nexora.SharedKernel.Abstractions.Modules;
 using NSubstitute;
 
-namespace Nexora.Infrastructure.Tests.Cli;
+namespace Nexora.Host.Tests.Cli;
 
 /// <summary>
 /// T-006: unit tests for the <c>demo:load</c> CLI command — parser + runner
@@ -88,7 +88,7 @@ public sealed class DemoLoadCommandTests
         var exit = await DemoLoadCommand.RunAsync(
             opts,
             hostFactory: () => host,
-            tenantSchemaProbe: (_, _) => Task.FromResult(true),
+            tenantSchemaProbe: (_, _, _) => Task.FromResult(true),
             console);
 
         exit.Should().Be(0);
@@ -111,7 +111,7 @@ public sealed class DemoLoadCommandTests
         var exit = await DemoLoadCommand.RunAsync(
             opts,
             hostFactory: () => host,
-            tenantSchemaProbe: (_, _) => Task.FromResult(false),
+            tenantSchemaProbe: (_, _, _) => Task.FromResult(false),
             console);
 
         exit.Should().Be(CliDispatcher.UsageError);
@@ -142,7 +142,7 @@ public sealed class DemoLoadCommandTests
         var exit = await DemoLoadCommand.RunAsync(
             opts,
             hostFactory: () => host,
-            tenantSchemaProbe: (_, _) => Task.FromResult(true),
+            tenantSchemaProbe: (_, _, _) => Task.FromResult(true),
             console);
 
         exit.Should().Be(0, "all modules seeded or were already-seeded — no failures.");
@@ -171,7 +171,7 @@ public sealed class DemoLoadCommandTests
         var exit = await DemoLoadCommand.RunAsync(
             opts,
             hostFactory: () => host,
-            tenantSchemaProbe: (_, _) => Task.FromResult(true),
+            tenantSchemaProbe: (_, _, _) => Task.FromResult(true),
             console);
 
         exit.Should().Be(CliDispatcher.PartialFailure);

@@ -46,8 +46,14 @@ public sealed class DaprSidecarHealthCheckTests
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
         result.Status.Should().Be(HealthStatus.Unhealthy);
-        result.Description.Should().Contain("connection refused");
+        // Description deliberately stays generic so the readiness envelope
+        // never echoes a server-supplied or implementation-detail error
+        // string back to whatever polls /health/ready. The exception object
+        // (with the real message) rides along for in-process logging.
+        result.Description.Should().Be("Dapr sidecar probe failed");
+        result.Description.Should().NotContain("connection refused");
         result.Exception.Should().BeOfType<HttpRequestException>();
+        ((string)result.Data["error_type"]).Should().Be(nameof(HttpRequestException));
     }
 
     [Fact]

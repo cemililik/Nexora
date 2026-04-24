@@ -53,17 +53,25 @@ public static class CliDispatcher
 
     private static void PrintUsage()
     {
-        Console.WriteLine("Nexora host CLI");
+        // CLI runs before DI is built — resolve lockeys via the pre-DI
+        // CliLocalization fallback (see CliLocalization.cs for rationale).
+        // ILocalizationService is the right answer for runtime DI consumers
+        // but is not available at this seam.
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_title"));
         Console.WriteLine();
-        Console.WriteLine("Commands:");
-        Console.WriteLine("  demo:load --tenant=<guid> --scenario=<name> [--dry-run]");
-        Console.WriteLine("      Runs IDemoDataSeeder for the given tenant+scenario. Requires");
-        Console.WriteLine("      the tenant schema to already exist — tenant provisioning is a");
-        Console.WriteLine("      separate admin API (see docs/roadmap/phases/phase-1.5-bridge.md).");
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_commands_header"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_signature"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_description_l1"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_description_l2"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_description_l3"));
         Console.WriteLine();
-        Console.WriteLine("Exit codes:");
-        Console.WriteLine("  0  success (or all modules already seeded)");
-        Console.WriteLine($"  {UsageError}  usage / validation error");
-        Console.WriteLine($"  {PartialFailure}  one or more modules failed during seeding");
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_exitcodes_header"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_exitcode_success"));
+        Console.WriteLine(string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            CliLocalization.T("lockey_cli_usage_exitcode_usage_template"), UsageError));
+        Console.WriteLine(string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            CliLocalization.T("lockey_cli_usage_exitcode_partial_template"), PartialFailure));
     }
 }

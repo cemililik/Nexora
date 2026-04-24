@@ -247,6 +247,7 @@ Concrete pointers for implementers (T-010 execution task):
   - CRM / Finance / Subscription / Fundraising locators delivered with their
     respective Phase-2+ modules per the roadmap.
 - **Summary audit entry shape**:
+
   ```jsonc
   {
     "module":    "audit",
@@ -255,6 +256,7 @@ Concrete pointers for implementers (T-010 execution task):
     "metadata":  { "contactId": "...", "perModule": { "contacts": 42, "identity": 3, "crm": 0 } }
   }
   ```
+
 - **Observability**:
   - Histogram metric `gdpr_scan_duration_seconds{module}` labeled by module;
     target p99 < 900s.

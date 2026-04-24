@@ -46,7 +46,7 @@ public sealed class PostgresHealthCheckTests
     }
 
     [Fact]
-    public async Task CheckHealthAsync_HonoursCallerCancellation()
+    public async Task CheckHealthAsync_CallerCancelled_PropagatesOperationCanceledException()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -58,11 +58,12 @@ public sealed class PostgresHealthCheckTests
         using var cts = new CancellationTokenSource();
         cts.Cancel(); // already cancelled before we call
 
-        var result = await check.CheckHealthAsync(new HealthCheckContext(), cts.Token);
-
-        // Caller-cancelled probe surfaces as Unhealthy (we never catch the
-        // OperationCanceledException silently — Kubernetes-side cancellation
-        // would pull the pod out of rotation either way).
-        result.Status.Should().Be(HealthStatus.Unhealthy);
+        // Per the contract on PostgresHealthCheck: caller-cancelled probes
+        // throw OperationCanceledException so the framework can distinguish
+        // "abandoned probe" from "Postgres broken". Internal-timeout (linked
+        // CTS firing because the probe exceeded 2s) is the one that returns
+        // Unhealthy.
+        var act = async () => await check.CheckHealthAsync(new HealthCheckContext(), cts.Token);
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

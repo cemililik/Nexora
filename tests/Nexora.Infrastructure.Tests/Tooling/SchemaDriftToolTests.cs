@@ -47,16 +47,46 @@ public sealed class SchemaDriftToolTests
         };
 
         using var proc = Process.Start(psi)!;
-        var stdout = proc.StandardOutput.ReadToEnd();
-        var stderr = proc.StandardError.ReadToEnd();
-        proc.WaitForExit(120_000);
+
+        // Consume stdout and stderr ASYNCHRONOUSLY via DataReceived events.
+        // The previous synchronous ReadToEnd() pair could deadlock if the
+        // child filled one pipe's buffer while we waited on the other; the
+        // event-based pattern reads both pipes concurrently so neither side
+        // ever blocks on a full buffer.
+        var stdoutSb = new System.Text.StringBuilder();
+        var stderrSb = new System.Text.StringBuilder();
+        proc.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is not null) lock (stdoutSb) stdoutSb.AppendLine(e.Data);
+        };
+        proc.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is not null) lock (stderrSb) stderrSb.AppendLine(e.Data);
+        };
+        proc.BeginOutputReadLine();
+        proc.BeginErrorReadLine();
+
+        // Observe WaitForExit's bool return — false means the timeout
+        // elapsed without exit, in which case we kill the child rather than
+        // touching ExitCode (which throws on non-exited processes).
+        var exited = proc.WaitForExit(120_000);
+        if (!exited)
+        {
+            try { proc.Kill(entireProcessTree: true); } catch { /* best-effort */ }
+            // Allow the kill to surface in the streams.
+            proc.WaitForExit(5_000);
+            Assert.Fail(
+                $"tools/check-schema-drift.py did not exit within 120s; killed.{Environment.NewLine}" +
+                $"--- stdout (partial) ---{Environment.NewLine}{stdoutSb}{Environment.NewLine}" +
+                $"--- stderr (partial) ---{Environment.NewLine}{stderrSb}");
+        }
 
         if (proc.ExitCode != 0)
         {
             var combined =
                 $"tools/check-schema-drift.py exited with code {proc.ExitCode}.{Environment.NewLine}" +
-                $"--- stdout ---{Environment.NewLine}{stdout}{Environment.NewLine}" +
-                $"--- stderr ---{Environment.NewLine}{stderr}";
+                $"--- stdout ---{Environment.NewLine}{stdoutSb}{Environment.NewLine}" +
+                $"--- stderr ---{Environment.NewLine}{stderrSb}";
             Assert.Fail(combined);
         }
     }

@@ -74,9 +74,13 @@ public sealed class DemoDataSeederTests
     [Fact]
     public async Task SeedAsync_ModuleThrows_DoesNotBlockSiblingsAndMarksFailed()
     {
+        // True siblings — neither depends on the other — so the test name
+        // ("siblings") matches the topology. Under current orchestrator policy
+        // a failure in module A must NOT block sibling B; the caller
+        // discriminates via per-module outcomes.
         var callLog = new List<string>();
         var broken = new FakeModule("contacts", Array.Empty<string>(), callLog, throwOnSeed: true);
-        var healthy = new FakeModule("documents", new[] { "contacts" }, callLog);
+        var healthy = new FakeModule("documents", Array.Empty<string>(), callLog);
         var seeder = BuildSeeder(broken, healthy);
 
         var result = await seeder.SeedAsync(_tenantId.ToString(), Scenario);
@@ -85,6 +89,29 @@ public sealed class DemoDataSeederTests
         result.Modules.Single(m => m.ModuleName == "contacts").Status.Should().Be(DemoSeedStatus.Failed);
         result.Modules.Single(m => m.ModuleName == "documents").Status.Should().Be(DemoSeedStatus.Seeded,
             "a broken sibling must not block the rest of the pipeline; the caller reads per-module outcomes instead");
+    }
+
+    [Fact]
+    public async Task SeedAsync_ModuleThrows_DependentStillRunsAndIsNotMarkedSkipped()
+    {
+        // Companion test for the dependency case: when an upstream module
+        // fails (broken=contacts), a dependent (documents -> contacts) is
+        // still attempted under current policy. This locks the policy
+        // explicitly — if the orchestrator ever switches to "skip dependents
+        // of failures", this test must be updated alongside the contract.
+        var callLog = new List<string>();
+        var broken = new FakeModule("contacts", Array.Empty<string>(), callLog, throwOnSeed: true);
+        var dependent = new FakeModule("documents", new[] { "contacts" }, callLog);
+        var seeder = BuildSeeder(broken, dependent);
+
+        var result = await seeder.SeedAsync(_tenantId.ToString(), Scenario);
+
+        result.Modules.Should().HaveCount(2);
+        result.Modules.Single(m => m.ModuleName == "contacts").Status.Should().Be(DemoSeedStatus.Failed);
+        result.Modules.Single(m => m.ModuleName == "documents").Status.Should().Be(DemoSeedStatus.Seeded,
+            "current policy: dependents of a failed module are still attempted (no auto-Skipped state). " +
+            "If this changes, the IDemoDataSeeder contract MUST gain a DemoSeedStatus.Skipped value and this assertion updates with it.");
+        callLog.Should().ContainInOrder("contacts", "documents");
     }
 
     [Fact]

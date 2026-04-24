@@ -29,19 +29,31 @@ public sealed class DemoSeedMarker
     public required string Scenario { get; init; }
 
     /// <summary>
-    /// Lifecycle stage. Mutable so the orchestrator can advance the row from
-    /// <see cref="DemoSeedMarkerStatus.InProgress"/> to
-    /// <see cref="DemoSeedMarkerStatus.Seeded"/> in a single SaveChanges per
-    /// stage.
+    /// Lifecycle stage. Defaults to <see cref="DemoSeedMarkerStatus.InProgress"/>
+    /// because a freshly-constructed marker means "we are about to start" —
+    /// defaulting to <see cref="DemoSeedMarkerStatus.Seeded"/> would silently
+    /// mark un-run seeds as complete, which is the opposite of the contract.
+    /// Mutable so the orchestrator can advance the row from InProgress to
+    /// Seeded in a single SaveChanges per stage.
     /// </summary>
-    public DemoSeedMarkerStatus Status { get; set; } = DemoSeedMarkerStatus.Seeded;
+    public DemoSeedMarkerStatus Status { get; set; } = DemoSeedMarkerStatus.InProgress;
 
     /// <summary>
-    /// UTC timestamp of the most recent state transition. Used by operators
-    /// debugging stuck InProgress markers ("when did this seed last try?").
-    /// Always set in UTC; never local time.
+    /// UTC timestamp of the InProgress transition (i.e., when the orchestrator
+    /// committed to running the module's seed). Always set in UTC; never local.
+    /// Distinct from <see cref="CompletedAt"/> so an operator inspecting a
+    /// stuck InProgress marker can answer "when did this attempt start?" and
+    /// "did it ever complete?" with two separate columns.
     /// </summary>
-    public DateTimeOffset SeededAt { get; set; }
+    public DateTimeOffset StartedAt { get; set; }
+
+    /// <summary>
+    /// UTC timestamp when the marker was promoted to
+    /// <see cref="DemoSeedMarkerStatus.Seeded"/>. <c>null</c> while
+    /// <see cref="Status"/> is <see cref="DemoSeedMarkerStatus.InProgress"/>.
+    /// Always set in UTC.
+    /// </summary>
+    public DateTimeOffset? CompletedAt { get; set; }
 }
 
 /// <summary>

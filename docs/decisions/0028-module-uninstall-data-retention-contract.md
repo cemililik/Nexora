@@ -96,8 +96,27 @@ Keep the current rename mechanism; wrap it in an explicit contract:
 - Uninstall consults `IModule.Dependencies` and refuses to remove a
   module that another installed module depends on. Forcing past the
   guard requires the dependent module to be uninstalled first or a
-  `--cascade` flag that uninstalls them all under one transactional
-  unit.
+  `--cascade` flag. **Cascade transaction policy:** the orchestrator
+  uses **per-module savepoints inside a single outer transaction guarded
+  by `pg_advisory_xact_lock(hashtext('uninstall:'||tenant_id))`** —
+  each module's `OnUninstallAsync` + table rename + TenantModule
+  soft-delete runs inside its own savepoint, so a failure in module N
+  rolls back only N (and its dependents that ran first inside the same
+  outer txn) rather than every preceding module. Compensation: on
+  per-module savepoint rollback, emit a
+  `ModuleUninstallFailedIntegrationEvent` carrying the canonical names
+  collected so far so consumers can replay or skip; modules that
+  succeeded earlier in the chain are NOT auto-undone — the operator
+  decides whether to reissue the cascade or accept partial state.
+  **Operational caveat:** for Tier-2 multi-table modules
+  (CRM/Finance/Subscription), the outer transaction holds DDL locks on
+  every renamed table for its full duration, which can stall
+  long-running reads on those tables and increase replication lag.
+  Operators MUST prefer per-module compensation (uninstall one module,
+  observe, uninstall the next) over a single atomic cascade once the
+  module chain length exceeds 3 or any module has > 50M rows; the
+  cascade is for the small-tenant / dev-loop convenience case, not the
+  production large-tenant case.
 - `ModuleUninstalledIntegrationEvent` is extended with the list of
   affected canonical table names; consumers in other modules can
   subscribe via the standard inbox guard and prune their own
@@ -207,6 +226,59 @@ is split into follow-up tasks (T-025 cleanup job, T-026
 dependency-cascade guard, T-027 GDPR-retention-window handler, …); this
 ADR formalizes *what*, those tasks ship *how*.
 
+### Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Installed : OnInstallAsync
+    Installed --> Uninstalled : UninstallModuleCommand<br/>(rename to {module}_*_del_{ts},<br/>TenantModule.IsDeleted=true,<br/>emit ModuleUninstalledIntegrationEvent)
+    Uninstalled --> Installed : reinstall within retention_days<br/>(restore via DeletedTableNames CSV)
+    Uninstalled --> Purged : platform:purge-uninstalled-modules<br/>(retention_days elapsed,<br/>DROP TABLE per name,<br/>hard-delete TenantModule)
+    Purged --> [*]
+    note right of Uninstalled
+        retention_days =
+        modules.uninstall.retention_days
+        (default 30, range 7-365,
+        bounded by ADR-0025 cap)
+    end note
+    note right of Uninstalled
+        GDPR erasure DURING retention
+        still applies — the escape hatch
+        in ContactGdprDeletedIntegrationEventHandler
+        scans {module}_*_del_% tables
+        in the module's own DbContext.
+    end note
+```
+
+### Cascade flow
+
+```mermaid
+sequenceDiagram
+    participant Op as Operator (CLI / admin UI)
+    participant Cmd as UninstallModuleCommand
+    participant Reg as IModule registry
+    participant Lock as Postgres advisory lock
+    participant Mod as IModule (per dependent, reverse-topo)
+    participant Outbox as Outbox / Inbox
+    participant Cons as Downstream consumers
+    participant GDPR as ContactGdprDeletedIntegrationEventHandler
+
+    Op->>Cmd: Uninstall(moduleName, --cascade)
+    Cmd->>Reg: GetDependents(moduleName)
+    Cmd->>Lock: pg_advisory_xact_lock(hashtext('uninstall:'||tenant))
+    loop reverse-topological order
+        Cmd->>Mod: SAVEPOINT + OnUninstallAsync + rename tables
+        alt module ok
+            Cmd->>Outbox: ModuleUninstalledIntegrationEvent<br/>{ModuleName, CanonicalTableNames, RenamedTableNames, UninstalledAtUtc}
+        else module fails
+            Cmd->>Outbox: ModuleUninstallFailedIntegrationEvent<br/>(canonicals collected so far)
+            Note over Cmd: ROLLBACK TO SAVEPOINT;<br/>earlier modules stay uninstalled
+        end
+    end
+    Outbox-->>Cons: deliver (inbox-guarded) — prune cross-references
+    Outbox-->>GDPR: ContactGdpr… still scans {module}_*_del_% in module's own DbContext during retention
+```
+
 ## Consequences
 
 ### Positive
@@ -249,9 +321,20 @@ Concrete pointers split into follow-up tasks:
 
 - **T-025 — `platform:purge-uninstalled-modules` Hangfire job**:
   - Queue: `maintenance`.
-  - Cron: daily at 03:00 UTC per tenant, scanning
-    `PlatformDbContext.TenantModules` where `IsDeleted = true AND
-    (DeletedAt + retention) < now()`.
+  - Cron: daily at **03:00 UTC ± deterministic jitter [0, 120) min**.
+    Per-tenant offset = `hashtext(tenant_id) mod 120`, so each tenant's
+    purge fires at the same minute every night but the global fleet
+    spreads across a 2-hour window. **Why mandatory:** a stock cron at
+    03:00 UTC fires every tenant's `DROP TABLE` simultaneously,
+    saturating Postgres workers and WAL writers — a thundering herd
+    that turns a maintenance op into an outage. Jitter is per-tenant
+    deterministic so the same tenant lands in the same minute across
+    nights (operator predictability) without coordinating across
+    tenants. An equivalent rolling-window scheduler (T-025 implementer
+    may pick either) is acceptable as long as no two tenants in the same
+    cluster start within the same 30-second slice.
+  - Per tenant: scan `PlatformDbContext.TenantModules` where
+    `IsDeleted = true AND (DeletedAt + retention) < now()`.
   - For each: drop every table in `DeletedTableNames`, null the CSV
     field, hard-delete the `TenantModule` row.
   - Observability: counter
@@ -265,10 +348,17 @@ Concrete pointers split into follow-up tasks:
     transaction; each module uninstalls in reverse-dependency order.
 - **T-027 — GDPR erasure escape hatch**:
   - `ContactGdprDeletedIntegrationEventHandler` (and its sibling
-    handlers in CRM / Documents / Subscription when those land) gains
-    a second lookup pass: after the canonical-table redaction, query
-    every table in the tenant that matches
-    `{module}_{table}_del_%` and apply the same redaction there.
+    handlers in CRM / Documents / Subscription when those land) gains a
+    second lookup pass: after the canonical-table redaction, the handler
+    queries **every table in *that module's own DbContext*** —
+    module-local renamed tables matching `{module}_{table}_del_%` only,
+    NOT every table in the tenant. The constraint is load-bearing:
+    Contacts must NOT scan Finance's renamed tables, and vice versa,
+    because (a) Contacts has no schema knowledge of Finance and (b) the
+    cross-module concern is owned by ADR-0026's payload-scan job, not
+    this escape hatch. The pattern is module-prefixed, the scan
+    enumerates tables via `information_schema.tables WHERE
+    table_schema = current_schema() AND table_name LIKE '{module}_%_del_%'`.
   - Architecture test: modules that handle
     `ContactGdprDeletedIntegrationEvent` MUST implement the escape
     hatch; absence trips a CI guard.

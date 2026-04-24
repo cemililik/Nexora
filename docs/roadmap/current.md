@@ -183,7 +183,8 @@ for scope and exit bar. Legacy reference: `docs/roadmap/ROADMAP.md` §1.5 and §
 - Portal UI extension points — **In Progress** (pilot via ADR-017 in Phase 2)
 - Audit Module enhancements (Phase 1.5.5) — **Done**
 - Contacts enhancements (Phase 1.5.6) — **In Progress** (5 open items; see migration-notes §2.1)
-- Demo Data Framework (Phase 1.5.7) — **Not started**
+- Demo Data Framework (Phase 1.5.7) — **In Review** (foundation T-005 + CLI T-006
+  shipped In Review; T-007 scenarios / T-008 admin UI / T-009 cleanup not started)
 
 ---
 

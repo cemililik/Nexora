@@ -99,7 +99,9 @@ public static class InfrastructureServiceRegistration
         // T-023: the readiness probe now covers Postgres + the Dapr sidecar in
         // addition to the outbox. Keycloak and MinIO stay transitive via Dapr
         // — see T-023's task file for rationale.
-        services.AddHttpClient(Messaging.DaprSidecarHealthCheck.HttpClientName);
+        services.AddHttpClient(
+            Messaging.DaprSidecarHealthCheck.HttpClientName,
+            c => c.Timeout = Messaging.DaprSidecarHealthCheck.ProbeTimeout);
         services.AddHealthChecks()
             .AddCheck<OutboxHealthCheck>("outbox", tags: ["ready"])
             .AddCheck<Persistence.PostgresHealthCheck>("postgres", tags: ["ready"])

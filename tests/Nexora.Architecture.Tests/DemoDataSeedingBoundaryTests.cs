@@ -21,6 +21,18 @@ public sealed class DemoDataSeedingBoundaryTests
         "Nexora.Modules.Audit",
     ];
 
+    /// <summary>
+    /// Strict membership check: an assembly belongs to module namespace
+    /// <paramref name="moduleNs"/> only when its name equals the namespace
+    /// exactly OR begins with the namespace followed by a dot. Plain
+    /// <c>StartsWith(ns)</c> would (incorrectly) classify
+    /// <c>Nexora.Modules.IdentityAdmin</c> as part of
+    /// <c>Nexora.Modules.Identity</c>.
+    /// </summary>
+    private static bool IsAssemblyInModule(string assemblyName, string moduleNs)
+        => assemblyName == moduleNs ||
+           assemblyName.StartsWith(moduleNs + ".", StringComparison.Ordinal);
+
     private static IEnumerable<Assembly> ModuleAssemblies() =>
     [
         typeof(Nexora.Modules.Identity.IdentityModule).Assembly,
@@ -45,10 +57,15 @@ public sealed class DemoDataSeedingBoundaryTests
             // namespace is missing from ModuleRootNamespaces, the failure is a
             // diagnostic message naming the assembly (not a generic
             // "Sequence contains no matching element").
+            //
+            // Match is exact-or-dot-suffix to avoid accidental substring hits
+            // (e.g. "Nexora.Modules.IdentityAdmin" must NOT be classified as
+            // belonging to "Nexora.Modules.Identity").
+            var assemblyName = assembly.GetName().Name!;
             var ownPrefix = ModuleRootNamespaces.FirstOrDefault(ns =>
-                assembly.GetName().Name!.StartsWith(ns, StringComparison.Ordinal));
+                IsAssemblyInModule(assemblyName, ns));
             ownPrefix.Should().NotBeNull(
-                $"Module assembly '{assembly.GetName().Name}' has no entry in ModuleRootNamespaces — add it so the boundary scan covers this module.");
+                $"Module assembly '{assemblyName}' has no entry in ModuleRootNamespaces — add it so the boundary scan covers this module.");
             var forbiddenPrefixes = ModuleRootNamespaces
                 .Where(ns => ns != ownPrefix)
                 .Select(ns => $"{ns}.Infrastructure")

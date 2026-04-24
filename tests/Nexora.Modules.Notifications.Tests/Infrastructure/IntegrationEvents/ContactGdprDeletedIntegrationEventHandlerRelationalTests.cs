@@ -83,7 +83,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerRelationalTests : I
             "Hi John, your invoice for $100 is ready.", "test");
         notification.AddRecipient(contactId, "john@example.com");
         notification.ClearDomainEvents();
-        await _dbContext.Notifications.AddAsync(notification);
+        // Add (sync) not AddAsync: AddAsync's only async branch is for value
+        // generators (rare); for plain entity attach, the sync overload is
+        // semantically identical and avoids a misleading await.
+        _dbContext.Notifications.Add(notification);
         await _dbContext.SaveChangesAsync();
 
         var handler = new ContactGdprDeletedIntegrationEventHandler(
