@@ -46,7 +46,7 @@ public static class DemoLoadCommand
         catch (OperationCanceledException)
         {
             Console.Error.WriteLine(CliLocalization.T("lockey_cli_demoload_cancelled"));
-            return CliDispatcher.UsageError;
+            return CliDispatcher.Cancelled;
         }
         catch (ArgumentException ex)
         {
@@ -129,13 +129,14 @@ public static class DemoLoadCommand
         // provisioned should fail fast with a clear message instead of exploding
         // inside the seeder's first DbContext resolution. Tests inject a probe;
         // production uses the default Postgres pg_namespace lookup.
+        var tenantId = options.TenantId!.Value;
         var probe = tenantSchemaProbe ?? DefaultTenantSchemaProbeAsync;
-        if (!await probe(services, options.TenantId!.Value, ct))
+        if (!await probe(services, tenantId, ct))
         {
             console.WriteLine(string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
                 CliLocalization.T("lockey_cli_demoload_tenant_schema_missing_template"),
-                options.TenantId.Value));
+                tenantId));
             console.WriteLine(CliLocalization.T("lockey_cli_demoload_tenant_schema_missing_pointer"));
             return CliDispatcher.UsageError;
         }
@@ -145,7 +146,7 @@ public static class DemoLoadCommand
             console.WriteLine(string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
                 CliLocalization.T("lockey_cli_demoload_dryrun_header_template"),
-                options.TenantId, options.Scenario));
+                tenantId, options.Scenario));
             console.WriteLine(string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
                 CliLocalization.T("lockey_cli_demoload_dryrun_plan_template"),
@@ -156,12 +157,12 @@ public static class DemoLoadCommand
 
         var seeder = services.GetRequiredService<IDemoDataSeeder>();
         var result = await seeder.SeedAsync(
-            options.TenantId!.Value.ToString(), options.Scenario!, ct);
+            tenantId.ToString(), options.Scenario!, ct);
 
         console.WriteLine(string.Format(
             System.Globalization.CultureInfo.InvariantCulture,
             CliLocalization.T("lockey_cli_demoload_completed_template"),
-            options.TenantId, options.Scenario));
+            tenantId, options.Scenario));
         foreach (var outcome in result.Modules)
         {
             var label = outcome.Status switch
@@ -244,7 +245,7 @@ public static class DemoLoadCommand
 
         // Space form — peek args[i+1] WITHOUT mutating i; only advance if the
         // peek looks like a real value.
-        if (current == name && i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+        if (current == name && i + 1 < args.Length && !IsFlag(args[i + 1]))
         {
             value = args[i + 1];
             i++;
@@ -253,6 +254,21 @@ public static class DemoLoadCommand
 
         value = "";
         return false;
+    }
+
+    /// <summary>
+    /// Treat a token as a flag when it starts with <c>--</c> OR is a short
+    /// form like <c>-v</c>. Does NOT treat bare <c>-</c> or negative numbers
+    /// (<c>-1</c>, <c>-3.14</c>) as flags — those may be legitimate values.
+    /// Keeps the parser honest: previously <c>--tenant -v</c> would silently
+    /// eat <c>-v</c> as the tenant value.
+    /// </summary>
+    private static bool IsFlag(string token)
+    {
+        if (token.Length < 2 || token[0] != '-') return false;
+        if (token.StartsWith("--", StringComparison.Ordinal)) return true;
+        // Short flag: single dash + a non-digit, non-dot character (so -1, -3.14 stay values).
+        return !char.IsDigit(token[1]) && token[1] != '.';
     }
 
     private static bool TryParseFlag(string arg, string name, out string value)
@@ -285,7 +301,7 @@ public static class DemoLoadCommand
         var conn = dbContext.Database.GetDbConnection();
         var ownedOpen = conn.State != System.Data.ConnectionState.Open;
         if (ownedOpen)
-            await conn.OpenAsync(ct);
+            await dbContext.Database.OpenConnectionAsync(ct);
 
         try
         {
@@ -303,7 +319,14 @@ public static class DemoLoadCommand
             // Only close what we opened; if EF was already managing the
             // connection, leave it alone so its lifecycle stays consistent.
             if (ownedOpen)
-                await conn.CloseAsync();
+                await dbContext.Database.CloseConnectionAsync();
+            // NB: the tenant we set above (tenantId.ToString()) is the same
+            // tenant the seeder operates on, so the AsyncLocal accessor
+            // inheriting it is intentional here. There is no "clear" API
+            // on ITenantContextAccessor; wrapping the probe in a nested DI
+            // scope would not clear the AsyncLocal either (AsyncLocal flows
+            // across scopes). When the CLI verb finishes the process exits,
+            // so there is no longer-lived context to pollute.
         }
     }
 
@@ -323,11 +346,22 @@ internal sealed record DemoLoadOptions(
     {
         if (UnknownArgs.Count > 0)
         {
-            error = "Unrecognised or invalid argument(s): " + string.Join(", ", UnknownArgs);
+            error = string.Format(
+                System.Globalization.CultureInfo.InvariantCulture,
+                CliLocalization.T("lockey_cli_demoload_invalid_args_template"),
+                string.Join(", ", UnknownArgs));
             return false;
         }
-        if (TenantId is null) { error = "Missing required flag: --tenant=<guid>"; return false; }
-        if (string.IsNullOrWhiteSpace(Scenario)) { error = "Missing required flag: --scenario=<name>"; return false; }
+        if (TenantId is null)
+        {
+            error = CliLocalization.T("lockey_cli_demoload_missing_tenant");
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(Scenario))
+        {
+            error = CliLocalization.T("lockey_cli_demoload_missing_scenario");
+            return false;
+        }
         error = "";
         return true;
     }

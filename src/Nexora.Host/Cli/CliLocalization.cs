@@ -39,15 +39,6 @@ namespace Nexora.Host.Cli;
 /// </summary>
 internal static class CliLocalization
 {
-    /// <summary>
-    /// Path within the binary output where the locale JSONs land — see the
-    /// <c>Content Include</c> entries in <c>Nexora.Host.csproj</c>. Stored
-    /// as a static readonly (not a private const) so the naming rule treats
-    /// it as a field and the underscore-prefix convention applies — the
-    /// project linter does not differentiate const from field.
-    /// </summary>
-    private static readonly string _localesSubdirectory = "Cli/Locales";
-
     private static readonly Lazy<IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>> _bundles =
         new(LoadBundles, isThreadSafe: true);
 
@@ -84,7 +75,7 @@ internal static class CliLocalization
 
     private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> LoadBundles()
     {
-        var localesDir = Path.Combine(AppContext.BaseDirectory, _localesSubdirectory);
+        var localesDir = Path.Combine(AppContext.BaseDirectory, "Cli", "Locales");
         var dict = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.OrdinalIgnoreCase)
         {
             ["en"] = ReadFromDisk(Path.Combine(localesDir, "host.en.json")),

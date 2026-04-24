@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Domain.Base;
@@ -28,17 +29,28 @@ public sealed class SoftDeleteFilterBoundaryTests
     /// </summary>
     private static IEnumerable<(string ContextTypeName, Type ContextType)> ModuleDbContexts()
     {
-        var seedAssemblies = new[]
-        {
-            typeof(Nexora.Modules.Contacts.ContactsModule).Assembly,
-            typeof(Nexora.Modules.Documents.DocumentsModule).Assembly,
-            typeof(Nexora.Modules.Notifications.NotificationsModule).Assembly,
-            typeof(Nexora.Modules.Reporting.ReportingModule).Assembly,
-            typeof(Nexora.Modules.Audit.AuditModule).Assembly,
-            typeof(Nexora.Modules.Identity.IdentityModule).Assembly,
-        };
+        // Touch one type from each module so its assembly is guaranteed to be
+        // loaded into the AppDomain before we enumerate. Without this, a module
+        // whose types are not yet referenced would be invisible to
+        // AppDomain.CurrentDomain.GetAssemblies() and its DbContexts would
+        // silently escape the scan. The discard pattern keeps the line short
+        // and signals "force-load only, value discarded".
+        _ = typeof(Nexora.Modules.Contacts.ContactsModule).Assembly;
+        _ = typeof(Nexora.Modules.Documents.DocumentsModule).Assembly;
+        _ = typeof(Nexora.Modules.Notifications.NotificationsModule).Assembly;
+        _ = typeof(Nexora.Modules.Reporting.ReportingModule).Assembly;
+        _ = typeof(Nexora.Modules.Audit.AuditModule).Assembly;
+        _ = typeof(Nexora.Modules.Identity.IdentityModule).Assembly;
 
-        foreach (var assembly in seedAssemblies)
+        // Runtime discovery: every currently-loaded assembly whose name starts
+        // with `Nexora.Modules.` participates. A new Phase-2 module drops in
+        // automatically once it is referenced anywhere in the test graph — no
+        // hardcoded list to forget.
+        var moduleAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => a.GetName().Name is { } n &&
+                        n.StartsWith("Nexora.Modules.", StringComparison.Ordinal));
+
+        foreach (var assembly in moduleAssemblies)
         {
             foreach (var type in assembly.GetTypes())
             {
@@ -88,12 +100,15 @@ public sealed class SoftDeleteFilterBoundaryTests
     {
         var optionsBuilderType = typeof(DbContextOptionsBuilder<>).MakeGenericType(contextType);
         dynamic builder = Activator.CreateInstance(optionsBuilderType)!;
-        // T-022 scan is provider-agnostic in intent, but Npgsql index-filter parsing
-        // is what we care about catching in production; use the Npgsql provider so
-        // the model we inspect is the same one EF would build in prod.
-        builder = Microsoft.EntityFrameworkCore.NpgsqlDbContextOptionsBuilderExtensions.UseNpgsql(
+        // T-022 scan is provider-agnostic — index filters live on the model
+        // metadata that is set in OnModelCreating, independent of the storage
+        // provider. Use the InMemory provider so the scanner runs without a
+        // Postgres dependency in CI; the metadata we read
+        // (<c>IIndex.GetFilter()</c>) is the same shape EF records for the
+        // Npgsql provider in production.
+        builder = InMemoryDbContextOptionsExtensions.UseInMemoryDatabase(
             (DbContextOptionsBuilder)builder,
-            "Host=localhost;Database=drift-probe;Username=x;Password=x");
+            $"drift-probe-{Guid.NewGuid()}");
         var options = (DbContextOptions)builder.Options;
 
         // Every module DbContext follows one of two ctors:

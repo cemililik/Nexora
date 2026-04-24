@@ -24,5 +24,8 @@
   "lockey_cli_demoload_outcome_already_seeded": "already-seeded",
   "lockey_cli_demoload_outcome_noop": "no-op (no demo content)",
   "lockey_cli_demoload_outcome_failed_template": "FAILED — {0}",
-  "lockey_cli_demoload_outcome_line_template": "  - {0}: {1}"
+  "lockey_cli_demoload_outcome_line_template": "  - {0}: {1}",
+  "lockey_cli_demoload_invalid_args_template": "Unrecognised or invalid argument(s): {0}",
+  "lockey_cli_demoload_missing_tenant": "Missing required flag: --tenant=<guid>",
+  "lockey_cli_demoload_missing_scenario": "Missing required flag: --scenario=<name>"
 }

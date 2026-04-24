@@ -57,6 +57,22 @@ public sealed class DemoSeedMarker
     /// rationale.
     /// </summary>
     public DateTimeOffset? CompletedAt { get; internal set; }
+
+    /// <summary>
+    /// Factory for a freshly-started marker. Centralises the "new marker =
+    /// InProgress with StartedAt = now, CompletedAt = null" invariant so
+    /// callers cannot accidentally forget one of the timestamps.
+    /// </summary>
+    internal static DemoSeedMarker CreateInProgress(Guid tenantId, string moduleName, string scenario) =>
+        new()
+        {
+            TenantId = tenantId,
+            ModuleName = moduleName,
+            Scenario = scenario,
+            Status = DemoSeedMarkerStatus.InProgress,
+            StartedAt = DateTimeOffset.UtcNow,
+            CompletedAt = null,
+        };
 }
 
 /// <summary>

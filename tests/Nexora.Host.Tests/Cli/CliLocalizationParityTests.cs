@@ -6,15 +6,17 @@ namespace Nexora.Host.Tests.Cli;
 /// <summary>
 /// Parity test for the CLI lockey bundles (T-006 review follow-up).
 /// Asserts:
-///   1. Both <c>en</c> and <c>tr</c> bundles loaded from embedded JSON
+///   1. Both <c>en</c> and <c>tr</c> bundles loaded from the disk-based JSON
 ///      contain the same set of keys.
 ///   2. Every key referenced by code via <see cref="CliLocalization.T"/> exists
 ///      in both bundles (so a missing translation never silently falls back
 ///      to the lockey itself in production).
 ///   3. The on-disk JSON files at <c>src/Nexora.Host/Cli/Locales/host.{en,tr}.json</c>
-///      match the embedded resources byte-for-byte after key/value
-///      normalisation — translators can edit either copy with confidence
-///      that the build embeds what they wrote.
+///      match the loaded bundles — translators edit those files directly and
+///      the build copies them into the output directory via the Content entries
+///      in Nexora.Host.csproj (disk-based loading; embedding was dropped —
+///      Microsoft.NET.Sdk.Web silently skips EmbeddedResource for *.json under
+///      subfolders).
 /// </summary>
 public sealed class CliLocalizationParityTests
 {
@@ -54,6 +56,11 @@ public sealed class CliLocalizationParityTests
         "lockey_cli_demoload_outcome_noop",
         "lockey_cli_demoload_outcome_failed_template",
         "lockey_cli_demoload_outcome_line_template",
+
+        // DemoLoadOptions.IsValid
+        "lockey_cli_demoload_invalid_args_template",
+        "lockey_cli_demoload_missing_tenant",
+        "lockey_cli_demoload_missing_scenario",
     ];
 
     [Fact]
@@ -68,6 +75,19 @@ public sealed class CliLocalizationParityTests
 
         trKeys.Should().BeEquivalentTo(enKeys,
             "tr bundle MUST cover every key the en bundle does — otherwise a Turkish-locale operator silently sees the English fallback (or worse, the raw lockey if en lacks it).");
+    }
+
+    [Fact]
+    public void DiskBundles_MatchSourceJsonFiles()
+    {
+        // Source of truth: src/Nexora.Host/Cli/Locales/host.{en,tr}.json
+        // Translators edit those files; the build copies them next to the host
+        // binary as Content entries. This test makes sure the disk-based
+        // bundles loaded at runtime match the source-of-truth JSON byte-for-byte
+        // after key/value normalisation.
+        var repoRoot = FindRepoRoot();
+        AssertOnDiskMatchesBundles(repoRoot, "host.en.json", "en");
+        AssertOnDiskMatchesBundles(repoRoot, "host.tr.json", "tr");
     }
 
     [Fact]
@@ -89,18 +109,7 @@ public sealed class CliLocalizationParityTests
             string.Join("\n", missing));
     }
 
-    [Fact]
-    public void EmbeddedBundles_MatchOnDiskJsonFiles()
-    {
-        // Source of truth: src/Nexora.Host/Cli/Locales/host.{en,tr}.json
-        // Translators edit those files; the build embeds them. This test
-        // makes sure the embed step actually shipped what's on disk.
-        var repoRoot = FindRepoRoot();
-        AssertOnDiskMatchesEmbedded(repoRoot, "host.en.json", "en");
-        AssertOnDiskMatchesEmbedded(repoRoot, "host.tr.json", "tr");
-    }
-
-    private static void AssertOnDiskMatchesEmbedded(
+    private static void AssertOnDiskMatchesBundles(
         string repoRoot, string fileName, string locale)
     {
         var path = Path.Combine(
@@ -110,16 +119,16 @@ public sealed class CliLocalizationParityTests
 
         using var fs = File.OpenRead(path);
         var onDisk = JsonSerializer.Deserialize<Dictionary<string, string>>(fs)!;
-        var embedded = CliLocalization.Bundles[locale];
+        var bundle = CliLocalization.Bundles[locale];
 
-        onDisk.Should().HaveCount(embedded.Count,
-            $"{fileName} entry count must match the embedded {locale} bundle.");
+        onDisk.Should().HaveCount(bundle.Count,
+            $"{fileName} entry count must match the loaded {locale} bundle.");
         foreach (var (key, value) in onDisk)
         {
-            embedded.Should().ContainKey(key,
-                $"on-disk key '{key}' missing from embedded bundle — re-build to refresh the resource.");
-            embedded[key].Should().Be(value,
-                $"value for key '{key}' diverges between {fileName} and the embedded bundle.");
+            bundle.Should().ContainKey(key,
+                $"on-disk key '{key}' missing from loaded bundle — rebuild so the Content copy step refreshes the output directory.");
+            bundle[key].Should().Be(value,
+                $"value for key '{key}' diverges between {fileName} and the loaded bundle.");
         }
     }
 

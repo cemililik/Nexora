@@ -81,6 +81,20 @@ public sealed class DemoDataSeeder(
         var tenantCtx = accessor.Current;
         var markerDb = scope.ServiceProvider.GetRequiredService<DemoSeedMarkerDbContext>();
 
+        // NoOp check runs BEFORE the marker lookup: a module that ships no
+        // demo content never needs an idempotency marker (re-invoking a no-op
+        // is cheaper than a marker read), and reporting NoOp unconditionally
+        // gives the operator accurate "this module ships no demo content"
+        // feedback regardless of any stale InProgress marker left over from
+        // a prior crash or a migration from the previous non-no-op impl.
+        if (IsDefaultNoOp(module))
+        {
+            logger.LogDebug(
+                "Demo-seed: module {Module} ships no demo content (default IModule impl).",
+                module.Name);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.NoOp);
+        }
+
         // Idempotency check from the bulk-fetched dictionary, not a DB hit.
         if (existingMarkers.TryGetValue(module.Name, out var existing))
         {
@@ -98,19 +112,6 @@ public sealed class DemoDataSeeder(
             logger.LogWarning(
                 "Demo-seed: module {Module} marker found in InProgress state — retrying. Modules must remain idempotent.",
                 module.Name);
-        }
-
-        // Modules whose SeedDemoDataAsync implementation is the default no-op
-        // (the C# default interface method on IModule) report NoOp without
-        // writing a marker — re-invoking a no-op every run is the cheapest
-        // possible identity, and the operator gets accurate "this module ships
-        // no demo content" feedback.
-        if (IsDefaultNoOp(module))
-        {
-            logger.LogDebug(
-                "Demo-seed: module {Module} ships no demo content (default IModule impl).",
-                module.Name);
-            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.NoOp);
         }
 
         // Two-phase write: InProgress before the module runs, Seeded after.
@@ -146,29 +147,32 @@ public sealed class DemoDataSeeder(
             }
             else
             {
-                marker = NewInProgressMarker();
+                marker = DemoSeedMarker.CreateInProgress(tenantGuid, module.Name, scenario);
                 markerDb.Markers.Add(marker);
             }
         }
         else
         {
-            marker = NewInProgressMarker();
+            marker = DemoSeedMarker.CreateInProgress(tenantGuid, module.Name, scenario);
             markerDb.Markers.Add(marker);
         }
-
-        DemoSeedMarker NewInProgressMarker() => new()
-        {
-            TenantId = tenantGuid,
-            ModuleName = module.Name,
-            Scenario = scenario,
-            Status = DemoSeedMarkerStatus.InProgress,
-            StartedAt = DateTimeOffset.UtcNow,
-            CompletedAt = null
-        };
 
         try
         {
             await markerDb.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            // PostgreSQL SQLSTATE 23505 (unique_violation) on the marker insert
+            // means a concurrent demo:load invocation won the race to claim this
+            // (tenant, module, scenario) tuple. Treat as a friendly operator
+            // signal — we surface a dedicated log line so the distinction is
+            // obvious in the summary and don't mistake it for a generic insert
+            // failure.
+            logger.LogWarning(ex,
+                "Demo-seed: concurrent demo:load race for module {Module} tenant {TenantId} scenario {Scenario} — marker already present; this runner backs off.",
+                module.Name, tenantGuid, scenario);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Failed, ex.Message);
         }
         catch (DbUpdateException ex)
         {
@@ -303,6 +307,27 @@ public sealed class DemoDataSeeder(
     }
 
     /// <summary>
+    /// Detects PostgreSQL unique-violation (<c>SQLSTATE 23505</c>) wrapped in
+    /// an EF Core <see cref="DbUpdateException"/>. Used to differentiate a
+    /// concurrent demo:load race (another runner won the insert) from a
+    /// generic marker-write failure.
+    /// </summary>
+    private static bool IsUniqueViolation(DbUpdateException ex)
+    {
+        // Reflect via the full type name so the Infrastructure project need not
+        // take a hard reference on Npgsql at compile time — the provider is
+        // transitively referenced through EF Core, but this method must still
+        // compile when Npgsql is swapped out (e.g. InMemory provider in tests).
+        for (var current = ex.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current.GetType().FullName != "Npgsql.PostgresException") continue;
+            var sqlState = current.GetType().GetProperty("SqlState")?.GetValue(current) as string;
+            if (sqlState == "23505") return true;
+        }
+        return false;
+    }
+
+    /// <summary>
     /// Detects whether <paramref name="module"/> uses the C# default interface
     /// implementation of <see cref="IModule.SeedDemoDataAsync"/> — i.e. ships
     /// no demo content. The default impl declares <c>DeclaringType ==
@@ -321,7 +346,10 @@ public sealed class DemoDataSeeder(
             bindingAttr: BindingFlags.Public | BindingFlags.Instance,
             binder: null,
             types: new[] { typeof(TenantDemoSeedContext), typeof(CancellationToken) },
-            modifiers: null)!;
+            modifiers: null)
+            ?? throw new InvalidOperationException(
+                $"Cannot resolve {nameof(IModule)}.{nameof(IModule.SeedDemoDataAsync)}(TenantDemoSeedContext, CancellationToken) — " +
+                "the interface signature changed without updating DemoDataSeeder.IsDefaultNoOp.");
 
         var map = concrete.GetInterfaceMap(typeof(IModule));
         for (int i = 0; i < map.InterfaceMethods.Length; i++)

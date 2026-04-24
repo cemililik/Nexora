@@ -14,6 +14,9 @@ public static class CliDispatcher
     /// <summary>Exit code returned when a command ran but reported a partial failure.</summary>
     public const int PartialFailure = 2;
 
+    /// <summary>Exit code returned when the operator cancelled (SIGINT / Ctrl+C). Matches POSIX 128+SIGINT convention.</summary>
+    public const int Cancelled = 130;
+
     /// <summary>
     /// Inspects <paramref name="args"/>; when the first token is a recognised CLI verb,
     /// runs the matching command synchronously and stores its exit code in

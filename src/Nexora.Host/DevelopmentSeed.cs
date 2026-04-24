@@ -689,6 +689,20 @@ public static class DevelopmentSeed
                     "[DevSeed] Skipped schema update because target relation is missing. {SkippedStatement}",
                     Truncate(sql, 120));
             }
+            catch (PostgresException ex) when (ex.SqlState == "42P07")
+            {
+                // Relation already exists — the common case for the one-shot
+                // `ALTER TABLE ... RENAME TO demo_seed_markers` statement on a
+                // host that was seeded AFTER the rename had already landed
+                // (i.e. demo_seed_markers already exists, and the OLD table
+                // name is either absent or also present because a prior
+                // partial-run left both). Treat as an idempotent no-op —
+                // rerunning the seed must not fail just because the rename
+                // already happened in a previous process.
+                logger.LogWarning(ex,
+                    "[DevSeed] Skipped schema update because target relation already exists (RENAME idempotency). {SkippedStatement}",
+                    Truncate(sql, 120));
+            }
         }
 
         logger.LogInformation("[DevSeed] Schema updates applied ({Count} statements)", alterStatements.Length);

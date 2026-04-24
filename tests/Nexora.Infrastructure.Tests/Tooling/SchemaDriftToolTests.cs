@@ -22,7 +22,7 @@ public sealed class SchemaDriftToolTests
     private const string EnableEnvVar = "NEXORA_SCHEMA_DRIFT_ENABLED";
 
     [SkippableFact]
-    public void CheckSchemaDrift_Script_ExitsZero_AgainstDevTenantSchema()
+    public void Script_WhenExecutedAgainstDevTenantSchema_ExitsZero()
     {
         var enabled = Environment.GetEnvironmentVariable(EnableEnvVar);
         Skip.If(string.IsNullOrEmpty(enabled) || enabled == "0",
@@ -72,7 +72,13 @@ public sealed class SchemaDriftToolTests
         var exited = proc.WaitForExit(120_000);
         if (!exited)
         {
-            try { proc.Kill(entireProcessTree: true); } catch { /* best-effort */ }
+            // Process.Kill throws InvalidOperationException when the child has
+            // already exited in the small race window between WaitForExit
+            // returning false and our Kill call. Narrow the catch to that one
+            // exception so anything else (access denied, OOM, etc.) surfaces
+            // as a real test failure rather than being swallowed silently.
+            try { proc.Kill(entireProcessTree: true); }
+            catch (InvalidOperationException) { /* child already exited */ }
             // Allow the kill to surface in the streams.
             proc.WaitForExit(5_000);
             Assert.Fail(
@@ -102,10 +108,29 @@ public sealed class SchemaDriftToolTests
     {
         var paths = (Environment.GetEnvironmentVariable("PATH") ?? "")
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+
+        // On Windows, resolving an executable name requires appending every
+        // extension the shell would try (PATHEXT). Without this, `python3` on
+        // Windows — which is typically `python3.exe` or a `py.exe` launcher —
+        // is never found even when it IS on PATH, and the [SkippableFact]
+        // unconditionally skips on Windows CI runners.
+        var candidateNames = new List<string> { executable };
+        if (OperatingSystem.IsWindows())
+        {
+            var pathExt = Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.BAT;.CMD;.COM";
+            foreach (var ext in pathExt.Split(';', StringSplitOptions.RemoveEmptyEntries))
+            {
+                candidateNames.Add(executable + ext);
+            }
+        }
+
         foreach (var p in paths)
         {
-            var candidate = Path.Combine(p, executable);
-            if (File.Exists(candidate)) return true;
+            foreach (var name in candidateNames)
+            {
+                var candidate = Path.Combine(p, name);
+                if (File.Exists(candidate)) return true;
+            }
         }
         return false;
     }

@@ -14,6 +14,23 @@ namespace Nexora.Architecture.Tests.Helpers;
 /// because some scans (e.g. cross-module hardcoded module names) MUST see
 /// string content while others (e.g. method-decl regex) MUST NOT.
 /// </para>
+/// <para>
+/// <b>Known limitations</b> — this stripper handles only the common string
+/// forms used in this codebase: regular <c>"…"</c> and verbatim <c>@"…"</c>.
+/// It DOES NOT fully understand:
+/// <list type="bullet">
+///   <item>Raw string literals (<c>"""…"""</c> and <c>"""" … """"</c>) — the
+///         opening/closing quote count is not tracked; inner content may be
+///         treated as code.</item>
+///   <item>Interpolated forms (<c>$"…"</c>, <c>$@"…"</c>, <c>@$"…"</c>,
+///         <c>$"""…"""</c>) — the <c>$</c> prefix is not recognised, so the
+///         interpolation braces and expressions may leak into the "stripped"
+///         output.</item>
+/// </list>
+/// If a future architecture test must guard code that uses these forms, prefer
+/// a Roslyn-based syntax walk (<c>Microsoft.CodeAnalysis.CSharp.SyntaxTree</c>)
+/// over extending this helper.
+/// </para>
 /// </summary>
 internal static class SourceTextStripper
 {

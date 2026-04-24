@@ -212,6 +212,17 @@ Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier
 
 ## Pending decisions
 
+**ADR-0029 — `cap.blocked` short-circuits lower layers in the compliance-config
+resolver** (Proposed 2026-04-24). Supersedes ADR-0025's resolution ladder.
+Normative change: when `cap.Allowed = false`, the resolver returns
+`cap.Value` (or `default(T)` when null) and skips org + tenant layers
+entirely — closes the Article 17 / ADR-0023 EU-tenant gate where a stale
+pre-cap org override could leak through reads. Already shipped in `576ff65`;
+this ADR is the normative record (moved out of the inline Amendment 1 block
+that originally sat in ADR-0025 — ADR-immutability rule treats behavioural
+changes as superseding, not amending). Maintainer promotion unblocks nothing
+new (code is live) but establishes the canonical decision doc.
+
 **ADR-0028 — Module uninstall data-retention contract** (Proposed 2026-04-23).
 Formalizes the current rename-and-retain uninstall pattern: 30-day default
 retention (configurable via resolver key `modules.uninstall.retention_days`,

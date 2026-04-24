@@ -17,16 +17,6 @@ using Testcontainers.PostgreSql;
 namespace Nexora.Modules.Contacts.Tests.Integration;
 
 /// <summary>
-/// T-018 AC#1: proves <see cref="GdprHardDeleteJob"/> routes reads and writes to the
-/// tenant schema that matches the tenant context set by <c>NexoraJob.RunAsync</c>,
-/// and that another tenant's data in a sibling schema is untouched.
-///
-/// Uses a real Postgres 17 container so <c>HasDefaultSchema</c> + Npgsql's
-/// <c>search_path</c> round-trip are exercised end-to-end — the <c>InMemory</c>
-/// provider used elsewhere in the module's tests cannot catch schema-routing bugs
-/// because it has no concept of schemas.
-/// </summary>
-/// <summary>
 /// xUnit fixture that owns the shared <see cref="PostgreSqlContainer"/>
 /// across every test in <see cref="GdprHardDeleteJobTenantRoutingTests"/>.
 /// Container startup is the single most expensive line in the suite (~5 s
@@ -51,11 +41,21 @@ public sealed class GdprHardDeleteJobTenantRoutingFixture : IAsyncLifetime
     public Task DisposeAsync() => Postgres.DisposeAsync().AsTask();
 }
 
+/// <summary>
+/// T-018 AC#1: proves <see cref="GdprHardDeleteJob"/> routes reads and writes to the
+/// tenant schema that matches the tenant context set by <c>NexoraJob.RunAsync</c>,
+/// and that another tenant's data in a sibling schema is untouched.
+///
+/// Uses a real Postgres 17 container so <c>HasDefaultSchema</c> + Npgsql's
+/// <c>search_path</c> round-trip are exercised end-to-end — the <c>InMemory</c>
+/// provider used elsewhere in the module's tests cannot catch schema-routing bugs
+/// because it has no concept of schemas.
+/// </summary>
 [Trait("Category", "Integration")]
-public sealed class GdprHardDeleteJobTenantRoutingTests
+public sealed class GdprHardDeleteJobTenantRoutingTests(GdprHardDeleteJobTenantRoutingFixture fixture)
     : IClassFixture<GdprHardDeleteJobTenantRoutingFixture>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres;
+    private readonly PostgreSqlContainer _postgres = fixture.Postgres;
     // Per-test GUIDs (xUnit constructs a new test instance per [Fact]).
     // Each test's schemas live for the test's lifetime and are dropped in
     // DisposeAsync so the shared container's state stays clean — without
@@ -68,11 +68,6 @@ public sealed class GdprHardDeleteJobTenantRoutingTests
     private readonly Guid _orgId = Guid.NewGuid();
     private readonly Guid _userId = Guid.NewGuid();
 
-    public GdprHardDeleteJobTenantRoutingTests(GdprHardDeleteJobTenantRoutingFixture fixture)
-    {
-        _postgres = fixture.Postgres;
-    }
-
     public Task InitializeAsync() => Task.CompletedTask;
 
     public async Task DisposeAsync()
@@ -80,13 +75,26 @@ public sealed class GdprHardDeleteJobTenantRoutingTests
         // Drop the per-test tenant schemas so the next [Fact] starts clean.
         // Identifier-safe: tenant_<guid> shape is generated inside this class,
         // never from external input.
+        //
+        // Per-tenant try/catch: a failure dropping tenant A must NOT short-circuit
+        // the drop for tenant B. Without per-iteration isolation, a flaky teardown
+        // on the first schema would leave the second one dangling and the NEXT
+        // test would hit 42P07 "relation already exists" on CreateTablesAsync —
+        // turning one transient error into a cascading failure across the suite.
         await using var conn = new NpgsqlConnection(_postgres.GetConnectionString());
         await conn.OpenAsync();
         foreach (var tid in new[] { _tenantAId, _tenantBId })
         {
-            await using var cmd = conn.CreateCommand();
-            cmd.CommandText = $"DROP SCHEMA IF EXISTS \"tenant_{tid}\" CASCADE";
-            await cmd.ExecuteNonQueryAsync();
+            try
+            {
+                await using var cmd = conn.CreateCommand();
+                cmd.CommandText = $"DROP SCHEMA IF EXISTS \"tenant_{tid}\" CASCADE";
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (PostgresException)
+            {
+                // Teardown best-effort — surface in test output but keep going.
+            }
         }
     }
 
@@ -184,7 +192,7 @@ public sealed class GdprHardDeleteJobTenantRoutingTests
         var contactA = await SeedContactAsync(_tenantAId);
 
         var spy = new RecordingTenantContextAccessor();
-        await using var jobDbContext = BuildDbContextRecordingAccess(spy);
+        await using var jobDbContext = BuildDbContext(spy);
         var job = new GdprHardDeleteJob(
             spy, jobDbContext, Substitute.For<IOutbox>(),
             NullLogger<GdprHardDeleteJob>.Instance);
@@ -240,21 +248,6 @@ public sealed class GdprHardDeleteJobTenantRoutingTests
             _inner.SetTenant(tenantId, organizationId, userId);
         }
     }
-
-    /// <summary>
-    /// Variant of <see cref="BuildDbContext"/> wired with the recording
-    /// accessor so the schema-per-tenant resolution path is identical to the
-    /// production-routed call.
-    /// </summary>
-    private ContactsDbContext BuildDbContextRecordingAccess(ITenantContextAccessor accessor)
-    {
-        var options = new DbContextOptionsBuilder<ContactsDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString())
-            .Options;
-        return new ContactsDbContext(options, accessor);
-    }
-
-
 
     /// <summary>
     /// Creates the named schema if missing. **SECURITY**: this helper interpolates

@@ -38,7 +38,10 @@ public sealed class NexoraJobBoundaryTests
             RepoSrcRoot, "Nexora.SharedKernel", "Abstractions", "Jobs", "NexoraJob.cs");
         File.Exists(path).Should().BeTrue("NexoraJob.cs must exist");
 
-        var source = File.ReadAllText(path);
+        // Strip comments + string literals first so this guard can't be
+        // tricked by XML doc prose or sample snippets that mention
+        // SetTenant(...) / ExecuteAsync(parameters...) in non-code contexts.
+        var source = SourceTextStripper.StripCommentsAndStrings(File.ReadAllText(path));
 
         var setTenantIdx = source.IndexOf("SetTenant(", StringComparison.Ordinal);
         var executeIdx = source.IndexOf("ExecuteAsync(parameters", StringComparison.Ordinal);
@@ -74,9 +77,16 @@ public sealed class NexoraJobBoundaryTests
         jobFiles.Should().NotBeEmpty("expected at least one job file under Modules/**/Jobs/");
 
         var offenders = new List<string>();
+        // Method-declaration heuristic: must start at the beginning of a line
+        // (ignoring leading whitespace) so call sites like
+        // `await job.RunAsync(...)` — which live after an expression, never
+        // at line start — cannot match. The access modifier is optional (C#
+        // allows implicit private on class members) so partial-class shadows
+        // without an explicit modifier still surface as offenders. The
+        // new/override/async sequence is still permitted in any order.
         var runAsyncDecl = new Regex(
-            @"\b(public|protected|internal|private)\s+(?:new\s+|override\s+|async\s+)*[\w<>?,\s]*?\bRunAsync\s*\(",
-            RegexOptions.Compiled);
+            @"^\s*(?:(?:public|protected|internal|private)\s+)?(?:(?:new|override|async|static|sealed|virtual)\s+)*[\w<>?,\s]*?\bRunAsync\s*\(",
+            RegexOptions.Compiled | RegexOptions.Multiline);
 
         foreach (var file in jobFiles)
         {

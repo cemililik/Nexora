@@ -17,6 +17,19 @@ public sealed class DemoLoadCommandTests
     private readonly Guid _tenantId = Guid.NewGuid();
     private const string Scenario = "general";
 
+    static DemoLoadCommandTests()
+    {
+        // Pin CurrentUICulture to English for the whole test class so
+        // console-output assertions below ("seeded", "already-seeded",
+        // "FAILED", "Identity admin API") match deterministically regardless
+        // of the developer's host locale. The tr bundle uses different
+        // tokens ("seed edildi", "BAŞARISIZ"), which the legacy assertions
+        // would miss and the test would fail under tr-TR locales.
+        System.Globalization.CultureInfo.CurrentUICulture =
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture =
+                new System.Globalization.CultureInfo("en");
+    }
+
     [Fact]
     public void TryDispatch_NotACliVerb_FallsThroughToWebHost()
     {

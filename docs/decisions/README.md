@@ -67,7 +67,8 @@ answerable from the Git log alone.
 | [0016](./0016-module-tier-classification.md) | Module Tier Classification | Accepted |
 | [0017](./0017-portal-extension-architecture.md) | Portal Extension Architecture | Accepted |
 | [0024](./0024-signalr-for-events-realtime.md) | SignalR for Events Real-Time Features | Accepted |
-| [0025](./0025-org-scoped-compliance-config-with-platform-caps.md) | Org-Scoped Compliance Config with Platform-Level Caps | Accepted |
+| [0025](./0025-org-scoped-compliance-config-with-platform-caps.md) | Org-Scoped Compliance Config with Platform-Level Caps | Superseded by 0029 |
 | [0026](./0026-cross-module-pii-payload-scan-for-gdpr-erasure.md) | Cross-Module PII Payload Scan for GDPR Erasure | Proposed |
 | [0027](./0027-production-schema-migration-strategy.md) | Production Schema-Migration Strategy | Proposed |
 | [0028](./0028-module-uninstall-data-retention-contract.md) | Module Uninstall Data-Retention Contract | Proposed |
+| [0029](./0029-cap-blocked-short-circuits-lower-layers.md) | `cap.blocked` Short-Circuits Lower Layers in the Compliance-Config Resolver | Proposed |

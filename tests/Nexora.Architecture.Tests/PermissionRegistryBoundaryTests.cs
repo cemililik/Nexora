@@ -36,26 +36,13 @@ public sealed class PermissionRegistryBoundaryTests
             AppContext.BaseDirectory);
     }
 
-    // Stripper helpers extracted to Helpers/SourceTextStripper so the
-    // architecture-test suite shares one implementation. Two flavours:
-    //   StripComments(...)         — comments only; strings preserved
-    //                                  (use when the scan target IS a string,
-    //                                  e.g. forbidden module-name tokens).
-    //   StripCommentsAndStrings(.) — both stripped (use when the scan target
-    //                                  is executable code only, e.g. method
-    //                                  declarations or call shapes).
-    private static string StripComments(string source) =>
-        Helpers.SourceTextStripper.StripComments(source);
-    private static string StripCommentsAndStrings(string source) =>
-        Helpers.SourceTextStripper.StripCommentsAndStrings(source);
-
     [Fact]
     public void DevelopmentSeed_HardcodedPermissionCreate_ShouldNotExist()
     {
         var path = Path.Combine(RepoSrcRoot, "Nexora.Host", "DevelopmentSeed.cs");
         File.Exists(path).Should().BeTrue("DevelopmentSeed.cs must exist");
 
-        var content = StripCommentsAndStrings(File.ReadAllText(path));
+        var content = Helpers.SourceTextStripper.StripCommentsAndStrings(File.ReadAllText(path));
         var hits = Regex.Matches(content, @"Permission\.Create\s*\(");
 
         hits.Count.Should().Be(0,
@@ -74,7 +61,7 @@ public sealed class PermissionRegistryBoundaryTests
         // NOTE: we intentionally do NOT strip strings here — the whole point of this test
         // is to catch hardcoded module string literals. Comments are stripped so a
         // historical reference in a doc-comment doesn't flag.
-        var content = StripComments(File.ReadAllText(path));
+        var content = Helpers.SourceTextStripper.StripComments(File.ReadAllText(path));
 
         // Hardcoded module strings besides "identity"/"platform" (Identity owns both) are
         // evidence of the pre-T-020 central seed list having been smuggled back in.
@@ -96,7 +83,7 @@ public sealed class PermissionRegistryBoundaryTests
         var path = Path.Combine(RepoSrcRoot, "Nexora.Host", "DevelopmentSeed.cs");
         File.Exists(path).Should().BeTrue("DevelopmentSeed.cs must exist for this assertion");
 
-        var content = StripCommentsAndStrings(File.ReadAllText(path));
+        var content = Helpers.SourceTextStripper.StripCommentsAndStrings(File.ReadAllText(path));
         content.Should().NotMatchRegex(
             @"private\s+static\s+Permission\[\]\s+CreateDefaultPermissions",
             because: "DevelopmentSeed.CreateDefaultPermissions() was removed by T-020; " +
