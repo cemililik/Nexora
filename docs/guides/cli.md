@@ -255,7 +255,7 @@ outbox is filed as a Phase-2 follow-up.
 CLI output is localized via [`CliLocalization.cs`](../../src/Nexora.Host/Cli/CliLocalization.cs),
 a pre-DI resolver loaded from disk at first call:
 
-```
+```text
 src/Nexora.Host/Cli/Locales/host.en.json
 src/Nexora.Host/Cli/Locales/host.tr.json
 ```
