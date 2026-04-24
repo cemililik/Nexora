@@ -27,6 +27,7 @@ import { useTenant, useUpdateTenantSettings, useUpdateTenantStatus } from '../ho
 import { useTenantModules, useInstallModule, useActivateModule, useDeactivateModule, useUninstallModule, useRegisteredModules } from '../hooks/useModuleManagement';
 import type { RegisteredModuleDto } from '../hooks/useModuleManagement';
 import { TenantStatusBadge } from '../components/UserStatusBadge';
+import { CreateDemoEnvironmentDialog } from '../components/CreateDemoEnvironmentDialog';
 
 type TabKey = 'details' | 'modules' | 'settings';
 
@@ -55,6 +56,7 @@ export default function TenantDetailPage() {
 
   const [confirmAction, setConfirmAction] = useState<'suspend' | 'terminate' | null>(null);
   const [moduleToUninstall, setModuleToUninstall] = useState<string | null>(null);
+  const [demoDialogOpen, setDemoDialogOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
 
   useEffect(() => {
@@ -119,6 +121,22 @@ export default function TenantDetailPage() {
               onClick={() => setConfirmAction('terminate')}
             >
               {t('lockey_identity_action_terminate')}
+            </Button>
+          )}
+          {/*
+           * T-008: platform-operator-only trigger. Hidden for anyone lacking
+           * the platform-scope permission; the backend double-gates the same
+           * permission on POST /identity/tenants/demo. Placed alongside the
+           * other platform-sensitive actions (suspend/terminate) so operators
+           * have one action cluster for all platform-scoped tenant ops.
+           */}
+          {hasPermission('platform.tenants.create_demo') && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDemoDialogOpen(true)}
+            >
+              {t('lockey_platform_tenants_demo_button')}
             </Button>
           )}
         </div>
@@ -327,6 +345,12 @@ export default function TenantDetailPage() {
           )}
         </div>
       )}
+
+      <CreateDemoEnvironmentDialog
+        tenantId={id}
+        open={demoDialogOpen}
+        onOpenChange={setDemoDialogOpen}
+      />
 
       <ConfirmDialog
         open={confirmAction !== null}
