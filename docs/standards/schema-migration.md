@@ -4,13 +4,16 @@ Nexora uses a **code-first, migration-free** schema management approach for the 
 and on-prem-preview environments. There are no EF Core migration files yet; schema
 evolution happens in two distinct phases, both enforced inside `DevelopmentSeed.cs`.
 
-> **Production strategy — TBD.** The mechanisms described here are explicitly
+> **Production strategy — defined.** The mechanisms described here are explicitly
 > **development-only**: `DevelopmentSeed.SeedAsync` is guarded by
 > `app.Environment.IsDevelopment()` and must never run against production tenants.
-> The production schema-evolution strategy (EF Core migrations, Liquibase, or a
-> hybrid) will be documented in a forthcoming ADR and cross-referenced from §6.
-> Until then, any ALTER intended for production MUST travel through that future
-> ADR's pipeline, not through `ApplySchemaUpdatesAsync`.
+> Production schema evolution uses **EF Core migrations** per
+> [ADR-0027](../decisions/0027-production-schema-migration-strategy.md)
+> (Accepted 2026-04-24), orchestrated by the `MigrationRunner` described in
+> [operations/migration-orchestration.md](../operations/migration-orchestration.md).
+> A CI release-gate asserts every DDL line in `ApplySchemaUpdatesAsync` has a
+> matching EF migration before a release cut. Any ALTER intended for production
+> MUST travel through that pipeline, not through `ApplySchemaUpdatesAsync`.
 
 ---
 
@@ -146,7 +149,7 @@ When you add a property to a domain entity:
 
 ## 6. What NOT to Do
 
-- **Do not** run `dotnet ef migrations add` — there are no migration files in this project and the toolchain is not wired up for them.
+- **Do not** run `dotnet ef migrations add` against the dev branch without also landing the matching `ApplySchemaUpdatesAsync` entry — the production migration pipeline per [ADR-0027](../decisions/0027-production-schema-migration-strategy.md) pairs the two. Dev remains code-first through `ApplySchemaUpdatesAsync`; EF migration files are additive, produced alongside (not instead of) the dev path, and the CI release-gate enforces the pairing.
 - **Do not** modify the database manually without a matching code change in `ApplySchemaUpdatesAsync`; the next fresh-start will be out of sync.
 - **Do not** use `EnsureCreated()` or `Database.EnsureCreatedAsync()` — these are reserved for the Host-level seeder only.
-- **Do not** add production DDL in `DevelopmentSeed.cs` beyond what runs in Development mode — this file is guarded by `if (!app.Environment.IsDevelopment()) return;`. Production schema management is **out of scope for this document** — the canonical production doc is scheduled (see the TBD note at the top of this file). Until that ADR lands, the archived reference at `docs/_archive/standards-legacy/INFRASTRUCTURE_STANDARDS.md` is the interim pointer.
+- **Do not** add production DDL in `DevelopmentSeed.cs` beyond what runs in Development mode — this file is guarded by `if (!app.Environment.IsDevelopment()) return;`. Production schema management is governed by [ADR-0027](../decisions/0027-production-schema-migration-strategy.md) and operationalised in [operations/migration-orchestration.md](../operations/migration-orchestration.md).
