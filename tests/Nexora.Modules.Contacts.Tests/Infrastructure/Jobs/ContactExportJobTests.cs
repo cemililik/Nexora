@@ -11,7 +11,6 @@ using Nexora.Modules.Contacts.Infrastructure.Jobs;
 using Nexora.Modules.Contacts.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Messaging;
-using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.SharedKernel.Abstractions.Storage;
 
@@ -23,7 +22,6 @@ public sealed class ContactExportJobTests : IDisposable
     private readonly ITenantContextAccessor _tenantAccessor;
     private readonly IFileStorageService _storage = Substitute.For<IFileStorageService>();
     private readonly IOutbox _outbox = Substitute.For<IOutbox>();
-    private readonly INotificationService _notifications = Substitute.For<INotificationService>();
     private readonly ILocaleContext _locale = Substitute.For<ILocaleContext>();
     private readonly IOptions<StorageOptions> _storageOptions =
         Options.Create(new StorageOptions { BucketPrefix = "nexora" });
@@ -41,7 +39,7 @@ public sealed class ContactExportJobTests : IDisposable
     }
 
     private ContactExportJob CreateJob() => new(
-        _tenantAccessor, _dbContext, _storage, _storageOptions, _outbox, _notifications, _locale,
+        _tenantAccessor, _dbContext, _storage, _storageOptions, _outbox, _locale,
         NullLogger<ContactExportJob>.Instance);
 
     private async Task<ExportJob> SeedExportJobAsync(
