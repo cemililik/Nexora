@@ -104,15 +104,31 @@ public static class DemoCleanCommand
             // Destructive path — double-gated. The `--yes` flag is required
             // non-interactively; there is no TTY prompt. This keeps the CLI
             // scriptable while preventing a typo'd `--drop-tenant` from
-            // nuking a tenant silently.
-            console.WriteLine(string.Format(
+            // nuking a tenant silently. Warning + outcome lines stream on
+            // stderr so operators running `... | tee run.log` still see
+            // the destruction notice even if stdout is redirected
+            // elsewhere.
+            if (options.DryRun)
+            {
+                // `--drop-tenant --dry-run` previews the drop without
+                // calling cleaner.DropTenantAsync. The operator's stdin
+                // commitment (via --yes) is honoured as a precondition
+                // but no schema is touched. Mirrors the normal-cleanup
+                // dry-run convention documented in cli.md §3.3 matrix.
+                console.WriteErrorLine(string.Format(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    CliLocalization.T("lockey_cli_democlean_droptenant_dryrun_template"),
+                    tenantId));
+                return 0;
+            }
+            console.WriteErrorLine(string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
                 CliLocalization.T("lockey_cli_democlean_droptenant_warning_template"),
                 tenantId));
             var result = await cleaner.DropTenantAsync(tenantId.ToString(), ct);
             if (result.SchemaDropped && result.ErrorMessage is null)
             {
-                console.WriteLine(string.Format(
+                console.WriteErrorLine(string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
                     CliLocalization.T("lockey_cli_democlean_droptenant_completed_template"),
                     tenantId));
@@ -122,16 +138,17 @@ public static class DemoCleanCommand
             {
                 // Schema dropped but event publish failed — partial outcome
                 // flagged to the operator so they can run external cleanup.
-                console.WriteLine(string.Format(
+                console.WriteErrorLine(string.Format(
                     System.Globalization.CultureInfo.InvariantCulture,
                     CliLocalization.T("lockey_cli_democlean_droptenant_partial_template"),
                     tenantId, result.ErrorMessage));
                 return CliDispatcher.PartialFailure;
             }
-            console.WriteLine(string.Format(
+            console.WriteErrorLine(string.Format(
                 System.Globalization.CultureInfo.InvariantCulture,
                 CliLocalization.T("lockey_cli_democlean_droptenant_failed_template"),
-                tenantId, result.ErrorMessage ?? "unknown"));
+                tenantId,
+                result.ErrorMessage ?? CliLocalization.T("lockey_cli_democlean_unknown_error")));
             return CliDispatcher.PartialFailure;
         }
 
@@ -198,7 +215,10 @@ public static class DemoCleanCommand
                 if (Guid.TryParse(tenantValue, out var guid))
                     tenantId = guid;
                 else
-                    unknown.Add($"invalid tenant GUID: '{tenantValue}'");
+                    unknown.Add(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        CliLocalization.T("lockey_cli_democlean_invalid_tenant_guid_template"),
+                        tenantValue));
                 continue;
             }
 

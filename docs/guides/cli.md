@@ -191,8 +191,22 @@ nexora demo:clean --tenant=<guid> --drop-tenant --yes [--verbose]
 | `--scenario` | yes * | string | Scenario identifier. * Not required (and ignored) when `--drop-tenant` is set. |
 | `--drop-tenant` | no | flag | Drops the whole tenant schema. Destructive — combine with `--yes`. |
 | `--yes` | required with `--drop-tenant` | flag | Non-interactive confirmation for `--drop-tenant`. No TTY prompt is offered; CLI stays scriptable. Missing `--yes` yields exit code 1. |
-| `--dry-run` | no | flag | Print the plan without calling the cleaner. |
+| `--dry-run` | no | flag | Print the plan without calling the cleaner. See flag-intersection matrix below for `--dry-run` + `--drop-tenant` semantics. |
 | `--verbose`, `-v` | no | flag | Include the underlying exception type + message on failure. |
+
+**Flag intersections.** The matrix below pins down the two non-obvious
+combinations explicitly, so scripts don't have to guess:
+
+| Combination | Behavior |
+|---|---|
+| `--drop-tenant` + `--scenario=<name>` | `--scenario` is **ignored** (not rejected). The DROP CASCADE removes the whole schema, including every scenario's demo-seed markers — there's nothing scenario-specific to act on. Exit code 0 (plus `--yes` gate). |
+| `--drop-tenant` + `--dry-run` | `--dry-run` **previews** the drop without executing it. Prints the planned schema name on stderr and exits 0. No `DROP SCHEMA` runs, no `TenantDeprovisionedIntegrationEvent` is published. `--yes` is still required to reach this path — the preview acknowledges operator intent. |
+| `--scenario=<name>` + `--dry-run` | Previews the per-module plan without invoking the cleaner or touching `demo_seed_markers`. Exits 0. |
+
+**Output streams.** `--drop-tenant` warning + outcome lines stream on
+**stderr** so scripts can redirect stdout (e.g. for scripting per-module
+outcome capture) while still seeing destruction notices. Normal-cleanup
+per-module lines stream on stdout.
 
 **Idempotency.** Safe to re-run against an already-clean tenant: modules that
 are already clean invoke their no-op cleanup and report `cleaned`; modules

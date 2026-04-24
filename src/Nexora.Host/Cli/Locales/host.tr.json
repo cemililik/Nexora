@@ -52,5 +52,10 @@
   "lockey_cli_democlean_droptenant_warning_template": "[drop-tenant] tenant_{0} şeması CASCADE ile düşürülüyor — tüm veri kaybedilecek.",
   "lockey_cli_democlean_droptenant_completed_template": "demo:clean --drop-tenant tamamlandı, tenant {0}; TenantDeprovisionedIntegrationEvent yayınlandı.",
   "lockey_cli_democlean_droptenant_partial_template": "demo:clean --drop-tenant: tenant {0} şeması düşürüldü ancak olay yayını başarısız ({1}). Harici sistemler (MinIO / Keycloak) manuel temizlik gerektirir.",
-  "lockey_cli_democlean_droptenant_failed_template": "demo:clean --drop-tenant BAŞARISIZ tenant {0}: {1}"
+  "lockey_cli_democlean_droptenant_failed_template": "demo:clean --drop-tenant BAŞARISIZ tenant {0}: {1}",
+  "lockey_cli_democlean_droptenant_dryrun_template": "[dry-run] demo:clean --drop-tenant tenant_{0} şemasını CASCADE ile düşürürdü ve TenantDeprovisionedIntegrationEvent yayınlardı. Hiçbir değişiklik yapılmadı.",
+  "lockey_cli_democlean_unknown_error": "bilinmeyen hata",
+  "lockey_cli_democlean_invalid_tenant_guid_template": "geçersiz tenant GUID: '{0}'",
+  "lockey_cli_demoload_invalid_tenant_guid_template": "geçersiz tenant GUID: '{0}'",
+  "lockey_cli_usage_democlean_description_l3": "      tüm tenant şemasını düşürmek için --drop-tenant --yes kullanın."
 }

@@ -5,7 +5,7 @@
 **Planned dates:** post Phase 3; continuous thereafter
 
 Tier-4 extensions are optional, buy-as-you-go modules distributed through the
-marketplace (ADR-016). No Tier 1–3 module may take a hard dependency on a Tier-4 module.
+marketplace (ADR-0016). No Tier 1–3 module may take a hard dependency on a Tier-4 module.
 This phase also hosts the cross-phase continuous workstreams (performance, security,
 accessibility, docs, additional locales, connectors) that have no natural home in a
 numbered phase.
@@ -17,10 +17,10 @@ numbered phase.
 Phase 4 is a rolling phase — it does not "close" in the same sense as earlier phases.
 Individual extensions hit their own exit bars:
 
-1. Extension ships a signed marketplace manifest (ADR-017 + ADR-016 Tier-4 rules).
+1. Extension ships a signed marketplace manifest (ADR-0017 + ADR-0016 Tier-4 rules).
 2. Extension passes the Tier-4 architecture test (no upstream Tier 1–3 module imports
    Tier-4 namespaces).
-3. Extension surfaces via ADR-017 manifest in the portal and/or admin.
+3. Extension surfaces via ADR-0017 manifest in the portal and/or admin.
 4. Locale parity (en + tr minimum) and WCAG 2.1 AA pass.
 
 ## Scope
@@ -76,7 +76,7 @@ These run alongside every phase but have no dedicated home:
 ## Out of scope
 
 - Anything a Tier 1–3 module could reasonably depend on — that belongs in an earlier
-  tier by ADR-016.
+  tier by ADR-0016.
 - NMP billing and license enforcement — parallel NMP track.
 
 ## Milestones
@@ -92,7 +92,7 @@ are treated as standing work, not milestones.
 
 ## Acceptance criteria (per extension)
 
-- [ ] Signed marketplace manifest (ADR-017).
+- [ ] Signed marketplace manifest (ADR-0017).
 - [ ] Tier-4 architecture test green.
 - [ ] No upstream Tier 1–3 module imports this extension.
 - [ ] Locale parity (en + tr).
@@ -103,7 +103,7 @@ are treated as standing work, not milestones.
 
 **Introduces:** TBD per extension.
 
-**Consumes:** ADR-015, ADR-016 (Tier-4 rules), ADR-017 (manifest + signing).
+**Consumes:** ADR-0015, ADR-0016 (Tier-4 rules), ADR-0017 (manifest + signing).
 
 **Supersedes:** none.
 

@@ -13,18 +13,18 @@ can reason about dependencies without re-reading the legacy ROADMAP.
 
 All eight Tier-1 Platform Core modules live in production, with:
 
-1. Modular Monolith boundaries enforced by architecture tests (ADR-001).
-2. Schema-per-tenant multi-tenancy via PostgreSQL (ADR-002).
-3. Permission-based RBAC with centralized seeding (ADR-004, ADR-006).
-4. GDPR deletion strategy defined (ADR-008) and implemented for Contacts (soft + anonymize;
+1. Modular Monolith boundaries enforced by architecture tests (ADR-0001).
+2. Schema-per-tenant multi-tenancy via PostgreSQL (ADR-0002).
+3. Permission-based RBAC with centralized seeding (ADR-0004, ADR-0006).
+4. GDPR deletion strategy defined (ADR-0008) and implemented for Contacts (soft + anonymize;
    Article 17 hard-delete is a Phase 1.5 item, see `phase-1.5-bridge.md`).
 5. Localization via `lockey_` keys end-to-end; zero hardcoded user-facing strings in the
    Tier-1 codebase.
-6. Tab-based detail layout applied on every Tier-1 module page (ADR-007).
+6. Tab-based detail layout applied on every Tier-1 module page (ADR-0007).
 
 ## Scope — what shipped
 
-The eight Tier-1 modules (members of Tier 1 per ADR-016):
+The eight Tier-1 modules (members of Tier 1 per ADR-0016):
 
 | # | Module | Role |
 |---|--------|------|
@@ -51,7 +51,7 @@ Cross-cutting foundations also shipped in Phase 1:
 - NMP (Nexora Management Portal) billing and licensing — parallel track with Phase 2.
 - Vertical Edition modules (NGO, Education) — Phase 3a / 3b.
 - Marketplace Extensions (POS, Fleet, Inventory, Surveys, CMS) — Phase 4.
-- Portal Extension manifest (ADR-017 pilot) — Phase 2 Milestone A.
+- Portal Extension manifest (ADR-0017 pilot) — Phase 2 Milestone A.
 
 ## Milestones (retrospective)
 
@@ -72,26 +72,26 @@ Outbox pattern, audit module enhancements (Phase 1.5.5 folded in), cache invalid
 - [x] GDPR soft-delete + anonymize path covered for Contacts.
 - [x] Locale files (en + tr) at full parity across all Tier-1 modules.
 - [x] Every Tier-1 detail page uses the custom underline tab layout (UX_UI_STANDARDS §3).
-- [x] All fourteen foundational ADRs (ADR-001..014, incl. amendments) are Accepted.
+- [x] All fourteen foundational ADRs (ADR-0001..014, incl. amendments) are Accepted.
 
 ## ADR ledger
 
 **Introduced (all now Accepted):**
 
-- ADR-001 — Modular Monolith
-- ADR-002 — Schema-per-tenant multi-tenancy
-- ADR-003 — Deployment strategy
-- ADR-004 — Centralized permission seeding
-- ADR-005 — Transactional Outbox pattern (+ amendment 1)
-- ADR-006 — Permission-based authorization
-- ADR-007 — Tab-based layout standard
-- ADR-008 — GDPR deletion strategy
-- ADR-009 — Audit module repository pattern
-- ADR-010 — Notification delivery via Kafka
-- ADR-011 — Outbox service atomicity (+ addendum 1)
-- ADR-012 — Tenant management decisions
-- ADR-013 — Cache cross-instance invalidation
-- ADR-014 — Distributed consistency patterns
+- ADR-0001 — Modular Monolith
+- ADR-0002 — Schema-per-tenant multi-tenancy
+- ADR-0003 — Deployment strategy
+- ADR-0004 — Centralized permission seeding
+- ADR-0005 — Transactional Outbox pattern (+ amendment 1)
+- ADR-0006 — Permission-based authorization
+- ADR-0007 — Tab-based layout standard
+- ADR-0008 — GDPR deletion strategy
+- ADR-0009 — Audit module repository pattern
+- ADR-0010 — Notification delivery via Kafka
+- ADR-0011 — Outbox service atomicity (+ addendum 1)
+- ADR-0012 — Tenant management decisions
+- ADR-0013 — Cache cross-instance invalidation
+- ADR-0014 — Distributed consistency patterns
 
 **Consumed:** none (Phase 1 is the foundation layer).
 
@@ -101,7 +101,7 @@ Outbox pattern, audit module enhancements (Phase 1.5.5 folded in), cache invalid
 
 - `phase-1.5-bridge.md` — consumes every Phase 1 ADR; closes outstanding cross-cutting items
   (demo data, Contacts enhancements, GDPR hard-delete).
-- `phase-2-enterprise.md` — every Tier-2 module depends on Tier-1 modules per ADR-016.
+- `phase-2-enterprise.md` — every Tier-2 module depends on Tier-1 modules per ADR-0016.
 - `phase-2.5-hr.md`, `phase-3a-ngo.md`, `phase-3b-education.md`, `phase-4-extensions.md` —
   all downstream tiers consume the Tier-1 surface area frozen here.
 
@@ -109,4 +109,4 @@ Outbox pattern, audit module enhancements (Phase 1.5.5 folded in), cache invalid
 
 - Legacy source: `docs/roadmap/ROADMAP.md` §1–§1.5 (pre-split).
 - Migration plan: `../../_archive/migration-notes.md`.
-- Tier definition: [ADR-016](../../decisions/ADR-016-module-tier-classification.md).
+- Tier definition: [ADR-0016](../../decisions/ADR-0016-module-tier-classification.md).

@@ -254,6 +254,8 @@ public sealed class DemoLoadCommandTests
     private sealed class RecordingConsole : IConsole
     {
         public List<string> Lines { get; } = new();
+        public List<string> ErrorLines { get; } = new();
         public void WriteLine(string line) => Lines.Add(line);
+        public void WriteErrorLine(string line) => ErrorLines.Add(line);
     }
 }

@@ -7,7 +7,7 @@
 Phase 2 delivers the Tier-2 generic B2B/SMB modules that every enterprise tenant needs
 regardless of vertical: CRM (generic), Subscription & Billing, Finance, and Projects.
 HR Core splits out into `phase-2.5-hr.md`. Milestone A pilots the Portal Extension
-manifest defined in ADR-017.
+manifest defined in ADR-0017.
 
 ---
 
@@ -17,14 +17,15 @@ Phase 2 is complete when:
 
 1. CRM, Subscription & Billing, Finance, and Projects modules are in production as Tier-2
    modules per ADR-016 (no Tier-3 or Tier-4 dependencies).
-2. Each Tier-2 module publishes a Portal Extension manifest (ADR-017) and renders in the
+2. Each Tier-2 module publishes a Portal Extension manifest (ADR-0017) and renders in the
    portal via the Phase 1.5.4 slot/tab mechanism.
 3. Reporting enhancements (templates, email delivery, SQL autocomplete, visual query
    builder, public sharing, versioning) are live.
 4. Architecture tests prove no Tier-2 module imports a Tier-3 or Tier-4 namespace.
 5. All four Tier-2 modules have locale parity (en + tr) and Mermaid-diagrammed specs.
-6. The Portal Extension pilot module (CRM or Subscription — maintainer picks) reports
-   lessons back into `docs/architecture/portal-extensions.md`.
+6. The Portal Extension pilot module (**CRM**, chosen as pilot on 2026-04-24 —
+   see Milestone A for the rationale) reports lessons back into
+   `docs/architecture/portal-extensions.md`.
 
 ## Scope
 
@@ -118,7 +119,7 @@ Prerequisite: Reporting Engine (Phase 1) + CRM (Phase 2.1).
 
 ## Milestones
 
-### Milestone A — Portal Extension pilot (ADR-017)
+### Milestone A — Portal Extension pilot (ADR-0017)
 
 **Pilot module: CRM** (selected 2026-04-24 per the authority granted in ADR-0017
 "First pilot"). The module pilots the full Portal Extension manifest: tier
@@ -151,7 +152,7 @@ their Phase 2 scope, each using the manifest pattern from Milestone A.
 
 - [ ] CRM, Finance, Subscription, Projects specs promoted to Accepted module specs in
       `docs/modules/tier-2-enterprise/*/SPEC.md`.
-- [ ] All four modules ship portal UI via ADR-017 manifest.
+- [ ] All four modules ship portal UI via ADR-0017 manifest.
 - [ ] Tier-boundary architecture test passes (no Tier-2 → Tier-3/4 references).
 - [ ] Reporting templates available for each Tier-2 module.
 - [ ] Locale files (en + tr) at parity for all four modules.
@@ -167,14 +168,14 @@ their Phase 2 scope, each using the manifest pattern from Milestone A.
 
 - ADR-015 — Roadmap Structure (phase model).
 - ADR-016 — Module Tier Classification (Tier-2 rules).
-- ADR-017 — Portal Extension Architecture (manifest pilot in Milestone A).
+- ADR-0017 — Portal Extension Architecture (manifest pilot in Milestone A).
 - ADR-001..014 — all Phase-1 foundations.
 
 **Supersedes:** none.
 
 ## Informs
 
-- `phase-2.5-hr.md` — HR Core inherits the Tier-2 + ADR-017 manifest patterns.
+- `phase-2.5-hr.md` — HR Core inherits the Tier-2 + ADR-0017 manifest patterns.
 - `phase-3a-ngo.md` — Fundraising depends on Finance (donation → income record) and CRM
   (donor pipeline templates).
 - `phase-3b-education.md` — Education depends on Subscription (tuition) and CRM

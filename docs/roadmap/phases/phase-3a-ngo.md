@@ -5,7 +5,7 @@
 **Planned dates:** follows Phase 2; HR Core not a hard prerequisite
 
 NGO Edition packages fundraising, sponsorship, and NGO-flavored events into an
-independently sellable SKU on top of Tier 1 + Tier 2 per ADR-016. Donations and
+independently sellable SKU on top of Tier 1 + Tier 2 per ADR-0016. Donations and
 Sponsorship modules merge into a single `fundraising` module; events get split into a
 generic Tier-2 future module and an NGO-flavored `events-ngo` living here.
 
@@ -19,9 +19,9 @@ generic Tier-2 future module and an NGO-flavored `events-ngo` living here.
    `modules/tier-3a-ngo/events-ngo/`.
 3. Tax receipt templates (US + Turkish bağış makbuzu) live — the Phase 1.5.3 deferred
    item is closed here.
-4. Donor portal + public donation pages live via ADR-017 manifest.
+4. Donor portal + public donation pages live via ADR-0017 manifest.
 5. Architecture test confirms Tier-3a modules do **not** depend on Tier-3b modules
-   (editions are orthogonal per ADR-016).
+   (editions are orthogonal per ADR-0016).
 
 ## Scope
 
@@ -86,13 +86,13 @@ WCAG pass on donor + sponsor portals.
 - [ ] `events-ngo` spec exists under the Tier-3a folder.
 - [ ] Receipt PDFs generated for US + TR sample donations with locale-aware formatting.
 - [ ] Tier-3a modules pass the architecture test (no Tier-3b imports).
-- [ ] Donor portal surfaces via ADR-017 manifest.
+- [ ] Donor portal surfaces via ADR-0017 manifest.
 
 ## ADR ledger
 
 **Introduces:** TBD (receipt template engine and Zakat calculator may warrant ADRs).
 
-**Consumes:** ADR-015, ADR-016, ADR-017, ADR-008 (GDPR for donor data), ADR-010
+**Consumes:** ADR-0015, ADR-0016, ADR-0017, ADR-0008 (GDPR for donor data), ADR-0010
 (notification delivery) + Phase-1 foundations.
 
 **Supersedes:** the separate donations + sponsorship specs (merged into `fundraising`).

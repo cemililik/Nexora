@@ -66,6 +66,7 @@ public sealed class CliLocalizationParityTests
         "lockey_cli_usage_democlean_signature",
         "lockey_cli_usage_democlean_description_l1",
         "lockey_cli_usage_democlean_description_l2",
+        "lockey_cli_usage_democlean_description_l3",
         "lockey_cli_democlean_cancelled",
         "lockey_cli_democlean_failed_generic",
         "lockey_cli_democlean_failed_verbose_template",
@@ -86,6 +87,10 @@ public sealed class CliLocalizationParityTests
         "lockey_cli_democlean_droptenant_completed_template",
         "lockey_cli_democlean_droptenant_partial_template",
         "lockey_cli_democlean_droptenant_failed_template",
+        "lockey_cli_democlean_droptenant_dryrun_template",
+        "lockey_cli_democlean_unknown_error",
+        "lockey_cli_democlean_invalid_tenant_guid_template",
+        "lockey_cli_demoload_invalid_tenant_guid_template",
     ];
 
     [Fact]

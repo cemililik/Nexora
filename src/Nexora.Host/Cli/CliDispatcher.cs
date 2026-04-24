@@ -75,6 +75,7 @@ public static class CliDispatcher
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_signature"));
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_description_l1"));
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_description_l2"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_description_l3"));
         Console.WriteLine();
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_exitcodes_header"));
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_exitcode_success"));
