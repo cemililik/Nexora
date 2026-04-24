@@ -27,5 +27,30 @@
   "lockey_cli_demoload_outcome_line_template": "  - {0}: {1}",
   "lockey_cli_demoload_invalid_args_template": "Unrecognised or invalid argument(s): {0}",
   "lockey_cli_demoload_missing_tenant": "Missing required flag: --tenant=<guid>",
-  "lockey_cli_demoload_missing_scenario": "Missing required flag: --scenario=<name>"
+  "lockey_cli_demoload_missing_scenario": "Missing required flag: --scenario=<name>",
+
+  "lockey_cli_usage_democlean_signature": "  demo:clean --tenant=<guid> --scenario=<name> [--dry-run] [--verbose]",
+  "lockey_cli_usage_democlean_description_l1": "      Removes demo-seeded rows by invoking IModule.CleanDemoDataAsync on every",
+  "lockey_cli_usage_democlean_description_l2": "      installed module in reverse dependency order. Use --drop-tenant --yes to",
+
+  "lockey_cli_democlean_cancelled": "demo:clean cancelled.",
+  "lockey_cli_democlean_failed_generic": "demo:clean failed ({0}). Re-run with --verbose for the underlying message.",
+  "lockey_cli_democlean_failed_verbose_template": "demo:clean failed: {0} ({1})",
+  "lockey_cli_democlean_usage_hint": "Usage: demo:clean --tenant=<guid> (--scenario=<name> | --drop-tenant --yes) [--dry-run] [--verbose]",
+  "lockey_cli_democlean_invalid_args_template": "Unrecognised or invalid argument(s): {0}",
+  "lockey_cli_democlean_missing_tenant": "Missing required flag: --tenant=<guid>",
+  "lockey_cli_democlean_missing_scenario": "Missing required flag: --scenario=<name> (or use --drop-tenant --yes for a full schema drop).",
+  "lockey_cli_democlean_droptenant_requires_yes": "--drop-tenant is destructive. Re-run with --yes to confirm the whole tenant schema will be dropped.",
+  "lockey_cli_democlean_dryrun_header_template": "[dry-run] demo:clean tenant={0} scenario={1}",
+  "lockey_cli_democlean_dryrun_no_changes": "[dry-run] no changes made.",
+  "lockey_cli_democlean_completed_template": "demo:clean completed for tenant {0} scenario {1}:",
+  "lockey_cli_democlean_outcome_cleaned": "cleaned",
+  "lockey_cli_democlean_outcome_nothing": "nothing to clean",
+  "lockey_cli_democlean_outcome_noop": "no-op (no demo content)",
+  "lockey_cli_democlean_outcome_failed_template": "FAILED — {0}",
+  "lockey_cli_democlean_outcome_line_template": "  - {0}: {1}",
+  "lockey_cli_democlean_droptenant_warning_template": "[drop-tenant] dropping schema tenant_{0} CASCADE — all data lost.",
+  "lockey_cli_democlean_droptenant_completed_template": "demo:clean --drop-tenant completed for tenant {0}; TenantDeprovisionedIntegrationEvent published.",
+  "lockey_cli_democlean_droptenant_partial_template": "demo:clean --drop-tenant: schema dropped for tenant {0} but event publish failed ({1}). External systems (MinIO / Keycloak) need manual cleanup.",
+  "lockey_cli_democlean_droptenant_failed_template": "demo:clean --drop-tenant FAILED for tenant {0}: {1}"
 }

@@ -148,6 +148,12 @@ public static class InfrastructureServiceRegistration
         // root-resolvable. Scoped registration would force a fresh seeder per
         // tenant request without any benefit.
         services.AddSingleton<IDemoDataSeeder, Modules.DemoDataSeeder>();
+        // T-009: orchestrator-level counterpart to IDemoDataSeeder. Scoped
+        // because its IEventBus dep resolves through the Dapr client chain
+        // that may not be singleton-safe under every hosting model; the CLI
+        // verb / admin UI both create a scope before resolving, so per-call
+        // scoping is the right default.
+        services.AddScoped<IDemoDataCleaner, Modules.DemoDataCleaner>();
 
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>

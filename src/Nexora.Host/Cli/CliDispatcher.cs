@@ -39,6 +39,10 @@ public static class CliDispatcher
                 exitCode = DemoLoadCommand.Run(args.AsSpan(1));
                 return true;
 
+            case "demo:clean":
+                exitCode = DemoCleanCommand.Run(args.AsSpan(1));
+                return true;
+
             case "--help":
             case "-h":
             case "help":
@@ -67,6 +71,10 @@ public static class CliDispatcher
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_description_l1"));
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_description_l2"));
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_demoload_description_l3"));
+        Console.WriteLine();
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_signature"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_description_l1"));
+        Console.WriteLine(CliLocalization.T("lockey_cli_usage_democlean_description_l2"));
         Console.WriteLine();
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_exitcodes_header"));
         Console.WriteLine(CliLocalization.T("lockey_cli_usage_exitcode_success"));

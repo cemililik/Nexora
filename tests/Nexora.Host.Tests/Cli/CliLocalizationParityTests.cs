@@ -61,6 +61,31 @@ public sealed class CliLocalizationParityTests
         "lockey_cli_demoload_invalid_args_template",
         "lockey_cli_demoload_missing_tenant",
         "lockey_cli_demoload_missing_scenario",
+
+        // demo:clean (DemoCleanCommand — T-009)
+        "lockey_cli_usage_democlean_signature",
+        "lockey_cli_usage_democlean_description_l1",
+        "lockey_cli_usage_democlean_description_l2",
+        "lockey_cli_democlean_cancelled",
+        "lockey_cli_democlean_failed_generic",
+        "lockey_cli_democlean_failed_verbose_template",
+        "lockey_cli_democlean_usage_hint",
+        "lockey_cli_democlean_invalid_args_template",
+        "lockey_cli_democlean_missing_tenant",
+        "lockey_cli_democlean_missing_scenario",
+        "lockey_cli_democlean_droptenant_requires_yes",
+        "lockey_cli_democlean_dryrun_header_template",
+        "lockey_cli_democlean_dryrun_no_changes",
+        "lockey_cli_democlean_completed_template",
+        "lockey_cli_democlean_outcome_cleaned",
+        "lockey_cli_democlean_outcome_nothing",
+        "lockey_cli_democlean_outcome_noop",
+        "lockey_cli_democlean_outcome_failed_template",
+        "lockey_cli_democlean_outcome_line_template",
+        "lockey_cli_democlean_droptenant_warning_template",
+        "lockey_cli_democlean_droptenant_completed_template",
+        "lockey_cli_democlean_droptenant_partial_template",
+        "lockey_cli_democlean_droptenant_failed_template",
     ];
 
     [Fact]

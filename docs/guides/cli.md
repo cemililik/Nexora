@@ -166,6 +166,88 @@ $ echo $?
 > for them. The scenario string is passed through untouched — experimental
 > values ARE accepted and will no-op on modules that do not recognise them.
 
+### 3.3 `demo:clean`
+
+Inverse of `demo:load` (T-009). Removes demo-seeded rows by invoking
+`IModule.CleanDemoDataAsync` on every installed module in **reverse**
+dependency order and then deleting the matching `demo_seed_markers` rows so a
+subsequent `demo:load` re-seeds cleanly. The `--drop-tenant` mode takes a
+different path: it drops the entire tenant schema via
+`DROP SCHEMA ... CASCADE` and publishes `TenantDeprovisionedIntegrationEvent`
+so downstream systems (MinIO buckets, Keycloak realm, cache) can clean their
+own footprint.
+
+```bash
+# Module-by-module cleanup of demo-seeded rows:
+nexora demo:clean --tenant=<guid> --scenario=<name> [--dry-run] [--verbose]
+
+# Destructive full-tenant drop (requires explicit --yes confirmation):
+nexora demo:clean --tenant=<guid> --drop-tenant --yes [--verbose]
+```
+
+| Flag | Required | Accepts | Description |
+|------|----------|---------|-------------|
+| `--tenant` | yes | GUID | Target tenant id. |
+| `--scenario` | yes * | string | Scenario identifier. * Not required (and ignored) when `--drop-tenant` is set. |
+| `--drop-tenant` | no | flag | Drops the whole tenant schema. Destructive — combine with `--yes`. |
+| `--yes` | required with `--drop-tenant` | flag | Non-interactive confirmation for `--drop-tenant`. No TTY prompt is offered; CLI stays scriptable. Missing `--yes` yields exit code 1. |
+| `--dry-run` | no | flag | Print the plan without calling the cleaner. |
+| `--verbose`, `-v` | no | flag | Include the underlying exception type + message on failure. |
+
+**Idempotency.** Safe to re-run against an already-clean tenant: modules that
+are already clean invoke their no-op cleanup and report `cleaned`; modules
+that never had a marker report `nothing to clean`. The only non-idempotent
+step is `--drop-tenant`, which is a one-shot DROP CASCADE.
+
+**Mixed real + demo data.** Each module is responsible for distinguishing
+its demo rows from real rows in its own `CleanDemoDataAsync` — the
+orchestrator does not know which rows are demo vs. real. Recommended
+patterns: a `Source = "demo"` column, a `DemoBatchId` FK, or a deterministic
+ID prefix. See the XML docs on `IModule.CleanDemoDataAsync` for the
+contract.
+
+#### Example — normal cleanup
+
+```bash
+$ nexora demo:clean --tenant=3f2b…c7a1 --scenario=general
+demo:clean completed for tenant 3f2b…c7a1 scenario general:
+  - crm: cleaned
+  - contacts: cleaned
+  - identity: nothing to clean
+  - audit: no-op (no demo content)
+$ echo $?
+0
+```
+
+#### Example — full tenant drop
+
+```bash
+$ nexora demo:clean --tenant=3f2b…c7a1 --drop-tenant --yes
+[drop-tenant] dropping schema tenant_3f2b…c7a1 CASCADE — all data lost.
+demo:clean --drop-tenant completed for tenant 3f2b…c7a1; TenantDeprovisionedIntegrationEvent published.
+$ echo $?
+0
+```
+
+#### Example — destructive op without confirmation
+
+```bash
+$ nexora demo:clean --tenant=3f2b…c7a1 --drop-tenant
+--drop-tenant is destructive. Re-run with --yes to confirm the whole tenant schema will be dropped.
+$ echo $?
+1
+```
+
+#### Known limitation — `TenantDeprovisionedIntegrationEvent` delivery
+
+The event is published via `IEventBus` directly, NOT via the transactional
+outbox — because the current outbox table lives inside the tenant schema
+that `--drop-tenant` is about to drop. Direct publish is at-most-once: a
+Dapr/Kafka failure at the moment of drop loses the signal. Exit code `2`
+(PartialFailure) is returned with a human-readable error so operators know
+to trigger external cleanup manually. A platform-level (tenant-independent)
+outbox is filed as a Phase-2 follow-up.
+
 ---
 
 ## 4. Locale support
