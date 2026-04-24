@@ -18,6 +18,16 @@ public sealed record ContactExportCompletedIntegrationEvent : IntegrationEventBa
     /// <summary>Gets the user that triggered the export, when available.</summary>
     public required Guid? TriggeredByUserId { get; init; }
 
+    /// <summary>
+    /// Gets the organization id that scoped the export (usually the caller's
+    /// current org). Downstream consumers (e.g. the Notifications
+    /// `ContactExportCompletedNotificationHandler`) use this to scope the
+    /// in-app notification to the right organization so template resolution
+    /// and per-org preferences apply. <c>null</c> when the export was issued
+    /// at the tenant level (no org context).
+    /// </summary>
+    public Guid? OrganizationId { get; init; }
+
     /// <summary>Gets the UTC timestamp when the export completed.</summary>
     public required DateTime CompletedAtUtc { get; init; }
 }

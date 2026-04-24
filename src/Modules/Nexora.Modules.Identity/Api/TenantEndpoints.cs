@@ -97,21 +97,28 @@ public static class TenantEndpoints
             if (request.TenantId == Guid.Empty)
             {
                 return Results.BadRequest(ApiEnvelope<DemoSeedRunResult>.Fail(
-                    new Error(LocalizedMessage.Of("lockey_platform_tenants_demo_invalid_tenant"))));
+                    new Error(LocalizedMessage.Of("lockey_identity_tenants_demo_invalid_tenant"))));
             }
             if (string.IsNullOrWhiteSpace(request.Scenario))
             {
                 return Results.BadRequest(ApiEnvelope<DemoSeedRunResult>.Fail(
-                    new Error(LocalizedMessage.Of("lockey_platform_tenants_demo_missing_scenario"))));
+                    new Error(LocalizedMessage.Of("lockey_identity_tenants_demo_missing_scenario"))));
             }
 
             var result = await seeder.SeedAsync(request.TenantId.ToString(), request.Scenario, ct);
             var anyFailed = result.Modules.Any(m => m.Status == DemoSeedStatus.Failed);
+            // Partial failures are surfaced via the message-key swap, NOT via
+            // ApiEnvelope.Fail: clients need the full per-module outcome
+            // array to render the seeded / already-seeded / failed rows, and
+            // ApiEnvelope.Fail cannot carry a data payload. The frontend hook
+            // (useCreateDemoEnvironment) inspects `modules[].status` to pick
+            // between toast.success and toast.warning regardless of the
+            // envelope shape — the message-key tells it which one to use.
             return anyFailed
                 ? Results.Ok(ApiEnvelope<DemoSeedRunResult>.Success(result,
-                    LocalizedMessage.Of("lockey_platform_tenants_demo_completed_with_failures")))
+                    LocalizedMessage.Of("lockey_identity_tenants_demo_completed_with_failures")))
                 : Results.Ok(ApiEnvelope<DemoSeedRunResult>.Success(result,
-                    LocalizedMessage.Of("lockey_platform_tenants_demo_completed")));
+                    LocalizedMessage.Of("lockey_identity_tenants_demo_completed")));
         })
         .RequireAuthorization("platform.tenants.create_demo")
         .WithSummary("Push demo data into an existing tenant (platform operators only)")

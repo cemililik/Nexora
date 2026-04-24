@@ -42,15 +42,15 @@ describe('CreateDemoEnvironmentDialog', () => {
     mockApiPost.mockReset();
   });
 
-  it('renders title, description, and scenario dropdown with the general + ngo options', async () => {
+  it('renders title, description, and scenario dropdown with the general + ngo options', () => {
     renderWithClient(
       <CreateDemoEnvironmentDialog tenantId="t-1" open onOpenChange={vi.fn()} />,
     );
 
-    expect(screen.getByText('lockey_platform_tenants_demo_dialog_title')).toBeInTheDocument();
-    expect(screen.getByText('lockey_platform_tenants_demo_dialog_description')).toBeInTheDocument();
+    expect(screen.getByText('lockey_identity_tenants_demo_dialog_title')).toBeInTheDocument();
+    expect(screen.getByText('lockey_identity_tenants_demo_dialog_description')).toBeInTheDocument();
     // Dropdown trigger is the scenario FormField's Select — default selected is "general".
-    expect(screen.getByText('lockey_platform_tenants_demo_scenario_general')).toBeInTheDocument();
+    expect(screen.getByText('lockey_identity_tenants_demo_scenario_general')).toBeInTheDocument();
   });
 
   it('submits the selected scenario to /identity/tenants/demo and renders the per-module outcome list', async () => {
@@ -69,7 +69,7 @@ describe('CreateDemoEnvironmentDialog', () => {
     );
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'lockey_platform_tenants_demo_submit' }),
+      screen.getByRole('button', { name: 'lockey_identity_tenants_demo_submit' }),
     );
 
     await waitFor(() => {
@@ -87,7 +87,7 @@ describe('CreateDemoEnvironmentDialog', () => {
     });
     // Submit button is gone after success (only cancel remains).
     expect(
-      screen.queryByRole('button', { name: 'lockey_platform_tenants_demo_submit' }),
+      screen.queryByRole('button', { name: 'lockey_identity_tenants_demo_submit' }),
     ).not.toBeInTheDocument();
   });
 
@@ -105,7 +105,7 @@ describe('CreateDemoEnvironmentDialog', () => {
     );
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'lockey_platform_tenants_demo_submit' }),
+      screen.getByRole('button', { name: 'lockey_identity_tenants_demo_submit' }),
     );
 
     await waitFor(() => {

@@ -221,11 +221,19 @@ public sealed class ContactExportJob(
 
         exportJob.MarkCompleted(storageKey);
 
-        // Always emit the outbox event — the outbox+MarkCompleted SaveChangesAsync below
-        // is atomic, so if a prior attempt had persisted the event, it would also have
-        // persisted Completed and we wouldn't have reached this path (the early-return
-        // guard above skips terminal states). Downstream consumers are inbox-guarded
-        // (ADR-014) so a retry that re-emits is safely deduplicated.
+        // Atomicity boundary — important for reviewers: the DB state
+        // (exportJob.MarkCompleted) + the outbox row (via EnqueueAsync
+        // staging the OutboxMessage on the SAME dbContext change-tracker)
+        // commit atomically below in the single SaveChangesAsync. The
+        // MinIO upload above is OUTSIDE the DB transaction — on a crash
+        // between UploadObjectAsync and SaveChangesAsync, the blob is
+        // written but neither Completed nor the outbox row commits, so
+        // the next run re-uploads to the same storageKey (idempotent) and
+        // emits a new outbox event with a NEW EventId. That new EventId
+        // triggers a fresh inbox-guarded dispatch downstream — the
+        // previous emission never escaped, so there is no dup. Downstream
+        // consumers are inbox-guarded (ADR-014) so any Dapr-level
+        // redelivery of the same EventId is also deduplicated.
         await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
         {
             TenantId = parameters.TenantId,
@@ -234,6 +242,11 @@ public sealed class ContactExportJob(
             Format = parameters.Format.ToLowerInvariant(),
             StorageKey = storageKey,
             TriggeredByUserId = parameters.TriggeredByUserId,
+            // Carry the organization id so the downstream notification
+            // handler can scope the in-app send to the right org — without
+            // this, the handler sent with OrganizationId=null which was a
+            // regression from the previous inline implementation.
+            OrganizationId = parameters.OrganizationIdGuid,
             CompletedAtUtc = DateTime.UtcNow
         }, ct);
 

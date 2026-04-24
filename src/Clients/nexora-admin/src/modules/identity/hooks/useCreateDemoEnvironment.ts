@@ -1,9 +1,11 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '@/shared/lib/api';
 import { useApiError } from '@/shared/hooks/useApiError';
+import { tenantKeys } from './useTenants';
+import { moduleKeys } from './useModuleManagement';
 
 /**
  * Per-module seed outcome returned by POST /identity/tenants/demo — matches
@@ -39,8 +41,15 @@ interface CreateDemoEnvironmentPayload {
  * for each module in one shot. If T-007 scenarios grow heavy enough to need
  * async seeding, swap the mutationFn for a polling hook under the same URL
  * without touching call sites.
+ *
+ * On success invalidates `tenantKeys.detail(tenantId)` and
+ * `moduleKeys.all(tenantId)` so `useTenant` / `useTenantModules` on the
+ * caller page (e.g. TenantDetailPage) re-fetch — demo seed writes into the
+ * tenant schema and module-marker rows, both of which the detail view
+ * surfaces.
  */
 export function useCreateDemoEnvironment() {
+  const queryClient = useQueryClient();
   const { t } = useTranslation('identity');
   const { handleApiError } = useApiError();
 
@@ -52,14 +61,20 @@ export function useCreateDemoEnvironment() {
       );
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       const anyFailed = data.modules.some((m) => m.status === 'Failed');
       if (anyFailed) {
-        toast.warning(t('lockey_platform_tenants_demo_completed_with_failures'));
+        toast.warning(t('lockey_identity_tenants_demo_completed_with_failures'));
       } else {
-        toast.success(t('lockey_platform_tenants_demo_completed'));
+        toast.success(t('lockey_identity_tenants_demo_completed'));
       }
+      void queryClient.invalidateQueries({
+        queryKey: tenantKeys.detail(variables.tenantId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: moduleKeys.all(variables.tenantId),
+      });
     },
-    onError: (err) => handleApiError(err),
+    onError: handleApiError,
   });
 }

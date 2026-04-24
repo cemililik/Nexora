@@ -12,16 +12,33 @@ namespace Nexora.Host.Tests.Cli;
 /// partial-failure mapping. Mirrors the <c>DemoLoadCommandTests</c> shape so
 /// both CLI test files keep one test layout.
 /// </summary>
-public sealed class DemoCleanCommandTests
+public sealed class DemoCleanCommandTests : IDisposable
 {
     private readonly Guid _tenantId = Guid.NewGuid();
     private const string Scenario = "general";
 
-    static DemoCleanCommandTests()
+    // Restore-after-test culture discipline: assert EN during the test so
+    // lockey-token `Contains(...)` assertions resolve to known English text,
+    // then restore the original culture in Dispose so the mutation does not
+    // leak to sibling test classes or a subsequent test run in the same
+    // process (xUnit does NOT isolate process-wide culture across test
+    // classes; a static ctor here would poison the whole assembly).
+    private readonly System.Globalization.CultureInfo _originalCulture;
+    private readonly System.Globalization.CultureInfo? _originalDefault;
+
+    public DemoCleanCommandTests()
     {
-        System.Globalization.CultureInfo.CurrentUICulture =
+        _originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        _originalDefault = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture;
+        System.Threading.Thread.CurrentThread.CurrentUICulture =
             System.Globalization.CultureInfo.DefaultThreadCurrentUICulture =
                 new System.Globalization.CultureInfo("en");
+    }
+
+    public void Dispose()
+    {
+        System.Threading.Thread.CurrentThread.CurrentUICulture = _originalCulture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = _originalDefault;
     }
 
     [Fact]
@@ -188,7 +205,9 @@ public sealed class DemoCleanCommandTests
         var exit = await DemoCleanCommand.RunAsync(opts, hostFactory: () => host, console);
 
         exit.Should().Be(CliDispatcher.PartialFailure);
-        console.Lines.Should().Contain(l => l.Contains("dapr down"));
+        // --drop-tenant outcome messages now stream on stderr (Finding #25),
+        // so the error-message surface lives on ErrorLines not Lines.
+        console.ErrorLines.Should().Contain(l => l.Contains("dapr down"));
     }
 
     // --- Helpers ------------------------------------------------------------

@@ -144,7 +144,7 @@ public sealed class IdentityModule : IModule
         // tenant schema. Platform-scope on purpose — tenant admins must not be
         // able to seed demo data into their own tenant from the browser.
         registry.Register("platform", "tenants", "create_demo",
-            "lockey_platform_permission_tenants_create_demo", PermissionScope.Platform);
+            "lockey_identity_permission_tenants_create_demo", PermissionScope.Platform);
 
         return Task.CompletedTask;
     }

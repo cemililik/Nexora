@@ -11,7 +11,22 @@ namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 /// module. Delivers the export-ready in-app notification to the user that
 /// triggered the export. The handler is inbox-guarded so Hangfire retries of the
 /// parent <c>ContactExportJob</c> — or Dapr pub/sub redeliveries of the same
-/// event — never produce a second notification.
+/// event — are effectively deduplicated in the common case.
+///
+/// <para>
+/// <b>Delivery semantics — at-least-once with inbox dedup (NOT exactly-once).</b>
+/// The transactional outbox guarantees at least one emission per successful
+/// export (atomic with the terminal state transition). The inbox guard on
+/// <see cref="IIntegrationEvent.EventId"/> deduplicates redeliveries of that
+/// emission. However, <c>INotificationService.SendAsync</c> and the subsequent
+/// <c>dbContext.SaveChangesAsync</c> (which commits the inbox MarkAsProcessed
+/// row) are NOT atomic — a crash or Dapr channel drop in the window after
+/// <c>SendAsync</c> succeeds but before the inbox row commits will, on
+/// redelivery, result in a DUPLICATE notification. This residual window is
+/// the practical limit of outbox + inbox; the user-visible consequence is
+/// one duplicate export-ready notification in rare crash scenarios, which
+/// is strictly preferable to the previous design's potential miss.
+/// </para>
 ///
 /// <para>
 /// <b>T-028 design note.</b> The job previously emitted the notification
@@ -19,14 +34,12 @@ namespace Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
 /// on resume but produced the dual trade-off of potentially *missing* a
 /// notification when a crash landed between <c>MarkProcessing</c> and
 /// <c>SendAsync</c>. Moving the send to an inbox-guarded consumer of the
-/// existing outbox event closes both gaps at once: the transactional outbox
-/// guarantees the event is emitted exactly once per successful export (atomic
-/// with the terminal state transition), and the inbox guard on
-/// <see cref="IIntegrationEvent.EventId"/> deduplicates any redelivery of that
-/// single emission. The logical "<c>contacts:export-ready:{jobId}</c>" dedupe
-/// key called out in the T-028 task spec is realised via EventId identity — one
-/// EventId escapes the outbox transaction per export job, so EventId dedup is
-/// equivalent to a per-job dedup key at the inbox layer.
+/// existing outbox event trades that miss risk for a much smaller duplicate
+/// risk (the at-most-once window above) — the explicit preference per
+/// T-028's design. The logical "<c>contacts:export-ready:{jobId}</c>" dedupe
+/// key called out in the T-028 task spec is realised via EventId identity —
+/// one EventId escapes the outbox transaction per export job, so EventId
+/// dedup is equivalent to a per-job dedup key at the inbox layer.
 /// </para>
 /// </summary>
 public sealed class ContactExportCompletedNotificationHandler(
@@ -90,18 +103,22 @@ public sealed class ContactExportCompletedNotificationHandler(
                     ["format"] = @event.Format,
                     ["totalRows"] = @event.TotalRows.ToString(CultureInfo.InvariantCulture)
                 },
-                OrganizationId: null), ct);
+                OrganizationId: @event.OrganizationId?.ToString()), ct);
         }
         catch (InvalidOperationException ex)
         {
-            // Non-fatal — the export itself succeeded and the user can still
-            // see it on the status page. Don't mark inbox-processed: next
-            // redelivery may succeed.
+            // Log + rethrow: returning here would cause Dapr to ACK the
+            // message and silently drop the redelivery. The inbox row stays
+            // unmarked (we didn't reach MarkAsProcessed), and rethrowing
+            // signals Dapr to NACK → the broker redelivers the same EventId,
+            // the guard short-circuits at the top if the transient error
+            // resolved by then (e.g. a template just landed) — giving us
+            // real retry behaviour instead of at-most-once silent loss.
             logger.LogWarning(
                 ex,
-                "Failed to send export-ready notification for job {ExportJobId}; will retry on next redelivery of event {EventId}",
+                "Failed to send export-ready notification for job {ExportJobId}; NACKing to trigger redelivery of event {EventId}",
                 @event.JobId, @event.EventId);
-            return;
+            throw;
         }
 
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);

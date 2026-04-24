@@ -116,11 +116,22 @@ public sealed class DemoDataCleaner(
             {
                 await module.CleanDemoDataAsync(seedContext, ct);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            catch (OperationCanceledException ex)
             {
-                // Caller cancelled — propagate. Marker stays so the next run
-                // knows cleanup was interrupted.
-                throw;
+                // Distinguish the caller's cancellation from a module-internal
+                // cancellation (e.g. the module's own timeout token firing).
+                // Only the CALLER cancellation should abort the whole CleanAsync
+                // loop — a module that cancels itself is reported as a Failed
+                // outcome so siblings still run, matching the behaviour of any
+                // other module-internal exception below.
+                if (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                logger.LogError(ex,
+                    "Demo-clean: module {Module} aborted via internal cancellation for tenant {TenantId} scenario {Scenario}. Siblings continue.",
+                    module.Name, tenantGuid, scenario);
+                return new DemoCleanModuleOutcome(module.Name, DemoCleanStatus.Failed, ex.Message);
             }
             catch (DbUpdateException ex)
             {
@@ -146,27 +157,55 @@ public sealed class DemoDataCleaner(
         }
 
         // Remove the marker row (if any) so a subsequent demo:load re-seeds
-        // cleanly. Refetch tracked entity inside this scope — see the same
-        // AsNoTracking rationale in DemoDataSeeder.SeedModuleAsync.
-        var tracked = await markerDb.Markers.FirstOrDefaultAsync(
-            m => m.TenantId == tenantGuid &&
-                 m.ModuleName == module.Name &&
-                 m.Scenario == scenario,
-            ct);
-        if (tracked is not null)
+        // cleanly. Prefer ExecuteDeleteAsync on relational providers — single
+        // DELETE round-trip, composite PK (TenantId, ModuleName, Scenario)
+        // is fully indexed, count is 0-or-1 so no "affected rows > 1"
+        // surprise. Falls back to load + Remove + SaveChanges on the
+        // InMemory provider used in unit tests (InMemory does not support
+        // ExecuteDeleteAsync — same pattern as
+        // ContactGdprDeletedIntegrationEventHandler's relational check).
+        try
         {
-            markerDb.Markers.Remove(tracked);
-            try
+            if (markerDb.Database.IsRelational())
             {
-                await markerDb.SaveChangesAsync(ct);
+                await markerDb.Markers
+                    .Where(m => m.TenantId == tenantGuid &&
+                                m.ModuleName == module.Name &&
+                                m.Scenario == scenario)
+                    .ExecuteDeleteAsync(ct);
             }
-            catch (DbUpdateException ex)
+            else
             {
-                logger.LogError(ex,
-                    "Demo-clean: module {Module} data cleaned but marker-row delete failed for tenant {TenantId}.",
-                    module.Name, tenantGuid);
-                return new DemoCleanModuleOutcome(module.Name, DemoCleanStatus.Failed, ex.Message);
+                var tracked = await markerDb.Markers.FirstOrDefaultAsync(
+                    m => m.TenantId == tenantGuid &&
+                         m.ModuleName == module.Name &&
+                         m.Scenario == scenario,
+                    ct);
+                if (tracked is not null)
+                {
+                    markerDb.Markers.Remove(tracked);
+                    await markerDb.SaveChangesAsync(ct);
+                }
             }
+        }
+        catch (DbUpdateException ex)
+        {
+            // CleanDemoDataAsync succeeded but the marker row delete failed —
+            // surface the distinction in the error message so operators can
+            // see "data cleaned but marker row delete failed" instead of
+            // thinking the whole module failed. Status stays Failed because
+            // the marker row will short-circuit a future demo:load as
+            // already-seeded against data that's already gone (re-seeding
+            // would write the same content back, which is itself OK but
+            // wastes effort and could surface as "nothing to seed — marker
+            // present").
+            logger.LogError(ex,
+                "Demo-clean: module {Module} data cleaned but marker row delete failed for tenant {TenantId}: {Error}",
+                module.Name, tenantGuid, ex.Message);
+            return new DemoCleanModuleOutcome(
+                module.Name,
+                DemoCleanStatus.Failed,
+                $"Data cleaned but marker row delete failed: {ex.Message}");
         }
 
         var status = isDefaultNoOp
@@ -195,7 +234,11 @@ public sealed class DemoDataCleaner(
         // demo:load tenant-schema probe: reuse the host's connection-string
         // resolution and pooling instead of new-ing a raw NpgsqlConnection.
         var dbContext = scope.ServiceProvider.GetRequiredService<DemoSeedMarkerDbContext>();
-        var schemaName = $"tenant_{tenantGuid}";
+        // Use the canonical SchemaName from the tenant context, not a locally
+        // reconstructed string. TenantContext + BaseDbContext.HasDefaultSchema
+        // are the single source of truth; recomputing `tenant_{guid}` here
+        // would fork the format from that source if it ever changes.
+        var schemaName = accessor.Current.SchemaName;
 
         try
         {

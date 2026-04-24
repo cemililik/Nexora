@@ -136,7 +136,7 @@ export default function TenantDetailPage() {
               variant="outline"
               onClick={() => setDemoDialogOpen(true)}
             >
-              {t('lockey_platform_tenants_demo_button')}
+              {t('lockey_identity_tenants_demo_button')}
             </Button>
           )}
         </div>

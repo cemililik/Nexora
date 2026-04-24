@@ -127,12 +127,15 @@ public sealed class ContactExportCompletedNotificationHandlerTests : IDisposable
     }
 
     [Fact]
-    public async Task HandleAsync_SendAsyncThrows_DoesNotMarkInboxSoRedeliveryRetries()
+    public async Task HandleAsync_SendAsyncThrows_RethrowsAndLeavesInboxUnmarkedSoDaprRedelivers()
     {
-        // The notification send is best-effort: if it fails, the inbox stays
-        // unmarked so the next redelivery of the SAME EventId will retry.
-        // This is distinct from the invalid-payload case above, which IS
-        // marked to prevent an infinite retry loop.
+        // Finding #24: The handler must RETHROW on send failure so Dapr
+        // NACKs the message and the broker redelivers. Silently returning
+        // (the old behaviour) caused Dapr to ACK → at-most-once silent
+        // loss, not at-least-once with retry. Inbox stays unmarked so the
+        // redelivery of the same EventId either (a) succeeds on retry or
+        // (b) trips the guard at the top of HandleAsync if a prior retry
+        // already succeeded.
         var userId = Guid.NewGuid();
         var @event = CreateEvent(jobId: Guid.NewGuid(), triggeredByUserId: userId);
         _notificationService
@@ -140,10 +143,13 @@ public sealed class ContactExportCompletedNotificationHandlerTests : IDisposable
             .Throws(new InvalidOperationException("template not found"));
 
         var handler = CreateHandler();
-        await handler.HandleAsync(@event, CancellationToken.None);
+
+        var act = async () => await handler.HandleAsync(@event, CancellationToken.None);
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*template not found*");
 
         _processedEventIds.Should().NotContain(@event.EventId,
-            "transient send failures must leave the inbox unmarked so a future redelivery gets another chance.");
+            "transient send failures must leave the inbox unmarked so Dapr redelivery gets another chance.");
     }
 
     // --- Helpers -------------------------------------------------------------

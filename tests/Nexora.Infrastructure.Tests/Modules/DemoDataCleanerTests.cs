@@ -98,6 +98,35 @@ public sealed class DemoDataCleanerTests
     }
 
     [Fact]
+    public async Task CleanAsync_ModuleThrowsInternalCancellation_DoesNotBlockSiblings()
+    {
+        // A module that throws OperationCanceledException from its OWN
+        // internal token (not the caller's ct) must be treated as a regular
+        // module failure — marked Failed, siblings still run. This test
+        // protects the `catch (OperationCanceledException) ... if (ct.IsCancellationRequested) throw;`
+        // filter in DemoDataCleaner.CleanModuleAsync from silently aborting
+        // the whole pipeline on an internal cancellation.
+        var seedLog = new List<string>();
+        var cleanLog = new List<string>();
+        var broken = new FakeModule(
+            "contacts", Array.Empty<string>(), seedLog, cleanLog,
+            throwInternalCancellation: true);
+        var healthy = new FakeModule("documents", Array.Empty<string>(), seedLog, cleanLog);
+        var (seeder, cleaner) = BuildPair(broken, healthy);
+
+        await seeder.SeedAsync(_tenantId.ToString(), Scenario);
+        // Caller's ct is NOT cancelled — only the module's internal token is.
+        var result = await cleaner.CleanAsync(_tenantId.ToString(), Scenario, CancellationToken.None);
+
+        result.Modules.Single(m => m.ModuleName == "contacts").Status.Should().Be(
+            DemoCleanStatus.Failed,
+            "internal module cancellation is a module failure, not a caller abort.");
+        result.Modules.Single(m => m.ModuleName == "documents").Status.Should().Be(
+            DemoCleanStatus.Cleaned,
+            "sibling modules must still run when one module cancels internally.");
+    }
+
+    [Fact]
     public async Task CleanAsync_Idempotent_SecondRunReportsNothingToClean()
     {
         var module = new FakeModule("contacts", Array.Empty<string>(), new List<string>(), new List<string>());
@@ -161,19 +190,22 @@ public sealed class DemoDataCleanerTests
         private readonly List<string> _seedLog;
         private readonly List<string> _cleanLog;
         private readonly bool _throwOnClean;
+        private readonly bool _throwInternalCancellation;
 
         public FakeModule(
             string name,
             IReadOnlyList<string> dependencies,
             List<string> seedLog,
             List<string> cleanLog,
-            bool throwOnClean = false)
+            bool throwOnClean = false,
+            bool throwInternalCancellation = false)
         {
             Name = name;
             _dependencies = dependencies;
             _seedLog = seedLog;
             _cleanLog = cleanLog;
             _throwOnClean = throwOnClean;
+            _throwInternalCancellation = throwInternalCancellation;
         }
 
         public string Name { get; }
@@ -201,6 +233,16 @@ public sealed class DemoDataCleanerTests
             _cleanLog.Add(Name);
             if (_throwOnClean)
                 throw new InvalidOperationException($"fake module '{Name}' is broken on clean");
+            if (_throwInternalCancellation)
+            {
+                // Simulate a module's OWN timeout / internal cancellation —
+                // NOT the caller's ct. The token passed to the exception is
+                // a cancelled one the module created locally; the outer ct
+                // is still alive (caller has not cancelled).
+                using var internalCts = new CancellationTokenSource();
+                internalCts.Cancel();
+                throw new OperationCanceledException(internalCts.Token);
+            }
             return Task.CompletedTask;
         }
     }

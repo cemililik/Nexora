@@ -12,6 +12,7 @@ using Nexora.Modules.Contacts.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
+using Nexora.SharedKernel.Domain.Events;
 using Nexora.SharedKernel.Abstractions.Storage;
 
 namespace Nexora.Modules.Contacts.Tests.Infrastructure.Jobs;
@@ -87,6 +88,7 @@ public sealed class ContactExportJobTests : IDisposable
     [Fact]
     public async Task Execute_Csv_ShouldUploadAndCompleteJob()
     {
+        var triggeredBy = Guid.NewGuid();
         await SeedContactAsync("Alice", "Adams", "alice@example.com");
         await SeedContactAsync("Bob", "Brown", "bob@example.com");
         var job = await SeedExportJobAsync("csv");
@@ -99,7 +101,8 @@ public sealed class ContactExportJobTests : IDisposable
             Arg.Do<byte[]>(b => uploadedBytes = b), Arg.Do<string>(t => uploadedContentType = t),
             Arg.Any<CancellationToken>());
 
-        await CreateJob().RunAsync(ParamsFor(job, "csv"), CancellationToken.None);
+        await CreateJob().RunAsync(
+            ParamsFor(job, "csv", triggeredBy: triggeredBy), CancellationToken.None);
 
         uploadedBytes.Should().NotBeNull();
         uploadedContentType.Should().Be("text/csv");
@@ -107,6 +110,20 @@ public sealed class ContactExportJobTests : IDisposable
         var csvText = Encoding.UTF8.GetString(uploadedBytes!);
         csvText.Should().Contain("alice@example.com");
         csvText.Should().Contain("bob@example.com");
+
+        // T-028: job must emit ContactExportCompletedIntegrationEvent via the
+        // outbox (NOT via a direct notification send). Assert both the call
+        // shape and the payload so a future refactor that drops fields surfaces
+        // immediately.
+        await _outbox.Received(1).EnqueueAsync(
+            Arg.Is<ContactExportCompletedIntegrationEvent>(e =>
+                e.JobId == job.Id.Value &&
+                e.TenantId == _tenantId.ToString() &&
+                e.Format == "csv" &&
+                e.TotalRows == 2 &&
+                e.TriggeredByUserId == triggeredBy &&
+                e.OrganizationId == _orgId),
+            Arg.Any<CancellationToken>());
 
         var persisted = await _dbContext.ExportJobs.AsNoTracking()
             .FirstAsync(j => j.Id == job.Id);
