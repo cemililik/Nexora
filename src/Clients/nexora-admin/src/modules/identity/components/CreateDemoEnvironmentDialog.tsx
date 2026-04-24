@@ -72,7 +72,12 @@ export function CreateDemoEnvironmentDialog({
   };
 
   const handleSubmit = () => {
-    if (!scenario) return;
+    // `scenario` is typed as DemoScenario (non-nullable union) with a
+    // hardcoded default of 'general' and `setScenario` only accepts the
+    // same union, so a falsy check is dead. Submit unconditionally — if the
+    // dropdown ever becomes registry-driven (T-007a), widen the type to
+    // `DemoScenario | ''` and reinstate the guard alongside the first
+    // Select.Empty item.
     mutation.mutate(
       { tenantId, scenario },
       {
@@ -94,8 +99,15 @@ export function CreateDemoEnvironmentDialog({
         return t('lockey_identity_tenants_demo_outcome_already_seeded');
       case 'NoOp':
         return t('lockey_identity_tenants_demo_outcome_noop');
-      case 'Failed':
-        return `${t('lockey_identity_tenants_demo_outcome_failed')}${errorMessage ? ' — ' + errorMessage : ''}`;
+      case 'Failed': {
+        // Backend returns raw `lockey_` keys — resolve via i18n so the UI
+        // surfaces the translated message, not the key string. Only call
+        // `t(...)` when errorMessage is truthy; appending a trailing
+        // " — undefined" if the backend omitted the message would be ugly.
+        const base = t('lockey_identity_tenants_demo_outcome_failed');
+        if (!errorMessage) return base;
+        return `${base} — ${t(errorMessage)}`;
+      }
       default:
         return status;
     }
@@ -140,7 +152,9 @@ export function CreateDemoEnvironmentDialog({
           >
             <Select
               value={scenario}
-              onValueChange={(next) => setScenario(next as DemoScenario)}
+              onValueChange={(next) => {
+                setScenario(next as DemoScenario);
+              }}
             >
               <SelectTrigger id="demo-scenario-select">
                 <SelectValue />

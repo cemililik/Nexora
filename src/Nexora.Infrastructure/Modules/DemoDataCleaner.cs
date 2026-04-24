@@ -41,9 +41,13 @@ public sealed class DemoDataCleaner(
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(scenario);
 
+        // Contract-violation indicator (caller bug): CLI + HTTP callers validate
+        // the GUID shape before this point. The message is a lockey key so the
+        // CLI's --verbose path surfaces a translatable string instead of a
+        // hardcoded English sentence.
         if (!Guid.TryParse(tenantId, out var tenantGuid))
             throw new ArgumentException(
-                $"TenantId must be a GUID; got '{tenantId}'.", nameof(tenantId));
+                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
 
         var allModules = modules.ToList();
         // Reverse dependency order: a module can only be cleaned after every
@@ -222,9 +226,13 @@ public sealed class DemoDataCleaner(
         string tenantId, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        // Contract-violation indicator (caller bug): CLI + HTTP callers validate
+        // the GUID shape before this point. The message is a lockey key so the
+        // CLI's --verbose path surfaces a translatable string instead of a
+        // hardcoded English sentence.
         if (!Guid.TryParse(tenantId, out var tenantGuid))
             throw new ArgumentException(
-                $"TenantId must be a GUID; got '{tenantId}'.", nameof(tenantId));
+                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();

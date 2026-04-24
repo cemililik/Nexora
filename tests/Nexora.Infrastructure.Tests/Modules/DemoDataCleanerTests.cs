@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -98,6 +99,59 @@ public sealed class DemoDataCleanerTests
     }
 
     [Fact]
+    public async Task CleanAsync_ModuleThrowsDbUpdateException_DoesNotBlockSiblings()
+    {
+        // Exercises the `catch (DbUpdateException ex)` branch in
+        // CleanModuleAsync: a module that fails with a DbUpdate-style error
+        // (e.g. a FK violation while deleting demo rows) must be marked
+        // Failed; sibling modules still run. Complements the
+        // InvalidOperationException + generic-throw cases above.
+        var seedLog = new List<string>();
+        var cleanLog = new List<string>();
+        var broken = new FakeModule(
+            "contacts", Array.Empty<string>(), seedLog, cleanLog,
+            throwOnCleanException: new DbUpdateException("simulated FK violation"));
+        var healthy = new FakeModule("documents", Array.Empty<string>(), seedLog, cleanLog);
+        var (seeder, cleaner) = BuildPair(broken, healthy);
+
+        await seeder.SeedAsync(_tenantId.ToString(), Scenario);
+        var result = await cleaner.CleanAsync(_tenantId.ToString(), Scenario);
+
+        result.Modules.Single(m => m.ModuleName == "contacts").Status.Should().Be(
+            DemoCleanStatus.Failed,
+            "DbUpdateException must be captured by the CleanModuleAsync catch branch.");
+        result.Modules.Single(m => m.ModuleName == "contacts").ErrorMessage.Should().Contain(
+            "simulated FK violation",
+            "the exception message must flow through to the operator-facing outcome.");
+        result.Modules.Single(m => m.ModuleName == "documents").Status.Should().Be(
+            DemoCleanStatus.Cleaned);
+    }
+
+    [Fact]
+    public async Task CleanAsync_ModuleThrowsDbException_DoesNotBlockSiblings()
+    {
+        // Exercises the `catch (DbException ex)` branch — covers the
+        // non-EF-wrapped provider exceptions (e.g. Npgsql connection-level
+        // errors not surfaced through DbUpdateException).
+        var seedLog = new List<string>();
+        var cleanLog = new List<string>();
+        var broken = new FakeModule(
+            "contacts", Array.Empty<string>(), seedLog, cleanLog,
+            throwOnCleanException: new FakeDbException("simulated connection reset"));
+        var healthy = new FakeModule("documents", Array.Empty<string>(), seedLog, cleanLog);
+        var (seeder, cleaner) = BuildPair(broken, healthy);
+
+        await seeder.SeedAsync(_tenantId.ToString(), Scenario);
+        var result = await cleaner.CleanAsync(_tenantId.ToString(), Scenario);
+
+        result.Modules.Single(m => m.ModuleName == "contacts").Status.Should().Be(
+            DemoCleanStatus.Failed,
+            "DbException must be captured by the dedicated catch branch.");
+        result.Modules.Single(m => m.ModuleName == "documents").Status.Should().Be(
+            DemoCleanStatus.Cleaned);
+    }
+
+    [Fact]
     public async Task CleanAsync_ModuleThrowsInternalCancellation_DoesNotBlockSiblings()
     {
         // A module that throws OperationCanceledException from its OWN
@@ -191,6 +245,7 @@ public sealed class DemoDataCleanerTests
         private readonly List<string> _cleanLog;
         private readonly bool _throwOnClean;
         private readonly bool _throwInternalCancellation;
+        private readonly Exception? _throwOnCleanException;
 
         public FakeModule(
             string name,
@@ -198,7 +253,8 @@ public sealed class DemoDataCleanerTests
             List<string> seedLog,
             List<string> cleanLog,
             bool throwOnClean = false,
-            bool throwInternalCancellation = false)
+            bool throwInternalCancellation = false,
+            Exception? throwOnCleanException = null)
         {
             Name = name;
             _dependencies = dependencies;
@@ -206,6 +262,7 @@ public sealed class DemoDataCleanerTests
             _cleanLog = cleanLog;
             _throwOnClean = throwOnClean;
             _throwInternalCancellation = throwInternalCancellation;
+            _throwOnCleanException = throwOnCleanException;
         }
 
         public string Name { get; }
@@ -231,6 +288,8 @@ public sealed class DemoDataCleanerTests
         public Task CleanDemoDataAsync(TenantDemoSeedContext context, CancellationToken ct)
         {
             _cleanLog.Add(Name);
+            if (_throwOnCleanException is not null)
+                throw _throwOnCleanException;
             if (_throwOnClean)
                 throw new InvalidOperationException($"fake module '{Name}' is broken on clean");
             if (_throwInternalCancellation)
@@ -246,6 +305,14 @@ public sealed class DemoDataCleanerTests
             return Task.CompletedTask;
         }
     }
+
+    /// <summary>
+    /// Minimal concrete <see cref="DbException"/> used by the Db-exception
+    /// isolation tests — <see cref="DbException"/> is abstract so NSubstitute
+    /// cannot construct one directly. Instances carry a message only; no
+    /// provider-specific state is needed for catch-branch coverage.
+    /// </summary>
+    private sealed class FakeDbException(string message) : DbException(message);
 
     /// <summary>
     /// Second test double that deliberately inherits the default no-op

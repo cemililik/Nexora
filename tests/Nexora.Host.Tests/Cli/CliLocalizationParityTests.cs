@@ -61,6 +61,7 @@ public sealed class CliLocalizationParityTests
         "lockey_cli_demoload_invalid_args_template",
         "lockey_cli_demoload_missing_tenant",
         "lockey_cli_demoload_missing_scenario",
+        "lockey_cli_demoload_invalid_tenant_guid_template",
 
         // demo:clean (DemoCleanCommand — T-009)
         "lockey_cli_usage_democlean_signature",
@@ -90,7 +91,6 @@ public sealed class CliLocalizationParityTests
         "lockey_cli_democlean_droptenant_dryrun_template",
         "lockey_cli_democlean_unknown_error",
         "lockey_cli_democlean_invalid_tenant_guid_template",
-        "lockey_cli_demoload_invalid_tenant_guid_template",
     ];
 
     [Fact]

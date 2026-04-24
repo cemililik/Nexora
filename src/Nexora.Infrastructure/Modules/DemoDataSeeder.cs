@@ -27,9 +27,13 @@ public sealed class DemoDataSeeder(
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(scenario);
 
+        // Contract-violation indicator (caller bug): CLI + HTTP callers validate
+        // the GUID shape before this point. Message is a lockey key so the
+        // operator-facing surface (CLI --verbose, structured logs) carries a
+        // translatable token, not a hardcoded English string.
         if (!Guid.TryParse(tenantId, out var tenantGuid))
             throw new ArgumentException(
-                $"TenantId must be a GUID; got '{tenantId}'.", nameof(tenantId));
+                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
 
         // Filter to modules that are actually installed for the tenant when
         // IModuleAvailability is wired up (planned with the cascade-aware

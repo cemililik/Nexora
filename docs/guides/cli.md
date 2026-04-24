@@ -203,10 +203,23 @@ combinations explicitly, so scripts don't have to guess:
 | `--drop-tenant` + `--dry-run` | `--dry-run` **previews** the drop without executing it. Prints the planned schema name on stderr and exits 0. No `DROP SCHEMA` runs, no `TenantDeprovisionedIntegrationEvent` is published. `--yes` is still required to reach this path — the preview acknowledges operator intent. |
 | `--scenario=<name>` + `--dry-run` | Previews the per-module plan without invoking the cleaner or touching `demo_seed_markers`. Exits 0. |
 
-**Output streams.** `--drop-tenant` warning + outcome lines stream on
-**stderr** so scripts can redirect stdout (e.g. for scripting per-module
-outcome capture) while still seeing destruction notices. Normal-cleanup
-per-module lines stream on stdout.
+**Output streams.** `--drop-tenant` **warning AND success/partial/failure
+outcome lines** all stream on **stderr** (via
+`DemoCleanCommand.IConsole.WriteErrorLine`), including the
+`demo:clean --drop-tenant completed for tenant <id>; TenantDeprovisionedIntegrationEvent published.`
+success line. The rationale is that destruction notices must survive a
+`cmd > out.log` stdout redirect, and routing the success line through the
+same channel keeps the whole drop-tenant narrative on one stream.
+
+> **Heads-up — operators redirecting stderr.** If you pipe or redirect
+> stderr away (`cmd 2>/dev/null`, `cmd 2>&1 | head -n 1`, etc.) you'll
+> lose the drop-tenant success line entirely and see only exit code 0.
+> If you need a single-stream trace for an audit log, use
+> `cmd > out.log 2>&1` (combine both streams) rather than redirecting
+> stderr alone.
+
+Normal-cleanup per-module outcome lines (the common non-destructive path)
+stream on **stdout** so scripts can parse them without the stderr noise.
 
 **Idempotency.** Safe to re-run against an already-clean tenant: modules that
 are already clean invoke their no-op cleanup and report `cleaned`; modules
