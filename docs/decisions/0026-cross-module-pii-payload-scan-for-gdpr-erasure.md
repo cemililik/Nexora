@@ -22,6 +22,35 @@ contact without being keyed to it. Examples surfaced during T-004 review:
 - Subscription `Subscription.billingContact` carries `{ "contactId": "...", "email": "..." }`.
 - Fundraising `Donation.donor` and Finance `JournalEntry.counterparty` likewise.
 
+The end-to-end flow this ADR proposes:
+
+```mermaid
+sequenceDiagram
+    participant Contacts as Contacts module
+    participant Outbox as Outbox / Inbox
+    participant AuditHandler as Audit:ContactGdprDeletedHandler
+    participant ScanJob as ContactPayloadScanJob (Hangfire `maintenance`)
+    participant Locator as IContactReferenceLocator (per module)
+    participant Pg as Postgres (jsonb_path_exists / jsonb_set)
+    participant SummaryAudit as gdpr_erasure_scan audit row
+
+    Contacts->>Outbox: ContactGdprDeletedIntegrationEvent
+    Outbox->>AuditHandler: deliver (inbox-guarded)
+    AuditHandler->>Pg: indexed-path redaction (EntityType=Contact, EntityId=…)
+    AuditHandler->>ScanJob: enqueue ContactPayloadScanJob(tenantId, contactId)
+    ScanJob->>Locator: foreach IContactReferenceLocator in DI
+    Locator-->>ScanJob: ContactReferencePath[] (EntityType, JsonPath, PiiPaths)
+    ScanJob->>Pg: jsonb_path_exists / jsonb_set per declared path
+    Pg-->>ScanJob: rows redacted per (module, entityType)
+    ScanJob->>SummaryAudit: append { action=gdpr_erasure_scan, perModule=[…] }
+```
+
+The diagram captures the load-bearing properties: indexed redaction stays
+synchronous (latency budget = T-004's existing budget); the scan runs
+asynchronously on `maintenance` queue; per-module locators own their
+declarations so the audit module never names another module's payload shape;
+and the summary audit row is the single auditor-visible artefact for the scan.
+
 The T-004 handler explicitly records the limitation in its source comment — it is
 a **GDPR Article 17 compliance gap**. For EU tenants (which ADR-0023 gates behind
 the Phase-1.5.6 hard-delete milestone) the gap is load-bearing: the NMP
@@ -234,13 +263,28 @@ Concrete pointers for implementers (T-010 execution task):
     per-module counts. Never log the redacted payload itself.
 - **Testing**:
   - Unit tests per locator assert path declarations match the module's audit
-    payload shape.
+    payload shape — covers `IContactReferenceLocator` implementations
+    consumed by `ContactPayloadScanJob`.
   - Architecture test `ContactReferenceLocatorCoverageTests` (see Negative
-    consequence above).
-  - Integration test (Testcontainers Postgres) seeds 100k audit rows across 3
-    modules, runs the scan, asserts only the contact-keyed rows are redacted
-    (false-positive gate) and the summary entry is emitted once even on
-    inbox replay.
+    consequence above) — guards that every module touching contact-keyed
+    audit payloads ships a matching `IContactReferenceLocator`.
+  - **JSON-path helper parity test (REQUIRED)**: the scan job uses two
+    backends for the `jsonb_path_exists` / `jsonb_set` operations — the
+    Postgres-native path (production) and an in-process JSON manipulation
+    fallback (InMemory test doubles, see §1 Cons "Postgres
+    `jsonb_path_exists` / `jsonb_set` calls are native-only"). Both MUST
+    produce identical (rows-redacted, payload-after) tuples for the same
+    input. T-010 ships
+    `ContactPayloadJsonHelperParityTests` (Theory-driven over a fixture
+    set: deeply-nested objects, arrays of contacts, missing keys, mixed
+    PII + non-PII at the same path, `null` PiiPaths) that asserts the two
+    backends agree on every fixture. Without this parity gate, a
+    Testcontainers integration test green-light says nothing about how
+    InMemory-backed unit tests will behave in CI — and vice versa.
+  - Integration test (Testcontainers Postgres) seeds 100k audit rows
+    across 3 modules, drives `ContactPayloadScanJob` end-to-end, asserts
+    only the contact-keyed rows are redacted (false-positive gate) and
+    the summary entry is emitted exactly once even on inbox replay.
   - Performance benchmark test (opt-in `Category=Performance`) seeds 10M
     rows and asserts p99 scan time ≤ 900s.
 

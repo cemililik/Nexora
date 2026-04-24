@@ -63,11 +63,17 @@ public interface IModule
     /// <para>
     /// Modules MUST scope all writes to the current tenant and MUST NOT reach
     /// into another module's DbContext — that is enforced by
-    /// <c>DemoDataSeedingBoundaryTests</c>. The orchestrator guarantees
-    /// per-<c>(tenantId, moduleName, scenario)</c> idempotency via the
-    /// <c>platform_demo_seed_markers</c> table; modules should treat the call as
-    /// "this is the first time demo data is being seeded for this tenant +
-    /// scenario" and can skip their own dedup checks.
+    /// <c>DemoDataSeedingBoundaryTests</c>.
+    /// </para>
+    /// <para>
+    /// The orchestrator's marker table reduces the chance of re-running a
+    /// module that has already finished, but the marker write and the module's
+    /// own work are NOT atomic across the two DbContexts. A successful module
+    /// pass followed by a marker-write crash will re-invoke the module on the
+    /// next run, so modules MUST implement their own idempotency
+    /// (e.g., upsert on natural keys, no-op on duplicate inserts) — do NOT
+    /// rely on "the orchestrator guarantees this only runs once". The marker
+    /// is best-effort, the module's own design is the safety net.
     /// </para>
     /// <para>
     /// The <c>Scenario</c> is a string identifier chosen by the orchestrator
@@ -102,17 +108,59 @@ public sealed record TenantInstallContext(
 
 /// <summary>
 /// Context provided to modules during demo-data seeding (T-005). Carries the
-/// tenant identity plus a scoped <see cref="IServiceProvider"/> so the module
-/// can resolve its own DbContext / repositories without reaching outside its
-/// own assembly. The orchestrator owns the scope lifetime; modules MUST NOT
-/// dispose <see cref="ScopedServices"/>.
+/// tenant identity plus a non-owned scoped service provider so the module can
+/// resolve its own DbContext / repositories without reaching outside its own
+/// assembly. <see cref="ScopedServices"/> is a <see cref="INonOwnedServiceProvider"/>
+/// — disposing it is a no-op, which is the compile-time enforcement of "the
+/// orchestrator owns the scope lifetime; modules MUST NOT dispose it".
 /// </summary>
 public sealed record TenantDemoSeedContext(
     string TenantId,
     string SchemaName,
     string? OrganizationId,
-    IServiceProvider ScopedServices,
+    INonOwnedServiceProvider ScopedServices,
     string Scenario);
+
+/// <summary>
+/// Marker wrapper around <see cref="IServiceProvider"/> that signals "the
+/// caller owns disposal, you don't". Implementations are <b>required</b> to be
+/// no-op on <see cref="IDisposable.Dispose"/> if they implement it at all —
+/// modules that hold a reference must not be able to tear down the
+/// orchestrator's scope by mistake.
+/// </summary>
+/// <remarks>
+/// The interface deliberately omits <see cref="IDisposable"/> so a module
+/// calling <c>using var sp = context.ScopedServices;</c> fails at compile
+/// time. <see cref="GetService"/> and <see cref="GetRequiredService"/> are
+/// provided as extension targets so DI usage stays familiar.
+/// </remarks>
+public interface INonOwnedServiceProvider
+{
+    /// <summary>Resolve a service or return <c>null</c>.</summary>
+    object? GetService(Type serviceType);
+}
+
+/// <summary>
+/// Helpers so callers can use the standard
+/// <c>provider.GetRequiredService&lt;T&gt;()</c> shape against a
+/// <see cref="INonOwnedServiceProvider"/>.
+/// </summary>
+public static class NonOwnedServiceProviderExtensions
+{
+    /// <summary>Resolve <typeparamref name="T"/> or return <c>default</c>.</summary>
+    public static T? GetService<T>(this INonOwnedServiceProvider provider)
+        => (T?)provider.GetService(typeof(T));
+
+    /// <summary>Resolve <typeparamref name="T"/> or throw.</summary>
+    public static T GetRequiredService<T>(this INonOwnedServiceProvider provider)
+    {
+        var svc = provider.GetService(typeof(T));
+        if (svc is null)
+            throw new InvalidOperationException(
+                $"No service registered for type '{typeof(T).FullName}'.");
+        return (T)svc;
+    }
+}
 
 /// <summary>
 /// Scheduler for recurring/scheduled jobs.

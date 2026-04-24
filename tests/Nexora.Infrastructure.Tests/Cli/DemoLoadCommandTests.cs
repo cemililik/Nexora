@@ -78,7 +78,7 @@ public sealed class DemoLoadCommandTests
     public async Task RunAsync_DryRun_DoesNotInvokeSeeder_AndReturnsZero()
     {
         var seeder = Substitute.For<IDemoDataSeeder>();
-        var (host, _) = BuildHostWith(seeder);
+        using var host = BuildHostWith(seeder);
         var console = new RecordingConsole();
         var opts = DemoLoadCommand.ParseArgs(new[]
         {
@@ -101,7 +101,7 @@ public sealed class DemoLoadCommandTests
     public async Task RunAsync_MissingTenantSchema_ReturnsUsageError_WithPointer()
     {
         var seeder = Substitute.For<IDemoDataSeeder>();
-        var (host, _) = BuildHostWith(seeder);
+        using var host = BuildHostWith(seeder);
         var console = new RecordingConsole();
         var opts = DemoLoadCommand.ParseArgs(new[]
         {
@@ -132,7 +132,7 @@ public sealed class DemoLoadCommandTests
                 new("contacts", DemoSeedStatus.AlreadySeeded)
             }));
 
-        var (host, _) = BuildHostWith(seeder);
+        using var host = BuildHostWith(seeder);
         var console = new RecordingConsole();
         var opts = DemoLoadCommand.ParseArgs(new[]
         {
@@ -161,7 +161,7 @@ public sealed class DemoLoadCommandTests
                 new("contacts", DemoSeedStatus.Failed, "db connection refused")
             }));
 
-        var (host, _) = BuildHostWith(seeder);
+        using var host = BuildHostWith(seeder);
         var console = new RecordingConsole();
         var opts = DemoLoadCommand.ParseArgs(new[]
         {
@@ -180,12 +180,19 @@ public sealed class DemoLoadCommandTests
 
     // --- Helpers ----------------------------------------------------------------
 
-    private static (IHost Host, IServiceProvider Services) BuildHostWith(IDemoDataSeeder seeder)
+    /// <summary>
+    /// Returns a freshly-built <see cref="IHost"/> with <paramref name="seeder"/>
+    /// registered as a singleton. Caller MUST dispose (use <c>using</c>)
+    /// — leaking the host leaks the DI container, the logger providers, and any
+    /// transitively-registered hosted services. <c>IHost</c>'s interface form is
+    /// <see cref="IDisposable"/>; the concrete impl also surfaces
+    /// <see cref="IAsyncDisposable"/> but the interface drives the <c>using</c>.
+    /// </summary>
+    private static IHost BuildHostWith(IDemoDataSeeder seeder)
     {
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
         builder.Services.AddSingleton(seeder);
-        var host = builder.Build();
-        return (host, host.Services);
+        return builder.Build();
     }
 
     private sealed class RecordingConsole : IConsole

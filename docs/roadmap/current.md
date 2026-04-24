@@ -81,7 +81,7 @@ scenario) idempotency. 8 unit tests (ordering / idempotency / scenario
 separation / broken-sibling isolation / cycle + missing-dep detection / tenant
 validation) + 2 architecture tests (no cross-module Infrastructure deps + contract
 signature lock). T-007 ships scenario content; T-006 ships the CLI.
-Full suite green (~1953 backend tests).
+Full suite green at snapshot `d7aa007`: 1960 passed + 2 skipped (Identity slow-query opt-in + T-024 schema-drift opt-in) across 11 test assemblies.
 
 **T-017 — Notifications BodyRendered nullable migration** (Phase 1.5.6, Milestone C —
 T-004 follow-up). Status: **In Review**. Drops NOT NULL on
@@ -105,7 +105,7 @@ documents that platform-init writes are deliberately not audited — operator
 mutations flow through already-audited paths. Discovered a pre-existing
 `HasFilter` drift on `ContactTag` / `ContactCustomField` unique indexes (logged
 in the task status log for maintainer triage; integration test has a targeted
-42703 skip with a TODO). Full suite green (~1945 backend + 98 frontend).
+42703 skip with a TODO; T-021 has since cleaned that up). Full suite green at snapshot `d7aa007`: 1960 passed + 2 skipped backend across 11 assemblies, 98 frontend tests.
 
 
 **T-020 — Permission seed consolidation via IPermissionRegistry** (Phase 1.5.6, Milestone C).

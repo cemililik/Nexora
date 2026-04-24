@@ -21,7 +21,7 @@ public sealed class DemoDataSeederTests
     private const string Scenario = "general";
 
     [Fact]
-    public async Task SeedAsync_OrdersModulesByDependencies()
+    public async Task SeedAsync_WhenModulesHaveDependencies_OrdersByTopologicalSort()
     {
         var callLog = new List<string>();
         var identity = new FakeModule("identity", dependencies: Array.Empty<string>(), callLog);
@@ -72,7 +72,7 @@ public sealed class DemoDataSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_ModuleThrows_ReturnsFailed_WithoutBlockingSiblings()
+    public async Task SeedAsync_ModuleThrows_DoesNotBlockSiblingsAndMarksFailed()
     {
         var callLog = new List<string>();
         var broken = new FakeModule("contacts", Array.Empty<string>(), callLog, throwOnSeed: true);
@@ -109,7 +109,7 @@ public sealed class DemoDataSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_RejectsBlankTenantId()
+    public async Task SeedAsync_WithBlankTenantId_ThrowsArgumentException()
     {
         var seeder = BuildSeeder();
         var act = () => seeder.SeedAsync("", Scenario);
@@ -117,7 +117,7 @@ public sealed class DemoDataSeederTests
     }
 
     [Fact]
-    public async Task SeedAsync_RejectsNonGuidTenantId()
+    public async Task SeedAsync_WithNonGuidTenantId_ThrowsArgumentException()
     {
         var seeder = BuildSeeder();
         var act = () => seeder.SeedAsync("not-a-guid", Scenario);

@@ -121,12 +121,100 @@ public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
             "the starting log must carry the tenant id so operators can correlate by tenant");
     }
 
+    [Fact]
+    public async Task GdprHardDeleteJob_RunAsync_CallsSetTenantBeforeAnyDbAccess()
+    {
+        // T-018 AC#2 — explicit version: a spy accessor records the order in
+        // which SetTenant is invoked vs. when the wrapped DbContext first
+        // observes Current. The contract is that NexoraJob.RunAsync MUST set
+        // tenant context before any DB query inside ExecuteAsync; without that,
+        // the schema-per-tenant resolution falls back to "default" and rows
+        // land in the wrong tenant.
+        var schemaA = $"tenant_{_tenantAId}";
+        await CreateSchemaAsync(schemaA);
+        var contactA = await SeedContactAsync(_tenantAId);
+
+        var spy = new RecordingTenantContextAccessor();
+        await using var jobDbContext = BuildDbContextRecordingAccess(spy);
+        var job = new GdprHardDeleteJob(
+            spy, jobDbContext, Substitute.For<IOutbox>(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<GdprHardDeleteJob>.Instance);
+
+        await job.RunAsync(new GdprHardDeleteParams
+        {
+            TenantId = _tenantAId.ToString(),
+            OrganizationId = _orgId.ToString(),
+            ContactId = contactA.Id.Value,
+            Reason = "unit test",
+            ErasedByUserId = _userId
+        }, CancellationToken.None);
+
+        spy.SetTenantCalls.Should().NotBeEmpty(
+            "NexoraJob.RunAsync must invoke SetTenant before delegating to ExecuteAsync.");
+        spy.FirstCurrentReadAt.Should().NotBeNull(
+            "the DbContext under test reads Current at least once during ExecuteAsync — the test would not exercise the contract otherwise.");
+        spy.SetTenantCalls.First().Should().BeBefore(spy.FirstCurrentReadAt!.Value,
+            "SetTenant MUST be invoked before any DB query inside ExecuteAsync; otherwise schema-per-tenant routing breaks.");
+    }
+
     // --- Helpers ------------------------------------------------------------------
 
+    /// <summary>
+    /// <see cref="ITenantContextAccessor"/> double that records the timestamp of
+    /// every <c>SetTenant</c> call and the first read of <c>Current</c>. The
+    /// SetTenant-before-DB test compares the two so an accidental override that
+    /// queries DB before pushing tenant context fails with a clear ordering
+    /// violation instead of an obscure schema-not-found error downstream.
+    /// </summary>
+    private sealed class RecordingTenantContextAccessor : ITenantContextAccessor
+    {
+        private readonly TenantContextAccessor _inner = new();
+        public List<DateTimeOffset> SetTenantCalls { get; } = new();
+        public DateTimeOffset? FirstCurrentReadAt { get; private set; }
+
+        public ITenantContext Current
+        {
+            get
+            {
+                FirstCurrentReadAt ??= DateTimeOffset.UtcNow;
+                return _inner.Current;
+            }
+        }
+
+        public void SetTenant(string tenantId, string? organizationId = null, string? userId = null)
+        {
+            SetTenantCalls.Add(DateTimeOffset.UtcNow);
+            _inner.SetTenant(tenantId, organizationId, userId);
+        }
+    }
+
+    /// <summary>
+    /// Variant of <see cref="BuildDbContext"/> wired with the recording
+    /// accessor so the schema-per-tenant resolution path is identical to the
+    /// production-routed call.
+    /// </summary>
+    private ContactsDbContext BuildDbContextRecordingAccess(ITenantContextAccessor accessor)
+    {
+        var options = new DbContextOptionsBuilder<ContactsDbContext>()
+            .UseNpgsql(_postgres.GetConnectionString())
+            .Options;
+        return new ContactsDbContext(options, accessor);
+    }
+
+
+
+    /// <summary>
+    /// Creates the named schema if missing. **SECURITY**: this helper interpolates
+    /// <paramref name="schema"/> directly into a CREATE SCHEMA statement because
+    /// Postgres does not parameterize identifiers. The helper accepts ONLY
+    /// identifier-safe values produced inside this test class (the
+    /// <c>tenant_{Guid}</c> shape from <see cref="_tenantAId"/> / <see cref="_tenantBId"/>);
+    /// it MUST NOT be called with untrusted input. If this helper ever moves out
+    /// of the test assembly, validate or quote-escape the parameter at the new
+    /// boundary.
+    /// </summary>
     private async Task CreateSchemaAsync(string schema)
     {
-        // Npgsql quotes identifiers with double-quotes; we build the SQL ourselves
-        // because EnsureCreated does NOT create the schema itself.
         await using var conn = new NpgsqlConnection(_postgres.GetConnectionString());
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
@@ -193,7 +281,9 @@ public sealed class GdprHardDeleteJobTenantRoutingTests : IAsyncLifetime
     {
         public List<string> Messages { get; } = new();
 
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull
+        // Match Microsoft.Extensions.Logging.ILogger.BeginScope's nullable
+        // return so the implementation lines up with .NET 9+ NRT signatures.
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
             => NullDisposable.Instance;
 
         public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;

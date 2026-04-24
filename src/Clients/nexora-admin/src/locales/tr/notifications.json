@@ -46,6 +46,7 @@
   "lockey_notifications_filter_all_statuses": "Tüm Durumlar",
 
   "lockey_notifications_detail_body": "İçerik",
+  "lockey_notifications_body_erased": "İçerik GDPR saklama politikasına göre silindi.",
   "lockey_notifications_detail_template": "Şablon",
   "lockey_notifications_detail_opened": "Açılma",
   "lockey_notifications_detail_clicked": "Tıklanma",

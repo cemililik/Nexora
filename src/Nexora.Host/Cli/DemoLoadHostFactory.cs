@@ -17,13 +17,18 @@ internal static class DemoLoadHostFactory
     /// Build a host with infrastructure + modules registered. The host is NOT
     /// started (no web server, no Hangfire); only the DI graph is materialised.
     /// The caller owns the returned <see cref="IHost"/> and MUST dispose it —
-    /// <see cref="DemoLoadCommand"/> does so in its <c>await using</c> block.
+    /// <see cref="DemoLoadCommand"/> does so in its <c>using</c> block.
     /// </summary>
-    public static IHost Build()
+    /// <param name="args">
+    /// The CLI args (post-verb) so <c>--environment</c>, in-line connection
+    /// string overrides, and other host-builder switches flow through to
+    /// <c>builder.Configuration</c> exactly as they would on the web-host path.
+    /// </param>
+    public static IHost Build(string[]? args = null)
     {
         // Use the same configuration sources the web host reads so connection
         // strings resolve the same way.
-        var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder();
+        var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(args ?? Array.Empty<string>());
 
         builder.Services.AddNexoraInfrastructure(builder.Configuration);
         builder.Services.AddNexoraModules(builder.Configuration);

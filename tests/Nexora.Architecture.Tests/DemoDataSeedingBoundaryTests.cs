@@ -41,8 +41,14 @@ public sealed class DemoDataSeedingBoundaryTests
 
         foreach (var assembly in ModuleAssemblies())
         {
-            var ownPrefix = ModuleRootNamespaces.First(ns =>
+            // Use FirstOrDefault + explicit assertion: if a module assembly's
+            // namespace is missing from ModuleRootNamespaces, the failure is a
+            // diagnostic message naming the assembly (not a generic
+            // "Sequence contains no matching element").
+            var ownPrefix = ModuleRootNamespaces.FirstOrDefault(ns =>
                 assembly.GetName().Name!.StartsWith(ns, StringComparison.Ordinal));
+            ownPrefix.Should().NotBeNull(
+                $"Module assembly '{assembly.GetName().Name}' has no entry in ModuleRootNamespaces — add it so the boundary scan covers this module.");
             var forbiddenPrefixes = ModuleRootNamespaces
                 .Where(ns => ns != ownPrefix)
                 .Select(ns => $"{ns}.Infrastructure")
@@ -84,5 +90,13 @@ public sealed class DemoDataSeedingBoundaryTests
             .Be("Nexora.SharedKernel.Abstractions.Modules.TenantDemoSeedContext");
         parameters[1].ParameterType.Should().Be(typeof(CancellationToken));
         method.ReturnType.Should().Be(typeof(Task));
+
+        // The "default no-op so existing modules compile unchanged" property
+        // is contract-load-bearing — without it, every existing module would
+        // need a new override on a SharedKernel change. IsAbstract == false
+        // is exactly how C# default interface methods are surfaced via
+        // reflection.
+        method.IsAbstract.Should().BeFalse(
+            "SeedDemoDataAsync MUST be a default interface method (DIM) so modules without demo content compile unchanged.");
     }
 }

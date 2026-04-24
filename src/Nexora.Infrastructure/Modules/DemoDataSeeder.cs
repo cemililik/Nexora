@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -10,8 +12,8 @@ namespace Nexora.Infrastructure.Modules;
 /// Default <see cref="IDemoDataSeeder"/> — walks every registered
 /// <see cref="IModule"/> in dependency order, creates a DI scope per module,
 /// pushes tenant context onto the ambient accessor, then calls
-/// <see cref="IModule.SeedDemoDataAsync"/>. Writes a marker row on success so
-/// subsequent runs short-circuit.
+/// <see cref="IModule.SeedDemoDataAsync"/>. Marker rows in
+/// <c>platform_demo_seed_markers</c> short-circuit subsequent runs.
 /// </summary>
 public sealed class DemoDataSeeder(
     IServiceScopeFactory scopeFactory,
@@ -29,94 +31,267 @@ public sealed class DemoDataSeeder(
             throw new ArgumentException(
                 $"TenantId must be a GUID; got '{tenantId}'.", nameof(tenantId));
 
-        var ordered = OrderByDependencies(modules.ToList());
-        var outcomes = new List<DemoSeedModuleOutcome>(ordered.Count);
+        // Filter to modules that are actually installed for the tenant when
+        // IModuleAvailability is wired up (planned with the cascade-aware
+        // uninstall pipeline, ADR-0028 / T-026). Falls back to the full DI
+        // registration when no implementation is registered yet — matches
+        // current Phase 1.5 behaviour without forcing a chicken-and-egg.
+        var allModules = modules.ToList();
+        var ordered = OrderByDependencies(allModules);
+        var filtered = await FilterInstalledAsync(ordered, tenantGuid, ct);
 
-        foreach (var module in ordered)
+        // Bulk-fetch every existing marker for this (tenant, scenario) in one
+        // round-trip — replaces the previous per-module AnyAsync that issued
+        // N queries.
+        var existingMarkers = await LoadExistingMarkersAsync(tenantGuid, scenario, ct);
+        var outcomes = new List<DemoSeedModuleOutcome>(filtered.Count);
+
+        foreach (var module in filtered)
         {
             ct.ThrowIfCancellationRequested();
-            outcomes.Add(await SeedModuleAsync(module, tenantGuid, scenario, ct));
+            outcomes.Add(await SeedModuleAsync(
+                module, tenantGuid, scenario, existingMarkers, ct));
         }
 
         logger.LogInformation(
-            "Demo-seed run for tenant {TenantId} scenario {Scenario} finished: {Seeded} seeded, {Skipped} already-seeded, {Failed} failed.",
+            "Demo-seed run for tenant {TenantId} scenario {Scenario} finished: " +
+            "{Seeded} seeded, {AlreadySeeded} already-seeded, {NoOp} no-op, {Failed} failed.",
             tenantId, scenario,
             outcomes.Count(o => o.Status == DemoSeedStatus.Seeded),
             outcomes.Count(o => o.Status == DemoSeedStatus.AlreadySeeded),
+            outcomes.Count(o => o.Status == DemoSeedStatus.NoOp),
             outcomes.Count(o => o.Status == DemoSeedStatus.Failed));
 
         return new DemoSeedRunResult(tenantId, scenario, outcomes);
     }
 
     private async Task<DemoSeedModuleOutcome> SeedModuleAsync(
-        IModule module, Guid tenantGuid, string scenario, CancellationToken ct)
+        IModule module, Guid tenantGuid, string scenario,
+        IDictionary<string, DemoSeedMarker> existingMarkers, CancellationToken ct)
     {
         // Each module runs in its own scope so scoped services (DbContext,
         // repositories) are disposed before the next module starts — avoids
         // cross-module DbContext leaks and keeps the tenant context per-module.
-        using var scope = scopeFactory.CreateScope();
+        // Async disposal honours scoped DbContext's DisposeAsync (open Npgsql
+        // connections, change-tracker buffers).
+        await using var scope = scopeFactory.CreateAsyncScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
         accessor.SetTenant(tenantGuid.ToString());
 
         var tenantCtx = accessor.Current;
-
-        // Idempotency check — uses the tenant-schema marker table so two parallel
-        // callers for the same (tenant, module, scenario) converge on a single row.
         var markerDb = scope.ServiceProvider.GetRequiredService<DemoSeedMarkerDbContext>();
 
-        var alreadySeeded = await markerDb.Markers.AsNoTracking().AnyAsync(
-            m => m.TenantId == tenantGuid &&
-                 m.ModuleName == module.Name &&
-                 m.Scenario == scenario,
-            ct);
-        if (alreadySeeded)
+        // Idempotency check from the bulk-fetched dictionary, not a DB hit.
+        if (existingMarkers.TryGetValue(module.Name, out var existing))
+        {
+            if (existing.Status == DemoSeedMarkerStatus.Seeded)
+            {
+                logger.LogDebug(
+                    "Demo-seed: module {Module} already seeded for tenant {TenantId} scenario {Scenario}.",
+                    module.Name, tenantGuid, scenario);
+                return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.AlreadySeeded);
+            }
+            // InProgress means a prior run crashed mid-seed. We retry — modules
+            // MUST implement their own idempotency (the docs on
+            // IModule.SeedDemoDataAsync warn about this). Mark the existing row
+            // back to InProgress (no-op if already) and re-attempt.
+            logger.LogWarning(
+                "Demo-seed: module {Module} marker found in InProgress state — retrying. Modules must remain idempotent.",
+                module.Name);
+        }
+
+        // Modules whose SeedDemoDataAsync implementation is the default no-op
+        // (the C# default interface method on IModule) report NoOp without
+        // writing a marker — re-invoking a no-op every run is the cheapest
+        // possible identity, and the operator gets accurate "this module ships
+        // no demo content" feedback.
+        if (IsDefaultNoOp(module))
         {
             logger.LogDebug(
-                "Demo-seed: module {Module} already seeded for tenant {TenantId} scenario {Scenario}.",
-                module.Name, tenantGuid, scenario);
-            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.AlreadySeeded);
+                "Demo-seed: module {Module} ships no demo content (default IModule impl).",
+                module.Name);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.NoOp);
+        }
+
+        // Two-phase write: InProgress before the module runs, Seeded after.
+        // Atomicity is best-effort across the module-side work and the marker
+        // write — modules MUST be idempotent regardless. The marker just
+        // narrows the "rerun a module that already finished" window.
+        DemoSeedMarker marker;
+        if (existing is not null)
+        {
+            marker = existing;
+            marker.Status = DemoSeedMarkerStatus.InProgress;
+            marker.SeededAt = DateTimeOffset.UtcNow;
+            markerDb.Markers.Update(marker);
+        }
+        else
+        {
+            marker = new DemoSeedMarker
+            {
+                TenantId = tenantGuid,
+                ModuleName = module.Name,
+                Scenario = scenario,
+                Status = DemoSeedMarkerStatus.InProgress,
+                SeededAt = DateTimeOffset.UtcNow
+            };
+            markerDb.Markers.Add(marker);
+        }
+
+        try
+        {
+            await markerDb.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            logger.LogError(ex,
+                "Demo-seed: failed to write InProgress marker for module {Module} tenant {TenantId}.",
+                module.Name, tenantGuid);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Failed, ex.Message);
         }
 
         var seedContext = new TenantDemoSeedContext(
             TenantId: tenantGuid.ToString(),
             SchemaName: tenantCtx.SchemaName,
             OrganizationId: tenantCtx.OrganizationId,
-            ScopedServices: scope.ServiceProvider,
+            ScopedServices: new NonOwnedServiceProvider(scope.ServiceProvider),
             Scenario: scenario);
 
         try
         {
             await module.SeedDemoDataAsync(seedContext, ct);
-
-            markerDb.Markers.Add(new DemoSeedMarker
-            {
-                TenantId = tenantGuid,
-                ModuleName = module.Name,
-                Scenario = scenario,
-                SeededAt = DateTimeOffset.UtcNow
-            });
-            await markerDb.SaveChangesAsync(ct);
-
-            logger.LogInformation(
-                "Demo-seed: module {Module} seeded for tenant {TenantId} scenario {Scenario}.",
-                module.Name, tenantGuid, scenario);
-            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Seeded);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            // Caller cancelled — propagate. The InProgress marker stays so a
+            // resumed run knows it crashed mid-seed.
             throw;
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
         {
-            // We intentionally DO NOT rethrow — one failing module must not block
-            // subsequent ones; the caller gets a per-module failure in the result.
-            // Errors are surfaced as lockey where available; raw message is logged
-            // at Error for operator diagnosis.
             logger.LogError(ex,
-                "Demo-seed: module {Module} failed for tenant {TenantId} scenario {Scenario}.",
+                "Demo-seed: module {Module} failed (DbUpdate) for tenant {TenantId} scenario {Scenario}.",
                 module.Name, tenantGuid, scenario);
             return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Failed, ex.Message);
         }
+        catch (DbException ex)
+        {
+            logger.LogError(ex,
+                "Demo-seed: module {Module} failed (DbException) for tenant {TenantId} scenario {Scenario}.",
+                module.Name, tenantGuid, scenario);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Failed, ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // Common surface for missing tables / mis-mapped DbContexts during
+            // demo-seed — surface clearly without a stack trace.
+            logger.LogError(ex,
+                "Demo-seed: module {Module} failed (InvalidOperation) for tenant {TenantId} scenario {Scenario}.",
+                module.Name, tenantGuid, scenario);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Failed, ex.Message);
+        }
+        // Note: we deliberately do NOT catch Exception — fatal CLR conditions
+        // (StackOverflowException, OutOfMemoryException, ThreadAbortException)
+        // and unexpected module bugs propagate so the run terminates loudly
+        // instead of silently logging "module failed: X".
+
+        // Module finished cleanly — promote marker to Seeded.
+        marker.Status = DemoSeedMarkerStatus.Seeded;
+        marker.SeededAt = DateTimeOffset.UtcNow;
+        try
+        {
+            await markerDb.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            // Module work succeeded but the marker write failed — mark Failed
+            // so the operator sees the discrepancy. Next run will retry the
+            // module; idempotency in the module is the safety net.
+            logger.LogError(ex,
+                "Demo-seed: module {Module} succeeded but marker write failed for tenant {TenantId}.",
+                module.Name, tenantGuid);
+            return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Failed, ex.Message);
+        }
+
+        logger.LogInformation(
+            "Demo-seed: module {Module} seeded for tenant {TenantId} scenario {Scenario}.",
+            module.Name, tenantGuid, scenario);
+        return new DemoSeedModuleOutcome(module.Name, DemoSeedStatus.Seeded);
+    }
+
+    /// <summary>
+    /// Returns the subset of <paramref name="ordered"/> that is installed for
+    /// the tenant. Uses <see cref="IModuleAvailability"/> if registered;
+    /// otherwise treats every DI-registered module as installed (Phase 1.5
+    /// behaviour — no per-tenant install/uninstall pipeline yet).
+    /// </summary>
+    private async Task<List<IModule>> FilterInstalledAsync(
+        IList<IModule> ordered, Guid tenantGuid, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+        accessor.SetTenant(tenantGuid.ToString());
+
+        var availability = scope.ServiceProvider.GetService<IModuleAvailability>();
+        if (availability is null)
+        {
+            return ordered.ToList();
+        }
+
+        var installed = (await availability.GetInstalledModulesAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var skipped = ordered.Where(m => !installed.Contains(m.Name)).ToList();
+        if (skipped.Count > 0)
+        {
+            logger.LogDebug(
+                "Demo-seed: skipping {Count} not-installed modules for tenant {TenantId}: {Modules}",
+                skipped.Count, tenantGuid, string.Join(", ", skipped.Select(m => m.Name)));
+        }
+        return ordered.Where(m => installed.Contains(m.Name)).ToList();
+    }
+
+    private async Task<IDictionary<string, DemoSeedMarker>> LoadExistingMarkersAsync(
+        Guid tenantGuid, string scenario, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+        accessor.SetTenant(tenantGuid.ToString());
+
+        var markerDb = scope.ServiceProvider.GetRequiredService<DemoSeedMarkerDbContext>();
+        var rows = await markerDb.Markers.AsNoTracking()
+            .Where(m => m.TenantId == tenantGuid && m.Scenario == scenario)
+            .ToListAsync(ct);
+        return rows.ToDictionary(m => m.ModuleName, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Detects whether <paramref name="module"/> uses the C# default interface
+    /// implementation of <see cref="IModule.SeedDemoDataAsync"/> — i.e. ships
+    /// no demo content. The default impl declares <c>DeclaringType ==
+    /// typeof(IModule)</c>; an overriding implementation declares it as the
+    /// concrete module type.
+    /// </summary>
+    internal static bool IsDefaultNoOp(IModule module)
+    {
+        var concrete = module.GetType();
+        // Find the interface map for IModule on the concrete type.
+        var ifaceMethod = typeof(IModule).GetMethod(
+            nameof(IModule.SeedDemoDataAsync),
+            BindingFlags.Public | BindingFlags.Instance)!;
+
+        var map = concrete.GetInterfaceMap(typeof(IModule));
+        for (int i = 0; i < map.InterfaceMethods.Length; i++)
+        {
+            if (map.InterfaceMethods[i] != ifaceMethod) continue;
+
+            // If the target method's declaring type is IModule itself, the
+            // module did not provide its own implementation — it's the default
+            // interface method (C# 8+ DIM).
+            return map.TargetMethods[i].DeclaringType == typeof(IModule);
+        }
+        // Defensive: if we can't find a mapping, treat as not-default so we
+        // err on the side of running the seeder.
+        return false;
     }
 
     /// <summary>

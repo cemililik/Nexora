@@ -23,9 +23,14 @@ public static class CliDispatcher
     public static bool TryDispatch(string[] args, out int exitCode)
     {
         exitCode = 0;
-        if (args.Length == 0) return false;
+        if (args.Length == 0 || string.IsNullOrEmpty(args[0])) return false;
 
-        switch (args[0])
+        // Verb matching is case-insensitive — operators typing `Demo:Load` from a
+        // shell with autocomplete or a Windows-style title-case habit must not see
+        // "unknown command, falling through to web host".
+        var verb = args[0].ToLowerInvariant();
+
+        switch (verb)
         {
             case "demo:load":
                 exitCode = DemoLoadCommand.Run(args.AsSpan(1));
@@ -57,7 +62,7 @@ public static class CliDispatcher
         Console.WriteLine("      separate admin API (see docs/roadmap/phases/phase-1.5-bridge.md).");
         Console.WriteLine();
         Console.WriteLine("Exit codes:");
-        Console.WriteLine($"  0  success (or all modules already seeded)");
+        Console.WriteLine("  0  success (or all modules already seeded)");
         Console.WriteLine($"  {UsageError}  usage / validation error");
         Console.WriteLine($"  {PartialFailure}  one or more modules failed during seeding");
     }

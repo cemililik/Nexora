@@ -601,17 +601,23 @@ public static class DevelopmentSeed
             "ALTER TABLE notifications_notifications ALTER COLUMN \"BodyRendered\" DROP NOT NULL",
 
             // --- T-005: Demo Data Framework idempotency marker (tenant schema) ---
-            // Recorded per (TenantId, ModuleName, Scenario) after a module's
-            // SeedDemoDataAsync completes successfully. Subsequent runs short-circuit.
+            // Recorded per (TenantId, ModuleName, Scenario). Two-phase write —
+            // 'InProgress' before the module runs, promoted to 'Seeded' after
+            // success. Future runs short-circuit on 'Seeded' and retry on
+            // 'InProgress'.
             """
             CREATE TABLE IF NOT EXISTS platform_demo_seed_markers (
                 "TenantId" uuid NOT NULL,
                 "ModuleName" varchar(100) NOT NULL,
                 "Scenario" varchar(50) NOT NULL,
+                "Status" varchar(20) NOT NULL DEFAULT 'Seeded',
                 "SeededAt" timestamptz NOT NULL DEFAULT now(),
                 PRIMARY KEY ("TenantId", "ModuleName", "Scenario")
             )
             """,
+            // T-005 follow-up: Status column added after initial table existed.
+            // Idempotent ADD COLUMN for tenants whose table pre-dates the column.
+            "ALTER TABLE platform_demo_seed_markers ADD COLUMN IF NOT EXISTS \"Status\" varchar(20) NOT NULL DEFAULT 'Seeded'",
         };
 
         foreach (var sql in alterStatements)

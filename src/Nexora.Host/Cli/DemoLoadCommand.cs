@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Nexora.Infrastructure.Configuration;
 using Nexora.SharedKernel.Abstractions.Modules;
 
 namespace Nexora.Host.Cli;
@@ -19,9 +20,27 @@ public static class DemoLoadCommand
     /// </summary>
     public static int Run(ReadOnlySpan<string> args)
     {
-        var parsed = ParseArgs(args);
-        return RunAsync(parsed, DemoLoadHostFactory.Build, tenantSchemaProbe: null)
-            .GetAwaiter().GetResult();
+        // Capture args into a string[] before crossing the async boundary —
+        // ReadOnlySpan<string> cannot escape into a Task closure.
+        var argv = args.ToArray();
+        var parsed = ParseArgs(argv);
+        try
+        {
+            return RunAsync(parsed, () => DemoLoadHostFactory.Build(argv), tenantSchemaProbe: null)
+                .ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            // Friendly CLI contract: never let raw stack traces escape to the
+            // operator. Usage / validation failures (bad flag, missing tenant
+            // schema, DI mis-config) are UsageError; anything else is a
+            // partial-failure signal so an operator script can branch on it.
+            Console.Error.WriteLine($"demo:load failed: {ex.Message}");
+            Console.Error.WriteLine($"  ({ex.GetType().Name})");
+            return ex is ArgumentException or InvalidOperationException
+                ? CliDispatcher.UsageError
+                : CliDispatcher.PartialFailure;
+        }
     }
 
     internal static async Task<int> RunAsync(
@@ -103,8 +122,7 @@ public static class DemoLoadCommand
             var a = args[i];
             if (a == "--dry-run") { dryRun = true; continue; }
 
-            if (TryParseFlag(a, "--tenant", out var tenantValue) ||
-                (a == "--tenant" && i + 1 < args.Length && !(tenantValue = args[++i]).StartsWith("--")))
+            if (TryConsumeFlag(args, ref i, a, "--tenant", out var tenantValue))
             {
                 if (Guid.TryParse(tenantValue, out var guid))
                     tenantId = guid;
@@ -113,8 +131,7 @@ public static class DemoLoadCommand
                 continue;
             }
 
-            if (TryParseFlag(a, "--scenario", out var scenarioValue) ||
-                (a == "--scenario" && i + 1 < args.Length && !(scenarioValue = args[++i]).StartsWith("--")))
+            if (TryConsumeFlag(args, ref i, a, "--scenario", out var scenarioValue))
             {
                 scenario = scenarioValue;
                 continue;
@@ -124,6 +141,35 @@ public static class DemoLoadCommand
         }
 
         return new DemoLoadOptions(tenantId, scenario, dryRun, unknown);
+    }
+
+    /// <summary>
+    /// Tries to extract a value for <paramref name="name"/> from either the
+    /// <c>--name=value</c> equals form or the <c>--name value</c> space form.
+    /// CRITICAL: only advances the index <paramref name="i"/> when the space
+    /// form successfully consumes a non-flag value. The previous version
+    /// incremented <paramref name="i"/> as a side-effect of the boolean
+    /// short-circuit even when the next token started with <c>--</c>, which
+    /// silently ate the following flag and produced a trailing UnknownArg
+    /// for the eaten value.
+    /// </summary>
+    private static bool TryConsumeFlag(
+        ReadOnlySpan<string> args, ref int i, string current, string name, out string value)
+    {
+        // Equals form first — pure parse, no index movement.
+        if (TryParseFlag(current, name, out value)) return true;
+
+        // Space form — peek args[i+1] WITHOUT mutating i; only advance if the
+        // peek looks like a real value.
+        if (current == name && i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+        {
+            value = args[i + 1];
+            i++;
+            return true;
+        }
+
+        value = "";
+        return false;
     }
 
     private static bool TryParseFlag(string arg, string name, out string value)
@@ -136,19 +182,45 @@ public static class DemoLoadCommand
 
     private static async Task<bool> DefaultTenantSchemaProbeAsync(IServiceProvider services, Guid tenantId)
     {
-        // Uses the first DbContext in the DI container to run a catalog-level check
-        // (pg_namespace). We avoid binding to any specific module's DbContext.
-        var connection = services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()
-            .GetConnectionString("Default");
-        if (string.IsNullOrWhiteSpace(connection)) return false;
+        // Use TenantConfigDbContext's underlying connection so we honour Npgsql
+        // pooling, retry policy, and the application's connection-string
+        // resolution (tenant accessor, secrets) instead of new-ing a raw
+        // NpgsqlConnection out of IConfiguration. The probe is a catalog-level
+        // check against pg_namespace; the DbContext's model is irrelevant here,
+        // we just borrow the connection.
+        //
+        // TenantConfigDbContext is registered AddDbContext (scoped) and its
+        // OnModelCreating reads ITenantContextAccessor.Current.SchemaName — set
+        // a benign tenant context before resolution so model-build does not
+        // throw, even though we never query a mapped table.
+        var accessor = services.GetRequiredService<
+            Nexora.SharedKernel.Abstractions.MultiTenancy.ITenantContextAccessor>();
+        accessor.SetTenant(tenantId.ToString());
 
-        await using var conn = new Npgsql.NpgsqlConnection(connection);
-        await conn.OpenAsync();
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT 1 FROM pg_namespace WHERE nspname = @name";
-        cmd.Parameters.AddWithValue("name", $"tenant_{tenantId}");
-        var result = await cmd.ExecuteScalarAsync();
-        return result is not null;
+        var dbContext = services.GetRequiredService<TenantConfigDbContext>();
+        var conn = dbContext.Database.GetDbConnection();
+        var ownedOpen = conn.State != System.Data.ConnectionState.Open;
+        if (ownedOpen)
+            await conn.OpenAsync();
+
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1 FROM pg_namespace WHERE nspname = @name";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "@name";
+            p.Value = $"tenant_{tenantId}";
+            cmd.Parameters.Add(p);
+            var result = await cmd.ExecuteScalarAsync();
+            return result is not null;
+        }
+        finally
+        {
+            // Only close what we opened; if EF was already managing the
+            // connection, leave it alone so its lifecycle stays consistent.
+            if (ownedOpen)
+                await conn.CloseAsync();
+        }
     }
 
     private static int CountModules(IServiceProvider services)

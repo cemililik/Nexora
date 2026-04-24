@@ -68,6 +68,37 @@ public sealed class ContactsModuleMigration(IServiceProvider serviceProvider) : 
             .Options;
     }
 
-    private static string ExtractTenantId(string schemaName) =>
-        schemaName.StartsWith("tenant_") ? schemaName["tenant_".Length..] : schemaName;
+    /// <summary>
+    /// Strips the <c>tenant_</c> prefix from a schema name and validates the
+    /// remainder is a parseable GUID. Throws when either invariant is violated
+    /// — silently passing a malformed string into <c>ITenantContextAccessor.SetTenant</c>
+    /// surfaces later as obscure model-cache mismatches or "tenant context not set"
+    /// errors at the first DbContext query, exactly the failure mode T-018 was
+    /// filed to prevent.
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="schemaName"/> does not start with <c>tenant_</c>
+    /// or when the suffix does not parse as a GUID. The message includes the
+    /// rejected value and the expected format so operator diagnostics are clear.
+    /// </exception>
+    private static string ExtractTenantId(string schemaName)
+    {
+        if (string.IsNullOrWhiteSpace(schemaName) ||
+            !schemaName.StartsWith("tenant_", StringComparison.Ordinal))
+        {
+            throw new ArgumentException(
+                $"Invalid schema name '{schemaName}'. Expected format: 'tenant_<guid>'.",
+                nameof(schemaName));
+        }
+
+        var suffix = schemaName["tenant_".Length..];
+        if (!Guid.TryParse(suffix, out var guid))
+        {
+            throw new ArgumentException(
+                $"Invalid schema name '{schemaName}'. Suffix '{suffix}' is not a parseable GUID.",
+                nameof(schemaName));
+        }
+
+        return guid.ToString();
+    }
 }

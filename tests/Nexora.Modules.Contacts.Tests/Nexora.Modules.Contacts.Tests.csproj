@@ -14,6 +14,15 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="FluentAssertions" Version="7.2.0" />
+    <!--
+      InMemory: powers the ~52 fast unit tests under Application/ that exercise
+      handler logic in isolation (no schema-routing concerns). Schema-per-tenant
+      and global-query-filter behaviour are validated against real Postgres in
+      Integration/ via Testcontainers.PostgreSql. The split is intentional:
+      removing InMemory would make every handler test take ~10x longer (container
+      startup) without any added coverage. T-021 / T-022 already proved the
+      Testcontainers gate catches drift the InMemory provider hides.
+    -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
