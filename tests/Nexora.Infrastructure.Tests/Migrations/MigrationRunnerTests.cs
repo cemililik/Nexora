@@ -85,6 +85,11 @@ public sealed class MigrationRunnerTests
         var input = "short stack trace";
         MigrationFailure.Truncate(input, MigrationFailure.StackTraceMaxLength)
             .Should().Be(input);
+    }
+
+    [Fact]
+    public void MigrationFailure_Truncate_NullInput_ReturnsNull()
+    {
         MigrationFailure.Truncate(null, MigrationFailure.StackTraceMaxLength)
             .Should().BeNull();
     }

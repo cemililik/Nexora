@@ -40,15 +40,35 @@ public interface IGdprRenamedTableScanner
     /// Must match the prefix the uninstall path used.
     /// </param>
     /// <param name="redactSingleTableAsync">
-    /// Module-supplied callback. Receives the renamed table name (already
-    /// validated against the canonical shape) and returns the row count
-    /// the redaction UPDATE affected.
+    /// Module-supplied callback. Receives a <see cref="RenamedTableInfo"/>
+    /// carrying both the bare table name (for prefix dispatching) and the
+    /// schema-qualified identifier (for parameterised SQL — handlers MUST
+    /// use <see cref="RenamedTableInfo.QualifiedIdentifier"/> rather than
+    /// concatenating the bare name into a SQL string, which would depend
+    /// on the connection's <c>search_path</c>). The
+    /// <see cref="RenamedTableInfo.AllDiscoveredBareNames"/> set lets the
+    /// handler verify a sibling renamed table exists before joining
+    /// against it (review #56 round-2 — UPDATE … IN (SELECT … FROM
+    /// missing_table) would otherwise raise Postgres 42P01).
+    /// Returns the row count the redaction UPDATE affected.
     /// </param>
+    /// <param name="ct">Cancellation token.</param>
     Task<GdprRenamedTableScanResult> ScanAsync(
         string moduleName,
-        Func<string, CancellationToken, Task<int>> redactSingleTableAsync,
+        Func<RenamedTableInfo, CancellationToken, Task<int>> redactSingleTableAsync,
         CancellationToken ct);
 }
+
+/// <summary>
+/// Per-renamed-table context handed to the redaction callback. Carries
+/// the bare table name (for the handler's prefix-based dispatch), the
+/// schema-qualified identifier (for SQL), and the full discovered set
+/// (for sibling-existence checks).
+/// </summary>
+public sealed record RenamedTableInfo(
+    string BareName,
+    string QualifiedIdentifier,
+    IReadOnlySet<string> AllDiscoveredBareNames);
 
 /// <summary>
 /// Generic marker so each module can register its own scanner against its

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Abstractions.Gdpr;
 using Nexora.SharedKernel.Abstractions.Messaging;
@@ -134,38 +135,51 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         //   - notifications_recipients_*: RecipientAddress (PII) + FailureReason
         //   - notifications_notifications_*: Subject (PII) + BodyRendered (PII)
         // The notifications_*_del_TS pair shares a timestamp suffix because
-        // they were renamed in the same uninstall transaction; we use the
-        // sibling recipient table as the subquery source so notifications-
-        // level scrub stays scoped to this contact's rows (matches the
-        // canonical-table behavior above).
-        await renamedTableScanner.ScanAsync(
+        // they were renamed in the same uninstall transaction; the parent
+        // table scrub joins the sibling renamed recipients table so it
+        // stays scoped to this contact's rows (matches the canonical-table
+        // behavior above). Sibling existence is verified via the scanner's
+        // discovered-set BEFORE issuing the JOIN — without that, an
+        // orphaned renamed parent without its sibling would raise Postgres
+        // 42P01 and the scanner's NpgsqlException catch would swallow it
+        // along with any real DB errors (review round-2 finding).
+        var renamedScan = await renamedTableScanner.ScanAsync(
             "notifications",
-            redactSingleTableAsync: async (renamedTable, innerCt) =>
+            redactSingleTableAsync: async (info, innerCt) =>
             {
                 // notifications_recipients_del_<ts> : mask recipient PII.
-                if (renamedTable.StartsWith("notifications_recipients_del_", StringComparison.Ordinal))
+                if (info.BareName.StartsWith("notifications_recipients_del_", StringComparison.Ordinal))
                 {
                     return await ExecuteParameterisedUpdateAsync(
-                        $"""UPDATE "{renamedTable}" SET "RecipientAddress" = @placeholder, "FailureReason" = NULL WHERE "ContactId" = @contactId""",
+                        $"""UPDATE {info.QualifiedIdentifier} SET "RecipientAddress" = @placeholder, "FailureReason" = NULL WHERE "ContactId" = @contactId""",
                         @event.ContactId, innerCt);
                 }
                 // notifications_notifications_del_<ts> : scope to the
                 // contact's notifications via the sibling renamed
-                // recipients table (same timestamp suffix). If the
-                // sibling does not exist we skip — a renamed parent
-                // notifications table without its recipients table
-                // means the recipient join can't be reconstructed and
-                // we fall back to canonical-table scrubbing only.
+                // recipients table (same timestamp suffix). Skip when
+                // the sibling is absent.
                 const string parentPrefix = "notifications_notifications_del_";
-                if (renamedTable.StartsWith(parentPrefix, StringComparison.Ordinal))
+                if (info.BareName.StartsWith(parentPrefix, StringComparison.Ordinal))
                 {
-                    var ts = renamedTable[parentPrefix.Length..];
-                    var sibling = $"notifications_recipients_del_{ts}";
+                    var ts = info.BareName[parentPrefix.Length..];
+                    var siblingBare = $"notifications_recipients_del_{ts}";
+                    if (!info.AllDiscoveredBareNames.Contains(siblingBare))
+                    {
+                        logger.LogDebug(
+                            "GDPR escape hatch: skipping renamed table {Parent} for contact {ContactId} — sibling {Sibling} not in discovered set; cannot reconstruct recipient subquery.",
+                            info.BareName, @event.ContactId, siblingBare);
+                        return 0;
+                    }
+                    // Sibling identifier needs to be qualified with the
+                    // same schema as the parent — derive it from the
+                    // parent's QualifiedIdentifier (`"schema"."parent"`).
+                    var qualifiedSibling = info.QualifiedIdentifier.Replace(
+                        $"\"{info.BareName}\"", $"\"{siblingBare}\"", StringComparison.Ordinal);
                     var sql =
                         $"""
-                        UPDATE "{renamedTable}"
+                        UPDATE {info.QualifiedIdentifier}
                         SET "BodyRendered" = NULL, "Subject" = @placeholder
-                        WHERE "Id" IN (SELECT "NotificationId" FROM "{sibling}" WHERE "ContactId" = @contactId)
+                        WHERE "Id" IN (SELECT "NotificationId" FROM {qualifiedSibling} WHERE "ContactId" = @contactId)
                         """;
                     return await ExecuteParameterisedUpdateAsync(sql, @event.ContactId, innerCt);
                 }
@@ -178,9 +192,15 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         // Do NOT log @event.Reason — it is free-text user input and can contain PII
         // (names, emails, phone numbers). EventId + ContactId + counts are sufficient for audit.
+        // Renamed-table totals are reported separately so an operator can
+        // tell from the log line whether the escape hatch did any work.
         logger.LogInformation(
-            "GDPR erasure event {EventId} for contact {ContactId} in tenant {TenantId}: scrubbed {RecipientCount} recipients across {NotificationCount} notifications (mode={Mode})",
-            @event.EventId, @event.ContactId, tenantId, scrubbedRecipientCount, scrubbedNotificationCount, @event.Mode);
+            "GDPR erasure event {EventId} for contact {ContactId} in tenant {TenantId}: " +
+            "scrubbed {RecipientCount} recipients across {NotificationCount} notifications " +
+            "(canonical) + {RenamedRowsRedacted} rows across {RenamedTablesScanned} renamed _del_ tables (mode={Mode})",
+            @event.EventId, @event.ContactId, tenantId,
+            scrubbedRecipientCount, scrubbedNotificationCount,
+            renamedScan.RowsRedacted, renamedScan.TablesScanned, @event.Mode);
     }
 
     private async Task<int> ExecuteParameterisedUpdateAsync(string sql, Guid contactId, CancellationToken ct)
@@ -192,6 +212,12 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
+            // Enlist in the ambient EF transaction if the caller has one
+            // open — without this the raw UPDATE would auto-commit while
+            // surrounding EF SaveChanges still rides on the transaction,
+            // creating non-atomic GDPR redaction (review round-2).
+            var ambientTx = dbContext.Database.CurrentTransaction?.GetDbTransaction();
+            if (ambientTx is not null) cmd.Transaction = ambientTx;
             var p1 = cmd.CreateParameter();
             p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
             cmd.Parameters.Add(p1);

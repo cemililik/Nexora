@@ -33,7 +33,7 @@ public sealed class DemoDataSeeder(
         // translatable token, not a hardcoded English string.
         if (!Guid.TryParse(tenantId, out var tenantGuid))
             throw new ArgumentException(
-                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
+                "lockey_identity_demo_data_tenant_id_must_be_guid", nameof(tenantId));
 
         // Filter to modules that are actually installed for the tenant when
         // IModuleAvailability is wired up (planned with the cascade-aware

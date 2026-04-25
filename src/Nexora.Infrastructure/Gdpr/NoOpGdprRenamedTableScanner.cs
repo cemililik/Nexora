@@ -15,7 +15,7 @@ public sealed class NoOpGdprRenamedTableScanner<TDbContext> : IGdprRenamedTableS
     /// <inheritdoc />
     public Task<GdprRenamedTableScanResult> ScanAsync(
         string moduleName,
-        Func<string, CancellationToken, Task<int>> redactSingleTableAsync,
+        Func<RenamedTableInfo, CancellationToken, Task<int>> redactSingleTableAsync,
         CancellationToken ct)
         => Task.FromResult(GdprRenamedTableScanResult.Empty);
 }

@@ -29,6 +29,7 @@ public sealed class PostgresUninstallAdvisoryLock(
     private static readonly ActivitySource ActivitySource =
         new("Nexora.Infrastructure.Modules.UninstallAdvisoryLock", "1.0");
 
+    /// <inheritdoc />
     public async Task<IAsyncDisposable?> AcquireAsync(Guid tenantId, CancellationToken ct)
     {
         using var activity = ActivitySource.StartActivity(
@@ -103,6 +104,12 @@ public sealed class PostgresUninstallAdvisoryLock(
                 await using var cmd = conn.CreateCommand();
                 cmd.CommandText = "SELECT pg_advisory_unlock(@key)";
                 cmd.Parameters.AddWithValue("key", lockKey);
+                // Bounded wait — a broken-but-not-yet-detected connection
+                // would otherwise hang the entire DisposeAsync chain
+                // (review round-2). 5s mirrors the acquire poll budget;
+                // session close on dispose-after-timeout still releases
+                // the lock per Postgres semantics.
+                cmd.CommandTimeout = 5;
                 await cmd.ExecuteScalarAsync();
             }
             catch (NpgsqlException ex)

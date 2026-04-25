@@ -81,11 +81,14 @@ public sealed class InMemoryDemoScenarioRegistry : IDemoScenarioRegistry
     public async Task<IReadOnlyList<DemoScenario>> GetForTenantAsync(
         string tenantId, CancellationToken ct = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
-        if (!Guid.TryParse(tenantId, out var tenantGuid))
+        // Both null/whitespace and non-GUID inputs surface the SAME lockey
+        // — review #84 noted that ArgumentException.ThrowIfNullOrWhiteSpace
+        // would emit a non-localizable framework message while the GUID
+        // branch emitted a lockey, splitting the error surface.
+        if (string.IsNullOrWhiteSpace(tenantId) || !Guid.TryParse(tenantId, out var tenantGuid))
         {
             throw new ArgumentException(
-                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
+                "lockey_identity_demo_data_tenant_id_must_be_guid", nameof(tenantId));
         }
 
         // Probe-without-scope first — the common Phase-1.5 path is "no

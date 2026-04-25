@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Identity.Domain.ValueObjects;
 using Nexora.Modules.Identity.Infrastructure;
@@ -217,10 +218,12 @@ public sealed class UninstallModuleHandler(
     }
 
     /// <summary>
-    /// Per-module uninstall step: corresponds to a single per-module
-    /// transaction (the implicit transaction that <c>SaveChangesAsync</c>
-    /// opens for each db call). Per ADR-0031 the cascade does NOT wrap these
-    /// in a single shared transaction across modules.
+    /// Per-module uninstall step: wraps the rename DDL + Remove + outbox
+    /// stage + SaveChanges in a single EF transaction so a partial-rename
+    /// failure rolls back ALL renames for this module's loop (review
+    /// round-2 zombie-tables finding). Per ADR-0031 the cascade does NOT
+    /// wrap these in a single shared transaction across modules — each
+    /// module is its own atomic unit.
     /// </summary>
     private async Task UninstallSingleModuleAsync(
         TenantId tenantId, IModule module, CancellationToken ct)
@@ -229,14 +232,17 @@ public sealed class UninstallModuleHandler(
             .FirstAsync(tm => tm.TenantId == tenantId && tm.ModuleName == module.Name, ct);
 
         // Canonical platform schema-name format is tenant_{guid:D} (with
-        // hyphens) — set in CreateTenantCommand and TenantContext. The
-        // earlier ":N" form here would target a non-existent schema and
-        // every information_schema lookup would silently return zero rows.
+        // hyphens) — set in CreateTenantCommand and TenantContext.
         var schemaName = $"tenant_{tenantId.Value}";
         await module.OnUninstallAsync(
             new TenantInstallContext(tenantId.Value.ToString(), schemaName, null), ct);
 
         // Remove orphaned role-permission associations for this module.
+        // identityDb is a separate DbContext from platformDb so this
+        // SaveChanges commits independently — acceptable because the
+        // worst case (platform-side rollback after this commits) leaves
+        // an over-pruned permission set that gets re-seeded on
+        // reinstall, no security impact.
         var modulePermissionIds = await identityDb.Permissions
             .Where(p => p.Module == module.Name)
             .Select(p => p.Id)
@@ -258,38 +264,59 @@ public sealed class UninstallModuleHandler(
             await identityDb.SaveChangesAsync(ct);
         }
 
-        var (canonicalNames, renamedNames) = await RenameModuleTablesAsync(
-            tenantId.Value, module.Name, ct);
-
-        if (renamedNames.Count > 0)
+        // Single explicit transaction for the platform-side mutations:
+        // DDL renames (autocommit per ALTER TABLE in PostgreSQL would
+        // create zombie _del_ tables if the loop fails partway, AND
+        // would not roll back if the subsequent SaveChanges fails),
+        // TenantModule.Remove, and the staged outbox event are now
+        // atomic. EF InMemory ignores the transaction call (returns a
+        // no-op) so test paths still work.
+        var supportsTx = platformDb.Database.IsRelational();
+        var tx = supportsTx
+            ? await platformDb.Database.BeginTransactionAsync(ct)
+            : null;
+        try
         {
-            tenantModule.RecordUninstall(string.Join(",", renamedNames));
-            logger.LogInformation("Renamed {Count} tables for module {ModuleName} in tenant {TenantId}: {Tables}",
-                renamedNames.Count, module.Name, tenantId.Value, string.Join(", ", renamedNames));
+            var (canonicalNames, renamedNames) = await RenameModuleTablesAsync(
+                tenantId.Value, module.Name, ct);
+
+            if (renamedNames.Count > 0)
+            {
+                tenantModule.RecordUninstall(string.Join(",", renamedNames));
+                logger.LogInformation("Renamed {Count} tables for module {ModuleName} in tenant {TenantId}: {Tables}",
+                    renamedNames.Count, module.Name, tenantId.Value, string.Join(", ", renamedNames));
+            }
+
+            platformDb.TenantModules.Remove(tenantModule);
+
+            // OutboxService.EnqueueAsync stages the row WITHOUT calling
+            // SaveChanges — it relies on the caller's unit-of-work to
+            // persist both the domain mutation and the OutboxMessage
+            // atomically. SaveChanges below commits both inside the
+            // explicit transaction.
+            await outbox.EnqueueAsync(new ModuleUninstalledIntegrationEvent
+            {
+                TenantId = tenantId.Value.ToString(),
+                ModuleName = module.Name,
+                TenantIdGuid = tenantId.Value,
+                CanonicalTableNames = canonicalNames,
+                RenamedTableNames = renamedNames,
+                // OccurredAt comes from IntegrationEventBase.
+            }, ct);
+
+            await platformDb.SaveChangesAsync(ct);
+
+            if (tx is not null) await tx.CommitAsync(ct);
         }
-
-        platformDb.TenantModules.Remove(tenantModule);
-
-        // OutboxService.EnqueueAsync stages the row WITHOUT calling
-        // SaveChanges — it relies on the caller's unit-of-work to persist
-        // both the domain mutation and the OutboxMessage atomically. The
-        // earlier ordering (SaveChanges → Enqueue → return) flushed the
-        // TenantModule mutation but left the integration event row staged
-        // in the change tracker until the *next* SaveChanges, which never
-        // came on a single-module uninstall — so downstream consumers
-        // never received `ModuleUninstalledIntegrationEvent`. Stage the
-        // event first, then SaveChanges once for both.
-        await outbox.EnqueueAsync(new ModuleUninstalledIntegrationEvent
+        catch
         {
-            TenantId = tenantId.Value.ToString(),
-            ModuleName = module.Name,
-            TenantIdGuid = tenantId.Value,
-            CanonicalTableNames = canonicalNames,
-            RenamedTableNames = renamedNames,
-            // OccurredAt comes from IntegrationEventBase.
-        }, ct);
-
-        await platformDb.SaveChangesAsync(ct);
+            if (tx is not null) await tx.RollbackAsync(ct);
+            throw;
+        }
+        finally
+        {
+            if (tx is not null) await tx.DisposeAsync();
+        }
 
         logger.LogInformation("Module {ModuleName} uninstalled for tenant {TenantId}", module.Name, tenantId.Value);
     }
@@ -301,6 +328,17 @@ public sealed class UninstallModuleHandler(
         IReadOnlyList<string> successesSoFar,
         CancellationToken ct)
     {
+        // Clear the change tracker BEFORE staging the failure event so
+        // any uncommitted mutations from the failing module step (e.g. a
+        // Remove() that was staged but whose SaveChanges threw) do not
+        // get re-attempted alongside the failure-event SaveChanges
+        // below. The earlier rollback (UninstallSingleModuleAsync's
+        // explicit transaction RollbackAsync) handled the database
+        // side; Clear() handles the EF tracker side so SaveChanges only
+        // commits the new OutboxMessage row (review round-2 finding —
+        // tracker leak risk).
+        platformDb.ChangeTracker.Clear();
+
         await outbox.EnqueueAsync(new ModuleUninstallFailedIntegrationEvent
         {
             TenantId = request.TenantId.ToString(),
@@ -312,13 +350,10 @@ public sealed class UninstallModuleHandler(
             // OccurredAt comes from IntegrationEventBase.
         }, ct);
 
-        // SaveChanges before the caller returns Result.Failure; otherwise
-        // the staged failure-event row never reaches the outbox table and
-        // downstream consumers (admin UI, audit) lose the partial-state
-        // signal. The failing module's per-module transaction has already
-        // rolled back, so this SaveChanges only persists the
-        // OutboxMessage row — no domain mutation rides along on the
-        // failing branch.
+        // SaveChanges so the failure-event row reaches the outbox table.
+        // After Clear() above, the tracker only contains this freshly
+        // staged OutboxMessage; SaveChanges commits exactly that, no
+        // domain mutations ride along.
         await platformDb.SaveChangesAsync(ct);
 
         logger.LogError(
@@ -362,16 +397,24 @@ public sealed class UninstallModuleHandler(
         var openedHere = connection.State != System.Data.ConnectionState.Open;
         if (openedHere) await connection.OpenAsync(ct);
 
+        // Enlist every command in the ambient EF transaction (opened by
+        // UninstallSingleModuleAsync). Without this, ALTER TABLE would
+        // auto-commit per statement and a partial-loop failure would
+        // leave zombie _del_ tables that no subsequent retry can find
+        // (the discovery query filters out names already containing
+        // `_del_`) — review round-2 ORTA finding.
+        var ambientTx = platformDb.Database.CurrentTransaction?.GetDbTransaction();
+
         try
         {
             var tableNames = new List<string>();
             await using (var cmd = connection.CreateCommand())
             {
+                if (ambientTx is not null) cmd.Transaction = ambientTx;
                 // ESCAPE on BOTH LIKE clauses — the canonical-prefix LIKE
-                // also needs the literal `_` escape (review: T-026 medium
-                // finding); without it `auth_%` would match `authX`,
-                // `auth_X`, etc., and modules whose names share a prefix
-                // could cross-bleed.
+                // also needs the literal `_` escape; without it `auth_%`
+                // would match `authX`, `auth_X`, etc., and modules whose
+                // names share a prefix could cross-bleed.
                 cmd.CommandText = @"
                     SELECT table_name FROM information_schema.tables
                     WHERE table_schema = @schemaName
@@ -400,6 +443,7 @@ public sealed class UninstallModuleHandler(
                 var renameSQL = $"ALTER TABLE \"{schemaName}\".\"{tableName}\" RENAME TO \"{newName}\"";
 
                 await using var renameCmd = connection.CreateCommand();
+                if (ambientTx is not null) renameCmd.Transaction = ambientTx;
                 renameCmd.CommandText = renameSQL;
                 await renameCmd.ExecuteNonQueryAsync(ct);
 
@@ -409,12 +453,10 @@ public sealed class UninstallModuleHandler(
         }
         // No NpgsqlException catch here: a rename failure means the
         // tenant schema is in a state we did not expect (locked table,
-        // permissions error, network blip). Swallowing it would leave
-        // the canonical tables in place AND the TenantModule row
-        // soft-deleted, advertising "uninstall succeeded" while the
-        // operator sees no _del_ rename in the database. Letting the
-        // exception bubble is correct: the cascade orchestrator catches
-        // DbException at the per-module loop boundary, emits
+        // permissions error, network blip). Letting the exception bubble
+        // is correct: the caller's transaction rolls back every rename
+        // already performed in this loop, the cascade orchestrator
+        // catches DbException at the per-module loop boundary, emits
         // ModuleUninstallFailedIntegrationEvent, and the row stays
         // installed for retry.
         finally

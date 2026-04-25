@@ -292,17 +292,20 @@ public sealed class AdditiveOnlyMigrationTests
     {
         var bodyMatch = rx.Match(upBody);
         if (!bodyMatch.Success) return 0;
-        // Locate the matched substring in the full file to report a
-        // navigable line number.
-        var matchedText = bodyMatch.Value;
-        var idx = strippedFullSource.IndexOf(matchedText, StringComparison.Ordinal);
-        if (idx < 0) return 0;
-        // Use \r\n + \r + \n splits so Windows checkouts don't bleed \r
-        // into the count and don't shift the reported line off-by-one.
-        var prefix = strippedFullSource[..idx];
+        // Compute the absolute file offset as
+        //   bodyStartIndex + bodyMatch.Index
+        // rather than IndexOf(matchedText) over the full file. The latter
+        // would return the FIRST occurrence of the matched text — Up()
+        // and Down() often contain identical-looking calls (a Down
+        // DropColumn that mirrors an Up AddColumn), and IndexOf would
+        // mis-point the reported line at the Down() call (review round-2
+        // finding — heuristic correctness improvement, not user-facing).
+        var bodyStartIndex = strippedFullSource.IndexOf(upBody, StringComparison.Ordinal);
+        if (bodyStartIndex < 0) return 0;
+        var absoluteOffset = bodyStartIndex + bodyMatch.Index;
         var lineCount = 1;
-        foreach (var ch in prefix)
-            if (ch == '\n') lineCount++;
+        for (var i = 0; i < absoluteOffset; i++)
+            if (strippedFullSource[i] == '\n') lineCount++;
         return lineCount;
     }
 }

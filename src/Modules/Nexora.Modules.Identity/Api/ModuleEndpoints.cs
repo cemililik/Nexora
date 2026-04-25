@@ -18,7 +18,10 @@ public static class ModuleEndpoints
     /// <summary>Maps module install, uninstall, and listing endpoints.</summary>
     public static void MapModuleEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // Platform-level: list all registered (discoverable) modules
+        // Platform-level: list all registered (discoverable) modules.
+        // This endpoint sits OUTSIDE the /tenants/modules group, so the
+        // group-level RequireAuthorization below does not apply — it
+        // needs its own per-endpoint policy.
         endpoints.MapGet("/modules/registered", (IReadOnlyList<IModule> modules) =>
         {
             var result = modules.Select(m => new RegisteredModuleDto(
@@ -44,16 +47,11 @@ public static class ModuleEndpoints
         });
 
         // All four module-mutation endpoints (install / activate /
-        // deactivate / uninstall) gate on the SAME permission as the
-        // GET endpoints above (line 27, 33). Per review #42 the SPEC
-        // entry for DELETE was inconsistent (claimed
-        // `identity.modules.uninstall`, install row claimed
-        // `platform.modules.manage`); the actual production posture is
-        // ONE permission key — `identity.modules.manage` — for the
-        // whole module-management resource. Adding RequireAuthorization
-        // here brings the mutation endpoints into line with the read
-        // endpoints AND closes a pre-existing gap where install /
-        // uninstall / activate / deactivate were unauthenticated.
+        // deactivate / uninstall) inherit the group-level
+        // RequireAuthorization("identity.modules.manage") above — no
+        // per-endpoint declaration needed (review round-2 outside-diff:
+        // earlier per-endpoint .RequireAuthorization() calls were
+        // redundant + ambiguous).
         group.MapPost("/", async (ITenantContextAccessor tenantAccessor, InstallModuleRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new InstallModuleCommand(GetTenantId(tenantAccessor), request.ModuleName);
@@ -63,7 +61,7 @@ public static class ModuleEndpoints
                     $"/api/v1/identity/tenants/modules/{result.Value!.ModuleName}",
                     ApiEnvelope<TenantModuleDto>.Success(result.Value!, result.Message))
                 : Results.BadRequest(ApiEnvelope<TenantModuleDto>.Fail(result.Error!));
-        }).RequireAuthorization("identity.modules.manage");
+        });
 
         group.MapPatch("/{moduleName}/activate", async (ITenantContextAccessor tenantAccessor, string moduleName, ISender sender, CancellationToken ct) =>
         {
@@ -71,7 +69,7 @@ public static class ModuleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        }).RequireAuthorization("identity.modules.manage");
+        });
 
         group.MapPatch("/{moduleName}/deactivate", async (ITenantContextAccessor tenantAccessor, string moduleName, ISender sender, CancellationToken ct) =>
         {
@@ -79,7 +77,7 @@ public static class ModuleEndpoints
             return result.IsSuccess
                 ? Results.Ok(ApiEnvelope.Success(result.Message))
                 : Results.BadRequest(ApiEnvelope<object>.Fail(result.Error!));
-        }).RequireAuthorization("identity.modules.manage");
+        });
 
         group.MapDelete("/{moduleName}", async (ITenantContextAccessor tenantAccessor, string moduleName, ISender sender, CancellationToken ct) =>
         {
@@ -95,7 +93,7 @@ public static class ModuleEndpoints
                 "lockey_identity_error_tenant_not_found" => Results.NotFound(ApiEnvelope<object>.Fail(result.Error)),
                 _ => Results.BadRequest(ApiEnvelope<object>.Fail(result.Error))
             };
-        }).RequireAuthorization("identity.modules.manage");
+        });
     }
 }
 

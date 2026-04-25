@@ -35,7 +35,13 @@ public sealed class InMemoryDemoScenarioRegistryTests
         });
 
         var registry = BuildRegistry(contribution);
-        registry.GetAll().Select(s => s.Name).Should().Contain("custom");
+        var names = registry.GetAll().Select(s => s.Name).ToList();
+        names.Should().Contain("custom");
+        // Order matters — contributions append AFTER the platform defaults.
+        // Without this assertion the test would also pass if a contribution
+        // ever shadowed the default ordering (review round-2 finding).
+        names.IndexOf("custom").Should().BeGreaterThan(names.IndexOf("general"));
+        names.IndexOf("custom").Should().BeGreaterThan(names.IndexOf("ngo"));
     }
 
     [Fact]
@@ -97,7 +103,7 @@ public sealed class InMemoryDemoScenarioRegistryTests
         var registry = BuildRegistry();
         var act = async () => await registry.GetForTenantAsync("not-a-guid");
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*lockey_demo_data_tenant_id_must_be_guid*");
+            .WithMessage("*lockey_identity_demo_data_tenant_id_must_be_guid*");
     }
 
     private static InMemoryDemoScenarioRegistry BuildRegistry(params IDemoScenarioContribution[] contributions)

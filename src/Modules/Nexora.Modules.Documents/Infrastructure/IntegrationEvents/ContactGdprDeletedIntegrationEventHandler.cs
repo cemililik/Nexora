@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Nexora.SharedKernel.Abstractions.Gdpr;
 using Nexora.SharedKernel.Abstractions.Messaging;
@@ -114,22 +115,24 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         //     (drop the back-reference to the contact)
         // Note the canonical name has an underscore between
         // "signature" and "recipients" — see SignatureRecipientConfiguration.
-        await renamedTableScanner.ScanAsync(
+        // Use info.QualifiedIdentifier (schema."table") so the UPDATE
+        // doesn't depend on the connection's search_path (review round-2).
+        var renamedScan = await renamedTableScanner.ScanAsync(
             "documents",
-            redactSingleTableAsync: async (renamedTable, innerCt) =>
+            redactSingleTableAsync: async (info, innerCt) =>
             {
-                if (renamedTable.StartsWith("documents_signature_recipients_del_", StringComparison.Ordinal))
+                if (info.BareName.StartsWith("documents_signature_recipients_del_", StringComparison.Ordinal))
                 {
                     return await ExecuteScrubAsync(
-                        $"""UPDATE "{renamedTable}" SET "Name" = @placeholder, "Email" = @placeholder, "IpAddress" = NULL WHERE "ContactId" = @contactId""",
+                        $"""UPDATE {info.QualifiedIdentifier} SET "Name" = @placeholder, "Email" = @placeholder, "IpAddress" = NULL WHERE "ContactId" = @contactId""",
                         @event.ContactId, innerCt);
                 }
-                if (renamedTable.StartsWith("documents_documents_del_", StringComparison.Ordinal))
+                if (info.BareName.StartsWith("documents_documents_del_", StringComparison.Ordinal))
                 {
                     // Mirror the canonical-table behavior: keep the
                     // document, drop the contact back-reference.
                     return await ExecuteUnlinkAsync(
-                        $"""UPDATE "{renamedTable}" SET "LinkedEntityId" = NULL, "LinkedEntityType" = NULL WHERE "LinkedEntityType" = 'Contact' AND "LinkedEntityId" = @contactId""",
+                        $"""UPDATE {info.QualifiedIdentifier} SET "LinkedEntityId" = NULL, "LinkedEntityType" = NULL WHERE "LinkedEntityType" = 'Contact' AND "LinkedEntityId" = @contactId""",
                         @event.ContactId, innerCt);
                 }
                 return 0;
@@ -141,8 +144,11 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         logger.LogInformation(
             "Completed ContactGdprDeletedIntegrationEvent for TenantId {TenantId}, ContactId {ContactId}: " +
-            "UnlinkedDocuments {UnlinkedCount}, ScrubbedRecipients {ScrubbedCount}",
-            @event.TenantId, @event.ContactId, unlinkedCount, scrubbedCount);
+            "UnlinkedDocuments {UnlinkedCount}, ScrubbedRecipients {ScrubbedCount} (canonical) " +
+            "+ {RenamedRowsRedacted} rows across {RenamedTablesScanned} renamed _del_ tables",
+            @event.TenantId, @event.ContactId,
+            unlinkedCount, scrubbedCount,
+            renamedScan.RowsRedacted, renamedScan.TablesScanned);
     }
 
     private Task<int> ExecuteScrubAsync(string sql, Guid contactId, CancellationToken ct)
@@ -160,6 +166,12 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         {
             await using var cmd = conn.CreateCommand();
             cmd.CommandText = sql;
+            // Enlist in the ambient EF transaction if the caller has one
+            // open — without this the raw UPDATE would auto-commit while
+            // surrounding EF SaveChanges still rides on the transaction
+            // (review round-2).
+            var ambientTx = dbContext.Database.CurrentTransaction?.GetDbTransaction();
+            if (ambientTx is not null) cmd.Transaction = ambientTx;
             if (withPlaceholder)
             {
                 var p1 = cmd.CreateParameter();

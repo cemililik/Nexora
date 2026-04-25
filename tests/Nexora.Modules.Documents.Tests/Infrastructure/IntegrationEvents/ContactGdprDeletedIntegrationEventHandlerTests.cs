@@ -7,7 +7,9 @@ using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Documents.Domain.Entities;
 using Nexora.Modules.Documents.Infrastructure;
 using Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
+using Nexora.SharedKernel.Abstractions.Gdpr;
 using Nexora.SharedKernel.Domain.Events;
+using NSubstitute;
 
 namespace Nexora.Modules.Documents.Tests.Infrastructure.IntegrationEvents;
 
@@ -177,6 +179,36 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         var inboxCount = await _dbContext.Set<InboxMessage>()
             .CountAsync(m => m.EventId == @event.EventId);
         inboxCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task HandleAsync_AlwaysCallsRenamedTableScannerWithDocumentsModuleName()
+    {
+        // T-027 regression: the architecture test
+        // (GdprEscapeHatchBoundaryTests) ensures the source REFERENCES
+        // IGdprRenamedTableScanner; this test ensures the handler
+        // actually CALLS ScanAsync for the documents module slug at
+        // runtime so a future refactor can't accidentally drop the call
+        // (review round-2 finding).
+        var scanner = Substitute.For<IGdprRenamedTableScanner<DocumentsDbContext>>();
+        scanner.ScanAsync(
+            Arg.Any<string>(),
+            Arg.Any<Func<RenamedTableInfo, CancellationToken, Task<int>>>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(GdprRenamedTableScanResult.Empty));
+
+        var handler = new ContactGdprDeletedIntegrationEventHandler(
+            _dbContext,
+            new InboxGuard<DocumentsDbContext>(_dbContext),
+            scanner,
+            NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
+
+        await handler.HandleAsync(CreateEvent(), CancellationToken.None);
+
+        await scanner.Received(1).ScanAsync(
+            "documents",
+            Arg.Any<Func<RenamedTableInfo, CancellationToken, Task<int>>>(),
+            Arg.Any<CancellationToken>());
     }
 
     public void Dispose() => _dbContext.Dispose();

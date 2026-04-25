@@ -99,7 +99,12 @@ describe('CreateDemoEnvironmentDialog', () => {
       name: 'lockey_identity_tenants_demo_submit',
     });
     // Default scenario is empty; click "general" option to enable submit.
-    await userEvent.click(screen.getByRole('combobox'));
+    // Target the SelectTrigger by its FormField label rather than the
+    // bare combobox role — would otherwise break the moment another
+    // Select is added to this dialog.
+    await userEvent.click(
+      screen.getByRole('combobox', { name: /lockey_identity_tenants_demo_scenario_label/i }),
+    );
     await userEvent.click(
       await screen.findByRole('option', {
         name: 'lockey_identity_tenants_demo_scenario_general',
@@ -147,7 +152,12 @@ describe('CreateDemoEnvironmentDialog', () => {
     const submitBtn = await screen.findByRole('button', {
       name: 'lockey_identity_tenants_demo_submit',
     });
-    await userEvent.click(screen.getByRole('combobox'));
+    // Target the SelectTrigger by its FormField label rather than the
+    // bare combobox role — would otherwise break the moment another
+    // Select is added to this dialog.
+    await userEvent.click(
+      screen.getByRole('combobox', { name: /lockey_identity_tenants_demo_scenario_label/i }),
+    );
     await userEvent.click(
       await screen.findByRole('option', {
         name: 'lockey_identity_tenants_demo_scenario_general',

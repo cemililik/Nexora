@@ -47,9 +47,10 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
     private static readonly Regex ModuleNameValidation = new(
         @"^[a-z][a-z0-9_]*$", RegexOptions.Compiled);
 
+    /// <inheritdoc />
     public async Task<GdprRenamedTableScanResult> ScanAsync(
         string moduleName,
-        Func<string, CancellationToken, Task<int>> redactSingleTableAsync,
+        Func<RenamedTableInfo, CancellationToken, Task<int>> redactSingleTableAsync,
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(moduleName);
@@ -108,12 +109,22 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
         if (renamedTables.Count == 0)
             return GdprRenamedTableScanResult.Empty;
 
+        // Build the discovered-set ONCE so the callback can pass-through
+        // the same reference to every invocation without re-allocating
+        // (handlers use this for sibling-table existence checks).
+        var discoveredSet = (IReadOnlySet<string>)new HashSet<string>(renamedTables, StringComparer.Ordinal);
+        var qualifiedSchema = QuoteIdentifier(schemaName);
+
         var totalRedacted = 0;
-        foreach (var table in renamedTables)
+        foreach (var bareName in renamedTables)
         {
+            var info = new RenamedTableInfo(
+                BareName: bareName,
+                QualifiedIdentifier: $"{qualifiedSchema}.{QuoteIdentifier(bareName)}",
+                AllDiscoveredBareNames: discoveredSet);
             try
             {
-                totalRedacted += await redactSingleTableAsync(table, ct);
+                totalRedacted += await redactSingleTableAsync(info, ct);
             }
             catch (Npgsql.NpgsqlException ex)
             {
@@ -124,7 +135,7 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
                 // that fails the entire GDPR event handler.
                 logger.LogWarning(ex,
                     "GDPR escape hatch: redaction failed for renamed table {Table} (module {Module}); other tables continue.",
-                    table, moduleName);
+                    bareName, moduleName);
             }
         }
 
@@ -162,4 +173,16 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
         p.Value = value;
         cmd.Parameters.Add(p);
     }
+
+    /// <summary>
+    /// PostgreSQL identifier quoting — wraps in double-quotes and escapes
+    /// embedded quotes by doubling them. Used to build the
+    /// schema-qualified <see cref="RenamedTableInfo.QualifiedIdentifier"/>
+    /// so handler-side UPDATEs do not depend on the connection's
+    /// <c>search_path</c> (review round-2 — search_path could be the
+    /// tenant schema, the public schema, or neither depending on caller
+    /// setup).
+    /// </summary>
+    private static string QuoteIdentifier(string raw)
+        => "\"" + raw.Replace("\"", "\"\"") + "\"";
 }

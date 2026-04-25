@@ -119,7 +119,10 @@ public sealed class PlatformDbContext(
             e.Property(t => t.Name).HasMaxLength(200).IsRequired();
             e.Property(t => t.Slug).HasMaxLength(100).IsRequired();
             e.HasIndex(t => t.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
-            e.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
+            // MaxLength matches TenantConfiguration.cs (50) — earlier
+            // 20 here was inconsistent and would have rejected any future
+            // status enum value longer than 20 chars (review round-2).
+            e.Property(t => t.Status).HasConversion<string>().HasMaxLength(50);
             e.Property(t => t.Settings).HasColumnType("jsonb");
             e.Property(t => t.RealmId).HasMaxLength(200);
 

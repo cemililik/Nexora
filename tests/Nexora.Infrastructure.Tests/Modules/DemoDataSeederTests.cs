@@ -149,7 +149,7 @@ public sealed class DemoDataSeederTests
         var seeder = BuildSeeder();
         var act = () => seeder.SeedAsync("not-a-guid", Scenario);
         await act.Should().ThrowAsync<ArgumentException>()
-            .WithMessage("*lockey_demo_data_tenant_id_must_be_guid*");
+            .WithMessage("*lockey_identity_demo_data_tenant_id_must_be_guid*");
     }
 
     // --- Helpers ------------------------------------------------------------------

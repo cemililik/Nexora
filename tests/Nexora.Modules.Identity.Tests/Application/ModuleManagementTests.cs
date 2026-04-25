@@ -238,11 +238,21 @@ public sealed class ModuleManagementTests : IDisposable
             new UninstallModuleCommand(_tenantId.Value, "identity", Cascade: true), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        // Both modules soft-deleted.
+        // Both modules soft-deleted (verify global filter excludes them).
         var remaining = await _platformDb.TenantModules
             .Where(tm => tm.TenantId == _tenantId)
             .CountAsync();
         remaining.Should().Be(0);
+        // Verify the AuditableEntity soft-delete actually flipped IsDeleted
+        // on each row (review round-2 finding — counting under the global
+        // filter would also return 0 if the rows were hard-deleted, which
+        // is the wrong semantics for cascade uninstall).
+        var softDeleted = await _platformDb.TenantModules
+            .IgnoreQueryFilters()
+            .Where(tm => tm.TenantId == _tenantId)
+            .ToListAsync();
+        softDeleted.Should().HaveCount(2);
+        softDeleted.Should().AllSatisfy(tm => tm.IsDeleted.Should().BeTrue());
         // Forward log order verified through OnUninstallAsync invocation order.
         Received.InOrder(() =>
         {

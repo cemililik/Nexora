@@ -293,8 +293,14 @@ public sealed class PurgeUninstalledModulesJob(
             }
 
             // Reserialize survivors. Empty failed-list ⇒ null + hard-delete row.
+            // Both branches now wrap SaveChanges in try/catch so a transient
+            // EF error on ONE tenant's row cannot abort the rest of the
+            // outer foreach (review round-2 finding); the audit row records
+            // the SaveChanges failure via persistError so operators see
+            // exactly which step failed even when the row stays in place.
             string? hardDeleteError = null;
             var rowHardDeleted = false;
+            string? persistError = null;
             if (failed.Count == 0)
             {
                 row.SetDeletedTableNames(null);
@@ -316,11 +322,43 @@ public sealed class PurgeUninstalledModulesJob(
             else
             {
                 row.SetDeletedTableNames(string.Join(",", failed));
-                await platformDb.SaveChangesAsync(ct);
+                try
+                {
+                    await platformDb.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException ex)
+                {
+                    persistError = ex.Message;
+                    logger.LogError(ex,
+                        "Purge: SaveChanges of survivor list failed for tenant {TenantId} module {Module}; " +
+                        "DROPs already succeeded so the audit will reflect them, but the row keeps the previous CSV until next purge.",
+                        tenantId, row.ModuleName);
+                    // Detach so the half-saved entity doesn't poison the
+                    // next outer-loop iteration's SaveChanges.
+                    platformDb.Entry(row).State = EntityState.Detached;
+                }
             }
 
             rowStopwatch.Stop();
-            await WriteAuditAsync(tenantId, row, dropped, failed, retentionDays, rowStopwatch.ElapsedMilliseconds, hardDeleteError, rowHardDeleted, ct);
+            // Audit AFTER persistence attempts so it records the final
+            // outcome (rowHardDeleted, persistError, hardDeleteError);
+            // wrap the audit write in its own catch so an audit-store
+            // outage does not abort the per-row loop either.
+            try
+            {
+                await WriteAuditAsync(tenantId, row, dropped, failed, retentionDays,
+                    rowStopwatch.ElapsedMilliseconds, hardDeleteError ?? persistError,
+                    rowHardDeleted, ct);
+            }
+            catch (Exception auditEx) when (auditEx is not OperationCanceledException)
+            {
+                // CLAUDE.md "no catch(Exception)" exempts background-job
+                // boundaries — a single tenant's audit write failing must
+                // not abort the rest of the outer foreach.
+                logger.LogError(auditEx,
+                    "Purge: audit write failed for tenant {TenantId} module {Module}; continuing with next row.",
+                    tenantId, row.ModuleName);
+            }
             PurgeDurationHistogram.Record(rowStopwatch.Elapsed.TotalSeconds,
                 new KeyValuePair<string, object?>("tenant", tenantId),
                 new KeyValuePair<string, object?>("module", row.ModuleName));

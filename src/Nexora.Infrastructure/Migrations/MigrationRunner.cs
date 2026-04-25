@@ -17,11 +17,14 @@ namespace Nexora.Infrastructure.Migrations;
 ///
 /// <list type="number">
 ///   <item>Validate the tenant id, derive the schema name (<c>tenant_{id}</c>).</item>
-///   <item>Open a dedicated Npgsql session and acquire
-///         <c>pg_advisory_lock(hashtext('migrate:' || tenantId))</c> with a
-///         5-second wait. The lock is session-scoped so the runner holds
-///         it for the whole pass, blocking concurrent runs against the
-///         same tenant. Release on dispose.</item>
+///   <item>Open a dedicated Npgsql session and call
+///         <c>pg_try_advisory_lock</c> over a stable per-tenant key
+///         (FNV-1a-64 of <c>"migrate:" + tenantId</c>, computed
+///         client-side via <see cref="ComputeLockKey"/> — does NOT
+///         match Postgres <c>hashtext</c>). The runner polls with a
+///         5-second budget instead of blocking; if the lock is busy the
+///         result carries <see cref="MigrationRunStatus.LockNotAcquired"/>
+///         and the caller retries later. Release on dispose.</item>
 ///   <item>Iterate registered <see cref="IModule"/>s in dependency order
 ///         (re-using <see cref="DemoDataSeeder.OrderByDependencies"/> —
 ///         the platform's only topo-sort over the same graph). For each:
@@ -242,13 +245,17 @@ public sealed class MigrationRunner(
         try
         {
             await using var cmd = conn.CreateCommand();
+            // AND "IsDeleted" = false guards soft-deleted tenants —
+            // operator deleted the tenant after a migration was queued,
+            // we must not resurrect its status row (review round-2).
             cmd.CommandText =
                 """
                 UPDATE public.identity_tenants
                 SET "Status" = 'MigrationFailed',
                     "UpdatedAt" = now() AT TIME ZONE 'utc'
                 WHERE "Id" = @tenantId
-                  AND "Status" <> 'Terminated';
+                  AND "Status" <> 'Terminated'
+                  AND "IsDeleted" = false;
                 """;
             cmd.Parameters.AddWithValue("tenantId", tenantGuid);
             await cmd.ExecuteNonQueryAsync(ct);
