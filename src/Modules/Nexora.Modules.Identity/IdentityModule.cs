@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Nexora.Infrastructure.FeatureFlags;
 using Nexora.Infrastructure.Persistence;
 using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Infrastructure.Persistence.Outbox;
@@ -10,6 +11,7 @@ using Nexora.Modules.Identity.Infrastructure;
 using Nexora.Modules.Identity.Infrastructure.Authorization;
 using Nexora.Modules.Identity.Infrastructure.IntegrationEvents;
 using Nexora.Modules.Identity.Infrastructure.Keycloak;
+using Nexora.SharedKernel.Abstractions.FeatureFlags;
 using Nexora.SharedKernel.Abstractions.Localization;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
@@ -75,6 +77,11 @@ public sealed class IdentityModule : IModule
         // Register inbox guard for idempotent integration event consumption
         services.AddScoped<IInboxGuard, InboxGuard<IdentityDbContext>>();
         services.AddScoped<IOutbox, OutboxService<IdentityDbContext>>();
+
+        // T-016: feature-flag service backed by tenant config. The
+        // optional LaunchDarkly backend swaps in here at deploy time
+        // when a SaaS deployment configures the integration.
+        services.AddScoped<IFeatureFlagService, TenantConfigFeatureFlagService>();
     }
 
     /// <inheritdoc />
@@ -99,6 +106,7 @@ public sealed class IdentityModule : IModule
         endpoints.MapAuditEndpoints();
         endpoints.MapModuleEndpoints();
         endpoints.MapDemoScenarioEndpoints();
+        endpoints.MapFeatureFlagEndpoints(); // T-016
     }
 
     /// <inheritdoc />
@@ -153,6 +161,12 @@ public sealed class IdentityModule : IModule
         registry.Register("identity", "roles", "delete", "lockey_identity_permission_roles_delete");
         registry.Register("identity", "modules", "read",   "lockey_identity_permission_modules_read");
         registry.Register("identity", "modules", "manage", "lockey_identity_permission_modules_manage");
+
+        // T-016: feature-flag toggles. Platform-scope so only Platform Admin
+        // can flip a flag — never tenant admins (preserves the rollout
+        // contract: flags are operator-controlled progressive-delivery
+        // levers, not tenant settings).
+        registry.Register("identity", "feature_flags", "manage", "lockey_identity_permission_feature_flags_manage", PermissionScope.Platform);
 
         // Platform-wide operator permission (reserved for NMP operators — ADR-0025).
         registry.Register("platform", "compliance", "policy_manage",

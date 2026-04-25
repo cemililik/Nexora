@@ -16,6 +16,7 @@ _None._
 | T-015 — License revocation list fetcher | In Review |
 | T-014 — `LicenseService.ValidateAsync` hot-reload watcher | In Review (ADR-0030 deviation: `IOptions` instead of `IConfigurationResolver` for polling interval — resolver is tenant-scoped, hosted service is tenant-less; range still enforced; logged in task status log) |
 | T-010 — Cross-module audit payload PII scan (scaffolding) | In Review (10M-row benchmark + per-module locators deferred to Milestone C / module-owning tasks per 2026-04-24 reclassification) |
+| T-016 — Progressive rollout / feature-flag service | In Review (admin React page deferred — backend endpoints are the binding contract; UI is a separate Milestone C follow-up) |
 
 ## Recently closed (Phase 2 Milestone A batch — merged to `main` 2026-04-25)
 

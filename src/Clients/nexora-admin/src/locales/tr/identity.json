@@ -248,6 +248,7 @@
   "lockey_identity_permission_roles_delete": "Rolleri sil",
   "lockey_identity_permission_modules_read": "Modülleri görüntüle",
   "lockey_identity_permission_modules_manage": "Modülleri yönet",
+  "lockey_identity_permission_feature_flags_manage": "Özellik bayraklarını yönet",
   "lockey_identity_no_permissions": "Atanmış izin yok",
   "lockey_identity_role_users_title": "Role sahip kullanıcılar: {{roleName}}",
   "lockey_identity_role_add_user": "Kullanıcı Ekle",
