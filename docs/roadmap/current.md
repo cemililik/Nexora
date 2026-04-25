@@ -8,6 +8,16 @@
 
 _None._
 
+## Blocked
+
+| Task | Reason |
+|------|--------|
+| T-030 — Portal Extension end-to-end pilot — CRM module | Four prerequisite gaps (no CRM backend module, no Contacts-360° host shell in nexora-portal, `dashboard.sidebar` vs existing `dashboard-sidebar` slot-naming collision, no backend manifest-assembly endpoint or schema artefact). Per the task's own technical notes the agent paused and filed precursor sequence T-030a–T-030e in the task status log instead of ad-hoc-introducing the missing scaffolding. |
+
+## Pending decisions
+
+- **T-030 precursor ordering.** Five precursor tasks recommended in the T-030 status log (T-030a CRM backend skeleton, T-030b/c contact-360° host shell, T-030d slot-naming reconciliation + ADR-0017 amendment, T-030e Portal Framework backend + manifest endpoint + CI). Maintainer to confirm the sequence and file the precursor task IDs before T-030 itself can resume.
+
 ## Prior active task (In Review)
 
 | Task | Status |
