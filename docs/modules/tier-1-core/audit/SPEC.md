@@ -434,6 +434,20 @@ Masking replaces the value with `"***MASKED***"` in the audit log. The mask list
 
 **Depth and size limits (shared with §11):** nested-object traversal depth = 5 levels; max payload size = 64 KB, truncated with `"...[TRUNCATED]"` suffix.
 
+### 11.1 Cross-module PII payload scan (T-010, ADR-0026)
+
+The `EntityType = "Contact" AND EntityId = <contactId>` indexed path catches the common case but misses contact references **embedded in other modules' audit JSON payloads** (e.g. CRM `Lead.assignedTo`). T-010 closes this Article 17 gap with a per-module locator pattern:
+
+- Each module that stores contact PII inside audit `BeforeState` / `AfterState` / `Changes` JSON columns registers an `IContactReferenceLocator` (DI singleton).
+- The locator's `Redact(jsonPayload, contactId)` returns either redacted JSON or `null` (no match in that payload).
+- `ContactPayloadScanJob` (Hangfire `maintenance` queue) is enqueued by the `ContactGdprDeletedIntegrationEventHandler` after the indexed-path redaction commits. The job iterates every registered locator and applies its redaction rules in-place to that module's audit rows.
+- An `audit / gdpr_erasure_scan` summary entry is appended at the end of each sweep with per-module counts in `Metadata`.
+- Idempotent: re-running on already-redacted payloads is a no-op (locators return `null` once their target paths are clean).
+
+Module-coverage gate: `tests/Nexora.Architecture.Tests/ContactReferenceLocatorCoverageTests.cs` asserts that any module emitting a `ContactId`-bearing integration event also ships an `IContactReferenceLocator`. Modules whose events carry only IDs (no PII strings) are explicitly exempted with a documented rationale.
+
+The 10M-row performance benchmark for the scan is deferred to Phase 2 Milestone C per the T-010 reclassification.
+
 ## 12. Retention and Partitioning
 
 - **Table partitioning**: Monthly range partitions on `timestamp`

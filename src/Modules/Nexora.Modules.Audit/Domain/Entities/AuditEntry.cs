@@ -92,4 +92,20 @@ public sealed class AuditEntry : Entity<AuditEntryId>
         if (AfterState is not null) AfterState = redactionMarker;
         if (Changes is not null) Changes = redactionMarker;
     }
+
+    /// <summary>
+    /// T-010: applies a per-payload-column redaction produced by an
+    /// <c>IContactReferenceLocator</c>. Each parameter is the locator's
+    /// new payload for that column, or <see langword="null"/> when the
+    /// locator left it untouched. Asymmetric to <see cref="RedactPayloadForGdpr"/>
+    /// which replaces all three with the same marker — locators emit
+    /// per-column mutations because the contact reference may live in
+    /// only one of the three.
+    /// </summary>
+    public void ApplyLocatorRedaction(string? newBeforeState, string? newAfterState, string? newChanges)
+    {
+        if (newBeforeState is not null) BeforeState = newBeforeState;
+        if (newAfterState is not null) AfterState = newAfterState;
+        if (newChanges is not null) Changes = newChanges;
+    }
 }

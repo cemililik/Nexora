@@ -82,8 +82,9 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         };
 
         var inboxGuard = new InboxGuard<AuditDbContext>(_dbContext);
+        var backgroundJobClient = NSubstitute.Substitute.For<Hangfire.IBackgroundJobClient>();
         var handler = new ContactGdprDeletedIntegrationEventHandler(
-            _dbContext, inboxGuard,
+            _dbContext, inboxGuard, backgroundJobClient,
             NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
 
         // Act — first run
