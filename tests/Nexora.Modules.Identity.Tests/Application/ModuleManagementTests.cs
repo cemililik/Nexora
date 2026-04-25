@@ -7,8 +7,10 @@ using Nexora.Modules.Identity.Infrastructure;
 using Nexora.SharedKernel.Abstractions.Modules;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
 using Nexora.Infrastructure.MultiTenancy;
+using Nexora.Infrastructure.Modules;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.SharedKernel.Abstractions.Messaging;
+using Nexora.SharedKernel.Domain.Events;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
@@ -127,7 +129,7 @@ public sealed class ModuleManagementTests : IDisposable
         _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), NullLogger<UninstallModuleHandler>.Instance);
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -149,7 +151,7 @@ public sealed class ModuleManagementTests : IDisposable
     [Fact]
     public async Task UninstallModule_NotInstalled_ShouldReturnFailure()
     {
-        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), NullLogger<UninstallModuleHandler>.Instance);
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
         var result = await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -163,7 +165,7 @@ public sealed class ModuleManagementTests : IDisposable
         _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
         await _platformDb.SaveChangesAsync();
 
-        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), NullLogger<UninstallModuleHandler>.Instance);
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
         await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
 
@@ -195,6 +197,116 @@ public sealed class ModuleManagementTests : IDisposable
             new GetTenantModulesQuery(_tenantId.Value), CancellationToken.None);
 
         result.Value!.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task UninstallModule_DependentInstalled_NoCascade_ShouldRefuseWithLockey()
+    {
+        // crm depends on identity; both installed; refuse to uninstall
+        // identity without cascade.
+        _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
+        await _platformDb.SaveChangesAsync();
+
+        var outbox = Substitute.For<IOutbox>();
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, outbox, new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
+
+        var result = await handler.Handle(
+            new UninstallModuleCommand(_tenantId.Value, "identity", Cascade: false), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_module_uninstall_blocked_by_dependent");
+        // Both modules still present — refusal must not do partial work.
+        var stillInstalled = await _platformDb.TenantModules
+            .Where(tm => tm.TenantId == _tenantId)
+            .Select(tm => tm.ModuleName)
+            .ToListAsync();
+        stillInstalled.Should().BeEquivalentTo(["identity", "crm"]);
+        await outbox.DidNotReceive().EnqueueAsync(Arg.Any<ModuleUninstalledIntegrationEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UninstallModule_DependentInstalled_Cascade_ShouldUninstallSubtreeReverseOrder()
+    {
+        // identity ← crm; cascade should uninstall crm first, then identity.
+        _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
+        await _platformDb.SaveChangesAsync();
+
+        var outbox = Substitute.For<IOutbox>();
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, outbox, new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
+
+        var result = await handler.Handle(
+            new UninstallModuleCommand(_tenantId.Value, "identity", Cascade: true), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        // Both modules soft-deleted.
+        var remaining = await _platformDb.TenantModules
+            .Where(tm => tm.TenantId == _tenantId)
+            .CountAsync();
+        remaining.Should().Be(0);
+        // Forward log order verified through OnUninstallAsync invocation order.
+        Received.InOrder(() =>
+        {
+            _crmModule.OnUninstallAsync(Arg.Any<TenantInstallContext>(), Arg.Any<CancellationToken>());
+            _identityModule.OnUninstallAsync(Arg.Any<TenantInstallContext>(), Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task UninstallModule_CascadeFails_EmitsForwardLogEvent_AndThrowsPartialFailure()
+    {
+        // identity ← crm; the crm step succeeds but identity's
+        // OnUninstallAsync throws — cascade orchestrator must:
+        //   1. Keep crm's per-module commit (forward log).
+        //   2. Emit ModuleUninstallFailedIntegrationEvent with crm in
+        //      SuccessfulModulesSoFar.
+        //   3. Throw CascadePartialFailure naming "identity" as failure.
+        _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
+        await _platformDb.SaveChangesAsync();
+
+        _identityModule.OnUninstallAsync(Arg.Any<TenantInstallContext>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("simulated identity uninstall failure"));
+
+        var outbox = Substitute.For<IOutbox>();
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, outbox, new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
+
+        var act = async () => await handler.Handle(
+            new UninstallModuleCommand(_tenantId.Value, "identity", Cascade: true), CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<CascadePartialFailure>();
+        ex.Which.FailedModuleName.Should().Be("identity");
+        ex.Which.SuccessfulModules.Should().Equal("crm");
+        ex.Which.ErrorLockey.Should().Be("lockey_identity_error_module_uninstall_invalid_state");
+
+        await outbox.Received(1).EnqueueAsync(
+            Arg.Is<ModuleUninstallFailedIntegrationEvent>(e =>
+                e.TargetModuleName == "identity" &&
+                e.FailedModuleName == "identity" &&
+                e.SuccessfulModulesSoFar.SequenceEqual(new[] { "crm" })),
+            Arg.Any<CancellationToken>());
+
+        // crm's success event was emitted before the cascade failed.
+        await outbox.Received(1).EnqueueAsync(
+            Arg.Is<ModuleUninstalledIntegrationEvent>(e => e.ModuleName == "crm"),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UninstallModule_LockBusy_ShouldReturnLockBusyLockey()
+    {
+        var busyLock = Substitute.For<IUninstallAdvisoryLock>();
+        busyLock.AcquireAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IAsyncDisposable?>(null));
+
+        _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
+        await _platformDb.SaveChangesAsync();
+
+        var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, Substitute.For<IOutbox>(), busyLock, NullLogger<UninstallModuleHandler>.Instance);
+
+        var result = await handler.Handle(
+            new UninstallModuleCommand(_tenantId.Value, "crm"), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_module_uninstall_lock_busy");
     }
 
     public void Dispose()

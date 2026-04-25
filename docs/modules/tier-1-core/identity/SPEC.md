@@ -484,6 +484,7 @@ flowchart LR
 | POST | `/api/v1/identity/tenants/{id}/activate` | Activate tenant | `platform.tenants.manage` |
 | GET | `/api/v1/identity/tenants/{id}/modules` | List installed modules | `platform.tenants.read` |
 | POST | `/api/v1/identity/tenants/{id}/modules` | Install module | `platform.modules.manage` |
+| DELETE | `/api/v1/identity/tenants/{id}/modules/{name}?cascade={bool}` | Uninstall module (T-026: refuses with `lockey_identity_error_module_uninstall_blocked_by_dependent` when an installed module declares the target in `Dependencies` and `cascade=false`; with `cascade=true` uninstalls the dependent subtree in reverse-dependency order under per-module transactions and a session `pg_advisory_lock` per ADR-0031) | `identity.modules.uninstall` |
 
 ### Organization Management
 
@@ -540,7 +541,8 @@ flowchart LR
 | `identity.role.changed` | `nexora.identity.roles` | Role permissions updated |
 | `identity.user.roles_changed` (`UserRolesChangedIntegrationEvent`) | `nexora.identity.roles` | User's role assignment changed — triggers permission cache invalidation (inline at handler + event-driven cross-instance via Kafka) |
 | `identity.module.installed` (`ModuleInstalledIntegrationEvent`) | `nexora.identity.modules` | Module installed for tenant |
-| `identity.module.uninstalled` (`ModuleUninstalledIntegrationEvent`) | `nexora.identity.modules` | Module uninstalled from tenant |
+| `identity.module.uninstalled` (`ModuleUninstalledIntegrationEvent`) | `nexora.identity.modules` | Module uninstalled from tenant — extended schema (T-026 / ADR-0028): `CanonicalTableNames`, `RenamedTableNames`, `UninstalledAtUtc`. One row per per-module step inside a cascade. |
+| `identity.module.uninstall_failed` (`ModuleUninstallFailedIntegrationEvent`) | `nexora.identity.modules` | Cascade-uninstall sequence failed partway through (T-026 / ADR-0031). Carries `TargetModuleName`, `FailedModuleName`, `ErrorLockey`, and `SuccessfulModulesSoFar` (the forward log). Earlier modules in the log remain uninstalled — operators reinstall within retention to recover. |
 | `identity.user.contact_linked` (`UserContactLinkedIntegrationEvent`) | `nexora.identity.users` | Admin linked a user to a Contacts record |
 | `identity.user.contact_unlinked` (`UserContactUnlinkedIntegrationEvent`) | `nexora.identity.users` | User↔Contact link removed (`Reason = "manual" | "gdpr_erasure"`) |
 

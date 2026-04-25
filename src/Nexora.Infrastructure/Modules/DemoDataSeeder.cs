@@ -371,49 +371,11 @@ public sealed class DemoDataSeeder(
     }
 
     /// <summary>
-    /// Topological sort over <see cref="IModule.Dependencies"/>. Modules with no
-    /// dependency on each other are emitted in declaration order so results are
-    /// deterministic. Throws when a cycle is detected — this is a production-time
-    /// misconfiguration, not a runtime condition.
+    /// Topological sort over <see cref="IModule.Dependencies"/>. Delegates to
+    /// <see cref="ModuleDependencyGraph.OrderByDependencies"/> — kept here as
+    /// a thin wrapper so existing call sites (MigrationRunner, DemoDataCleaner,
+    /// internal seeder loop) don't churn.
     /// </summary>
     public static List<IModule> OrderByDependencies(IReadOnlyList<IModule> input)
-    {
-        var byName = input.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
-        var visited = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<IModule>();
-
-        void Visit(IModule module, Stack<string> path)
-        {
-            if (visited.TryGetValue(module.Name, out var done))
-            {
-                if (done) return;
-                throw new InvalidOperationException(
-                    $"Cycle detected in IModule dependency graph: {string.Join(" -> ", path.Reverse())} -> {module.Name}");
-            }
-            visited[module.Name] = false;
-            path.Push(module.Name);
-
-            foreach (var depName in module.Dependencies)
-            {
-                if (!byName.TryGetValue(depName, out var dep))
-                {
-                    // Missing dependency is a module-registration bug — fail loudly.
-                    throw new InvalidOperationException(
-                        $"Module '{module.Name}' depends on '{depName}' but no such module is registered.");
-                }
-                Visit(dep, path);
-            }
-
-            path.Pop();
-            visited[module.Name] = true;
-            result.Add(module);
-        }
-
-        foreach (var module in input)
-        {
-            if (!visited.ContainsKey(module.Name))
-                Visit(module, new Stack<string>());
-        }
-        return result;
-    }
+        => ModuleDependencyGraph.OrderByDependencies(input);
 }

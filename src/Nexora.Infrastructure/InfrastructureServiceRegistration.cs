@@ -160,6 +160,15 @@ public static class InfrastructureServiceRegistration
         // holds no per-tenant state.
         services.AddSingleton<IDemoScenarioRegistry, Modules.InMemoryDemoScenarioRegistry>();
 
+        // T-026: cascade-uninstall advisory lock. Postgres impl in production;
+        // unit tests that construct UninstallModuleHandler against EF InMemory
+        // wire the NoOpUninstallAdvisoryLock directly without going through DI.
+        services.AddSingleton<SharedKernel.Abstractions.Modules.IUninstallAdvisoryLock>(sp =>
+            new Modules.PostgresUninstallAdvisoryLock(
+                configuration.GetConnectionString("Default")
+                    ?? throw new InvalidOperationException("Default connection string is required for IUninstallAdvisoryLock."),
+                sp.GetRequiredService<ILogger<Modules.PostgresUninstallAdvisoryLock>>()));
+
         // T-011: platform-level migration orchestrator + the public-schema
         // failure-log DbContext it writes through. Singleton matches the
         // dep shape (IServiceScopeFactory + IEnumerable<IModule> + ILogger
