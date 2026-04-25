@@ -35,7 +35,7 @@ public sealed class RevocationListFetchJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_ValidBundle_PersistsToDisk_AndUpdatesProvider()
+    public async Task RunAsync_ValidBundle_PersistsToDisk_AndUpdatesProvider()
     {
         var bundle = SignedBundle(
             new RevokedLicenseEntry("lic-001", new DateTime(2026, 4, 25, 0, 0, 0, DateTimeKind.Utc), "expired"));
@@ -50,7 +50,7 @@ public sealed class RevocationListFetchJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_TamperedBundle_RetainsExistingCache()
+    public async Task RunAsync_TamperedBundle_RetainsExistingCache()
     {
         // Seed cache with a previously-good bundle.
         var goodBundle = SignedBundle(new RevokedLicenseEntry("lic-good", DateTime.UtcNow, "x"));
@@ -77,7 +77,7 @@ public sealed class RevocationListFetchJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_UnchangedBundle_IsNoOp()
+    public async Task RunAsync_UnchangedBundle_IsNoOp()
     {
         // Round-trip: pre-load the cache + reload provider, then run the
         // job with the same bundle issued-at — expect provider's snapshot
@@ -98,7 +98,7 @@ public sealed class RevocationListFetchJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_OfflineMode_SkipsHttpAndReloadsCache()
+    public async Task RunAsync_OfflineMode_SkipsHttpAndReloadsCache()
     {
         // In offline mode the job MUST NOT call the HTTP endpoint.
         // We assert this by routing the HTTP handler to throw — if the
@@ -118,7 +118,7 @@ public sealed class RevocationListFetchJobTests : IDisposable
     }
 
     [Fact]
-    public async Task ExecuteAsync_NoPublicKey_AbortsWithoutTouchingCache()
+    public async Task RunAsync_NoPublicKey_AbortsWithoutTouchingCache()
     {
         var bundle = SignedBundle(new RevokedLicenseEntry("lic-001", DateTime.UtcNow, "x"));
         var (job, provider) = CreateJob(bundle, withPublicKey: false);

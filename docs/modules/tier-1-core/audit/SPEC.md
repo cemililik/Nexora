@@ -434,7 +434,9 @@ Masking replaces the value with `"***MASKED***"` in the audit log. The mask list
 
 **Depth and size limits (shared with §11):** nested-object traversal depth = 5 levels; max payload size = 64 KB, truncated with `"...[TRUNCATED]"` suffix.
 
-### 11.1 Cross-module PII payload scan (T-010, ADR-0026)
+### 11.2 Cross-module PII payload scan (T-010, ADR-0026)
+
+> Heading numbering note: the previous `### 11.1 Cross-module PII payload scan` collided with the existing `## 11.1 [AuditMask] Attribute and Default-Masked Fields` section above. Renumbered to `11.2`.
 
 The `EntityType = "Contact" AND EntityId = <contactId>` indexed path catches the common case but misses contact references **embedded in other modules' audit JSON payloads** (e.g. CRM `Lead.assignedTo`). T-010 closes this Article 17 gap with a per-module locator pattern:
 
@@ -447,6 +449,30 @@ The `EntityType = "Contact" AND EntityId = <contactId>` indexed path catches the
 Module-coverage gate: `tests/Nexora.Architecture.Tests/ContactReferenceLocatorCoverageTests.cs` asserts that any module emitting a `ContactId`-bearing integration event also ships an `IContactReferenceLocator`. Modules whose events carry only IDs (no PII strings) are explicitly exempted with a documented rationale.
 
 The 10M-row performance benchmark for the scan is deferred to Phase 2 Milestone C per the T-010 reclassification.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Contacts as Contacts module<br/>(GDPR erasure)
+    participant Handler as ContactGdprDeletedIntegrationEventHandler<br/>(Audit module inbox)
+    participant AuditDb as audit_entries<br/>(indexed path)
+    participant Hangfire as Hangfire<br/>(maintenance queue)
+    participant Scan as ContactPayloadScanJob
+    participant Locator as IContactReferenceLocator<br/>(per module: CRM, Subscription, …)
+    participant Summary as audit_entries<br/>(gdpr_erasure_scan row)
+
+    Contacts->>Handler: ContactGdprDeletedIntegrationEvent
+    Handler->>AuditDb: Redact rows where<br/>EntityType=Contact AND EntityId=<contactId>
+    Note over Handler,AuditDb: Indexed path commits first<br/>so Hangfire ack is durable
+    Handler->>Hangfire: Enqueue ContactPayloadScanJob(tenantId, contactId)
+    Hangfire->>Scan: Run on maintenance queue
+    loop For each registered locator
+        Scan->>Locator: Redact(jsonPayload, contactId)
+        Locator-->>Scan: Redacted JSON or null<br/>(idempotent — null on already-redacted)
+        Scan->>AuditDb: ApplyLocatorRedaction(before, after, changes)
+    end
+    Scan->>Summary: Append gdpr_erasure_scan summary<br/>(per-module counts in Metadata)
+```
 
 ## 12. Retention and Partitioning
 

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.SharedKernel.Abstractions.Audit;
@@ -55,6 +56,9 @@ public sealed class ContactPayloadScanJob(
     ILogger<ContactPayloadScanJob> logger)
     : NexoraJob<ContactPayloadScanJobParams>(tenantContextAccessor, logger)
 {
+    /// <summary>Per-batch SaveChangesAsync threshold — bounds memory footprint at ~BatchSize tracked entities.</summary>
+    private const int BatchSize = 500;
+
     /// <inheritdoc />
     protected override async Task ExecuteAsync(ContactPayloadScanJobParams parameters, CancellationToken ct)
     {
@@ -71,49 +75,108 @@ public sealed class ContactPayloadScanJob(
         var perModuleStats = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var totalRedacted = 0;
 
-        foreach (var locator in locatorList)
+        // One transaction wraps every per-module redaction batch + the
+        // gdpr_erasure_scan summary so a tenant either ends the run with
+        // (all redactions committed AND a summary row) or with (no
+        // mutation at all). Without this, a SaveChanges after the first
+        // module + a crash before the summary would leave the audit table
+        // in a state where the redactions happened but the compliance
+        // record proving they happened is missing — operators couldn't
+        // tell the rows had already been processed. EF InMemory in tests
+        // returns null from BeginTransactionAsync; we tolerate that.
+        IDbContextTransaction? tx = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(ct)
+            : null;
+
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            var redactedThisModule = 0;
-
-            // Fetch only this locator's module rows. Tenant + module index
-            // is on AuditEntry — see AuditEntryConfiguration. Materializing
-            // here is acceptable because real production sites will partition
-            // audit_entries by month and the scan runs against ~1 month of
-            // data per locator (rough order; the 10M-row benchmark is
-            // deferred to Milestone C per the task reclassification).
-            var entries = await dbContext.AuditEntries
-                .Where(e => e.TenantId == parameters.TenantId && e.Module == locator.ModuleName)
-                .ToListAsync(ct);
-
-            foreach (var entry in entries)
+            foreach (var locator in locatorList)
             {
                 ct.ThrowIfCancellationRequested();
-                var redactedBefore = locator.Redact(entry.BeforeState, parameters.ContactId);
-                var redactedAfter = locator.Redact(entry.AfterState, parameters.ContactId);
-                var redactedChanges = locator.Redact(entry.Changes, parameters.ContactId);
-
-                if (redactedBefore is null && redactedAfter is null && redactedChanges is null)
-                    continue; // nothing to redact in this entry
-
-                entry.ApplyLocatorRedaction(redactedBefore, redactedAfter, redactedChanges);
-                redactedThisModule++;
+                var redactedThisModule = await ScanModuleAsync(locator, parameters, ct);
+                if (redactedThisModule > 0)
+                    perModuleStats[locator.ModuleName] = redactedThisModule;
+                totalRedacted += redactedThisModule;
             }
 
-            if (redactedThisModule > 0)
-                perModuleStats[locator.ModuleName] = redactedThisModule;
+            await AppendSummaryAuditEntryAsync(parameters, perModuleStats, ct);
 
-            totalRedacted += redactedThisModule;
+            if (tx is not null) await tx.CommitAsync(ct);
         }
-
-        if (totalRedacted > 0)
-            await dbContext.SaveChangesAsync(ct);
-
-        await AppendSummaryAuditEntryAsync(parameters, perModuleStats, ct);
+        finally
+        {
+            if (tx is not null) await tx.DisposeAsync();
+        }
 
         logger.LogInformation(
             "Contact payload scan completed: tenant {TenantId} contact {ContactId}; {TotalRedacted} entries redacted across {ModuleCount} module(s).",
             parameters.TenantId, parameters.ContactId, totalRedacted, perModuleStats.Count);
+    }
+
+    /// <summary>
+    /// Streams this module's audit rows in <see cref="BatchSize"/>-sized
+    /// pages and applies the locator's redaction in-place. Bounded memory:
+    /// ~BatchSize tracked entities per page, regardless of the module's
+    /// total row count. Each batch's mutations are flushed via
+    /// <c>SaveChangesAsync</c> inside the outer transaction; the
+    /// ChangeTracker is cleared between pages so EF doesn't accumulate
+    /// references to entities the locator examined but did not mutate.
+    /// </summary>
+    private async Task<int> ScanModuleAsync(
+        IContactReferenceLocator locator,
+        ContactPayloadScanJobParams parameters,
+        CancellationToken ct)
+    {
+        var redactedThisModule = 0;
+        var batch = new List<Domain.Entities.AuditEntry>(BatchSize);
+        var pendingChanges = 0;
+
+        // Stable iteration order matters in production so partition
+        // boundaries don't drop or duplicate rows mid-stream — under EF +
+        // Npgsql we add ORDER BY "Timestamp" via a server-side sort. The
+        // InMemory provider used in tests, however, materializes the
+        // OrderBy through LINQ-to-Objects with the non-generic Comparer
+        // (which fails on `DateTimeOffset` despite it implementing
+        // IComparable), so we suppress the OrderBy when the provider is
+        // not relational. Tests assert on row count + content, not order.
+        IQueryable<Domain.Entities.AuditEntry> baseQuery = dbContext.AuditEntries
+            .Where(e => e.TenantId == parameters.TenantId && e.Module == locator.ModuleName);
+        if (dbContext.Database.IsRelational())
+            baseQuery = baseQuery.OrderBy(e => e.Timestamp);
+        var query = baseQuery.AsAsyncEnumerable();
+
+        await foreach (var entry in query.WithCancellation(ct))
+        {
+            batch.Add(entry);
+            var redactedBefore = locator.Redact(entry.BeforeState, parameters.ContactId);
+            var redactedAfter = locator.Redact(entry.AfterState, parameters.ContactId);
+            var redactedChanges = locator.Redact(entry.Changes, parameters.ContactId);
+
+            if (redactedBefore is not null || redactedAfter is not null || redactedChanges is not null)
+            {
+                entry.ApplyLocatorRedaction(redactedBefore, redactedAfter, redactedChanges);
+                redactedThisModule++;
+                pendingChanges++;
+            }
+
+            if (batch.Count >= BatchSize)
+            {
+                if (pendingChanges > 0)
+                {
+                    await dbContext.SaveChangesAsync(ct);
+                    pendingChanges = 0;
+                }
+                dbContext.ChangeTracker.Clear();
+                batch.Clear();
+            }
+        }
+
+        if (pendingChanges > 0)
+        {
+            await dbContext.SaveChangesAsync(ct);
+        }
+
+        return redactedThisModule;
     }
 
     private async Task AppendSummaryAuditEntryAsync(

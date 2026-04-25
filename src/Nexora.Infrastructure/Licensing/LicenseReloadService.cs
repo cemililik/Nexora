@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -74,8 +75,16 @@ public sealed class LicenseReloadService(
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            using var interruptCts = new CancellationTokenSource();
-            Interlocked.Exchange(ref _interruptCts, interruptCts);
+            // Allocate the new CTS, atomically swap it into _interruptCts,
+            // and dispose the *previous* one only after the swap. The
+            // SIGHUP handler reads _interruptCts via Interlocked.Exchange
+            // and wraps its Cancel() call in a try/catch that swallows
+            // ObjectDisposedException so a race where the handler fires
+            // mid-swap cannot crash the hosted service.
+            var interruptCts = new CancellationTokenSource();
+            var previous = Interlocked.Exchange(ref _interruptCts, interruptCts);
+            previous?.Dispose();
+
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(
                 stoppingToken, interruptCts.Token);
             try
@@ -84,16 +93,14 @@ public sealed class LicenseReloadService(
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                Interlocked.CompareExchange(ref _interruptCts, null, interruptCts);
+                interruptCts.Dispose();
                 break;
             }
             catch (OperationCanceledException)
             {
                 // Interrupt fired — fall through to reload-attempt.
                 logger.LogDebug("License reload: polling sleep interrupted (SIGHUP / forced).");
-            }
-            finally
-            {
-                Interlocked.CompareExchange(ref _interruptCts, null, interruptCts);
             }
 
             await PerformReloadAttemptAsync(stoppingToken);
@@ -133,12 +140,46 @@ public sealed class LicenseReloadService(
             return;
         }
 
-        // From here on: the file content has changed. Validate it; on
-        // either outcome we still update _lastHash so a same-bad-file
+        // The file content has changed. Update _lastHash AFTER validation
+        // so a transient validator failure (e.g. a JsonException ride-along
+        // from a bad NMP-track impl, a CryptographicException from a
+        // malformed signature) does NOT silently get pinned as the new
+        // baseline — the next tick will retry the same bytes. Only commit
+        // _lastHash when validation produced a valid OR an explicit
+        // structured invalid result; bare unexpected exceptions leave
+        // _lastHash untouched.
+        LicenseValidationResult result;
+        try
+        {
+            result = await validator.ValidateAsync(bytes, ct);
+        }
+        catch (Exception ex) when (
+            ex is JsonException
+                or CryptographicException
+                or FormatException
+                or InvalidOperationException)
+        {
+            // Validator threw before producing a structured result — emit
+            // the failed event so admins see the alert, retain the
+            // previous snapshot, leave _lastHash untouched so the next
+            // tick retries.
+            logger.LogWarning(ex,
+                "License reload: validator threw on {Path}; previous snapshot retained, no _lastHash update.",
+                _opts.LicenseFilePath);
+            await PublishSafeAsync(new LicenseRefreshFailedIntegrationEvent
+            {
+                TenantId = PlatformSentinelTenantId,
+                ErrorLocalizationKey = "lockey_licensing_validation_unknown",
+                ErrorReason = ex.GetType().Name,
+                FailedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+            }, ct);
+            return;
+        }
+
+        // Structured-failure path also commits _lastHash so a same-bad-file
         // doesn't loop indefinitely emitting the same failure event.
         _lastHash = hash;
 
-        var result = await validator.ValidateAsync(bytes, ct);
         if (result.IsValid)
         {
             var previous = provider.Set(result.Snapshot!);
@@ -199,7 +240,19 @@ public sealed class LicenseReloadService(
             {
                 logger.LogInformation("License reload: {Signal} received; interrupting next polling sleep.", signal);
                 ctx.Cancel = true; // suppress default-terminate semantics for SIGHUP
-                Interlocked.Exchange(ref _interruptCts, null)?.Cancel();
+                var snapshot = Interlocked.Exchange(ref _interruptCts, null);
+                if (snapshot is null) return;
+                try
+                {
+                    snapshot.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Race: the polling loop disposed `snapshot` between
+                    // our Interlocked.Exchange read and the Cancel() call.
+                    // The disposed CTS no longer matters — the next loop
+                    // iteration has already moved on with a fresh CTS.
+                }
             });
         }
         catch (PlatformNotSupportedException)
@@ -223,7 +276,14 @@ public static class LicenseReloadServiceRegistration
     {
         if (configure is not null) services.Configure(configure);
 
-        services.AddSingleton<IValidateOptions<LicenseReloadOptions>, LicenseReloadOptionsValidator>();
+        // Single-source-of-truth validation: DataAnnotations declared on
+        // LicenseReloadOptions are enforced at startup via ValidateOnStart.
+        // No companion IValidateOptions registration — see the type's
+        // <remarks> section for why the duplication was removed.
+        services.AddOptions<LicenseReloadOptions>()
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         services.AddSingleton<InMemoryLicenseProvider>();
         services.AddSingleton<ILicenseProvider>(sp => sp.GetRequiredService<InMemoryLicenseProvider>());
         services.AddSingleton<ILicenseValidator, JsonLicenseValidator>();

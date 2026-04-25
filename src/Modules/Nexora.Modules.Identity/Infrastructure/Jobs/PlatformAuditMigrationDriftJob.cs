@@ -40,7 +40,7 @@ public sealed record PlatformAuditMigrationDriftParams : JobParams;
 /// through the standard reliable-delivery path.
 /// </para>
 /// </remarks>
-[Queue("maintenance")]
+[Queue(JobQueues.Maintenance)]
 [DisplayName("platform:audit-migration-drift")]
 public sealed class PlatformAuditMigrationDriftJob(
     ITenantContextAccessor tenantContextAccessor,
@@ -78,7 +78,7 @@ public sealed class PlatformAuditMigrationDriftJob(
             methodCall: job => job.RunAsync(
                 new PlatformAuditMigrationDriftParams { TenantId = PlatformSentinelTenantId },
                 CancellationToken.None),
-            queue: "maintenance");
+            queue: JobQueues.Maintenance);
     }
 
     /// <inheritdoc />

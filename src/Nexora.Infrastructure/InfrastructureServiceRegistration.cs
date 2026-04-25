@@ -250,8 +250,15 @@ public static class InfrastructureServiceRegistration
         //   registration so the job (which needs ReloadFromDiskAsync) and
         //   query callers (which only need IRevocationListProvider) share
         //   the same singleton.
-        services.Configure<Licensing.RevocationListOptions>(
-            configuration.GetSection(Licensing.RevocationListOptions.SectionName));
+        // Bind + validate at startup so a misconfigured trust anchor /
+        // unreachable cache directory / non-positive retry delay fails
+        // host boot rather than surfacing as a silent fetcher no-op the
+        // first time the daily cron fires.
+        services.AddOptions<Licensing.RevocationListOptions>()
+            .Bind(configuration.GetSection(Licensing.RevocationListOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<Licensing.RevocationListOptions>,
+            Licensing.RevocationListOptionsValidator>();
         services.AddSingleton<Licensing.FileRevocationListProvider>();
         services.AddSingleton<IRevocationListProvider>(sp =>
             sp.GetRequiredService<Licensing.FileRevocationListProvider>());

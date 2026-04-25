@@ -87,6 +87,43 @@ public sealed class PlatformAuditMigrationDriftJobTests : IDisposable
     }
 
     [Fact]
+    public async Task ExecuteAsync_RunTwice_AppendsDriftRow_AndPublishesEvent_OnEachRun()
+    {
+        // The drift table is an append-only forensic log: re-running the
+        // sweep against the same persistent drift state MUST produce a
+        // second row (so operators see "still drifting at 06:00 UTC" in
+        // the historical record), and a second event for downstream
+        // alerting. This pin guards against a future "skip if already
+        // recorded" optimisation that would silently lose the second
+        // observation.
+        var tenant = Tenant.Create("Acme", "acme");
+        await _platformDb.Tenants.AddAsync(tenant);
+        await _platformDb.SaveChangesAsync();
+
+        var driftingModule = new StubModuleMigration("crm",
+            new MigrationHeadsReport(["A", "B"], ["A"]));
+        var job = CreateJob([driftingModule]);
+        var run = new PlatformAuditMigrationDriftParams { TenantId = "platform" };
+
+        await job.RunAsync(run, CancellationToken.None);
+        await job.RunAsync(run, CancellationToken.None);
+
+        var rows = await _driftDb.Drifts
+            .Where(d => d.TenantId == tenant.Id.Value && d.ModuleName == "crm")
+            .ToListAsync();
+        rows.Should().HaveCount(2);
+        rows.Should().AllSatisfy(r =>
+        {
+            r.KnownHead.Should().Be("B");
+            r.AppliedHead.Should().Be("A");
+        });
+
+        await _eventBus.Received(2).PublishAsync(
+            Arg.Any<MigrationDriftDetectedIntegrationEvent>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ExecuteAsync_NoDrift_NoRowsAndNoEvent()
     {
         var tenant = Tenant.Create("Acme", "acme");

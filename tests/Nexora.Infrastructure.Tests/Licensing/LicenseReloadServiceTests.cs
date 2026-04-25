@@ -156,7 +156,37 @@ public sealed class LicenseReloadServiceTests : IDisposable
 
     public void Dispose()
     {
-        if (Directory.Exists(_tempDir)) Directory.Delete(_tempDir, recursive: true);
+        // Best-effort cleanup: a stray IO/permission error here would
+        // otherwise abort the test class and mask the real assertion
+        // failure. Two short retries handle the common case where a
+        // background async I/O on the temp file (e.g. the polling loop
+        // closing late) is still resolving when Dispose runs.
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                if (Directory.Exists(_tempDir))
+                    Directory.Delete(_tempDir, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 2)
+            {
+                Thread.Sleep(50);
+            }
+            catch (UnauthorizedAccessException) when (attempt < 2)
+            {
+                Thread.Sleep(50);
+            }
+            catch (IOException)
+            {
+                // Final attempt failed — swallow so test exit is clean.
+                return;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return;
+            }
+        }
     }
 
     // --- helpers ---------------------------------------------------------

@@ -130,10 +130,22 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
     /// Stamps <see cref="LastMigrationStartedAtUtc"/>. Used by tests that exercise the
     /// drift-suppression window without invoking <c>MigrationRunner</c> end-to-end;
     /// production writes go through MigrationRunner's direct UPDATE so there is no
-    /// dependency on the Identity module assembly.
+    /// dependency on the Identity module assembly. <paramref name="utcNow"/> MUST
+    /// carry <see cref="DateTimeKind.Utc"/> — passing a Local or Unspecified
+    /// kind would produce ambiguous wire/database storage and silently mis-fire
+    /// the 2h drift-suppression window across timezone-mismatched environments.
     /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="utcNow"/>'s
+    /// <see cref="DateTime.Kind"/> is not <see cref="DateTimeKind.Utc"/>.
+    /// Mirrors the guard pattern in <c>AuditableEntity.MarkAsDeleted</c>.
+    /// </exception>
     public void MarkMigrationStarted(DateTime utcNow)
     {
+        if (utcNow.Kind != DateTimeKind.Utc)
+            throw new ArgumentException(
+                $"{nameof(utcNow)} must have DateTimeKind.Utc; got {utcNow.Kind}.",
+                nameof(utcNow));
         LastMigrationStartedAtUtc = utcNow;
     }
 

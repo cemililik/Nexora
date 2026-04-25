@@ -10,9 +10,10 @@ namespace Nexora.SharedKernel.Domain.Events;
 /// <remarks>
 /// One event is emitted per drift-detection sweep that finds at least one
 /// drift row — not one event per drift row — so downstream alert
-/// throttling stays simple (<c>{tenantCount, moduleCount}</c> aggregates
+/// throttling stays simple (<c>{tenantCount, driftRowCount}</c> aggregates
 /// in the payload). A separate <c>platform_migration_drift</c> table
-/// carries the full per-row evidence for ops triage.
+/// carries the full per-row evidence (including the per-module breakdown)
+/// for ops triage.
 /// </remarks>
 public sealed record MigrationDriftDetectedIntegrationEvent : IntegrationEventBase
 {

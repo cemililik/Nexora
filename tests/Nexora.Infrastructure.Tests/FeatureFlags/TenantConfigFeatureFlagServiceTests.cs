@@ -111,6 +111,7 @@ public sealed class TenantConfigFeatureFlagServiceTests : IDisposable
     public async Task IsEnabledAsync_ThrowsOnEmptyKey()
     {
         var svc = CreateService();
-        await Assert.ThrowsAsync<ArgumentException>(() => svc.IsEnabledAsync(""));
+        var act = async () => await svc.IsEnabledAsync("");
+        await act.Should().ThrowAsync<ArgumentException>();
     }
 }

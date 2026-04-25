@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nexora.Infrastructure.Configuration;
 using Nexora.SharedKernel.Abstractions.Configuration;
@@ -66,11 +67,28 @@ public sealed class TenantConfigFeatureFlagService(
         var result = new Dictionary<string, bool>(rows.Count, StringComparer.Ordinal);
         foreach (var row in rows)
         {
-            // Stored as JSONB — true / false / "true" / "false" all need to deserialise.
-            // Trim the prefix off the storage key for the public surface.
-            var bareKey = row.Key.AsSpan(FlagKeyPrefix.Length).ToString();
-            if (bool.TryParse(row.Value?.Trim('"'), out var enabled))
-                result[bareKey] = enabled;
+            // Trim the storage prefix off using a range expression — avoids
+            // an AsSpan/ToString round-trip and reads more like idiomatic C#.
+            var bareKey = row.Key[FlagKeyPrefix.Length..];
+
+            // Defer to System.Text.Json for the JSONB value: ITenantConfiguration
+            // serialises bool with JsonSerializer.Serialize(value), so the
+            // round-trip is the contract — manual quote-stripping silently
+            // accepts mistyped storage (e.g. "1", "yes") that was never valid.
+            if (string.IsNullOrEmpty(row.Value)) continue;
+            try
+            {
+                if (JsonSerializer.Deserialize<bool>(row.Value))
+                    result[bareKey] = true;
+                else
+                    result[bareKey] = false;
+            }
+            catch (JsonException)
+            {
+                // Stored value is not a valid JSON boolean — skip rather
+                // than throw, so a single malformed row does not break the
+                // admin listing for the rest of the tenant's flags.
+            }
         }
         return result;
     }

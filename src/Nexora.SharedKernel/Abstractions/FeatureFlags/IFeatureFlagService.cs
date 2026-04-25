@@ -1,3 +1,5 @@
+using Nexora.SharedKernel.Abstractions.Configuration;
+
 namespace Nexora.SharedKernel.Abstractions.FeatureFlags;
 
 /// <summary>
@@ -9,7 +11,7 @@ namespace Nexora.SharedKernel.Abstractions.FeatureFlags;
 /// <para>
 /// <b>Default backend.</b> The platform's first implementation is
 /// <c>TenantConfigFeatureFlagService</c>, which reads from
-/// <see cref="Configuration.ITenantConfiguration"/> under the
+/// <see cref="ITenantConfiguration"/> under the
 /// <c>feature_flags.{key}</c> namespace. Operators toggle a flag for one
 /// tenant by writing the value through the admin endpoint; the next read
 /// observes it (cached at the same TTL as tenant config).
@@ -24,7 +26,7 @@ namespace Nexora.SharedKernel.Abstractions.FeatureFlags;
 /// <para>
 /// <b>Naming convention.</b> Flag keys are dotted-snake strings —
 /// <c>module.scope.feature</c> — to match the rest of the
-/// <see cref="Configuration.IConfigurationResolver"/> key namespace.
+/// <see cref="IConfigurationResolver"/> key namespace.
 /// Examples: <c>crm.pipeline.kanban_v2</c>, <c>contacts.import.parallel_v2</c>.
 /// </para>
 /// </remarks>

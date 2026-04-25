@@ -22,21 +22,24 @@ public interface ILicenseValidator
 /// <summary>
 /// Result of a single validation attempt. Either <see cref="Snapshot"/>
 /// is non-null (valid) or <see cref="ErrorReason"/> is non-null (invalid).
-/// Never both, never neither.
+/// Never both, never neither — enforced by the <see cref="Valid"/> /
+/// <see cref="Invalid"/> factories which are the only public constructors;
+/// the property setters are <c>private init</c> so external code cannot
+/// build an inconsistent half-state.
 /// </summary>
 public sealed record LicenseValidationResult
 {
     /// <summary>Validated, in-memory snapshot — present when <see cref="IsValid"/> is true.</summary>
-    public LicenseSnapshot? Snapshot { get; init; }
+    public LicenseSnapshot? Snapshot { get; private init; }
 
     /// <summary>
     /// Lockey + reason pair. Lockey for UI surfacing, reason for diagnostic
     /// logging. Present when validation failed.
     /// </summary>
-    public string? ErrorLocalizationKey { get; init; }
+    public string? ErrorLocalizationKey { get; private init; }
 
     /// <summary>Diagnostic-only error description, never surfaced to end users.</summary>
-    public string? ErrorReason { get; init; }
+    public string? ErrorReason { get; private init; }
 
     /// <summary>True when <see cref="Snapshot"/> is set.</summary>
     public bool IsValid => Snapshot is not null;

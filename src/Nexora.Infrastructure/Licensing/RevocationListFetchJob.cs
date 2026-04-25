@@ -24,10 +24,12 @@ public sealed record RevocationListFetchJobParams : JobParams;
 /// <remarks>
 /// <para>
 /// <b>Atomic file rename.</b> The downloaded payload is written to
-/// <c>{CacheFilePath}.tmp</c>, fsynced, then <c>File.Move</c>'d over the
-/// canonical path. <c>File.Move(overwrite: true)</c> on Linux maps to
-/// <c>rename(2)</c>, which is atomic — readers can never observe a
-/// partial JSON file.
+/// <c>{CacheFilePath}.tmp</c> via a <see cref="FileStream"/> opened with
+/// <see cref="FileOptions.WriteThrough"/> (O_DSYNC on POSIX,
+/// FILE_FLAG_WRITE_THROUGH on Windows) so bytes reach durable storage
+/// before <c>File.Move(overwrite: true)</c> renames it over the canonical
+/// path. The rename itself is atomic (POSIX <c>rename(2)</c> / Windows
+/// <c>ReplaceFile</c>) — readers never observe a partial JSON file.
 /// </para>
 /// <para>
 /// <b>Offline mode.</b> When <see cref="RevocationListOptions.OfflineMode"/>
@@ -40,8 +42,13 @@ public sealed record RevocationListFetchJobParams : JobParams;
 /// <see cref="RevocationListOptions.RetryDelays"/> so tests can disable.
 /// </para>
 /// </remarks>
-[Queue("maintenance")]
+[Queue(JobQueues.Maintenance)]
 [DisplayName("license:fetch-revocations")]
+// 5-minute lock prevents Hangfire from running two fetch instances concurrently
+// when an earlier run is still in flight (network slow, retry burning through
+// its budget). Without this, two parallel runs could race on the temp file
+// rename and on the in-memory snapshot swap inside FileRevocationListProvider.
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
 public sealed class RevocationListFetchJob(
     ITenantContextAccessor tenantContextAccessor,
     IHttpClientFactory httpClientFactory,
@@ -58,6 +65,9 @@ public sealed class RevocationListFetchJob(
 
     private readonly RevocationListOptions _opts = options.Value;
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    // Not used for cryptography — only to spread retry timings ±25% so
+    // concurrent on-prem deployments don't synchronise their retry storms
+    // against the issuer. Random.Shared is appropriate here.
     private static readonly Random JitterSource = Random.Shared;
 
     /// <summary>Registers the daily 03:00 UTC schedule. Called from infrastructure module bootstrap.</summary>
@@ -69,7 +79,7 @@ public sealed class RevocationListFetchJob(
             methodCall: job => job.RunAsync(
                 new RevocationListFetchJobParams { TenantId = PlatformSentinelTenantId },
                 CancellationToken.None),
-            queue: "maintenance");
+            queue: JobQueues.Maintenance);
     }
 
     /// <inheritdoc />
@@ -126,6 +136,19 @@ public sealed class RevocationListFetchJob(
                 logger.LogWarning("Revocation fetch attempt {Attempt}/{Total}: server returned empty body.",
                     i + 1, attempts);
             }
+            catch (HttpRequestException ex) when (IsNonTransient(ex.StatusCode))
+            {
+                // 4xx (except 408 / 429) means the issuer rejected our
+                // request shape — retrying gains nothing, just burns the
+                // remaining attempts before falling back to "all failed".
+                // Log at Error so on-call sees the misconfiguration, then
+                // break out so the outer "all attempts failed" path fires
+                // with a single attempt rather than `attempts` of them.
+                logger.LogError(ex,
+                    "Revocation fetch: non-transient HTTP {StatusCode} from issuer; aborting retry loop after attempt {Attempt}/{Total}.",
+                    ex.StatusCode, i + 1, attempts);
+                return null;
+            }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
             {
                 logger.LogWarning(ex,
@@ -149,21 +172,76 @@ public sealed class RevocationListFetchJob(
         return null;
     }
 
+    /// <summary>
+    /// Anything outside the standard transient set (5xx + 408 Request Timeout
+    /// + 429 Too Many Requests) is "the issuer rejected us"; retrying won't
+    /// change that. <see langword="null"/> StatusCode means the failure happened
+    /// before a response arrived (DNS, TCP, TLS) — those ARE transient.
+    /// </summary>
+    private static bool IsNonTransient(System.Net.HttpStatusCode? statusCode)
+    {
+        if (statusCode is null) return false;
+        var code = (int)statusCode.Value;
+        if (code >= 500) return false; // 5xx — transient
+        if (code == 408 || code == 429) return false; // explicit transient
+        return code >= 400 && code < 500; // other 4xx — non-transient
+    }
+
     private async Task PersistAtomicallyAsync(RevocationListBundle bundle, CancellationToken ct)
     {
         var dir = Path.GetDirectoryName(_opts.CacheFilePath);
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
 
         var tempPath = _opts.CacheFilePath + ".tmp";
-        await using (var stream = File.Create(tempPath))
+        var moved = false;
+        try
         {
-            await JsonSerializer.SerializeAsync(stream, bundle, cancellationToken: ct);
-            await stream.FlushAsync(ct);
-        }
+            // FileOptions.WriteThrough requests the OS skip the write
+            // cache so bytes are durable on disk before File.Move. On
+            // Linux this maps to O_DSYNC; on Windows to FILE_FLAG_WRITE_THROUGH.
+            // Without this the write may sit in the page cache and a power
+            // loss between the rename and the actual disk flush could leave
+            // the cache file with the new name but old / partial bytes.
+            await using (var stream = new FileStream(
+                tempPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 4096,
+                FileOptions.Asynchronous | FileOptions.WriteThrough))
+            {
+                await JsonSerializer.SerializeAsync(stream, bundle, cancellationToken: ct);
+                await stream.FlushAsync(ct);
+            }
 
-        // File.Move(overwrite:true) → rename(2) on POSIX (atomic) and
-        // ReplaceFile on Windows (atomic). Readers either see the old
-        // file or the new file, never a torn intermediate.
-        File.Move(tempPath, _opts.CacheFilePath, overwrite: true);
+            // File.Move(overwrite:true) → rename(2) on POSIX (atomic) and
+            // ReplaceFile on Windows (atomic). Readers either see the old
+            // file or the new file, never a torn intermediate.
+            File.Move(tempPath, _opts.CacheFilePath, overwrite: true);
+            moved = true;
+        }
+        finally
+        {
+            // If the write or move threw, the .tmp file may still be on
+            // disk and would otherwise accumulate across job runs. Best-
+            // effort delete; swallow any failure (log only) so this finally
+            // never masks the original write/move exception.
+            if (!moved && File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); }
+                catch (IOException ex)
+                {
+                    logger.LogWarning(ex,
+                        "Revocation persist: failed to delete orphaned temp file {Path} after persist error.",
+                        tempPath);
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    logger.LogWarning(ex,
+                        "Revocation persist: failed to delete orphaned temp file {Path} (permission denied).",
+                        tempPath);
+                }
+            }
+        }
     }
 }

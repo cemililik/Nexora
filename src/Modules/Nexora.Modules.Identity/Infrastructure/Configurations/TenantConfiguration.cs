@@ -22,7 +22,9 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(50);
         builder.Property(t => t.Settings).HasColumnType("jsonb");
         // T-013: drift-job suppression window — see Tenant.LastMigrationStartedAtUtc XML doc.
-        builder.Property(t => t.LastMigrationStartedAtUtc);
+        // timestamptz preserves the timezone marker; the column is read by the
+        // platform-level drift job which compares it against UtcNow.
+        builder.Property(t => t.LastMigrationStartedAtUtc).HasColumnType("timestamptz");
 
         builder.HasMany(t => t.Organizations).WithOne().HasForeignKey(o => o.TenantId);
         builder.HasMany(t => t.Modules).WithOne().HasForeignKey(m => m.TenantId);

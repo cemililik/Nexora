@@ -690,7 +690,10 @@ public static class DevelopmentSeed
             // Both live in `public` so the nightly audit can write rows even
             // for tenants whose schemas are mid-migration. Mirrors the shape
             // of platform_migration_failures (parallel platform-level concern).
-            "ALTER TABLE identity_tenants ADD COLUMN IF NOT EXISTS \"LastMigrationStartedAtUtc\" timestamptz NULL",
+            // Explicitly schema-qualify: identity_tenants lives in `public` (PlatformDbContext-owned).
+            // MigrationRunner.StampMigrationStartedAsync also targets public.identity_tenants directly,
+            // so the dev seed must match production behavior regardless of the connection's search_path.
+            "ALTER TABLE public.identity_tenants ADD COLUMN IF NOT EXISTS \"LastMigrationStartedAtUtc\" timestamptz NULL",
             """
             CREATE TABLE IF NOT EXISTS public.platform_migration_drift (
                 "Id" uuid PRIMARY KEY,

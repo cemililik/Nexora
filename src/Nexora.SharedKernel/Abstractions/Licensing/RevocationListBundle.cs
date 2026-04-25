@@ -38,7 +38,30 @@ public sealed record RevocationListBundle
     public required string Signature { get; init; }
 }
 
-/// <summary>One revoked license — append-only inside the bundle.</summary>
+/// <summary>
+/// One revoked license — append-only inside the bundle. Once an entry
+/// appears in any signed bundle, it remains in every subsequent issuance
+/// so offline deployments that load an older bundle don't re-allow a
+/// previously-revoked license.
+/// </summary>
+/// <param name="LicenseId">
+/// The revoked license's identifier — matches <c>LicenseSnapshot.LicenseId</c>
+/// (the deployment-trusted ID stamped by the issuer at license creation).
+/// Lookup key for <see cref="IRevocationListProvider.IsRevoked"/>.
+/// </param>
+/// <param name="RevokedAtUtc">
+/// UTC timestamp the issuer marked the license as revoked. Treated as UTC
+/// during canonical-bytes computation regardless of the in-memory
+/// <see cref="DateTime.Kind"/>; canonicalisation calls <c>ToUniversalTime</c>
+/// so an issuer that constructs the entry with <c>Kind = Unspecified</c>
+/// still produces the same signed bytes.
+/// </param>
+/// <param name="Reason">
+/// Free-text classification (e.g. <c>"expired"</c>, <c>"fraud"</c>,
+/// <c>"cancelled"</c>). NOT a closed enum — the issuer is free to add new
+/// reasons over time. Verifier MUST NOT branch on this string; it is
+/// included in the canonical bytes only so audit / ops can triage.
+/// </param>
 public sealed record RevokedLicenseEntry(
     string LicenseId,
     DateTime RevokedAtUtc,

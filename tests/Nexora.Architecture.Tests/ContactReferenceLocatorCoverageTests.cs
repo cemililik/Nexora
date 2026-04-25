@@ -46,23 +46,34 @@ public sealed class ContactReferenceLocatorCoverageTests
     ];
 
     [Fact]
-    public void Modules_PublishingContactIdEvents_RegisterAtLeastOneLocator()
+    public void Modules_PublishingContactIdEvents_DefineAtLeastOneLocator()
     {
+        // Renamed from "_RegisterAtLeastOneLocator" → "_DefineAtLeastOneLocator":
+        // the test only verifies a TYPE exists in the module assembly. Verifying
+        // it is registered in DI would require booting each module's
+        // ConfigureServices and asserting the service provider can resolve
+        // IContactReferenceLocator — out of scope here since architecture
+        // tests run without a host. A separate integration-style test under
+        // the host's test project is the right home for the DI-registration
+        // check; this test guards against the upstream "we forgot to define
+        // a locator type at all" failure mode.
         var moduleAssemblies = LoadModuleAssemblies();
 
         // Find every IIntegrationEvent type that has a `Guid ContactId`
-        // property AND lives inside a module namespace.
+        // property AND lives inside a module namespace. GetLoadableTypes
+        // wraps Assembly.GetTypes() so a partial-load in one type doesn't
+        // throw ReflectionTypeLoadException across the entire scan.
         var eventToModule = moduleAssemblies
-            .SelectMany(asm => asm.GetTypes())
+            .SelectMany(GetLoadableTypes)
             .Where(t => typeof(IIntegrationEvent).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
             .Where(HasContactIdProperty)
             .Select(t => new { Type = t, ModulePrefix = ExtractModulePrefix(t) })
             .Where(x => x.ModulePrefix is not null)
             .ToList();
 
-        // Build the set of module prefixes that already register a locator.
+        // Build the set of module prefixes that already define a locator.
         var locatorModulePrefixes = moduleAssemblies
-            .SelectMany(asm => asm.GetTypes())
+            .SelectMany(GetLoadableTypes)
             .Where(t => typeof(IContactReferenceLocator).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
             .Select(t => ExtractModulePrefix(t))
             .Where(p => p is not null)
@@ -85,7 +96,7 @@ public sealed class ContactReferenceLocatorCoverageTests
     {
         var allLocators = LoadModuleAssemblies()
             .Concat([typeof(IContactReferenceLocator).Assembly])
-            .SelectMany(asm => asm.GetTypes())
+            .SelectMany(GetLoadableTypes)
             .Where(t => typeof(IContactReferenceLocator).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface)
             .ToList();
 
@@ -123,6 +134,25 @@ public sealed class ContactReferenceLocatorCoverageTests
         var dot = rest.IndexOf('.', StringComparison.Ordinal);
         var moduleName = dot < 0 ? rest : rest[..dot];
         return root + moduleName;
+    }
+
+    /// <summary>
+    /// Wraps <see cref="Assembly.GetTypes"/> so a single broken type
+    /// (missing dependency, version mismatch) does not flake the whole
+    /// architecture-test sweep. Returns the loaded types only;
+    /// <see cref="ReflectionTypeLoadException.Types"/> may contain nulls
+    /// for the failed entries — those are filtered out.
+    /// </summary>
+    private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(t => t is not null)!;
+        }
     }
 
     private static IReadOnlyList<Assembly> LoadModuleAssemblies()

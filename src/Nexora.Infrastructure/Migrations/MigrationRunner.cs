@@ -127,7 +127,18 @@ public sealed class MigrationRunner(
                   AND "Status" <> 'Terminated';
                 """;
             cmd.Parameters.AddWithValue("tenantId", tenantGuid);
-            await cmd.ExecuteNonQueryAsync(ct);
+            var affectedRows = await cmd.ExecuteNonQueryAsync(ct);
+            if (affectedRows == 0)
+            {
+                // Tenant row missing or already Terminated / soft-deleted —
+                // the WHERE clause filtered it out. Surface at Debug so
+                // operators tailing the log see why drift suppression
+                // won't engage for this tenant on the upcoming sweep,
+                // without escalating an effectively-benign no-op.
+                logger.LogDebug(
+                    "MigrationRunner: LastMigrationStartedAtUtc UPDATE matched 0 rows for tenant {TenantId} (terminated, soft-deleted, or never provisioned).",
+                    tenantGuid);
+            }
         }
         catch (NpgsqlException ex)
         {

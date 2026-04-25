@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Mvc;
 using Nexora.SharedKernel.Abstractions.FeatureFlags;
+using Nexora.SharedKernel.Localization;
 using Nexora.SharedKernel.Results;
 
 namespace Nexora.Modules.Identity.Api;
@@ -22,12 +23,17 @@ public static class FeatureFlagEndpoints
             .RequireAuthorization("identity.feature_flags.manage");
 
         // GET /feature-flags — list every flag set on the current tenant.
+        // Returns a list of FeatureFlagDto so the wire shape matches the
+        // single-flag GET / PUT endpoints below; clients can rely on one DTO.
         group.MapGet("/", async (
             IFeatureFlagService flags,
             CancellationToken ct) =>
         {
             var all = await flags.GetAllAsync(ct);
-            return Results.Ok(ApiEnvelope<IReadOnlyDictionary<string, bool>>.Success(all));
+            var list = all
+                .Select(kvp => new FeatureFlagDto(kvp.Key, kvp.Value))
+                .ToList();
+            return Results.Ok(ApiEnvelope<IReadOnlyList<FeatureFlagDto>>.Success(list));
         });
 
         // GET /feature-flags/{key} — read a single flag's effective value.
@@ -36,6 +42,10 @@ public static class FeatureFlagEndpoints
             IFeatureFlagService flags,
             CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(flagKey))
+                return Results.BadRequest(ApiEnvelope<FeatureFlagDto>.Fail(
+                    new Error(LocalizedMessage.Of("lockey_identity_feature_flags_key_required"))));
+
             var enabled = await flags.IsEnabledAsync(flagKey, userId: null, ct);
             return Results.Ok(ApiEnvelope<FeatureFlagDto>.Success(new FeatureFlagDto(flagKey, enabled)));
         });
@@ -43,10 +53,17 @@ public static class FeatureFlagEndpoints
         // PUT /feature-flags/{key} — set a single flag for the current tenant.
         group.MapPut("/{flagKey}", async (
             string flagKey,
-            [FromBody] SetFeatureFlagRequest body,
+            [FromBody] SetFeatureFlagRequest? body,
             IFeatureFlagService flags,
             CancellationToken ct) =>
         {
+            if (string.IsNullOrWhiteSpace(flagKey))
+                return Results.BadRequest(ApiEnvelope<FeatureFlagDto>.Fail(
+                    new Error(LocalizedMessage.Of("lockey_identity_feature_flags_key_required"))));
+            if (body is null)
+                return Results.BadRequest(ApiEnvelope<FeatureFlagDto>.Fail(
+                    new Error(LocalizedMessage.Of("lockey_identity_feature_flags_body_required"))));
+
             await flags.SetAsync(flagKey, body.Enabled, ct);
             return Results.Ok(ApiEnvelope<FeatureFlagDto>.Success(new FeatureFlagDto(flagKey, body.Enabled)));
         });

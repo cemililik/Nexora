@@ -166,7 +166,8 @@ public sealed class ContactPayloadScanJobTests : IDisposable
         var secondTotal = JsonDocument.Parse(summaries[1].Metadata!)
             .RootElement.GetProperty("totalRedacted").GetInt32();
 
-        (firstTotal + secondTotal).Should().Be(1, "the second pass must be a no-op");
+        firstTotal.Should().Be(1, "first run redacts the matching entry exactly once");
+        secondTotal.Should().Be(0, "second run is idempotent — locator returns null on already-redacted payload");
     }
 
     // --- helpers ---------------------------------------------------------

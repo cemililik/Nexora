@@ -33,8 +33,12 @@ public sealed class MigrationDriftLogDbContext(
             e.Property(d => d.DetectedAtUtc).IsRequired();
             // Hot lookup pattern: "SELECT * FROM platform_migration_drift
             //   WHERE TenantId = X ORDER BY DetectedAtUtc DESC LIMIT N"
-            // mirrors the failure-log access pattern.
-            e.HasIndex(d => new { d.TenantId, d.DetectedAtUtc });
+            // mirrors the failure-log access pattern. Mark DetectedAtUtc as
+            // descending so the planner can satisfy the ORDER BY DESC with a
+            // forward index walk (the most-recent row is at the start of the
+            // index leaf page rather than at the end).
+            e.HasIndex(d => new { d.TenantId, d.DetectedAtUtc })
+                .IsDescending(false, true);
         });
     }
 }

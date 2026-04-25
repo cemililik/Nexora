@@ -249,6 +249,8 @@
   "lockey_identity_permission_modules_read": "View modules",
   "lockey_identity_permission_modules_manage": "Manage modules",
   "lockey_identity_permission_feature_flags_manage": "Manage feature flags",
+  "lockey_identity_feature_flags_key_required": "A feature flag key is required.",
+  "lockey_identity_feature_flags_body_required": "Request body is required.",
   "lockey_identity_no_permissions": "No permissions assigned",
   "lockey_identity_role_users_title": "Users with role: {{roleName}}",
   "lockey_identity_role_add_user": "Add User",

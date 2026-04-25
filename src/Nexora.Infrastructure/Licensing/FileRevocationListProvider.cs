@@ -57,10 +57,17 @@ public sealed class FileRevocationListProvider(
             await using var stream = File.OpenRead(_opts.CacheFilePath);
             bundle = await JsonSerializer.DeserializeAsync<RevocationListBundle>(stream, cancellationToken: ct);
         }
-        catch (Exception ex) when (ex is JsonException or IOException)
+        catch (JsonException ex)
         {
             logger.LogError(ex,
-                "Revocation list reload: cache file {Path} is unreadable or malformed; previous snapshot retained.",
+                "Revocation list reload: cache file {Path} is malformed JSON; previous snapshot retained.",
+                _opts.CacheFilePath);
+            return false;
+        }
+        catch (IOException ex)
+        {
+            logger.LogError(ex,
+                "Revocation list reload: cache file {Path} is unreadable; previous snapshot retained.",
                 _opts.CacheFilePath);
             return false;
         }
@@ -68,6 +75,17 @@ public sealed class FileRevocationListProvider(
         if (bundle is null)
         {
             logger.LogError("Revocation list reload: cache file {Path} deserialized to null.", _opts.CacheFilePath);
+            return false;
+        }
+
+        // Tampered bundles can ship with Entries == null even though the
+        // type declares it required; guard before the LINQ call below or
+        // we get an NRE that aborts the reload service.
+        if (bundle.Entries is null)
+        {
+            logger.LogError(
+                "Revocation list reload: cache file {Path} (issued {IssuedAt:O}) has null Entries; previous snapshot retained.",
+                _opts.CacheFilePath, bundle.IssuedAtUtc);
             return false;
         }
 

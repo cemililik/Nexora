@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Nexora.SharedKernel.Abstractions.Licensing;
 
 namespace Nexora.Infrastructure.Licensing;
@@ -13,15 +15,22 @@ namespace Nexora.Infrastructure.Licensing;
 /// </summary>
 public static class RevocationListVerifier
 {
+    /// <summary>
+    /// Every serializer option that could produce a different byte stream
+    /// is pinned explicitly so a future .NET runtime upgrade or a global
+    /// JsonSerializerOptions change cannot silently invalidate signatures
+    /// on bundles that were valid before. Issuer and verifier MUST share
+    /// these options.
+    /// </summary>
     private static readonly JsonSerializerOptions CanonicalJsonOptions = new()
     {
-        // Canonical form: alphabetical property order, no indentation,
-        // explicit UTC for DateTime so issuer / verifier produce byte-
-        // identical output. The signature is computed over these exact
-        // bytes; any whitespace or property-order divergence would break
-        // verification even on bit-identical data.
         WriteIndented = false,
+        PropertyNamingPolicy = null,
         DictionaryKeyPolicy = null,
+        PropertyNameCaseInsensitive = false,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        NumberHandling = JsonNumberHandling.Strict,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
     };
 
     /// <summary>
@@ -50,14 +59,16 @@ public static class RevocationListVerifier
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1);
         }
-        catch (FormatException)
+        catch (Exception ex) when (
+            ex is FormatException
+                or CryptographicException
+                or ArgumentException)
         {
-            // Base64 garbage in the Signature field — tamper or transport corruption.
-            return false;
-        }
-        catch (CryptographicException)
-        {
-            // Bad PEM, wrong key length, key/curve mismatch.
+            // FormatException → base64 garbage in the Signature field.
+            // CryptographicException → bad PEM, wrong key length / curve mismatch.
+            // ArgumentException → RSA.ImportFromPem rejects malformed PEM
+            //   labels with this type rather than CryptographicException.
+            // Tamper / malformed: either way the bundle MUST be rejected.
             return false;
         }
     }
@@ -74,16 +85,30 @@ public static class RevocationListVerifier
         // Signature is computed over a "signature-stripped" projection so
         // the issuer and verifier agree on what the signed payload is.
         // Property order is the alphabetical projection used by the issuer.
+        // AsUtc normalises the DateTime.Kind: a DateTime stored with
+        // Kind.Unspecified would otherwise serialise without the trailing
+        // "Z" while the same instant marked Kind.Utc would include it —
+        // canonical bytes diverge and signature verification fails.
         var canonical = new
         {
             entries = bundle.Entries
-                .Select(e => new { e.LicenseId, e.Reason, RevokedAtUtc = e.RevokedAtUtc.ToUniversalTime() })
+                .Select(e => new { e.LicenseId, e.Reason, RevokedAtUtc = AsUtc(e.RevokedAtUtc) })
                 .ToArray(),
-            issuedAtUtc = bundle.IssuedAtUtc.ToUniversalTime(),
+            issuedAtUtc = AsUtc(bundle.IssuedAtUtc),
             version = bundle.Version,
         };
 
         var json = JsonSerializer.Serialize(canonical, CanonicalJsonOptions);
         return Encoding.UTF8.GetBytes(json);
     }
+
+    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        // Unspecified: caller asserted UTC by stuffing it into a "*Utc"
+        // property. Tag the Kind so the JSON serialiser emits the trailing
+        // "Z" and issuer / verifier produce byte-identical output.
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
 }

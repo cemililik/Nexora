@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Infrastructure.Persistence.Inbox;
+using NSubstitute;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Infrastructure;
 using Nexora.Modules.Audit.Infrastructure.IntegrationEvents;
@@ -151,6 +152,15 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         var inboxCount = await _dbContext.InboxMessages.CountAsync(m => m.EventId == @event.EventId);
         inboxCount.Should().Be(1);
 
+        // T-010: scan job MUST be enqueued exactly once on first run so
+        // the cross-module payload sweep covers PII embedded in other
+        // modules' audit JSON columns. Hangfire's IBackgroundJobClient
+        // routes both Enqueue<T> and Schedule<T> through Create(Job, IState)
+        // — the Received(1).Create assertion catches both call shapes.
+        backgroundJobClient.Received(1).Create(
+            Arg.Any<Hangfire.Common.Job>(),
+            Arg.Any<Hangfire.States.IState>());
+
         // Act — second run (idempotency)
         await handler.HandleAsync(@event, CancellationToken.None);
 
@@ -160,5 +170,11 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
 
         var gdprCount = afterSecondRun.Count(e => e.Operation == "gdpr_erasure");
         gdprCount.Should().Be(1);
+
+        // The second run hit the InboxGuard short-circuit and returned
+        // before reaching the enqueue line, so the call count stays at 1.
+        backgroundJobClient.Received(1).Create(
+            Arg.Any<Hangfire.Common.Job>(),
+            Arg.Any<Hangfire.States.IState>());
     }
 }

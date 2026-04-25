@@ -249,6 +249,8 @@
   "lockey_identity_permission_modules_read": "Modülleri görüntüle",
   "lockey_identity_permission_modules_manage": "Modülleri yönet",
   "lockey_identity_permission_feature_flags_manage": "Özellik bayraklarını yönet",
+  "lockey_identity_feature_flags_key_required": "Özellik bayrağı anahtarı gereklidir.",
+  "lockey_identity_feature_flags_body_required": "İstek gövdesi gereklidir.",
   "lockey_identity_no_permissions": "Atanmış izin yok",
   "lockey_identity_role_users_title": "Role sahip kullanıcılar: {{roleName}}",
   "lockey_identity_role_add_user": "Kullanıcı Ekle",
