@@ -110,6 +110,11 @@ public sealed class IdentityModule : IModule
         // deterministic 0–119 minute jitter so DROP TABLEs don't all hit
         // Postgres WAL writers at the same instant.
         Infrastructure.Jobs.PurgeUninstalledModulesJob.RegisterRecurringSchedule(scheduler);
+
+        // T-013: nightly drift audit comparing each tenant's applied
+        // migration head vs the platform assembly's known head. 05:00 UTC
+        // sits well after the 03:00 purge so the schema is settled.
+        Infrastructure.Jobs.PlatformAuditMigrationDriftJob.RegisterRecurringSchedule(scheduler);
     }
 
     /// <inheritdoc />

@@ -23,6 +23,17 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
     /// <summary>Gets the JSON-serialized tenant settings.</summary>
     public string? Settings { get; private set; }
 
+    /// <summary>
+    /// T-013: UTC timestamp at which a platform migration last started for
+    /// this tenant. Stamped by <c>MigrationRunner</c> (direct UPDATE — same
+    /// pattern as <c>MarkTenantMigrationFailedAsync</c>); read by
+    /// <c>PlatformAuditMigrationDriftJob</c> to suppress drift alerts during
+    /// the rolling-migration window (default 2h per
+    /// <c>docs/operations/migration-orchestration.md</c> §3.3).
+    /// <see langword="null"/> until the first migration runs against this tenant.
+    /// </summary>
+    public DateTime? LastMigrationStartedAtUtc { get; private set; }
+
     private readonly List<Organization> _organizations = [];
 
     /// <summary>Gets the organizations belonging to this tenant.</summary>
@@ -113,6 +124,17 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
         if (Status == TenantStatus.Terminated) return;
         Status = TenantStatus.Terminated;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Terminated));
+    }
+
+    /// <summary>
+    /// Stamps <see cref="LastMigrationStartedAtUtc"/>. Used by tests that exercise the
+    /// drift-suppression window without invoking <c>MigrationRunner</c> end-to-end;
+    /// production writes go through MigrationRunner's direct UPDATE so there is no
+    /// dependency on the Identity module assembly.
+    /// </summary>
+    public void MarkMigrationStarted(DateTime utcNow)
+    {
+        LastMigrationStartedAtUtc = utcNow;
     }
 
     /// <summary>Sets the Keycloak realm identifier for this tenant.</summary>

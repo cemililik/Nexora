@@ -8,9 +8,11 @@
 
 _None._
 
-## Prior active task
+## Prior active task (In Review)
 
-_None._
+| Task | Status |
+|------|--------|
+| T-013 — `platform:audit-migration-drift` Hangfire job | In Review (AC4 deviation: direct `IEventBus` publish rather than outbox — platform outbox infra not yet built; logged in task status log for follow-up) |
 
 ## Recently closed (Phase 2 Milestone A batch — merged to `main` 2026-04-25)
 

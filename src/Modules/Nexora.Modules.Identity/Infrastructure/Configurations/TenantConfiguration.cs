@@ -21,6 +21,8 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.RealmId).HasMaxLength(200);
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(50);
         builder.Property(t => t.Settings).HasColumnType("jsonb");
+        // T-013: drift-job suppression window — see Tenant.LastMigrationStartedAtUtc XML doc.
+        builder.Property(t => t.LastMigrationStartedAtUtc);
 
         builder.HasMany(t => t.Organizations).WithOne().HasForeignKey(o => o.TenantId);
         builder.HasMany(t => t.Modules).WithOne().HasForeignKey(m => m.TenantId);

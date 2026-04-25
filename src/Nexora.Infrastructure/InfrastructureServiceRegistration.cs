@@ -180,6 +180,14 @@ public static class InfrastructureServiceRegistration
             var connStr = configuration.GetConnectionString("Default");
             options.UseNpgsql(connStr);
         });
+
+        // T-013: drift-detection log — same shape + same lifecycle as the
+        // failure log. PlatformAuditMigrationDriftJob writes through this.
+        services.AddDbContext<Migrations.MigrationDriftLogDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
         services.AddSingleton<SharedKernel.Abstractions.Migrations.IMigrationRunner>(sp =>
             new Migrations.MigrationRunner(
                 sp.GetRequiredService<IServiceScopeFactory>(),
