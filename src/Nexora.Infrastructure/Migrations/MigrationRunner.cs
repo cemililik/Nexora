@@ -87,6 +87,15 @@ public sealed class MigrationRunner(
                 ordered.Select(m => new MigrationModuleOutcome(m.Name, MigrationModuleStatus.Skipped)).ToList());
         }
 
+        // T-013: stamp the run-start timestamp on identity_tenants so the
+        // nightly drift audit (PlatformAuditMigrationDriftJob) can suppress
+        // alerts during the rolling-migration window. Direct UPDATE — same
+        // pattern + same connection as MarkTenantMigrationFailedAsync —
+        // because MigrationRunner must not depend on the Identity module
+        // assembly. Failures here log + continue: the migration proceeds
+        // and at worst the next drift audit fires an alert sooner.
+        await StampMigrationStartedAsync(lockConn, tenantGuid, ct);
+
         try
         {
             return await RunModulesUnderLockAsync(tenantId, tenantGuid, schemaName, ordered, lockConn, ct);
@@ -97,6 +106,51 @@ public sealed class MigrationRunner(
             // it here would throw OperationCanceledException and mask the
             // Succeeded/Failed result that was already determined above.
             await ReleaseAdvisoryLockAsync(lockConn, lockKey, CancellationToken.None);
+        }
+    }
+
+    private async Task StampMigrationStartedAsync(
+        NpgsqlConnection conn, Guid tenantGuid, CancellationToken ct)
+    {
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            // AND "IsDeleted" = false matches the soft-delete predicate used
+            // throughout identity_tenants writes; AND "Status" <> 'Terminated'
+            // skips terminated tenants (no future migrations expected).
+            cmd.CommandText =
+                """
+                UPDATE public.identity_tenants
+                SET "LastMigrationStartedAtUtc" = now() AT TIME ZONE 'utc'
+                WHERE "Id" = @tenantId
+                  AND "IsDeleted" = false
+                  AND "Status" <> 'Terminated';
+                """;
+            cmd.Parameters.AddWithValue("tenantId", tenantGuid);
+            var affectedRows = await cmd.ExecuteNonQueryAsync(ct);
+            if (affectedRows == 0)
+            {
+                // Tenant row missing or already Terminated / soft-deleted —
+                // the WHERE clause filtered it out. Surface at Debug so
+                // operators tailing the log see why drift suppression
+                // won't engage for this tenant on the upcoming sweep,
+                // without escalating an effectively-benign no-op.
+                logger.LogDebug(
+                    "MigrationRunner: LastMigrationStartedAtUtc UPDATE matched 0 rows for tenant {TenantId} (terminated, soft-deleted, or never provisioned).",
+                    tenantGuid);
+            }
+        }
+        catch (NpgsqlException ex)
+        {
+            logger.LogWarning(ex,
+                "MigrationRunner: failed to stamp LastMigrationStartedAtUtc for tenant {TenantId} — drift audit may alert sooner during this rolling-migration window, but the migration itself proceeds.",
+                tenantGuid);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            logger.LogWarning(ex,
+                "MigrationRunner: failed to stamp LastMigrationStartedAtUtc for tenant {TenantId} — drift audit may alert sooner during this rolling-migration window, but the migration itself proceeds.",
+                tenantGuid);
         }
     }
 

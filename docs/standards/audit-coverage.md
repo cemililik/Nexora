@@ -67,6 +67,8 @@ silently; audit only when an operator mutates them later.
 
 This matrix is the **minimum** — modules may exceed it.
 
+> **Cross-module PII scan obligation (T-010 / ADR-0026).** Any module that stores contact-bearing PII inside an audit JSON payload column (`BeforeState`, `AfterState`, `Changes`) MUST register an `IContactReferenceLocator` so `ContactPayloadScanJob` redacts those rows on `ContactGdprDeletedIntegrationEvent`. Modules whose audit entries reference contacts only via the indexed `EntityType = "Contact" AND EntityId = <contactId>` path are already covered by the inbox handler and need no locator. Coverage is enforced by `ContactReferenceLocatorCoverageTests` in `tests/Nexora.Architecture.Tests/` — modules emitting `ContactId`-bearing integration events without a locator implementation will fail the architecture build.
+
 | Module | create | update | delete | read-sensitive | security-event |
 |--------|:------:|:------:|:------:|:-------------:|:--------------:|
 | **Identity** | MUST | MUST | MUST | MUST (export users, role list export) | MUST (login, logout, failed auth, permission change, role change, MFA change, impersonation) |

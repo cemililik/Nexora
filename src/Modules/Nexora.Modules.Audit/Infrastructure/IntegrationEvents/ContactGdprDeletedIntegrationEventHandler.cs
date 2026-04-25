@@ -1,8 +1,10 @@
 using System.Text.Json;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Nexora.Modules.Audit.Domain.Entities;
 using Nexora.Modules.Audit.Domain.ValueObjects;
+using Nexora.Modules.Audit.Infrastructure.Jobs;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Domain.Events;
 using OperationType = Nexora.SharedKernel.Abstractions.Audit.OperationType;
@@ -18,6 +20,7 @@ namespace Nexora.Modules.Audit.Infrastructure.IntegrationEvents;
 public sealed class ContactGdprDeletedIntegrationEventHandler(
     AuditDbContext dbContext,
     IInboxGuard inboxGuard,
+    IBackgroundJobClient backgroundJobClient,
     ILogger<ContactGdprDeletedIntegrationEventHandler> logger)
     : IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>
 {
@@ -107,8 +110,22 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
 
+        // T-010: enqueue the cross-module payload scan AFTER SaveChanges so
+        // the inbox row is committed first — a job failure cannot lose the
+        // ack of the broker message. The scan runs on the maintenance queue
+        // because real production tenants may have minutes of work to do
+        // on this sweep; the inbox handler must return quickly.
+        backgroundJobClient.Enqueue<ContactPayloadScanJob>(
+            scan => scan.RunAsync(
+                new ContactPayloadScanJobParams
+                {
+                    TenantId = @event.TenantId,
+                    ContactId = @event.ContactId,
+                },
+                CancellationToken.None));
+
         logger.LogInformation(
-            "Redacted {RedactedCount} audit entries and appended gdpr_erasure record for contact {ContactId} in tenant {TenantId} (erased by {ErasedByUserId}, mode {Mode})",
+            "Redacted {RedactedCount} audit entries and appended gdpr_erasure record for contact {ContactId} in tenant {TenantId} (erased by {ErasedByUserId}, mode {Mode}); cross-module payload scan enqueued.",
             redactedCount, @event.ContactId, @event.TenantId, @event.ErasedByUserId, @event.Mode);
     }
 

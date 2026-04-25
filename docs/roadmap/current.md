@@ -1,26 +1,49 @@
 # Current State
 
-**Last updated:** 2026-04-24 (post-carry-over reconciliation sweep — T-007 split confirmed, T-010 reclassified, T-030 filed, ADR-0031 Accepted)
+**Last updated:** 2026-04-25 (Phase 2 Milestone A batch promoted In Review → Done after merge to `main`)
 
 ---
 
 ## Active task
 
-**Phase 2 Milestone A batch — 6 tasks now In Review, awaiting maintainer review** (started + completed 2026-04-24).
-Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
+_None._
+
+## Blocked
+
+| Task | Reason |
+|------|--------|
+| T-030 — Portal Extension end-to-end pilot — CRM module | Four prerequisite gaps (no CRM backend module, no Contacts-360° host shell in nexora-portal, `dashboard.sidebar` vs existing `dashboard-sidebar` slot-naming collision, no backend manifest-assembly endpoint or schema artefact). Per the task's own technical notes the agent paused and filed precursor sequence T-030a–T-030e in the task status log instead of ad-hoc-introducing the missing scaffolding. |
+
+## Pending decisions — T-030 precursors
+
+- **T-030 precursor ordering.** Five precursor tasks recommended in the T-030 status log (T-030a CRM backend skeleton, T-030b/c contact-360° host shell, T-030d slot-naming reconciliation + ADR-0017 amendment, T-030e Portal Framework backend + manifest endpoint + CI). Maintainer to confirm the sequence and file the precursor task IDs before T-030 itself can resume.
+
+## Prior active task (In Review)
 
 | Task | Status |
 |------|--------|
-| T-011 — MigrationRunner.MigrateAllModulesAsync | In Review (commit pending squash to PR) |
-| T-012 — AdditiveOnlyMigrationTest | In Review (commit `c786961`) |
-| T-029 — DemoScenario registry + Contacts seed | In Review |
-| T-026 — Cascade guard in UninstallModuleCommand | In Review |
-| T-025 — `platform:purge-uninstalled-modules` Hangfire job | In Review |
-| T-027 — GDPR erasure escape hatch for renamed uninstall tables | **In Review** (this commit) |
+| T-013 — `platform:audit-migration-drift` Hangfire job | In Review (AC4 deviation: direct `IEventBus` publish rather than outbox — platform outbox infra not yet built; logged in task status log for follow-up) |
+| T-015 — License revocation list fetcher | In Review |
+| T-014 — `LicenseService.ValidateAsync` hot-reload watcher | In Review (ADR-0030 deviation: `IOptions` instead of `IConfigurationResolver` for polling interval — resolver is tenant-scoped, hosted service is tenant-less; range still enforced; logged in task status log) |
+| T-010 — Cross-module audit payload PII scan (scaffolding) | In Review (10M-row benchmark + per-module locators deferred to Milestone C / module-owning tasks per 2026-04-24 reclassification) |
+| T-016 — Progressive rollout / feature-flag service | In Review (admin React page deferred — backend endpoints are the binding contract; UI is a separate Milestone C follow-up) |
 
-## Prior active task
+## Recently closed (Phase 2 Milestone A batch — merged to `main` 2026-04-25)
 
-_None._
+6 tasks promoted **In Review → Done** after maintainer review and merge.
+Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027. Two rounds of PR
+review feedback applied before merge (commits `5a633cd`, `d397feb`). Task
+files remain in their phase folders with final status as the historical
+record.
+
+| Task | Title | Phase / Milestone |
+|------|-------|-------------------|
+| T-011 | MigrationRunner.MigrateAllModulesAsync | phase-2 / A |
+| T-012 | AdditiveOnlyMigrationTest architecture test | phase-2 / A |
+| T-029 | `DemoScenario` registry + Contacts seed | phase-1.5 / C |
+| T-026 | Cascade guard in `UninstallModuleCommand` | phase-2 / A |
+| T-025 | `platform:purge-uninstalled-modules` Hangfire job | phase-2 / A |
+| T-027 | GDPR erasure escape hatch for renamed uninstall tables | phase-2 / A |
 
 ## Recently closed (Phase 1.5 batch — merged to `main` 2026-04-24)
 
@@ -158,7 +181,7 @@ the full rationale. Lessons feed back into `docs/architecture/portal-extensions.
 
 ---
 
-## Pending decisions
+## Pending decisions — ADR statuses
 
 _None blocking Phase 1.5 closure or Phase 2 entry._ Five ADRs (0026, 0027, 0028,
 0029, 0030) were promoted **Proposed → Accepted** on 2026-04-24 in the same batch

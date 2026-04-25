@@ -16,6 +16,7 @@ For Phase 2's strategic scope, exit bar, and milestones, see
 | [T-011](T-011.md) | `MigrationRunner.MigrateAllModulesAsync` implementation | A | Not started | Unblocked by [ADR-0027](../../../decisions/0027-production-schema-migration-strategy.md). |
 | [T-012](T-012.md) | `AdditiveOnlyMigrationTest` architecture test | A | Not started | Pairs with T-011 — CI gate for the additive-only rule. |
 | [T-013](T-013.md) | `platform:audit-migration-drift` Hangfire job | B | Not started | Nightly drift audit for tenant migration heads. |
+| [T-013a](T-013a.md) | Platform outbox — `outbox_messages_platform` + OutboxProcessor scope | B | Not started | T-013 follow-up; closes the AC4 "via outbox" deviation. |
 | [T-014](T-014.md) | `LicenseService.ValidateAsync` hot-reload watcher | B | Not started | Unblocked by [ADR-0030](../../../decisions/0030-license-hot-reload-mechanism.md). |
 | [T-015](T-015.md) | License revocation list fetcher | B | Not started | Daily signed-bundle fetch with offline fallback. |
 | [T-016](T-016.md) | Progressive rollout / feature-flag service | C | Not started | `IFeatureFlagService` abstraction + tenant-cohort toggles. |

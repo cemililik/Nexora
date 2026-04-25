@@ -685,6 +685,26 @@ public static class DevelopmentSeed
             )
             """,
             "CREATE INDEX IF NOT EXISTS ix_platform_migration_failures_tenant_occurred ON public.platform_migration_failures (\"TenantId\", \"OccurredAtUtc\")",
+
+            // T-013: drift-detection forensic log + suppression-window column.
+            // Both live in `public` so the nightly audit can write rows even
+            // for tenants whose schemas are mid-migration. Mirrors the shape
+            // of platform_migration_failures (parallel platform-level concern).
+            // Explicitly schema-qualify: identity_tenants lives in `public` (PlatformDbContext-owned).
+            // MigrationRunner.StampMigrationStartedAsync also targets public.identity_tenants directly,
+            // so the dev seed must match production behavior regardless of the connection's search_path.
+            "ALTER TABLE public.identity_tenants ADD COLUMN IF NOT EXISTS \"LastMigrationStartedAtUtc\" timestamptz NULL",
+            """
+            CREATE TABLE IF NOT EXISTS public.platform_migration_drift (
+                "Id" uuid PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "ModuleName" varchar(100) NOT NULL,
+                "KnownHead" varchar(200) NULL,
+                "AppliedHead" varchar(200) NULL,
+                "DetectedAtUtc" timestamptz NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_platform_migration_drift_tenant_detected ON public.platform_migration_drift (\"TenantId\", \"DetectedAtUtc\")",
         };
 
         foreach (var sql in alterStatements)

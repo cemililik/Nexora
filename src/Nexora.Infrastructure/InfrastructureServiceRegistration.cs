@@ -180,6 +180,14 @@ public static class InfrastructureServiceRegistration
             var connStr = configuration.GetConnectionString("Default");
             options.UseNpgsql(connStr);
         });
+
+        // T-013: drift-detection log — same shape + same lifecycle as the
+        // failure log. PlatformAuditMigrationDriftJob writes through this.
+        services.AddDbContext<Migrations.MigrationDriftLogDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
         services.AddSingleton<SharedKernel.Abstractions.Migrations.IMigrationRunner>(sp =>
             new Migrations.MigrationRunner(
                 sp.GetRequiredService<IServiceScopeFactory>(),
@@ -232,6 +240,36 @@ public static class InfrastructureServiceRegistration
         //   if (mode == "SaaS") services.AddSingleton<ILicenseVerifier, NmpLicenseVerifier>();
         //   else                services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
         services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
+
+        // T-015: revocation list fetcher + provider.
+        // - Provider holds an in-memory snapshot loaded from a local file
+        //   (atomic stage→rename writes from the fetch job).
+        // - Job is constructed via DI through Hangfire's activator (no
+        //   explicit job-class registration needed).
+        // - Two-step IRevocationListProvider/FileRevocationListProvider
+        //   registration so the job (which needs ReloadFromDiskAsync) and
+        //   query callers (which only need IRevocationListProvider) share
+        //   the same singleton.
+        // Bind + validate at startup so a misconfigured trust anchor /
+        // unreachable cache directory / non-positive retry delay fails
+        // host boot rather than surfacing as a silent fetcher no-op the
+        // first time the daily cron fires.
+        services.AddOptions<Licensing.RevocationListOptions>()
+            .Bind(configuration.GetSection(Licensing.RevocationListOptions.SectionName))
+            .ValidateOnStart();
+        services.AddSingleton<IValidateOptions<Licensing.RevocationListOptions>,
+            Licensing.RevocationListOptionsValidator>();
+        services.AddSingleton<Licensing.FileRevocationListProvider>();
+        services.AddSingleton<IRevocationListProvider>(sp =>
+            sp.GetRequiredService<Licensing.FileRevocationListProvider>());
+        services.AddHttpClient(Licensing.RevocationListFetchJob.HttpClientName);
+
+        // T-014 (ADR-0030): hot-reload watcher for the on-prem license file.
+        // Polling-loop baseline + SIGHUP short-circuit; works under K8s
+        // projected Secret volumes where inotify silently no-ops.
+        services.Configure<Licensing.LicenseReloadOptions>(
+            configuration.GetSection(Licensing.LicenseReloadOptions.SectionName));
+        services.AddLicenseReload();
 
         // Audit context (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();

@@ -23,6 +23,17 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
     /// <summary>Gets the JSON-serialized tenant settings.</summary>
     public string? Settings { get; private set; }
 
+    /// <summary>
+    /// T-013: UTC timestamp at which a platform migration last started for
+    /// this tenant. Stamped by <c>MigrationRunner</c> (direct UPDATE — same
+    /// pattern as <c>MarkTenantMigrationFailedAsync</c>); read by
+    /// <c>PlatformAuditMigrationDriftJob</c> to suppress drift alerts during
+    /// the rolling-migration window (default 2h per
+    /// <c>docs/operations/migration-orchestration.md</c> §3.3).
+    /// <see langword="null"/> until the first migration runs against this tenant.
+    /// </summary>
+    public DateTime? LastMigrationStartedAtUtc { get; private set; }
+
     private readonly List<Organization> _organizations = [];
 
     /// <summary>Gets the organizations belonging to this tenant.</summary>
@@ -113,6 +124,29 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
         if (Status == TenantStatus.Terminated) return;
         Status = TenantStatus.Terminated;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Terminated));
+    }
+
+    /// <summary>
+    /// Stamps <see cref="LastMigrationStartedAtUtc"/>. Used by tests that exercise the
+    /// drift-suppression window without invoking <c>MigrationRunner</c> end-to-end;
+    /// production writes go through MigrationRunner's direct UPDATE so there is no
+    /// dependency on the Identity module assembly. <paramref name="utcNow"/> MUST
+    /// carry <see cref="DateTimeKind.Utc"/> — passing a Local or Unspecified
+    /// kind would produce ambiguous wire/database storage and silently mis-fire
+    /// the 2h drift-suppression window across timezone-mismatched environments.
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="utcNow"/>'s
+    /// <see cref="DateTime.Kind"/> is not <see cref="DateTimeKind.Utc"/>.
+    /// Mirrors the guard pattern in <c>AuditableEntity.MarkAsDeleted</c>.
+    /// </exception>
+    public void MarkMigrationStarted(DateTime utcNow)
+    {
+        if (utcNow.Kind != DateTimeKind.Utc)
+            throw new ArgumentException(
+                $"{nameof(utcNow)} must have DateTimeKind.Utc; got {utcNow.Kind}.",
+                nameof(utcNow));
+        LastMigrationStartedAtUtc = utcNow;
     }
 
     /// <summary>Sets the Keycloak realm identifier for this tenant.</summary>
