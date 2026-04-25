@@ -1,26 +1,33 @@
 # Current State
 
-**Last updated:** 2026-04-24 (post-carry-over reconciliation sweep — T-007 split confirmed, T-010 reclassified, T-030 filed, ADR-0031 Accepted)
+**Last updated:** 2026-04-25 (Phase 2 Milestone A batch promoted In Review → Done after merge to `main`)
 
 ---
 
 ## Active task
 
-**Phase 2 Milestone A batch — 6 tasks now In Review, awaiting maintainer review** (started + completed 2026-04-24).
-Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
-
-| Task | Status |
-|------|--------|
-| T-011 — MigrationRunner.MigrateAllModulesAsync | In Review (commit pending squash to PR) |
-| T-012 — AdditiveOnlyMigrationTest | In Review (commit `c786961`) |
-| T-029 — DemoScenario registry + Contacts seed | In Review |
-| T-026 — Cascade guard in UninstallModuleCommand | In Review |
-| T-025 — `platform:purge-uninstalled-modules` Hangfire job | In Review |
-| T-027 — GDPR erasure escape hatch for renamed uninstall tables | **In Review** (this commit) |
+_None._
 
 ## Prior active task
 
 _None._
+
+## Recently closed (Phase 2 Milestone A batch — merged to `main` 2026-04-25)
+
+6 tasks promoted **In Review → Done** after maintainer review and merge.
+Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027. Two rounds of PR
+review feedback applied before merge (commits `5a633cd`, `d397feb`). Task
+files remain in their phase folders with final status as the historical
+record.
+
+| Task | Title | Phase / Milestone |
+|------|-------|-------------------|
+| T-011 | MigrationRunner.MigrateAllModulesAsync | phase-2 / A |
+| T-012 | AdditiveOnlyMigrationTest architecture test | phase-2 / A |
+| T-029 | `DemoScenario` registry + Contacts seed | phase-1.5 / C |
+| T-026 | Cascade guard in `UninstallModuleCommand` | phase-2 / A |
+| T-025 | `platform:purge-uninstalled-modules` Hangfire job | phase-2 / A |
+| T-027 | GDPR erasure escape hatch for renamed uninstall tables | phase-2 / A |
 
 ## Recently closed (Phase 1.5 batch — merged to `main` 2026-04-24)
 
