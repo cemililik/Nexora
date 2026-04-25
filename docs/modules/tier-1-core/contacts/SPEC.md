@@ -590,6 +590,8 @@ Completes synchronously within the request.
 | Audit | `AuditEntry` rows matching `EntityType=Contact` and `EntityId=<contactId>` get `BeforeState`/`AfterState`/`Changes` replaced with `{"_redacted":true,"_reason":"gdpr_erasure",...}`; operational trace preserved. One new entry appended: `action=gdpr_erasure`. |
 | Identity | `User.ContactId` nulled on every matching user; emits `UserContactUnlinkedIntegrationEvent` with `Reason="gdpr_erasure"`. Shipped in T-001. |
 
+**T-027 escape hatch (Notifications, Documents).** After the canonical-table redaction, each consumer also calls `IGdprRenamedTableScanner<TDbContext>.ScanAsync("<module>", redactSingleTableAsync, ct)` to redact the same rows in any `{module}_*_del_*` tables left behind by an earlier module uninstall (ADR-0028 retention window). The scanner uses an anchored regex match against `information_schema.tables` (NOT SQL `LIKE`, which would treat `_` as a wildcard and cross-bleed prefix-overlapping module names) and accepts both timestamp shapes T-026 may emit. The `GdprEscapeHatchBoundaryTests` architecture test fails CI when a non-exempt module's handler is missing the call. Identity (only nullifies a FK — no PII payload in renamed tables) and Audit (covered by ADR-0008's distinct audit-retention contract) are explicitly exempt and listed in the test's `ScanExemptModules` map.
+
 **Admin UI** (nexora-admin): Contact detail page exposes a destructive "GDPR Erasure"
 button gated by `contacts.contacts.admin`. Dialog requires a reason (10–500 chars) and
 the contact's display name to be typed for confirmation.

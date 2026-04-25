@@ -462,6 +462,9 @@ public static class DevelopmentSeed
             "ALTER TABLE identity_organizations ADD COLUMN IF NOT EXISTS \"DefaultLocale\" varchar(20) NOT NULL DEFAULT 'en-US'",
             // User.ContactId — optional link to a Contacts module contact record for 360° view
             "ALTER TABLE identity_users ADD COLUMN IF NOT EXISTS \"ContactId\" uuid NULL",
+            // Partial unique index: one contact linked to at most one non-deleted user per tenant.
+            // NULL and soft-deleted rows excluded — frees a contact's slot when the user is deleted.
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_identity_users_contact_id_unique ON identity_users (\"ContactId\") WHERE \"ContactId\" IS NOT NULL AND \"IsDeleted\" = false",
             // TenantModule.DeletedTableNames — CSV of renamed tables captured at uninstall time, used by reinstall path
             "ALTER TABLE identity_tenant_modules ADD COLUMN IF NOT EXISTS \"DeletedTableNames\" text NULL",
 
@@ -662,6 +665,26 @@ public static class DevelopmentSeed
             // the default in place because it has no way to tell which legacy
             // rows actually finished.
             "ALTER TABLE demo_seed_markers ADD COLUMN IF NOT EXISTS \"Status\" varchar(20) NOT NULL DEFAULT 'InProgress'",
+
+            // T-011: platform-scoped forensic log for MigrationRunner failures.
+            // Lives in `public` (not in any tenant schema) so a row stays
+            // writable when the tenant schema itself is unreachable —
+            // ops triages via SELECT … WHERE TenantId = X ORDER BY OccurredAtUtc DESC
+            // per docs/operations/migration-orchestration.md §2.3. Nullable
+            // StackTrace + bounded column widths match
+            // MigrationFailureLogDbContext.OnModelCreating.
+            """
+            CREATE TABLE IF NOT EXISTS public.platform_migration_failures (
+                "Id" uuid PRIMARY KEY,
+                "TenantId" uuid NOT NULL,
+                "ModuleName" varchar(100) NOT NULL,
+                "ExceptionType" varchar(500) NOT NULL,
+                "ExceptionMessage" varchar(4000) NOT NULL,
+                "StackTrace" varchar(16000) NULL,
+                "OccurredAtUtc" timestamptz NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS ix_platform_migration_failures_tenant_occurred ON public.platform_migration_failures (\"TenantId\", \"OccurredAtUtc\")",
         };
 
         foreach (var sql in alterStatements)

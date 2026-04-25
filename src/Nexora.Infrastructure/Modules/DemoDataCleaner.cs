@@ -47,7 +47,7 @@ public sealed class DemoDataCleaner(
         // hardcoded English sentence.
         if (!Guid.TryParse(tenantId, out var tenantGuid))
             throw new ArgumentException(
-                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
+                "lockey_identity_demo_data_tenant_id_must_be_guid", nameof(tenantId));
 
         var allModules = modules.ToList();
         // Reverse dependency order: a module can only be cleaned after every
@@ -239,7 +239,7 @@ public sealed class DemoDataCleaner(
         // hardcoded English sentence.
         if (!Guid.TryParse(tenantId, out var tenantGuid))
             throw new ArgumentException(
-                "lockey_demo_data_tenant_id_must_be_guid", nameof(tenantId));
+                "lockey_identity_demo_data_tenant_id_must_be_guid", nameof(tenantId));
 
         await using var scope = scopeFactory.CreateAsyncScope();
         var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();

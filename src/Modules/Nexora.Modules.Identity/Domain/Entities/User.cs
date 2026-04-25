@@ -94,7 +94,26 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
     /// <param name="contactId">The Contacts <c>ContactId</c> to link.</param>
     /// <param name="linkedByUserId">The user performing the link (for audit/event trail).</param>
     /// <exception cref="DomainException">
-    /// Thrown when the user is a system account or already linked to a contact.
+    /// Thrown in any of these cases:
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     <c>lockey_identity_user_link_contact_contact_id_required</c> —
+    ///     <paramref name="contactId"/> is <see cref="Guid.Empty"/>.
+    ///   </description></item>
+    ///   <item><description>
+    ///     <c>lockey_identity_user_link_contact_system_account_rejected</c> —
+    ///     the user is a Keycloak service account (<see cref="IsSystemAccount"/> is true).
+    ///   </description></item>
+    ///   <item><description>
+    ///     <c>lockey_identity_user_link_contact_already_linked_to_different_contact</c> —
+    ///     the user is already linked to a <em>different</em> contact.
+    ///   </description></item>
+    ///   <item><description>
+    ///     <c>lockey_identity_user_link_contact_already_linked</c> —
+    ///     the user is already linked to the <em>same</em> contact (re-link not idempotent).
+    ///     Note: <see cref="UnlinkContact"/> is idempotent; <c>LinkContact</c> is not.
+    ///   </description></item>
+    /// </list>
     /// </exception>
     public void LinkContact(Guid contactId, UserId linkedByUserId)
     {
@@ -103,6 +122,9 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
 
         if (IsSystemAccount)
             throw new DomainException("lockey_identity_user_link_contact_system_account_rejected");
+
+        if (ContactId is not null && ContactId.Value != contactId)
+            throw new DomainException("lockey_identity_user_link_contact_already_linked_to_different_contact");
 
         if (ContactId is not null)
             throw new DomainException("lockey_identity_user_link_contact_already_linked");

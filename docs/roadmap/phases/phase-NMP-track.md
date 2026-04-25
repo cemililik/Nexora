@@ -67,6 +67,14 @@ Four milestones, roughly 4 weeks each; run concurrently with Phase 2 development
 
 Prerequisite: Phase 1.5.2 Permission Tier System complete.
 
+> **Closes Phase 1.5 deferrals**: the two §1.5.2 items the bridge phase
+> deferred — *Platform Admin role separation* and *license-based user/org
+> caps* — land here. The `nexora-management` Keycloak realm IS the role
+> separation (operators authenticate against a different realm than tenant
+> users); `NmpLicenseVerifier` (NMP.1) + license-aware module install (NMP.3)
+> + signed-key verification (NMP.4) together implement the cap enforcement
+> that Phase 1.5.2 staged via `ILicenseVerifier` + `NullLicenseVerifier`.
+
 - [ ] Create `Nexora.Management` solution (separate codebase, own repo or monorepo sub-tree).
 - [ ] Keycloak `nexora-management` realm for platform operators.
 - [ ] `Subscription`, `LicenseKey`, `ModuleCatalog` domain entities in NMP.

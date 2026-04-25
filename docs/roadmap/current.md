@@ -1,10 +1,24 @@
 # Current State
 
-**Last updated:** 2026-04-24 (late — carry-over sweep)
+**Last updated:** 2026-04-24 (post-carry-over reconciliation sweep — T-007 split confirmed, T-010 reclassified, T-030 filed, ADR-0031 Accepted)
 
 ---
 
 ## Active task
+
+**Phase 2 Milestone A batch — 6 tasks now In Review, awaiting maintainer review** (started + completed 2026-04-24).
+Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
+
+| Task | Status |
+|------|--------|
+| T-011 — MigrationRunner.MigrateAllModulesAsync | In Review (commit pending squash to PR) |
+| T-012 — AdditiveOnlyMigrationTest | In Review (commit `c786961`) |
+| T-029 — DemoScenario registry + Contacts seed | In Review |
+| T-026 — Cascade guard in UninstallModuleCommand | In Review |
+| T-025 — `platform:purge-uninstalled-modules` Hangfire job | In Review |
+| T-027 — GDPR erasure escape hatch for renamed uninstall tables | **In Review** (this commit) |
+
+## Prior active task
 
 _None._
 
@@ -52,12 +66,24 @@ deferred items in priority order:
 | **T-009** | **Done** — `nexora demo:clean` CLI verb, `IDemoDataCleaner` orchestrator (reverse-dep-order module cleanup), `--drop-tenant --yes` full-schema-drop path. `IModule.CleanDemoDataAsync` DIM added. |
 | **T-008** | **Done** — `POST /identity/tenants/demo` endpoint (platform-scope, gated on new `platform.tenants.create_demo` permission), `CreateDemoEnvironmentDialog` admin UI with per-module outcome view, `useCreateDemoEnvironment` hook. |
 | **Phase 2 priority-1 fixes** | **Done** — ADR-0030 (license hot-reload: polling + SIGHUP; Accepted), T-016 milestone assigned to C, HR SPEC.md header Tier-vs-Phase clarification. |
-| **T-007** | **Blocked (partial)** — AC content refers to CRM / Finance / Projects / Fundraising / Sponsorship modules that don't exist yet (Phase 2 / 3a). Scope analysis in the task status log proposes a three-way split (T-007a scenario registry + Contacts seeds now; T-007b per-Tier-2-module seeds with each Phase 2 module; T-007c per-Tier-3a-module seeds with each Phase 3a module). Until split is confirmed, T-008's dialog ships with a hardcoded `general`/`ngo` dropdown as the interim measure. |
-| **T-010** | **Ready (carries to Phase 2)** — ADR-0026 Accepted on 2026-04-24 unblocked the gate, but 4 of 5 target consumer modules (CRM, Subscription, Fundraising, Finance) don't exist yet and the 10M-row perf harness isn't in the repo. Proposed reclassification to Phase 2 Milestone A/B so Contacts locator + Audit scan job + arch test can ship as scaffolding alongside the CRM pilot. |
+| **T-007** | **Superseded by [T-029](../analysis/tasks/phase-1.5/T-029.md)** (2026-04-24 reconciliation). The proposed three-way split is now binding: T-029 ships the registry + Contacts seed under Phase 1.5 Milestone C; the per-Phase-2 / per-Phase-3a module seeds are filed at each module's kickoff (no orphan stubs). T-008's hardcoded `general`/`ngo` dropdown stays as the interim measure until T-029 lands and turns it registry-driven. |
+| **T-010** | **Reclassified to Phase 2 Milestone A** (2026-04-24 reconciliation). File moved to `docs/analysis/tasks/phase-2/T-010.md`, status reset to **Not started**. Scope at Milestone A is the scaffolding slice (Contacts locator + Audit scan job + arch test); CRM ships the first non-trivial locator inside the same milestone via T-030. 10M-row perf benchmark deferred to Milestone C. |
 
 The sweep also scoped + filed the three orphan uninstall tasks
 (T-025 / T-026 / T-027) that ADR-0028 references in their own files
 under `docs/analysis/tasks/phase-2/` — they were missing before.
+
+## Phase-2 reconciliation (2026-04-24, post-sweep)
+
+Follow-up disposition of the items the carry-over sweep left provisional:
+
+| Item | Outcome |
+|------|---------|
+| **T-007 split** | **Confirmed.** T-007 marked `Superseded by T-029` in its status log. [T-029](../analysis/tasks/phase-1.5/T-029.md) filed under Phase 1.5 Milestone C — the registry + Contacts-only seed slice that does not require unbuilt modules. Per-Phase-2 / per-Phase-3a module seeds intentionally not pre-allocated; each owning module files its own seed task at kickoff. |
+| **T-010 reclassification** | **Confirmed.** Moved `docs/analysis/tasks/phase-1.5/T-010.md` → `docs/analysis/tasks/phase-2/T-010.md`. Status `Not started`. Milestone A. Scaffolding only (Contacts locator + Audit scan job + arch test); CRM is the first non-trivial locator consumer via T-030. |
+| **Phase-1.5.4 portal pilot deferral** | **Filed as [T-030](../analysis/tasks/phase-2/T-030.md)** under Phase 2 Milestone A — backend manifest assembly endpoint, manifest schema artefact, CRM frontend pilot (3 slot kinds), host-loader registry uncomment, license/permission filter integration test, retrospective into `docs/architecture/portal-extensions.md`. |
+| **ADR-0028 cascade transaction policy** | **Superseded in part by [ADR-0031](../decisions/0031-cascade-uninstall-per-module-transactions.md)** (Accepted). The single-outer-transaction-with-savepoints mechanism in ADR-0028 §Decision outcome was infeasible under per-module DbContext isolation + ADR-0001's no-DTC rule. ADR-0031 makes per-module transactions + session advisory lock + forward-log compensation normative; ADR-0028's retention window, cleanup job, GDPR escape hatch, dependency guard, extended event schema, and config key all stand. T-026 updated to cite ADR-0031 as the source of its transaction-boundary rule. |
+| **Doc hygiene** | T-025/T-026/T-027 phase-file links fixed (`phase-2-enterprise-core.md` → `phase-2-enterprise.md`; relative depth corrected). `docs/analysis/tasks/phase-2/README.md` rewritten to list the 11 filed tasks. `docs/operations/migration-orchestration.md` `Derives from` line gained ADR-0027. `docs/architecture/portal-extensions.md` §8 added to make the manifest-schema canonical-vs-publish path explicit. `docs/analysis/tasks/README.md` ADR-0015 link fixed. `docs/decisions/README.md` index gained ADR-0018..0023, ADR-0031, and the partial-supersede note on ADR-0028. `docs/roadmap/phases/phase-2-enterprise.md` ADR ledger expanded to cite all consumed ADRs (0018..0023, 0026..0031); Milestone A scope expanded to bundle T-010 / T-011 / T-012 / T-025 / T-026 / T-027 / T-030. |
 
 
 
@@ -90,10 +116,11 @@ and milestone breakdown. Legacy reference: `docs/roadmap/ROADMAP.md` §1.5 and �
 - Audit Module enhancements (Phase 1.5.5) — **Done**
 - Contacts enhancements (Phase 1.5.6) — **Done** (T-001..T-004 + T-017..T-022 closed 2026-04-24;
   cross-module PII payload scan follow-up tracked as T-010, unblocked by ADR-0026)
-- Demo Data Framework (Phase 1.5.7) — **Foundation Done** (T-005 orchestrator + T-006 CLI
-  closed; T-007 scenarios / T-008 admin UI / T-009 cleanup carry over to Phase 2 — they do
-  not block Phase 2 entry because the foundation lets Phase 2 modules declare demo content
-  from day one)
+- Demo Data Framework (Phase 1.5.7) — **Foundation + admin UI + cleanup Done**
+  (T-005 + T-006 closed 2026-04-23; T-008 + T-009 closed in the carry-over sweep
+  2026-04-24). T-007 was **Superseded by [T-029](../analysis/tasks/phase-1.5/T-029.md)**;
+  T-029 (registry + Contacts seed) ships under this phase, per-module seeds ship
+  with each owning Phase 2 / Phase 3a module.
 
 ---
 
@@ -133,17 +160,28 @@ the full rationale. Lessons feed back into `docs/architecture/portal-extensions.
 
 ## Pending decisions
 
-_None blocking Phase 1.5 closure._ Four ADRs (0026, 0027, 0028, 0029)
-were promoted **Proposed → Accepted** on 2026-04-24 in the same batch
-that closed the 14 tasks above. They unblock the Phase-2-adjacent
-follow-up tasks listed under "Recently closed" (T-010 via ADR-0026,
-T-011 via ADR-0027, T-025..T-027 via ADR-0028). ADR-0029 is the
-canonical record for the `cap.blocked` short-circuit that shipped in
-commit `576ff65` and supersedes ADR-0025's resolution ladder.
+_None blocking Phase 1.5 closure or Phase 2 entry._ Five ADRs (0026, 0027, 0028,
+0029, 0030) were promoted **Proposed → Accepted** on 2026-04-24 in the same batch
+that closed the 14 tasks above. They unblock the Phase-2-adjacent follow-up
+tasks listed under "Recently closed" (T-010 via ADR-0026, T-011 via ADR-0027,
+T-025..T-027 via ADR-0028, T-014/T-015 via ADR-0030). ADR-0029 is the canonical
+record for the `cap.blocked` short-circuit that shipped in commit `576ff65`
+and supersedes ADR-0025's resolution ladder.
+
+ADR-0031 was Accepted in the post-sweep reconciliation (2026-04-24) to replace
+the cascade transaction mechanism inside ADR-0028 — the original
+single-outer-transaction-with-savepoints approach was infeasible under
+per-module DbContext isolation + ADR-0001's no-DTC rule. ADR-0031 normatively
+adopts per-module transactions + session advisory lock + forward-log
+compensation. ADR-0028 retains every other commitment.
 
 ADR-0025 (org-scoped compliance config) remains **Superseded by ADR-0029**
 for the resolution-ladder subsection; all other decisions in ADR-0025
 remain in force via the superseding doc.
+
+ADR-0028 (module uninstall data-retention contract) carries a **partial
+supersede** by ADR-0031 covering only its cascade transaction policy;
+the rest of the contract stands.
 
 The three Phase-1 foundation ADRs are **Accepted** (maintainer promoted 2026-04-22):
 

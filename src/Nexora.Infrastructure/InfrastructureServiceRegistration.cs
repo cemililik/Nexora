@@ -154,6 +154,39 @@ public static class InfrastructureServiceRegistration
         // verb / admin UI both create a scope before resolving, so per-call
         // scoping is the right default.
         services.AddScoped<IDemoDataCleaner, Modules.DemoDataCleaner>();
+        // T-029: scenario catalogue. Singleton — scenarios are immutable
+        // records frozen at construction; per-tenant filtering takes a
+        // fresh DI scope inside the registry, so the singleton itself
+        // holds no per-tenant state.
+        services.AddSingleton<IDemoScenarioRegistry, Modules.InMemoryDemoScenarioRegistry>();
+
+        // T-026: cascade-uninstall advisory lock. Postgres impl in production;
+        // unit tests that construct UninstallModuleHandler against EF InMemory
+        // wire the NoOpUninstallAdvisoryLock directly without going through DI.
+        services.AddSingleton<SharedKernel.Abstractions.Modules.IUninstallAdvisoryLock>(sp =>
+            new Modules.PostgresUninstallAdvisoryLock(
+                configuration.GetConnectionString("Default")
+                    ?? throw new InvalidOperationException("Default connection string is required for IUninstallAdvisoryLock."),
+                sp.GetRequiredService<ILogger<Modules.PostgresUninstallAdvisoryLock>>()));
+
+        // T-011: platform-level migration orchestrator + the public-schema
+        // failure-log DbContext it writes through. Singleton matches the
+        // dep shape (IServiceScopeFactory + IEnumerable<IModule> + ILogger
+        // + a captured connection-string string) and the post-deploy
+        // platform:migrate-tenants Hangfire job calls it from a single
+        // outer scope per tenant.
+        services.AddDbContext<Migrations.MigrationFailureLogDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
+        services.AddSingleton<SharedKernel.Abstractions.Migrations.IMigrationRunner>(sp =>
+            new Migrations.MigrationRunner(
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                sp.GetRequiredService<IEnumerable<SharedKernel.Abstractions.Modules.IModule>>(),
+                sp.GetRequiredService<ILogger<Migrations.MigrationRunner>>(),
+                configuration.GetConnectionString("Default")
+                    ?? throw new InvalidOperationException("Default connection string is required for IMigrationRunner.")));
 
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>

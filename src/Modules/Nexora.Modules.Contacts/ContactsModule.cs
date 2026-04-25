@@ -8,6 +8,7 @@ using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Infrastructure.Persistence.Outbox;
 using Nexora.Modules.Contacts.Api;
 using Nexora.Modules.Contacts.Infrastructure;
+using Nexora.Modules.Contacts.Infrastructure.DemoData;
 using Nexora.Modules.Contacts.Infrastructure.IntegrationEvents;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.Modules;
@@ -146,4 +147,8 @@ public sealed class ContactsModule : IModule
     {
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public Task SeedDemoDataAsync(TenantDemoSeedContext context, CancellationToken ct)
+        => ContactsDemoSeed.SeedAsync(context, ct);
 }

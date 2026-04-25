@@ -66,6 +66,12 @@ public sealed class DocumentsModule : IModule
 
         // Inbox guard for idempotent integration event consumption (ADR-0011)
         services.AddScoped<IInboxGuard, InboxGuard<DocumentsDbContext>>();
+
+        // T-027: GDPR escape hatch — discovers renamed _del_ tables for the
+        // documents module so Article-17 redaction reaches them too.
+        services.AddScoped<
+            Nexora.SharedKernel.Abstractions.Gdpr.IGdprRenamedTableScanner<DocumentsDbContext>,
+            Nexora.Infrastructure.Gdpr.PostgresGdprRenamedTableScanner<DocumentsDbContext>>();
     }
 
     /// <inheritdoc />

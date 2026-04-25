@@ -26,12 +26,24 @@ public sealed class User_LinkContactTests
     }
 
     [Fact]
-    public void LinkContact_AlreadyLinked_Throws()
+    public void LinkContact_AlreadyLinked_ToDifferentContact_Throws()
     {
         var user = User.Create(_tenantId, "kc-human-1", "u@test.com", "U", "One");
         user.LinkContact(_contactId, _actorId);
 
         var act = () => user.LinkContact(Guid.NewGuid(), _actorId);
+
+        act.Should().Throw<DomainException>()
+            .Which.LocalizationKey.Should().Be("lockey_identity_user_link_contact_already_linked_to_different_contact");
+    }
+
+    [Fact]
+    public void LinkContact_AlreadyLinked_ToSameContact_Throws()
+    {
+        var user = User.Create(_tenantId, "kc-human-1", "u@test.com", "U", "One");
+        user.LinkContact(_contactId, _actorId);
+
+        var act = () => user.LinkContact(_contactId, _actorId);
 
         act.Should().Throw<DomainException>()
             .Which.LocalizationKey.Should().Be("lockey_identity_user_link_contact_already_linked");

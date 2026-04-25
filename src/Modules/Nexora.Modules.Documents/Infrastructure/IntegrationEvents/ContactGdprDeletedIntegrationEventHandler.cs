@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using Nexora.SharedKernel.Abstractions.Gdpr;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Events;
@@ -18,6 +20,7 @@ namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 public sealed class ContactGdprDeletedIntegrationEventHandler(
     DocumentsDbContext dbContext,
     IInboxGuard inboxGuard,
+    IGdprRenamedTableScanner<DocumentsDbContext> renamedTableScanner,
     ILogger<ContactGdprDeletedIntegrationEventHandler> logger)
     : IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>
 {
@@ -50,6 +53,16 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             await dbContext.SaveChangesAsync(ct);
             return;
         }
+
+        // Wrap in an EF transaction on relational providers so all redaction
+        // work (canonical ExecuteUpdateAsync calls, renamedTableScanner raw
+        // UPDATEs, inbox mark) is atomic: if SaveChangesAsync fails the
+        // scrub is rolled back and the event can be redelivered safely.
+        // InMemory providers (tests) don't need a transaction — SaveChanges
+        // is already atomic for EF-tracked domain-method changes.
+        await using var tx = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(ct)
+            : null;
 
         int unlinkedCount;
         int scrubbedCount;
@@ -103,12 +116,91 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             scrubbedCount = recipients.Count;
         }
 
+        // T-027: GDPR escape hatch — apply the same scrub to any
+        // documents_*_del_* tables left behind by a previous module
+        // uninstall (ADR-0028 retention window). Two PII-bearing tables
+        // exist:
+        //   - documents_signature_recipients_*: Name/Email/IpAddress
+        //   - documents_documents_*: LinkedEntityId/LinkedEntityType
+        //     (drop the back-reference to the contact)
+        // Note the canonical name has an underscore between
+        // "signature" and "recipients" — see SignatureRecipientConfiguration.
+        // Use info.QualifiedIdentifier (schema."table") so the UPDATE
+        // doesn't depend on the connection's search_path (review round-2).
+        var renamedScan = await renamedTableScanner.ScanAsync(
+            "documents",
+            redactSingleTableAsync: async (info, innerCt) =>
+            {
+                if (info.BareName.StartsWith("documents_signature_recipients_del_", StringComparison.Ordinal))
+                {
+                    return await ExecuteScrubAsync(
+                        $"""UPDATE {info.QualifiedIdentifier} SET "Name" = @placeholder, "Email" = @placeholder, "IpAddress" = NULL WHERE "ContactId" = @contactId""",
+                        @event.ContactId, innerCt);
+                }
+                if (info.BareName.StartsWith("documents_documents_del_", StringComparison.Ordinal))
+                {
+                    // Mirror the canonical-table behavior: keep the
+                    // document, drop the contact back-reference.
+                    return await ExecuteUnlinkAsync(
+                        $"""UPDATE {info.QualifiedIdentifier} SET "LinkedEntityId" = NULL, "LinkedEntityType" = NULL WHERE "LinkedEntityType" = 'Contact' AND "LinkedEntityId" = @contactId""",
+                        @event.ContactId, innerCt);
+                }
+                return 0;
+            },
+            ct: ct);
+
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
 
         logger.LogInformation(
             "Completed ContactGdprDeletedIntegrationEvent for TenantId {TenantId}, ContactId {ContactId}: " +
-            "UnlinkedDocuments {UnlinkedCount}, ScrubbedRecipients {ScrubbedCount}",
-            @event.TenantId, @event.ContactId, unlinkedCount, scrubbedCount);
+            "UnlinkedDocuments {UnlinkedCount}, ScrubbedRecipients {ScrubbedCount} (canonical) " +
+            "+ {RenamedRowsRedacted} rows across {RenamedTablesScanned} renamed _del_ tables",
+            @event.TenantId, @event.ContactId,
+            unlinkedCount, scrubbedCount,
+            renamedScan.RowsRedacted, renamedScan.TablesScanned);
+    }
+
+    private Task<int> ExecuteScrubAsync(string sql, Guid contactId, CancellationToken ct)
+        => RunUpdateAsync(sql, contactId, withPlaceholder: true, ct);
+
+    private Task<int> ExecuteUnlinkAsync(string sql, Guid contactId, CancellationToken ct)
+        => RunUpdateAsync(sql, contactId, withPlaceholder: false, ct);
+
+    private async Task<int> RunUpdateAsync(string sql, Guid contactId, bool withPlaceholder, CancellationToken ct)
+    {
+        var conn = dbContext.Database.GetDbConnection();
+        var openedHere = conn.State != System.Data.ConnectionState.Open;
+        if (openedHere) await conn.OpenAsync(ct);
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            // Enlist in the ambient EF transaction if the caller has one
+            // open — without this the raw UPDATE would auto-commit while
+            // surrounding EF SaveChanges still rides on the transaction
+            // (review round-2).
+            var ambientTx = dbContext.Database.CurrentTransaction?.GetDbTransaction();
+            if (ambientTx is not null) cmd.Transaction = ambientTx;
+            if (withPlaceholder)
+            {
+                var p1 = cmd.CreateParameter();
+                p1.ParameterName = "@placeholder";
+                p1.Value = PiiRedactedPlaceholder.Value;
+                cmd.Parameters.Add(p1);
+            }
+            var p2 = cmd.CreateParameter();
+            p2.ParameterName = "@contactId";
+            p2.Value = contactId;
+            cmd.Parameters.Add(p2);
+            return await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            // EF-owned pooled connection: only close it if we opened it.
+            // Disposing would yank it from the pool prematurely.
+            if (openedHere) await conn.CloseAsync();
+        }
     }
 }

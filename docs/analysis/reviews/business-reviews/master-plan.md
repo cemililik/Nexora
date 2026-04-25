@@ -109,5 +109,5 @@ or discarded once merged; the merge is authoritative.
 ## Related
 
 - [Business reviews README](README.md)
-- [ADR-015 — Roadmap Structure](../../../decisions/ADR-015-roadmap-structure.md)
+- [ADR-015 — Roadmap Structure](../../../decisions/0015-roadmap-structure.md)
 - [Roadmap current](../../../roadmap/current.md)

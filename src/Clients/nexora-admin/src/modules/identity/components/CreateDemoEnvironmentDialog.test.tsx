@@ -4,11 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ReactNode } from 'react';
 
+const mockApiGet = vi.fn();
 const mockApiPost = vi.fn();
 
 vi.mock('@/shared/lib/api', () => ({
   api: {
-    get: vi.fn(),
+    get: (...args: unknown[]) => mockApiGet(...args),
     post: (...args: unknown[]) => mockApiPost(...args),
     delete: vi.fn(),
   },
@@ -37,20 +38,43 @@ function renderWithClient(node: ReactNode) {
   );
 }
 
+const scenariosFixture = [
+  {
+    name: 'general',
+    descriptionLockey: 'lockey_identity_tenants_demo_scenario_general_description',
+    requiredModules: ['contacts'],
+    optionalModules: [],
+  },
+  {
+    name: 'ngo',
+    descriptionLockey: 'lockey_identity_tenants_demo_scenario_ngo_description',
+    requiredModules: ['contacts'],
+    optionalModules: [],
+  },
+];
+
 describe('CreateDemoEnvironmentDialog', () => {
   beforeEach(() => {
     mockApiPost.mockReset();
+    mockApiGet.mockReset();
+    // T-029: dialog now fetches scenarios via GET /identity/demo/scenarios
+    // before the form (and submit button) become interactive.
+    mockApiGet.mockResolvedValue(scenariosFixture);
   });
 
-  it('renders title, description, and scenario dropdown with the general + ngo options', () => {
+  it('renders title, description, and the server-fetched scenario dropdown', async () => {
     renderWithClient(
       <CreateDemoEnvironmentDialog tenantId="t-1" open onOpenChange={vi.fn()} />,
     );
 
     expect(screen.getByText('lockey_identity_tenants_demo_dialog_title')).toBeInTheDocument();
     expect(screen.getByText('lockey_identity_tenants_demo_dialog_description')).toBeInTheDocument();
-    // Dropdown trigger is the scenario FormField's Select — default selected is "general".
-    expect(screen.getByText('lockey_identity_tenants_demo_scenario_general')).toBeInTheDocument();
+    // FormField label appears once scenarios resolve.
+    await waitFor(() => {
+      expect(
+        screen.getByText('lockey_identity_tenants_demo_scenario_label'),
+      ).toBeInTheDocument();
+    });
   });
 
   it('submits the selected scenario to /identity/tenants/demo and renders the per-module outcome list', async () => {
@@ -68,9 +92,25 @@ describe('CreateDemoEnvironmentDialog', () => {
       <CreateDemoEnvironmentDialog tenantId="t-1" open onOpenChange={vi.fn()} />,
     );
 
+    // Wait for scenarios to load + auto-pick "general" via dropdown click is
+    // not necessary because the form starts with empty scenario; pick it
+    // explicitly via the underlying Select.
+    const submitBtn = await screen.findByRole('button', {
+      name: 'lockey_identity_tenants_demo_submit',
+    });
+    // Default scenario is empty; click "general" option to enable submit.
+    // Target the SelectTrigger by its FormField label rather than the
+    // bare combobox role — would otherwise break the moment another
+    // Select is added to this dialog.
     await userEvent.click(
-      screen.getByRole('button', { name: 'lockey_identity_tenants_demo_submit' }),
+      screen.getByRole('combobox', { name: /lockey_identity_tenants_demo_scenario_label/i }),
     );
+    await userEvent.click(
+      await screen.findByRole('option', {
+        name: 'lockey_identity_tenants_demo_scenario_general',
+      }),
+    );
+    await userEvent.click(submitBtn);
 
     await waitFor(() => {
       // Third arg is the AxiosRequestConfig that the hook now threads
@@ -109,9 +149,21 @@ describe('CreateDemoEnvironmentDialog', () => {
       <CreateDemoEnvironmentDialog tenantId="t-1" open onOpenChange={vi.fn()} />,
     );
 
+    const submitBtn = await screen.findByRole('button', {
+      name: 'lockey_identity_tenants_demo_submit',
+    });
+    // Target the SelectTrigger by its FormField label rather than the
+    // bare combobox role — would otherwise break the moment another
+    // Select is added to this dialog.
     await userEvent.click(
-      screen.getByRole('button', { name: 'lockey_identity_tenants_demo_submit' }),
+      screen.getByRole('combobox', { name: /lockey_identity_tenants_demo_scenario_label/i }),
     );
+    await userEvent.click(
+      await screen.findByRole('option', {
+        name: 'lockey_identity_tenants_demo_scenario_general',
+      }),
+    );
+    await userEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/timeout/)).toBeInTheDocument();

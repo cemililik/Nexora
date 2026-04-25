@@ -119,13 +119,14 @@ Prerequisite: Reporting Engine (Phase 1) + CRM (Phase 2.1).
 
 ## Milestones
 
-### Milestone A — Portal Extension pilot (ADR-0017)
+### Milestone A — Portal Extension pilot (ADR-0017) + Migration runner foundation + Uninstall contract
 
 **Pilot module: CRM** (selected 2026-04-24 per the authority granted in ADR-0017
 "First pilot"). The module pilots the full Portal Extension manifest: tier
 declaration, slot contributions (at minimum: tab into Contacts 360° for
 lead/activity history, dashboard sidebar widget for "Recent leads"),
 permission wiring, locale namespace, marketplace-compatible manifest shape.
+Tracked as [T-030](../../analysis/tasks/phase-2/T-030.md).
 
 **Why CRM over Subscription:** CRM exercises more of the ADR-0017 surface —
 it contributes into multiple host slots (Contacts 360° tabs, dashboard widgets,
@@ -138,6 +139,32 @@ downstream phases. Subscription's entanglement with external payment providers
 outcome to payment-gateway state — a weaker test of the manifest itself.
 
 Outcomes inform `docs/architecture/portal-extensions.md`.
+
+**Bundled with Milestone A** (because each is a Phase 1.5 hand-off whose
+prerequisites are now met or because they share the CRM-pilot delivery
+window and depend on one another):
+
+- [T-010](../../analysis/tasks/phase-2/T-010.md) — Cross-module audit payload PII
+  scan scaffolding (Contacts locator + Audit scan job + arch test). **CRM
+  ships the first non-trivial locator inside this milestone** so the
+  contract is exercised end-to-end. 10M-row perf benchmark deferred to
+  Milestone C. Reclassified from Phase 1.5 in the 2026-04-24 carry-over
+  sweep; unblocked by [ADR-0026](../../decisions/0026-cross-module-pii-payload-scan-for-gdpr-erasure.md).
+- [T-011](../../analysis/tasks/phase-2/T-011.md) — `MigrationRunner.MigrateAllModulesAsync`
+  + per-tenant `pg_advisory_lock` + dependency-ordered application. Required
+  before any Phase-2 module ships its first EF migration. Unblocked by
+  [ADR-0027](../../decisions/0027-production-schema-migration-strategy.md).
+- [T-012](../../analysis/tasks/phase-2/T-012.md) — `AdditiveOnlyMigrationTest`
+  CI gate. Pairs with T-011 because the additive-only rule is the gate
+  ADR-0027 is built around.
+- [T-025](../../analysis/tasks/phase-2/T-025.md) — `platform:purge-uninstalled-modules`
+  Hangfire cleanup job (closes ADR-0028's retention promise).
+- [T-026](../../analysis/tasks/phase-2/T-026.md) — Cascade guard in
+  `UninstallModuleCommand` — per-module transactions + forward-log
+  compensation per [ADR-0031](../../decisions/0031-cascade-uninstall-per-module-transactions.md)
+  (which supersedes ADR-0028's outer-transaction model).
+- [T-027](../../analysis/tasks/phase-2/T-027.md) — GDPR erasure escape hatch
+  for renamed uninstall tables (module-local scan).
 
 ### Milestone B — Tier-2 modules shipped
 
@@ -166,10 +193,22 @@ their Phase 2 scope, each using the manifest pattern from Milestone A.
 
 **Consumes:**
 
-- ADR-015 — Roadmap Structure (phase model).
-- ADR-016 — Module Tier Classification (Tier-2 rules).
-- ADR-0017 — Portal Extension Architecture (manifest pilot in Milestone A).
-- ADR-001..014 — all Phase-1 foundations.
+- [ADR-0001](../../decisions/0001-modular-monolith.md) … [ADR-0014](../../decisions/0014-distributed-consistency-patterns.md) — all Phase-1 foundations.
+- [ADR-0015](../../decisions/0015-roadmap-structure.md) — Roadmap Structure (phase model).
+- [ADR-0016](../../decisions/0016-module-tier-classification.md) — Module Tier Classification (Tier-2 rules).
+- [ADR-0017](../../decisions/0017-portal-extension-architecture.md) — Portal Extension Architecture (manifest pilot in Milestone A; tracked as [T-030](../../analysis/tasks/phase-2/T-030.md)).
+- [ADR-0018](../../decisions/0018-payment-provider-strategy.md) — Payment Provider Strategy (Subscription module dependency).
+- [ADR-0019](../../decisions/0019-recurring-billing-vs-recurring-donations.md) — Recurring Billing vs Recurring Donations (Subscription scope boundary).
+- [ADR-0020](../../decisions/0020-contact-extensions-by-vertical-modules.md) — Contact Extensions by Vertical Modules (Tier-3 attachment pattern; consumed by Tier-2 SPECs that draw a vocabulary line).
+- [ADR-0021](../../decisions/0021-money-and-exchange-rate-contract.md) — Money + Exchange Rate Contract (every Tier-2 module that touches money).
+- [ADR-0022](../../decisions/0022-two-tier-locale-resolution.md) — Two-Tier Locale Resolution (i18n surface for all Tier-2 manifests).
+- [ADR-0023](../../decisions/0023-nmp-billing-model.md) — NMP Billing Model (license gates the Tier-2 SKU).
+- [ADR-0026](../../decisions/0026-cross-module-pii-payload-scan-for-gdpr-erasure.md) — Cross-Module PII Payload Scan for GDPR Erasure (Milestone A scaffolding via [T-010](../../analysis/tasks/phase-2/T-010.md); CRM is the first non-trivial locator consumer).
+- [ADR-0027](../../decisions/0027-production-schema-migration-strategy.md) — Production Schema-Migration Strategy (gates every Tier-2 module's first migration; Milestone A delivers via [T-011](../../analysis/tasks/phase-2/T-011.md) + [T-012](../../analysis/tasks/phase-2/T-012.md)).
+- [ADR-0028](../../decisions/0028-module-uninstall-data-retention-contract.md) — Module Uninstall Data-Retention Contract (Milestone A delivers via [T-025](../../analysis/tasks/phase-2/T-025.md) / [T-026](../../analysis/tasks/phase-2/T-026.md) / [T-027](../../analysis/tasks/phase-2/T-027.md)).
+- [ADR-0029](../../decisions/0029-cap-blocked-short-circuits-lower-layers.md) — `cap.blocked` short-circuits lower layers in the compliance-config resolver (every Tier-2 module that reads compliance-gated config inherits this semantic).
+- [ADR-0030](../../decisions/0030-license-hot-reload-mechanism.md) — License Hot-Reload Mechanism ([T-014](../../analysis/tasks/phase-2/T-014.md) + [T-015](../../analysis/tasks/phase-2/T-015.md)).
+- [ADR-0031](../../decisions/0031-cascade-uninstall-per-module-transactions.md) — Cascade Uninstall Uses Per-Module Transactions With Forward-Log Compensation (governs [T-026](../../analysis/tasks/phase-2/T-026.md)'s transaction model; partially supersedes ADR-0028).
 
 **Supersedes:** none.
 

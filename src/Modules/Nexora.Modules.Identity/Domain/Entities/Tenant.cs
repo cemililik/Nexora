@@ -57,7 +57,12 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
     {
         if (Status == TenantStatus.Active) return;
 
-        if (Status is not (TenantStatus.Trial or TenantStatus.Suspended))
+        // Trial and Suspended are operator-driven entry paths.
+        // MigrationFailed is the recovery path after ops fixes a failed
+        // migration and reruns `platform:retry-tenant-migration` per the
+        // migration-orchestration runbook — re-activating here lifts the
+        // 503 quarantine.
+        if (Status is not (TenantStatus.Trial or TenantStatus.Suspended or TenantStatus.MigrationFailed))
             throw new DomainException("lockey_identity_error_tenant_activation_not_allowed");
 
         Status = TenantStatus.Active;
@@ -77,6 +82,26 @@ public sealed class Tenant : AuditableEntity<TenantId>, IAggregateRoot
 
         Status = TenantStatus.Suspended;
         AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.Suspended));
+    }
+
+    /// <summary>
+    /// Quarantines the tenant after a migration failure. Set by
+    /// <c>IMigrationRunner</c> (see T-011) when a per-module
+    /// <c>MigrateAsync</c> throws — the API layer rejects subsequent
+    /// requests with HTTP 503 until ops manually retries via
+    /// <c>platform:retry-tenant-migration</c> per
+    /// <c>docs/operations/migration-orchestration.md</c> §2.3. No-op
+    /// if already in <see cref="TenantStatus.MigrationFailed"/>; only
+    /// non-terminated tenants can transition (a Terminated tenant
+    /// stays Terminated).
+    /// </summary>
+    public void MarkMigrationFailed()
+    {
+        if (Status == TenantStatus.MigrationFailed) return;
+        if (Status == TenantStatus.Terminated)
+            throw new DomainException("lockey_identity_error_tenant_migration_failed_not_allowed");
+        Status = TenantStatus.MigrationFailed;
+        AddDomainEvent(new TenantStatusChangedEvent(Id, TenantStatus.MigrationFailed));
     }
 
     /// <summary>
@@ -125,5 +150,12 @@ public enum TenantStatus
     Suspended,
 
     /// <summary>Account permanently closed; terminal state.</summary>
-    Terminated
+    Terminated,
+
+    /// <summary>
+    /// A platform migration (per ADR-0027 / T-011 <c>MigrationRunner</c>) failed
+    /// for this tenant — API layer returns 503 until ops manually retries.
+    /// Distinct from Suspended (which is an operator action, not a system one).
+    /// </summary>
+    MigrationFailed
 }

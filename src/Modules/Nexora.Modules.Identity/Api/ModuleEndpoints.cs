@@ -18,7 +18,10 @@ public static class ModuleEndpoints
     /// <summary>Maps module install, uninstall, and listing endpoints.</summary>
     public static void MapModuleEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // Platform-level: list all registered (discoverable) modules
+        // Platform-level: list all registered (discoverable) modules.
+        // This endpoint sits OUTSIDE the /tenants/modules group, so the
+        // group-level RequireAuthorization below does not apply — it
+        // needs its own per-endpoint policy.
         endpoints.MapGet("/modules/registered", (IReadOnlyList<IModule> modules) =>
         {
             var result = modules.Select(m => new RegisteredModuleDto(
@@ -43,6 +46,12 @@ public static class ModuleEndpoints
                 : Results.BadRequest(ApiEnvelope<List<TenantModuleDto>>.Fail(result.Error!));
         });
 
+        // All four module-mutation endpoints (install / activate /
+        // deactivate / uninstall) inherit the group-level
+        // RequireAuthorization("identity.modules.manage") above — no
+        // per-endpoint declaration needed (review round-2 outside-diff:
+        // earlier per-endpoint .RequireAuthorization() calls were
+        // redundant + ambiguous).
         group.MapPost("/", async (ITenantContextAccessor tenantAccessor, InstallModuleRequest request, ISender sender, CancellationToken ct) =>
         {
             var command = new InstallModuleCommand(GetTenantId(tenantAccessor), request.ModuleName);

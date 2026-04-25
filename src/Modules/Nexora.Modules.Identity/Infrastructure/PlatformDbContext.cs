@@ -45,13 +45,44 @@ public sealed class PlatformDbContext(
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
+    /// <summary>
+    /// When true, the soft-delete conversion in
+    /// <see cref="ConvertDeletesAndSetAuditFields"/> is skipped so a
+    /// <c>Remove(entity)</c> physically deletes the row. Toggle via
+    /// <see cref="EnterHardDeleteScope"/>; direct mutation is
+    /// disallowed. Required by T-025 to actually expunge a
+    /// <c>TenantModule</c> row whose retention window has elapsed —
+    /// otherwise reinstall would trip the unique-on-not-deleted index.
+    /// </summary>
+    public bool HardDeleteEnabled { get; private set; }
+
+    /// <summary>
+    /// Disposes-back-to-soft-delete scope. Wrap the
+    /// <c>Remove + SaveChangesAsync</c> in this and the row is
+    /// physically deleted exactly once.
+    /// </summary>
+    public IDisposable EnterHardDeleteScope() => new HardDeleteScope(this);
+
+    private sealed class HardDeleteScope : IDisposable
+    {
+        private readonly PlatformDbContext _ctx;
+        private readonly bool _previous;
+        public HardDeleteScope(PlatformDbContext ctx)
+        {
+            _ctx = ctx;
+            _previous = ctx.HardDeleteEnabled;
+            ctx.HardDeleteEnabled = true;
+        }
+        public void Dispose() => _ctx.HardDeleteEnabled = _previous;
+    }
+
     private void ConvertDeletesAndSetAuditFields()
     {
         var now = DateTimeOffset.UtcNow;
         foreach (var entry in ChangeTracker.Entries())
         {
             // Convert hard deletes to soft deletes
-            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable)
+            if (entry.State == EntityState.Deleted && entry.Entity is ISoftDeletable && !HardDeleteEnabled)
             {
                 entry.State = EntityState.Modified;
                 entry.Property(nameof(ISoftDeletable.IsDeleted)).CurrentValue = true;
@@ -88,7 +119,10 @@ public sealed class PlatformDbContext(
             e.Property(t => t.Name).HasMaxLength(200).IsRequired();
             e.Property(t => t.Slug).HasMaxLength(100).IsRequired();
             e.HasIndex(t => t.Slug).IsUnique().HasFilter("\"IsDeleted\" = false");
-            e.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
+            // MaxLength matches TenantConfiguration.cs (50) — earlier
+            // 20 here was inconsistent and would have rejected any future
+            // status enum value longer than 20 chars (review round-2).
+            e.Property(t => t.Status).HasConversion<string>().HasMaxLength(50);
             e.Property(t => t.Settings).HasColumnType("jsonb");
             e.Property(t => t.RealmId).HasMaxLength(200);
 

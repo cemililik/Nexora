@@ -48,6 +48,6 @@ Standards without an ADR reference are grandfathered from the initial Nexora rul
 
 ## Related ADRs
 
-- [ADR-015 Roadmap Structure](../decisions/ADR-015-roadmap-structure.md)
+- [ADR-015 Roadmap Structure](../decisions/0015-roadmap-structure.md)
 - [ADR-016 Module Tier Classification](../decisions/ADR-016-module-tier-classification.md)
 - [ADR-014 Distributed Consistency Patterns](../decisions/ADR-014-distributed-consistency-patterns.md)

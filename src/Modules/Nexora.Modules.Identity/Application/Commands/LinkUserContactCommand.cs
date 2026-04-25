@@ -79,10 +79,36 @@ public sealed class LinkUserContactHandler(
 
         if (user.ContactId is not null)
         {
-            logger.LogWarning("LinkContact rejected: user {UserId} already linked to contact {ContactId}",
+            if (user.ContactId.Value == request.ContactId)
+            {
+                logger.LogWarning("LinkContact rejected: user {UserId} already linked to same contact {ContactId}",
+                    request.UserId, user.ContactId);
+                return Result.Failure(
+                    LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked"));
+            }
+
+            logger.LogWarning("LinkContact rejected: user {UserId} already linked to different contact {ExistingContactId}",
                 request.UserId, user.ContactId);
             return Result.Failure(
-                LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked"));
+                LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked_to_different_contact"));
+        }
+
+        var alreadyLinked = await dbContext.Users
+            .AnyAsync(u => u.ContactId == request.ContactId
+                        && u.TenantId == tenantId
+                        // u.Id != userId is defensively redundant: the earlier
+                        // `user.ContactId is not null` check short-circuits before
+                        // reaching here, so the current user's ContactId is always
+                        // null at this point. Kept for clarity and future-proofing.
+                        && u.Id != userId, cancellationToken);
+
+        if (alreadyLinked)
+        {
+            logger.LogWarning(
+                "LinkContact rejected: contact {ContactId} already linked to another user in tenant {TenantId}",
+                request.ContactId, tenantId);
+            return Result.Failure(
+                LocalizedMessage.Of("lockey_identity_user_link_contact_contact_already_in_use"));
         }
 
         try
@@ -106,12 +132,48 @@ public sealed class LinkUserContactHandler(
             LinkedByUserId = linkedByUserGuid
         }, cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsUniqueContactViolation(ex))
+        {
+            // The AnyAsync pre-check above races with concurrent requests.
+            // SQLSTATE 23505 on the ContactId unique index means another
+            // request won the race — surface the same business failure the
+            // pre-check would have returned. The outbox enqueue is also
+            // rolled back because it shares the same EF unit-of-work.
+            logger.LogWarning(ex,
+                "LinkContact rejected (race on unique index): contact {ContactId} already linked to another user in tenant {TenantId}",
+                request.ContactId, tenantId);
+            return Result.Failure(
+                LocalizedMessage.Of("lockey_identity_user_link_contact_contact_already_in_use"));
+        }
 
         logger.LogInformation(
             "User {UserId} linked to contact {ContactId} by {LinkedByUserId} in tenant {TenantId}",
             request.UserId, request.ContactId, linkedByUserGuid, tenantId);
 
         return Result.Success(LocalizedMessage.Of("lockey_identity_user_link_contact_success"));
+    }
+
+    // Reflect on the inner exception type name to avoid a compile-time
+    // reference on Npgsql — the provider is transitively available but
+    // the Application layer must not take a hard dependency on it.
+    // Same pattern as DemoDataSeeder.IsUniqueViolation.
+    private static bool IsUniqueContactViolation(DbUpdateException ex)
+    {
+        for (var current = ex.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current.GetType().FullName != "Npgsql.PostgresException") continue;
+            var type = current.GetType();
+            var sqlState = type.GetProperty("SqlState")?.GetValue(current) as string;
+            if (sqlState != "23505") continue;
+            var constraintName = type.GetProperty("ConstraintName")?.GetValue(current) as string;
+            // If ConstraintName is null (reflection unavailable), trust the SqlState match.
+            // If set, require the specific index to avoid masking unrelated unique violations.
+            if (constraintName is null || constraintName == "ix_identity_users_contact_id_unique") return true;
+        }
+        return false;
     }
 }

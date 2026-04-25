@@ -6,6 +6,7 @@ using Nexora.Modules.Notifications.Domain.Entities;
 using Nexora.Modules.Notifications.Domain.ValueObjects;
 using Nexora.Modules.Notifications.Infrastructure;
 using Nexora.Modules.Notifications.Infrastructure.IntegrationEvents;
+using Nexora.Infrastructure.Gdpr;
 using Nexora.Modules.Notifications.Tests.Helpers;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Abstractions.MultiTenancy;
@@ -91,6 +92,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerRelationalTests : I
 
         var handler = new ContactGdprDeletedIntegrationEventHandler(
             _dbContext, _inboxGuard,
+            new NoOpGdprRenamedTableScanner<NotificationsDbContext>(),
             NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
 
         var @event = new ContactGdprDeletedIntegrationEvent
