@@ -115,6 +115,12 @@ public sealed class IdentityModule : IModule
         // migration head vs the platform assembly's known head. 05:00 UTC
         // sits well after the 03:00 purge so the schema is settled.
         Infrastructure.Jobs.PlatformAuditMigrationDriftJob.RegisterRecurringSchedule(scheduler);
+
+        // T-015: daily fetch of the signed license-revocation bundle
+        // (03:00 UTC). Lives under Nexora.Infrastructure.Licensing —
+        // registered here because IdentityModule is the single
+        // platform-level scheduler entry point.
+        Nexora.Infrastructure.Licensing.RevocationListFetchJob.RegisterRecurringSchedule(scheduler);
     }
 
     /// <inheritdoc />

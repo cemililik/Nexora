@@ -241,6 +241,22 @@ public static class InfrastructureServiceRegistration
         //   else                services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
         services.AddSingleton<ILicenseVerifier, NullLicenseVerifier>();
 
+        // T-015: revocation list fetcher + provider.
+        // - Provider holds an in-memory snapshot loaded from a local file
+        //   (atomic stage→rename writes from the fetch job).
+        // - Job is constructed via DI through Hangfire's activator (no
+        //   explicit job-class registration needed).
+        // - Two-step IRevocationListProvider/FileRevocationListProvider
+        //   registration so the job (which needs ReloadFromDiskAsync) and
+        //   query callers (which only need IRevocationListProvider) share
+        //   the same singleton.
+        services.Configure<Licensing.RevocationListOptions>(
+            configuration.GetSection(Licensing.RevocationListOptions.SectionName));
+        services.AddSingleton<Licensing.FileRevocationListProvider>();
+        services.AddSingleton<IRevocationListProvider>(sp =>
+            sp.GetRequiredService<Licensing.FileRevocationListProvider>());
+        services.AddHttpClient(Licensing.RevocationListFetchJob.HttpClientName);
+
         // Audit context (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
