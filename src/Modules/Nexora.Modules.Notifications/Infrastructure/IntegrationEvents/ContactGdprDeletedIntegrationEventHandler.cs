@@ -44,6 +44,14 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             return;
         }
 
+        // Wrap all redaction work + inbox mark in one transaction on relational
+        // providers so partial scrubs cannot commit without the inbox row (and
+        // vice-versa). InMemory in tests gets tx = null and SaveChanges is
+        // already atomic for EF-tracked domain-method changes.
+        await using var tx = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(ct)
+            : null;
+
         int scrubbedRecipientCount;
         int scrubbedNotificationCount;
 
@@ -78,6 +86,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             {
                 inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
                 await dbContext.SaveChangesAsync(ct);
+                if (tx is not null) await tx.CommitAsync(ct);
                 logger.LogInformation(
                     "No Notification recipients found for erased contact {ContactId} in tenant {TenantId}; inbox marked",
                     @event.ContactId, tenantId);
@@ -202,6 +211,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
 
         // Do NOT log @event.Reason — it is free-text user input and can contain PII
         // (names, emails, phone numbers). EventId + ContactId + counts are sufficient for audit.
@@ -236,7 +246,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             p1.Value = PiiRedactedPlaceholder.Value;
             cmd.Parameters.Add(p1);
             var p2 = cmd.CreateParameter();
-            p2.ParameterName = "@contactId"; p2.Value = contactId;
+            p2.ParameterName = "@contactId";
+            p2.Value = contactId;
             cmd.Parameters.Add(p2);
             return await cmd.ExecuteNonQueryAsync(ct);
         }

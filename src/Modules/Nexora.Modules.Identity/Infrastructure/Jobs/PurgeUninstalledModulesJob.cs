@@ -212,25 +212,7 @@ public sealed class PurgeUninstalledModulesJob(
     /// </summary>
     private async Task PurgeTenantAsync(Guid tenantId, CancellationToken ct)
     {
-        // Tenant context already set by NexoraJob.RunAsync — resolver picks
-        // up the per-tenant override automatically; falls back to the
-        // platform default if no override.
-        var rawRetention = await configResolver.GetAsync<int?>(
-            "modules.uninstall.retention_days", ct) ?? DefaultRetentionDays;
-
-        // Validate the resolved value — operator misconfiguration (e.g.
-        // 0 or -1) would expand cutoff to "now or future" and immediately
-        // purge live retention windows. Clamp + warn instead of letting
-        // a bad config silently delete recent data.
-        var retentionDays = rawRetention;
-        if (retentionDays < MinAllowedRetentionDays || retentionDays > MaxAllowedRetentionDays)
-        {
-            logger.LogWarning(
-                "Purge: tenant {TenantId} retention override {Raw} is out of [{Min},{Max}] range; clamping to platform default {Default}.",
-                tenantId, rawRetention, MinAllowedRetentionDays, MaxAllowedRetentionDays, DefaultRetentionDays);
-            retentionDays = DefaultRetentionDays;
-        }
-        var cutoffUtc = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+        var (retentionDays, cutoffUtc) = await ResolveRetentionAsync(tenantId, ct);
 
         var tenantStrongId = Domain.ValueObjects.TenantId.From(tenantId);
         var due = await platformDb.TenantModules
@@ -248,139 +230,181 @@ public sealed class PurgeUninstalledModulesJob(
         // by the Npgsql catch, and the row would loop forever in the failed list.
         var schemaName = $"tenant_{tenantId}";
 
+        // Branch on provider capability ONCE per tenant instead of once per
+        // row — avoids repeated reflection inside the hot loop.
+        var isRelational = platformDb.Database.IsRelational();
+
         foreach (var row in due)
+            await PurgeModuleRowAsync(tenantId, schemaName, row, retentionDays, isRelational, ct);
+    }
+
+    /// <summary>
+    /// Resolves and clamps the per-tenant retention-days config. Returned
+    /// cutoff is computed at call time so all rows in a single tenant run
+    /// share the same reference point.
+    /// </summary>
+    private async Task<(int RetentionDays, DateTimeOffset CutoffUtc)> ResolveRetentionAsync(
+        Guid tenantId, CancellationToken ct)
+    {
+        // Tenant context already set by NexoraJob.RunAsync — resolver picks
+        // up the per-tenant override automatically; falls back to the
+        // platform default if no override.
+        var rawRetention = await configResolver.GetAsync<int?>(
+            "modules.uninstall.retention_days", ct) ?? DefaultRetentionDays;
+
+        var retentionDays = rawRetention;
+        if (retentionDays < MinAllowedRetentionDays || retentionDays > MaxAllowedRetentionDays)
         {
-            // Per-row stopwatch — the previous outer-scoped Stopwatch wrote
-            // cumulative ElapsedMilliseconds into every audit entry, so the
-            // last row in a multi-module purge looked far more expensive
-            // than the first. Per-row makes the metadata accurate (review
-            // user finding + #52).
-            var rowStopwatch = Stopwatch.StartNew();
-            var entries = row.ParseDeletedTableNames();
-            var dropped = new List<string>();
-            var failed = new List<string>();
+            // Operator misconfiguration (e.g. 0 or -1) would expand the
+            // cutoff to "now or future" and immediately purge live windows.
+            // Clamp + warn instead of letting a bad config silently delete
+            // recent data.
+            logger.LogWarning(
+                "Purge: tenant {TenantId} retention override {Raw} is out of [{Min},{Max}] range; clamping to platform default {Default}.",
+                tenantId, rawRetention, MinAllowedRetentionDays, MaxAllowedRetentionDays, DefaultRetentionDays);
+            retentionDays = DefaultRetentionDays;
+        }
 
-            // Branch on provider capability ONCE per row instead of catching
-            // InvalidOperationException to fork the path. The earlier
-            // catch-as-success swallowed legitimate prod-side
-            // InvalidOperationExceptions (DbContext misuse, model errors)
-            // and reported them as a successful drop.
-            var isRelational = platformDb.Database.IsRelational();
+        return (retentionDays, DateTimeOffset.UtcNow.AddDays(-retentionDays));
+    }
 
-            foreach (var rawName in entries)
+    /// <summary>
+    /// Processes a single <see cref="TenantModule"/> row: drops each renamed
+    /// table, reserializes the survivor list (or hard-deletes the row when
+    /// all tables dropped), then writes an audit entry.
+    /// </summary>
+    private async Task PurgeModuleRowAsync(
+        Guid tenantId, string schemaName, TenantModule row,
+        int retentionDays, bool isRelational, CancellationToken ct)
+    {
+        // Per-row stopwatch — the previous outer-scoped Stopwatch wrote
+        // cumulative ElapsedMilliseconds into every audit entry, so the
+        // last row in a multi-module purge looked far more expensive than
+        // the first. Per-row makes the metadata accurate.
+        var rowStopwatch = Stopwatch.StartNew();
+        var entries = row.ParseDeletedTableNames();
+        var dropped = new List<string>();
+        var failed = new List<string>();
+
+        foreach (var rawName in entries)
+        {
+            if (!DeletedTableNameRegex.IsMatch(rawName))
             {
-                if (!DeletedTableNameRegex.IsMatch(rawName))
-                {
-                    logger.LogWarning(
-                        "Purge: rejecting malformed renamed-table entry {Entry} for tenant {TenantId} module {Module}; kept for operator review.",
-                        rawName, tenantId, row.ModuleName);
-                    failed.Add(rawName);
-                    continue;
-                }
-
-                if (!isRelational)
-                {
-                    // EF InMemory in tests: skip the SQL DROP and treat as
-                    // dropped so the audit + hard-delete path exercises
-                    // end-to-end. Production never lands here.
-                    dropped.Add(rawName);
-                    continue;
-                }
-
-                try
-                {
-                    await DropTableAsync(schemaName, rawName, ct);
-                    dropped.Add(rawName);
-                    PurgedTablesCounter.Add(1, new KeyValuePair<string, object?>("module", row.ModuleName));
-                }
-                catch (System.Data.Common.DbException ex)
-                {
-                    // NpgsqlException derives from DbException — one branch
-                    // covers both. Other DbException-derived providers would
-                    // also land here.
-                    logger.LogError(ex,
-                        "Purge: DROP TABLE failed for {Schema}.{Table} (tenant {TenantId} module {Module}); kept for retry.",
-                        schemaName, rawName, tenantId, row.ModuleName);
-                    failed.Add(rawName);
-                }
+                logger.LogWarning(
+                    "Purge: rejecting malformed renamed-table entry {Entry} for tenant {TenantId} module {Module}; kept for operator review.",
+                    rawName, tenantId, row.ModuleName);
+                failed.Add(rawName);
+                continue;
             }
 
-            // Reserialize survivors. Empty failed-list ⇒ null + hard-delete row.
-            // Both branches now wrap SaveChanges in try/catch so a transient
-            // EF error on ONE tenant's row cannot abort the rest of the
-            // outer foreach (review round-2 finding); the audit row records
-            // the SaveChanges failure via persistError so operators see
-            // exactly which step failed even when the row stays in place.
-            string? hardDeleteError = null;
-            var rowHardDeleted = false;
-            string? persistError = null;
-            if (failed.Count == 0)
+            if (!isRelational)
             {
-                row.SetDeletedTableNames(null);
-                try
-                {
-                    using var hardDeleteScope = platformDb.EnterHardDeleteScope();
-                    platformDb.TenantModules.Remove(row);
-                    await platformDb.SaveChangesAsync(ct);
-                    rowHardDeleted = true;
-                }
-                catch (DbUpdateException ex)
-                {
-                    hardDeleteError = ex.Message;
-                    logger.LogError(ex,
-                        "Purge: hard-delete failed for tenant {TenantId} module {Module}; row stays for retry.",
-                        tenantId, row.ModuleName);
-                }
-            }
-            else
-            {
-                row.SetDeletedTableNames(string.Join(",", failed));
-                try
-                {
-                    await platformDb.SaveChangesAsync(ct);
-                }
-                catch (DbUpdateException ex)
-                {
-                    persistError = ex.Message;
-                    logger.LogError(ex,
-                        "Purge: SaveChanges of survivor list failed for tenant {TenantId} module {Module}; " +
-                        "DROPs already succeeded so the audit will reflect them, but the row keeps the previous CSV until next purge.",
-                        tenantId, row.ModuleName);
-                    // Detach so the half-saved entity doesn't poison the
-                    // next outer-loop iteration's SaveChanges.
-                    platformDb.Entry(row).State = EntityState.Detached;
-                }
+                // EF InMemory in tests: skip the SQL DROP and treat as
+                // dropped so the audit + hard-delete path exercises
+                // end-to-end. Production never lands here.
+                dropped.Add(rawName);
+                continue;
             }
 
-            rowStopwatch.Stop();
-            // Audit AFTER persistence attempts so it records the final
-            // outcome (rowHardDeleted, persistError, hardDeleteError);
-            // wrap the audit write in its own catch so an audit-store
-            // outage does not abort the per-row loop either.
             try
             {
-                await WriteAuditAsync(tenantId, row, dropped, failed, retentionDays,
-                    rowStopwatch.ElapsedMilliseconds, hardDeleteError ?? persistError,
-                    rowHardDeleted, ct);
+                await DropTableAsync(schemaName, rawName, ct);
+                dropped.Add(rawName);
+                PurgedTablesCounter.Add(1, new KeyValuePair<string, object?>("module", row.ModuleName));
             }
-            catch (Exception auditEx) when (auditEx is not OperationCanceledException)
+            catch (System.Data.Common.DbException ex)
             {
-                // CLAUDE.md "no catch(Exception)" exempts background-job
-                // boundaries — a single tenant's audit write failing must
-                // not abort the rest of the outer foreach.
-                logger.LogError(auditEx,
-                    "Purge: audit write failed for tenant {TenantId} module {Module}; continuing with next row.",
+                // NpgsqlException derives from DbException — one branch covers both.
+                logger.LogError(ex,
+                    "Purge: DROP TABLE failed for {Schema}.{Table} (tenant {TenantId} module {Module}); kept for retry.",
+                    schemaName, rawName, tenantId, row.ModuleName);
+                failed.Add(rawName);
+            }
+        }
+
+        // Reserialize survivors. Empty failed-list ⇒ null + hard-delete row.
+        // Both branches wrap SaveChanges in try/catch so a transient EF error
+        // on ONE tenant's row cannot abort the rest of the outer foreach;
+        // the audit row records the failure so operators see exactly which
+        // step failed even when the row stays in place.
+        string? error = null;
+        var rowHardDeleted = false;
+
+        if (failed.Count == 0)
+        {
+            row.SetDeletedTableNames(null);
+            try
+            {
+                using var hardDeleteScope = platformDb.EnterHardDeleteScope();
+                platformDb.TenantModules.Remove(row);
+                await platformDb.SaveChangesAsync(ct);
+                rowHardDeleted = true;
+            }
+            catch (DbUpdateException ex)
+            {
+                error = ex.Message;
+                logger.LogError(ex,
+                    "Purge: hard-delete failed for tenant {TenantId} module {Module}; row stays for retry.",
                     tenantId, row.ModuleName);
             }
-            PurgeDurationHistogram.Record(rowStopwatch.Elapsed.TotalSeconds,
-                new KeyValuePair<string, object?>("tenant", tenantId),
-                new KeyValuePair<string, object?>("module", row.ModuleName));
-
-            logger.LogInformation(
-                "Purge tenant {TenantId} module {Module}: dropped {Dropped} table(s), {Failed} retained for retry, hard-deleted={HardDeleted}",
-                tenantId, row.ModuleName, dropped.Count, failed.Count, rowHardDeleted);
         }
+        else
+        {
+            row.SetDeletedTableNames(string.Join(",", failed));
+            try
+            {
+                await platformDb.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex)
+            {
+                error = ex.Message;
+                logger.LogError(ex,
+                    "Purge: SaveChanges of survivor list failed for tenant {TenantId} module {Module}; " +
+                    "DROPs already succeeded so the audit will reflect them, but the row keeps the previous CSV until next purge.",
+                    tenantId, row.ModuleName);
+                // Detach so the half-saved entity doesn't poison the
+                // next outer-loop iteration's SaveChanges.
+                platformDb.Entry(row).State = EntityState.Detached;
+            }
+        }
+
+        rowStopwatch.Stop();
+
+        // Audit AFTER persistence so it records the final outcome. Wrapped
+        // in its own catch so an audit-store outage does not abort the loop.
+        var outcome = new PurgeRowOutcome(dropped, failed, retentionDays,
+            rowStopwatch.ElapsedMilliseconds, error, rowHardDeleted);
+        try
+        {
+            await WriteAuditAsync(tenantId, row, outcome, ct);
+        }
+        catch (Exception auditEx) when (auditEx is not OperationCanceledException)
+        {
+            // CLAUDE.md "no catch(Exception)" exempts background-job
+            // boundaries — a single audit write failing must not abort
+            // the rest of the outer foreach.
+            logger.LogError(auditEx,
+                "Purge: audit write failed for tenant {TenantId} module {Module}; continuing with next row.",
+                tenantId, row.ModuleName);
+        }
+
+        PurgeDurationHistogram.Record(rowStopwatch.Elapsed.TotalSeconds,
+            new KeyValuePair<string, object?>("tenant", tenantId),
+            new KeyValuePair<string, object?>("module", row.ModuleName));
+
+        logger.LogInformation(
+            "Purge tenant {TenantId} module {Module}: dropped {Dropped} table(s), {Failed} retained for retry, hard-deleted={HardDeleted}",
+            tenantId, row.ModuleName, dropped.Count, failed.Count, rowHardDeleted);
     }
+
+    /// <summary>Outcome of one <see cref="TenantModule"/> purge step.</summary>
+    private readonly record struct PurgeRowOutcome(
+        IReadOnlyList<string> Dropped,
+        IReadOnlyList<string> Failed,
+        int RetentionDays,
+        long DurationMs,
+        string? Error,
+        bool RowHardDeleted);
 
     private async Task DropTableAsync(string schemaName, string tableName, CancellationToken ct)
     {
@@ -412,31 +436,23 @@ public sealed class PurgeUninstalledModulesJob(
         => "\"" + raw.Replace("\"", "\"\"") + "\"";
 
     private async Task WriteAuditAsync(
-        Guid tenantId,
-        TenantModule row,
-        IReadOnlyList<string> dropped,
-        IReadOnlyList<string> failed,
-        int retentionDays,
-        long durationMs,
-        string? hardDeleteError,
-        bool rowHardDeleted,
-        CancellationToken ct)
+        Guid tenantId, TenantModule row, PurgeRowOutcome outcome, CancellationToken ct)
     {
         // Success criterion per ADR-0028 + T-025 AC: ZERO failed entries AND
         // the TenantModule row was hard-deleted. A no-op tenant with no
         // entries that succeeds in hard-deleting the row also reports
         // success — the prior dropping run's residue is now cleaned up.
-        var isSuccess = failed.Count == 0 && rowHardDeleted;
+        var isSuccess = outcome.Failed.Count == 0 && outcome.RowHardDeleted;
 
         var metadata = JsonSerializer.Serialize(new
         {
             tenantId = tenantId.ToString(),
             module = row.ModuleName,
-            retentionDays,
-            dropped,
-            failed,
-            durationMs,
-            hardDeleteError,
+            retentionDays = outcome.RetentionDays,
+            dropped = outcome.Dropped,
+            failed = outcome.Failed,
+            durationMs = outcome.DurationMs,
+            hardDeleteError = outcome.Error,
         });
 
         var entry = new SharedKernel.Abstractions.Audit.AuditEntry(
@@ -451,7 +467,9 @@ public sealed class PurgeUninstalledModulesJob(
             UserAgent: null,
             CorrelationId: null,
             IsSuccess: isSuccess,
-            ErrorKey: failed.Count > 0 ? "lockey_identity_module_purge_partial" : hardDeleteError is null ? null : "lockey_identity_module_purge_hard_delete_failed",
+            ErrorKey: outcome.Failed.Count > 0
+                ? "lockey_identity_module_purge_partial"
+                : outcome.Error is null ? null : "lockey_identity_module_purge_hard_delete_failed",
             EntityType: "TenantModule",
             EntityId: row.Id.Value.ToString(),
             BeforeState: null,

@@ -79,10 +79,18 @@ public sealed class LinkUserContactHandler(
 
         if (user.ContactId is not null)
         {
-            logger.LogWarning("LinkContact rejected: user {UserId} already linked to contact {ContactId}",
+            if (user.ContactId.Value == request.ContactId)
+            {
+                logger.LogWarning("LinkContact rejected: user {UserId} already linked to same contact {ContactId}",
+                    request.UserId, user.ContactId);
+                return Result.Failure(
+                    LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked"));
+            }
+
+            logger.LogWarning("LinkContact rejected: user {UserId} already linked to different contact {ExistingContactId}",
                 request.UserId, user.ContactId);
             return Result.Failure(
-                LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked"));
+                LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked_to_different_contact"));
         }
 
         var alreadyLinked = await dbContext.Users
@@ -135,7 +143,7 @@ public sealed class LinkUserContactHandler(
             // request won the race — surface the same business failure the
             // pre-check would have returned. The outbox enqueue is also
             // rolled back because it shares the same EF unit-of-work.
-            logger.LogWarning(
+            logger.LogWarning(ex,
                 "LinkContact rejected (race on unique index): contact {ContactId} already linked to another user in tenant {TenantId}",
                 request.ContactId, tenantId);
             return Result.Failure(
@@ -158,8 +166,13 @@ public sealed class LinkUserContactHandler(
         for (var current = ex.InnerException; current is not null; current = current.InnerException)
         {
             if (current.GetType().FullName != "Npgsql.PostgresException") continue;
-            var sqlState = current.GetType().GetProperty("SqlState")?.GetValue(current) as string;
-            if (sqlState == "23505") return true;
+            var type = current.GetType();
+            var sqlState = type.GetProperty("SqlState")?.GetValue(current) as string;
+            if (sqlState != "23505") continue;
+            var constraintName = type.GetProperty("ConstraintName")?.GetValue(current) as string;
+            // If ConstraintName is null (reflection unavailable), trust the SqlState match.
+            // If set, require the specific index to avoid masking unrelated unique violations.
+            if (constraintName is null || constraintName == "ix_identity_users_contact_id_unique") return true;
         }
         return false;
     }

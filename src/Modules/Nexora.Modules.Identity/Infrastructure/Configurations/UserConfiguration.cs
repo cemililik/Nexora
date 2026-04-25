@@ -32,12 +32,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         // (NULL rows are excluded so unlinked users don't collide with each other).
         builder.Property(u => u.ContactId).IsRequired(false);
         // Partial unique index: one contact may be linked to at most one user
-        // per tenant schema (NULL rows excluded so unlinked users never collide).
-        // Uniqueness is schema-scoped — cross-tenant isolation is enforced by
-        // PostgreSQL's schema-per-tenant model, not by this index.
+        // per tenant schema. NULL rows and soft-deleted users are excluded so
+        // unlinked / deleted users never collide and a contact's slot is freed
+        // when the user is soft-deleted. Uniqueness is schema-scoped — cross-
+        // tenant isolation is enforced by PostgreSQL's schema-per-tenant model.
         builder.HasIndex(u => u.ContactId)
             .IsUnique()
-            .HasFilter("\"ContactId\" IS NOT NULL")
+            .HasFilter("\"ContactId\" IS NOT NULL AND \"IsDeleted\" = false")
             .HasDatabaseName("ix_identity_users_contact_id_unique");
 
         builder.HasMany(u => u.OrganizationUsers).WithOne().HasForeignKey(ou => ou.UserId);

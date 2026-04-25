@@ -84,7 +84,23 @@ public sealed class LinkUserContactCommandTests : IDisposable
     }
 
     [Fact]
-    public async Task Handle_AlreadyLinked_ReturnsFailure()
+    public async Task Handle_AlreadyLinked_ToSameContact_ReturnsFailure()
+    {
+        var contactId = Guid.NewGuid();
+        var user = User.Create(_tenantId, "kc-1", "u@test.com", "U", "One");
+        user.LinkContact(contactId, UserId.From(_actorUserId));
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
+
+        var result = await CreateHandler().Handle(
+            new LinkUserContactCommand(user.Id.Value, contactId), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_user_link_contact_already_linked");
+    }
+
+    [Fact]
+    public async Task Handle_AlreadyLinked_ToDifferentContact_ReturnsFailure()
     {
         var user = User.Create(_tenantId, "kc-1", "u@test.com", "U", "One");
         user.LinkContact(Guid.NewGuid(), UserId.From(_actorUserId));
@@ -95,7 +111,7 @@ public sealed class LinkUserContactCommandTests : IDisposable
             new LinkUserContactCommand(user.Id.Value, Guid.NewGuid()), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error!.Message.Key.Should().Be("lockey_identity_user_link_contact_already_linked");
+        result.Error!.Message.Key.Should().Be("lockey_identity_user_link_contact_already_linked_to_different_contact");
     }
 
     [Fact]

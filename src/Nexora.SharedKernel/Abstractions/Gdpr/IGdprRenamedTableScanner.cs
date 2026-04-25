@@ -67,12 +67,18 @@ public interface IGdprRenamedTableScanner
     ///     MUST be handled by implementations: either caught and logged so
     ///     remaining tables continue, or re-thrown to abort the scan.
     ///     Implementations MUST document which strategy they use.
-    ///     <see cref="PostgresGdprRenamedTableScanner{TDbContext}"/> catches and
+    ///   <c>PostgresGdprRenamedTableScanner&lt;TDbContext&gt;</c> catches and
     ///     continues; <c>NoOpGdprRenamedTableScanner</c> never invokes the callback.
     ///   </description></item>
     /// </list>
     /// </para>
     /// </remarks>
+    /// <returns>
+    /// Aggregate of tables discovered and rows redacted across all renamed
+    /// tables in the module's prefix namespace.
+    /// <see cref="GdprRenamedTableScanResult.Empty"/> when none were found or
+    /// the provider is non-relational (tests).
+    /// </returns>
     Task<GdprRenamedTableScanResult> ScanAsync(
         string moduleName,
         Func<RenamedTableInfo, CancellationToken, Task<int>> redactSingleTableAsync,

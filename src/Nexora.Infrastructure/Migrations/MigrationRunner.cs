@@ -136,24 +136,11 @@ public sealed class MigrationRunner(
             {
                 throw;
             }
-            // Narrow exception families: NpgsqlException + DbException for
-            // SQL surface; InvalidOperationException for EF model + DI
-            // misuse; HttpRequestException is unlikely on the migration
-            // path but Dapr-bound connection-string secrets may surface it.
-            // Anything outside these (StackOverflow etc.) propagates.
-            catch (NpgsqlException ex)
-            {
-                failedModule = module;
-                failure = ex;
-                outcomes.Add(new MigrationModuleOutcome(module.Name, MigrationModuleStatus.Failed, ex.Message));
-            }
-            catch (System.Data.Common.DbException ex)
-            {
-                failedModule = module;
-                failure = ex;
-                outcomes.Add(new MigrationModuleOutcome(module.Name, MigrationModuleStatus.Failed, ex.Message));
-            }
-            catch (InvalidOperationException ex)
+            // Narrow exception families: DbException (NpgsqlException derives
+            // from it, so one branch covers both) for the SQL surface;
+            // InvalidOperationException for EF model + DI misuse.
+            // Anything outside these (StackOverflowException etc.) propagates.
+            catch (Exception ex) when (ex is System.Data.Common.DbException or InvalidOperationException)
             {
                 failedModule = module;
                 failure = ex;
@@ -161,11 +148,11 @@ public sealed class MigrationRunner(
             }
         }
 
-        if (failedModule is not null && failure is not null)
+        if (failedModule is not null)
         {
-            await PersistFailureAsync(tenantGuid, failedModule.Name, failure, ct);
+            await PersistFailureAsync(tenantGuid, failedModule.Name, failure!, ct);
             await MarkTenantMigrationFailedAsync(lockConn, tenantGuid, ct);
-            logger.LogError(failure,
+            logger.LogError(failure!,
                 "Migration FAILED for tenant {TenantId} on module {Module}. Tenant transitioned to MigrationFailed.",
                 tenantGuid, failedModule.Name);
             return new MigrationRunResult(
@@ -173,7 +160,7 @@ public sealed class MigrationRunner(
                 MigrationRunStatus.Failed,
                 outcomes,
                 FailureModuleName: failedModule.Name,
-                FailureMessage: failure.Message);
+                FailureMessage: failure!.Message);
         }
 
         logger.LogInformation(
@@ -208,19 +195,21 @@ public sealed class MigrationRunner(
     {
         // Failure log lives in `public` (see MigrationFailureLogDbContext)
         // so the row is writable even when the tenant schema is broken.
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var failureDb = scope.ServiceProvider.GetRequiredService<MigrationFailureLogDbContext>();
-        failureDb.Failures.Add(MigrationFailure.Create(tenantGuid, moduleName, exception));
+        // Scope creation + GetRequiredService + SaveChanges are all inside the
+        // try so any non-cancellation failure (DI misconfiguration, DB
+        // unreachable, model error) is caught and logged without propagating
+        // to the caller — this is a best-effort persistence; the
+        // tenant-status update in MarkTenantMigrationFailedAsync is the
+        // second line of defense.
         try
         {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var failureDb = scope.ServiceProvider.GetRequiredService<MigrationFailureLogDbContext>();
+            failureDb.Failures.Add(MigrationFailure.Create(tenantGuid, moduleName, exception));
             await failureDb.SaveChangesAsync(ct);
         }
-        catch (System.Data.Common.DbException logEx)
+        catch (Exception logEx) when (logEx is not OperationCanceledException)
         {
-            // The failure log itself is unreachable. Log loudly and
-            // continue — the tenant-status update below is the second
-            // line of defense; without it, the platform forgets the
-            // failure entirely.
             logger.LogError(logEx,
                 "Migration: persisting failure record for tenant {TenantId} module {Module} also failed — operator must inspect host logs to triage.",
                 tenantGuid, moduleName);

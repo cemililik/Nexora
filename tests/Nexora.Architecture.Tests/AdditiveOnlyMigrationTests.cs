@@ -166,18 +166,49 @@ public sealed class AdditiveOnlyMigrationTests
                 }
                 """);
 
+            // 4) allowlist marker WITHOUT the mandatory 4-digit ADR number — must
+            // be treated as unmarked and flagged. The regex requires ADR-\d{4}.
+            File.WriteAllText(
+                Path.Combine(migrationsDir, "20260104000000_BadMarker.cs"),
+                """
+                public partial class BadMarker : Migration {
+                    // architecture-allow: destructive-migration ADR-
+                    protected override void Up(MigrationBuilder migrationBuilder) {
+                        migrationBuilder.DropColumn(name: "Bad", table: "users");
+                    }
+                }
+                """);
+
+            // 5) EF Core designer file — must be excluded from the scan
+            // regardless of content (snapshot bookkeeping, not real DDL).
+            File.WriteAllText(
+                Path.Combine(migrationsDir, "20260105000000_DesignerTest.Designer.cs"),
+                """
+                public partial class DesignerTest : Migration {
+                    protected override void Up(MigrationBuilder migrationBuilder) {
+                        migrationBuilder.DropColumn(name: "Designer", table: "users");
+                    }
+                }
+                """);
+
             var pattern = @"\bmigrationBuilder\s*\.\s*DropColumn\s*\(";
+            // Mirror ScanMigrationsForPattern's Designer.cs exclusion so the
+            // self-test exercises the same filtering logic.
             var offenders = ScanFilesForPattern(
-                Directory.EnumerateFiles(migrationsDir, "*.cs", SearchOption.AllDirectories),
+                Directory.EnumerateFiles(migrationsDir, "*.cs", SearchOption.AllDirectories)
+                    .Where(p => !p.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase)),
                 pattern,
                 "DropColumn",
                 "self-test remediation");
 
-            offenders.Should().HaveCount(1,
-                "exactly the unmarked Up-side drop must be flagged; the allowlisted file and the Down-only file must not.");
-            offenders[0].Should().Contain("BadDrop.cs");
-            offenders[0].Should().NotContain("AllowedDrop.cs");
-            offenders[0].Should().NotContain("DownDropOnly.cs");
+            offenders.Should().HaveCount(2,
+                "BadDrop.cs (no marker) and BadMarker.cs (marker without 4-digit ADR) must be flagged; " +
+                "AllowedDrop.cs, DownDropOnly.cs, and the Designer.cs file must not.");
+            offenders.Should().Contain(s => s.Contains("BadDrop.cs"));
+            offenders.Should().Contain(s => s.Contains("BadMarker.cs"));
+            offenders.Should().NotContain(s => s.Contains("AllowedDrop.cs"));
+            offenders.Should().NotContain(s => s.Contains("DownDropOnly.cs"));
+            offenders.Should().NotContain(s => s.Contains("DesignerTest.Designer.cs"));
         }
         finally
         {

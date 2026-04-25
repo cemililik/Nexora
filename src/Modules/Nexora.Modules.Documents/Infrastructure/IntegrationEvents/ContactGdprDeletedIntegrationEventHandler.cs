@@ -191,7 +191,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
                 cmd.Parameters.Add(p1);
             }
             var p2 = cmd.CreateParameter();
-            p2.ParameterName = "@contactId"; p2.Value = contactId;
+            p2.ParameterName = "@contactId";
+            p2.Value = contactId;
             cmd.Parameters.Add(p2);
             return await cmd.ExecuteNonQueryAsync(ct);
         }
