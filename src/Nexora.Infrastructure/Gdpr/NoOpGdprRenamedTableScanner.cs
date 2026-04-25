@@ -12,6 +12,7 @@ namespace Nexora.Infrastructure.Gdpr;
 public sealed class NoOpGdprRenamedTableScanner<TDbContext> : IGdprRenamedTableScanner<TDbContext>
     where TDbContext : DbContext
 {
+    /// <inheritdoc />
     public Task<GdprRenamedTableScanResult> ScanAsync(
         string moduleName,
         Func<string, CancellationToken, Task<int>> redactSingleTableAsync,

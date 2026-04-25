@@ -85,9 +85,13 @@ public static class ModuleDependencyGraph
     /// </summary>
     /// <remarks>
     /// Walks the graph transitively: if A depends on B and B depends on C,
-    /// then C's dependent set includes both A and B. The result is ordered
-    /// deepest-first (a module appears BEFORE the modules that depend on it)
-    /// so the caller can safely use it as a cascade-uninstall sequence.
+    /// then C's dependent set includes both A and B. The result is in the
+    /// SAME ORDER as <see cref="OrderByDependencies"/> over the installed
+    /// set (leaf-first / root-last); <see cref="ReverseUninstallOrder"/>
+    /// reverses it for cascade uninstall — callers wanting cascade order
+    /// should call <see cref="ReverseUninstallOrder"/> instead of reversing
+    /// this list themselves (review #30 follow-up — earlier doc said
+    /// "deepest-first" which was misleading).
     /// </remarks>
     public static IReadOnlyList<IModule> FindInstalledDependents(
         string moduleName,
@@ -99,18 +103,31 @@ public static class ModuleDependencyGraph
         var byName = installedModules.ToDictionary(m => m.Name, StringComparer.OrdinalIgnoreCase);
         var dependents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        bool DependsOn(IModule candidate)
+        // Cycle-safe DependsOn — a malformed input graph (A → B → A)
+        // would otherwise stack-overflow before OrderByDependencies'
+        // cycle detection ran (review #30). Track in-flight names per
+        // call so the recursion bails on revisit instead of recursing
+        // forever.
+        bool DependsOn(IModule candidate, HashSet<string> visiting)
         {
-            foreach (var depName in candidate.Dependencies)
+            if (!visiting.Add(candidate.Name)) return false;
+            try
             {
-                if (string.Equals(depName, moduleName, StringComparison.OrdinalIgnoreCase))
-                    return true;
-                if (dependents.Contains(depName))
-                    return true;
-                if (byName.TryGetValue(depName, out var transitive) && DependsOn(transitive))
-                    return true;
+                foreach (var depName in candidate.Dependencies)
+                {
+                    if (string.Equals(depName, moduleName, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                    if (dependents.Contains(depName))
+                        return true;
+                    if (byName.TryGetValue(depName, out var transitive) && DependsOn(transitive, visiting))
+                        return true;
+                }
+                return false;
             }
-            return false;
+            finally
+            {
+                visiting.Remove(candidate.Name);
+            }
         }
 
         // Iterate to a fixed point so transitive dependents land in the set
@@ -123,7 +140,7 @@ public static class ModuleDependencyGraph
             {
                 if (string.Equals(module.Name, moduleName, StringComparison.OrdinalIgnoreCase)) continue;
                 if (dependents.Contains(module.Name)) continue;
-                if (DependsOn(module))
+                if (DependsOn(module, new HashSet<string>(StringComparer.OrdinalIgnoreCase)))
                 {
                     dependents.Add(module.Name);
                     changed = true;

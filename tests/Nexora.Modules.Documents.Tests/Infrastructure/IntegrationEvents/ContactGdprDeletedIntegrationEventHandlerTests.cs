@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Nexora.Infrastructure.Gdpr;
 using Nexora.Infrastructure.MultiTenancy;
 using Nexora.Infrastructure.Persistence.Inbox;
 using Nexora.Modules.Documents.Domain.Entities;
@@ -37,7 +38,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
     private ContactGdprDeletedIntegrationEventHandler CreateHandler() =>
         new(_dbContext,
             new InboxGuard<DocumentsDbContext>(_dbContext),
-            new Nexora.Infrastructure.Gdpr.NoOpGdprRenamedTableScanner<DocumentsDbContext>(),
+            new NoOpGdprRenamedTableScanner<DocumentsDbContext>(),
             NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
 
     private ContactGdprDeletedIntegrationEvent CreateEvent() => new()

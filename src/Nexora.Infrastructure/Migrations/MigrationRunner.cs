@@ -221,35 +221,66 @@ public sealed class MigrationRunner(
         }
     }
 
-    private static async Task MarkTenantMigrationFailedAsync(
+    private async Task MarkTenantMigrationFailedAsync(
         NpgsqlConnection conn, Guid tenantGuid, CancellationToken ct)
     {
         // Direct UPDATE on `public.identity_tenants` rather than going
         // through the Identity Tenant aggregate: MigrationRunner is
         // platform infrastructure and must not depend on Identity's
-        // module assembly. The Status column is HasConversion<string>
-        // (see PlatformDbContext.OnModelCreating) so the value must be
-        // the enum's string name, not its integer.
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText =
-            """
-            UPDATE public.identity_tenants
-            SET "Status" = 'MigrationFailed',
-                "UpdatedAt" = now() AT TIME ZONE 'utc'
-            WHERE "Id" = @tenantId
-              AND "Status" <> 'Terminated';
-            """;
-        cmd.Parameters.AddWithValue("tenantId", tenantGuid);
-        await cmd.ExecuteNonQueryAsync(ct);
+        // module assembly (and therefore cannot raise the
+        // TenantStatusChangedEvent that domain mutation would emit —
+        // documented intent, not oversight). The Status column is
+        // HasConversion<string> (see PlatformDbContext.OnModelCreating)
+        // so the value must be the enum's string name, not its integer.
+        //
+        // <b>Failure-safe.</b> The caller invokes this AFTER the migration
+        // failure has already been logged to platform_migration_failures;
+        // a tenant-status UPDATE failure here would otherwise mask the
+        // original failure with a secondary one. Catch + log the inner
+        // failure and let the caller surface the migration's own
+        // FailureMessage (review user finding + #69).
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                """
+                UPDATE public.identity_tenants
+                SET "Status" = 'MigrationFailed',
+                    "UpdatedAt" = now() AT TIME ZONE 'utc'
+                WHERE "Id" = @tenantId
+                  AND "Status" <> 'Terminated';
+                """;
+            cmd.Parameters.AddWithValue("tenantId", tenantGuid);
+            await cmd.ExecuteNonQueryAsync(ct);
+        }
+        catch (NpgsqlException ex)
+        {
+            logger.LogError(ex,
+                "MigrationRunner: failed to mark tenant {TenantId} as MigrationFailed; " +
+                "the original migration failure has already been recorded in " +
+                "platform_migration_failures. Operator must transition the tenant manually.",
+                tenantGuid);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            logger.LogError(ex,
+                "MigrationRunner: failed to mark tenant {TenantId} as MigrationFailed; " +
+                "the original migration failure has already been recorded in " +
+                "platform_migration_failures. Operator must transition the tenant manually.",
+                tenantGuid);
+        }
     }
 
     /// <summary>
-    /// Computes the advisory-lock key as
-    /// <c>hashtext('migrate:' || tenantId)</c>. Computed in C# (not in
-    /// SQL) to avoid an extra round-trip; the hash function used here
-    /// matches PostgreSQL's <c>hashtext</c> output for ASCII-only inputs
-    /// because <c>hashtext</c>'s distribution properties don't matter for
-    /// a single-key lock — only stability across calls does.
+    /// Computes the advisory-lock key for <paramref name="tenantGuid"/>.
+    /// FNV-1a-64 of <c>"migrate:" + tenantGuid.ToString("D")</c>. Computed
+    /// in C# rather than via SQL <c>hashtext</c> to avoid an extra
+    /// round-trip on every Acquire — the values do NOT match PostgreSQL's
+    /// own <c>hashtext</c> (Jenkins one-at-a-time, 32-bit), which earlier
+    /// docs incorrectly claimed; that is fine because nothing else in the
+    /// system reads this key (review #61, user finding). What matters
+    /// is stability per (tenant, "migrate:" prefix) across processes +
+    /// hosts, which FNV-1a-64 provides.
     /// </summary>
     internal static long ComputeLockKey(Guid tenantGuid)
     {

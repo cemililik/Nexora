@@ -9,6 +9,7 @@ namespace Nexora.Infrastructure.Modules;
 /// </summary>
 public sealed class NoOpUninstallAdvisoryLock : IUninstallAdvisoryLock
 {
+    /// <inheritdoc />
     public Task<IAsyncDisposable?> AcquireAsync(Guid tenantId, CancellationToken ct)
         => Task.FromResult<IAsyncDisposable?>(new Handle());
 

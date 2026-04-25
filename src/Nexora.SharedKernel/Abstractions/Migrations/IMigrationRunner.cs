@@ -11,8 +11,12 @@ namespace Nexora.SharedKernel.Abstractions.Migrations;
 /// <para>
 /// <b>Per-tenant lock.</b> Concurrent invocations against the same
 /// tenant are serialised via PostgreSQL session-level
-/// <c>pg_advisory_lock(hashtext('migrate:' || tenant_id))</c>; two
-/// callers racing to migrate the same tenant will queue, not collide.
+/// <c>pg_try_advisory_lock</c> over a stable per-tenant key (FNV-1a-64
+/// of <c>"migrate:" + tenantId</c>). The runner polls with a short
+/// retry budget instead of blocking; if the lock is busy the
+/// returned <see cref="MigrationRunResult"/> carries
+/// <see cref="MigrationRunStatus.LockNotAcquired"/> and the caller
+/// retries later (review #69).
 /// </para>
 ///
 /// <para>
