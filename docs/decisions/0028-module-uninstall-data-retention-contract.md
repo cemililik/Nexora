@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted  <!-- Proposed | Accepted | Superseded by NNNN -->
+Accepted; cascade transaction policy Superseded by [ADR-0031](0031-cascade-uninstall-per-module-transactions.md)
 
 ## Date
 

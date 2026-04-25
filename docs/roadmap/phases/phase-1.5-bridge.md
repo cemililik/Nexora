@@ -39,11 +39,13 @@ This exit bar is also the entry criterion for Phase 2 (see `../current.md`).
 ## Scope
 
 ### 1.5.1 Outbox / Inbox + Cache Cross-Instance Invalidation — **Done**
+
 Transactional outbox, idempotent inbox (EventId dedup), monitoring, cleanup jobs
 (OutboxCleanupJob 7d, InboxCleanupJob 30d), Dapr pub/sub cache invalidation, Email/SMS
 Kafka migration, five new integration events, permission cache invalidation.
 
 ### 1.5.2 Tenant Permission Isolation (backend only) — **Done (partial)**
+
 `PermissionScope` enum (`Platform` | `Tenant`), `ILicenseVerifier` + `NullLicenseVerifier`,
 `platform_license_cache` table, `DeploymentMode` setting, platform-scope permissions hidden
 from tenant admin UI. **Deferred items:** Platform Admin role separation (requires Keycloak
@@ -51,12 +53,14 @@ realm changes; tracked to NMP), license-based user/org caps (requires NMP licens
 enforcement).
 
 ### 1.5.3 Localization — **Done (partial)**
+
 2-tier locale model (`User.PreferredLanguage` + `TenantSettings` JSONB), `ILocaleContext`
 scoped service, tenant locale settings UI + API, locale-aware formatters, coverage audit.
 **Deferred item:** US tax-receipt and TR bağış makbuzu templates — requires `Receipt` /
 `DonationReceipt` domain, carried to Phase 3a Fundraising.
 
 ### 1.5.4 Portal UI Extension Points — **Scaffolding Done; pilot in Phase 2 Milestone A**
+
 `PortalModuleManifest.slots`, `<ModuleSlot>`, `<ModuleTabs>` components, permission
 filtering, error-boundary isolation, and the cross-module contribution pattern are
 all shipped and unit-tested in `src/Clients/nexora-portal/`. **No module currently
@@ -67,11 +71,13 @@ through this mechanism, which is the end-to-end proof. Until then, 1.5.4 is
 "scaffold available, pilot deferred" — by design, not by accident.
 
 ### 1.5.5 Audit Module Enhancements — **Done**
+
 Entity change tracking (before/after via `IAuditStateCapture` + `AuditChangeTrackerInterceptor`),
 auth event auditing (`POST /audit/events/auth`), retention/partitioning jobs
 (`AuditCleanupJob`, `AuditPartitionMaintenanceJob`).
 
 ### 1.5.6 Contact Module Enhancements — **Done** (closed 2026-04-24)
+
 All four open items shipped and closed after maintainer review. See
 `../../analysis/tasks/phase-1.5/` for the individual task files; each is now
 `Status: Done` with its final status-log entry as the archival record.
@@ -88,6 +94,7 @@ T-017/T-018/T-021/T-022 (all now Done), T-028 (export/import notification
 inbox dedup, carry-over).
 
 ### 1.5.7 Demo Data Framework — **Foundation Done; scenarios/UI/cleanup carry over**
+
 Foundation shipped 2026-04-24 (T-005 + T-006 closed). The remaining three
 items are tracked as Phase 1.5 → Phase 2 carry-over tasks:
 
@@ -109,22 +116,30 @@ items are tracked as Phase 1.5 → Phase 2 carry-over tasks:
 ## Milestones
 
 ### Milestone A — Reliability plumbing (Done)
+
 1.5.1 outbox/inbox + cache invalidation, 1.5.5 audit enhancements, 1.5.2 permission
 isolation (backend). Gate for Phase 2 financial flows.
 
 ### Milestone B — Experience plumbing (Scaffolding Done; pilot in Phase 2)
+
 1.5.3 localization (minus tax receipts), 1.5.4 portal UI extension points (scaffold
 only — no module contributes to a slot yet; end-to-end pilot is Phase 2 Milestone A
 per ADR-0017). Gate for Phase 2 portal surfaces is therefore "scaffold ready to
 receive the first pilot module", not "end-to-end contribution proven".
 
 ### Milestone C — Seed + lifecycle (Mostly Done)
-1.5.6 Contacts enhancements closed 2026-04-24 (4 tasks Done: T-001..T-004 + 10
+
+1.5.6 Contacts enhancements closed 2026-04-24 (4 tasks Done: T-001..T-004 + 6
 follow-up review tasks T-017..T-022 closed the same day). 1.5.7 Demo Data
-Framework foundation Done (T-005 + T-006); scenarios (T-007), admin UI (T-008),
-and cleanup command (T-009) carry over as Phase 2 follow-ups — they do not
-block Phase 2 entry because the foundation + CLI let module authors declare
-demo content from Phase 2 Milestone A onward.
+Framework: foundation Done (T-005 + T-006); CLI cleanup (T-009) and admin UI
+(T-008) Done in the 2026-04-24 carry-over sweep. Scenarios (T-007) remain
+Blocked because the catalogue refers to modules that ship in Phase 2 / 3a
+(CRM, Finance, Projects, Fundraising, Sponsorship) — see T-007's status
+log for the proposed three-way split. None of the carry-overs block Phase 2
+entry: the foundation + CLI + admin surface let module authors declare demo
+content from Phase 2 Milestone A onward, and the T-008 dialog ships with a
+hardcoded `general`/`ngo` dropdown as the interim measure until T-007a
+(scenario registry) lands.
 
 ## Acceptance criteria
 

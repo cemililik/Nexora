@@ -140,6 +140,12 @@ public sealed class IdentityModule : IModule
         registry.Register("platform", "compliance", "policy_manage",
             "lockey_platform_permission_compliance_policy_manage", PermissionScope.Platform);
 
+        // T-008: Platform operators that can push demo content into an existing
+        // tenant schema. Platform-scope on purpose — tenant admins must not be
+        // able to seed demo data into their own tenant from the browser.
+        registry.Register("platform", "tenants", "create_demo",
+            "lockey_identity_permission_tenants_create_demo", PermissionScope.Platform);
+
         return Task.CompletedTask;
     }
 

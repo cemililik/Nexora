@@ -70,5 +70,13 @@ answerable from the Git log alone.
 | [0025](./0025-org-scoped-compliance-config-with-platform-caps.md) | Org-Scoped Compliance Config with Platform-Level Caps | Superseded by 0029 |
 | [0026](./0026-cross-module-pii-payload-scan-for-gdpr-erasure.md) | Cross-Module PII Payload Scan for GDPR Erasure | Accepted |
 | [0027](./0027-production-schema-migration-strategy.md) | Production Schema-Migration Strategy | Accepted |
-| [0028](./0028-module-uninstall-data-retention-contract.md) | Module Uninstall Data-Retention Contract | Accepted |
+| [0018](./0018-payment-provider-strategy.md) | Payment Provider Strategy | Accepted |
+| [0019](./0019-recurring-billing-vs-recurring-donations.md) | Recurring Billing vs Recurring Donations | Accepted |
+| [0020](./0020-contact-extensions-by-vertical-modules.md) | Contact Extensions by Vertical Modules | Accepted |
+| [0021](./0021-money-and-exchange-rate-contract.md) | Money and Exchange-Rate Contract | Accepted |
+| [0022](./0022-two-tier-locale-resolution.md) | Two-Tier Locale Resolution | Accepted |
+| [0023](./0023-nmp-billing-model.md) | NMP Billing Model | Accepted |
+| [0028](./0028-module-uninstall-data-retention-contract.md) | Module Uninstall Data-Retention Contract | Accepted; cascade txn policy Superseded by 0031 |
 | [0029](./0029-cap-blocked-short-circuits-lower-layers.md) | `cap.blocked` Short-Circuits Lower Layers in the Compliance-Config Resolver | Accepted |
+| [0030](./0030-license-hot-reload-mechanism.md) | License Hot-Reload Mechanism (polling + SIGHUP) | Accepted |
+| [0031](./0031-cascade-uninstall-per-module-transactions.md) | Cascade Uninstall Uses Per-Module Transactions With Forward-Log Compensation | Accepted |

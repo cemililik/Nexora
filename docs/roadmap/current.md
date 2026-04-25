@@ -1,6 +1,6 @@
 # Current State
 
-**Last updated:** 2026-04-24
+**Last updated:** 2026-04-24 (late — carry-over sweep)
 
 ---
 
@@ -40,6 +40,24 @@ unblocked by ADR-0026), T-011 (MigrationRunner — unblocked by
 ADR-0027), T-025 (uninstall cleanup job), T-026 (uninstall cascade
 guard), T-027 (uninstall GDPR handler), T-028 (export/import
 notification inbox handler dedup).
+
+## Phase 1.5 carry-over sweep (2026-04-24)
+
+After the main Phase 1.5 batch closed, a follow-up sweep picked up the
+deferred items in priority order:
+
+| Task | Outcome |
+|------|---------|
+| **T-028** | **Done** — inbox-guarded `ContactExportCompletedNotificationHandler` in Notifications, job no longer sends inline. Exactly-once delivery via EventId dedup. |
+| **T-009** | **Done** — `nexora demo:clean` CLI verb, `IDemoDataCleaner` orchestrator (reverse-dep-order module cleanup), `--drop-tenant --yes` full-schema-drop path. `IModule.CleanDemoDataAsync` DIM added. |
+| **T-008** | **Done** — `POST /identity/tenants/demo` endpoint (platform-scope, gated on new `platform.tenants.create_demo` permission), `CreateDemoEnvironmentDialog` admin UI with per-module outcome view, `useCreateDemoEnvironment` hook. |
+| **Phase 2 priority-1 fixes** | **Done** — ADR-0030 (license hot-reload: polling + SIGHUP; Accepted), T-016 milestone assigned to C, HR SPEC.md header Tier-vs-Phase clarification. |
+| **T-007** | **Blocked (partial)** — AC content refers to CRM / Finance / Projects / Fundraising / Sponsorship modules that don't exist yet (Phase 2 / 3a). Scope analysis in the task status log proposes a three-way split (T-007a scenario registry + Contacts seeds now; T-007b per-Tier-2-module seeds with each Phase 2 module; T-007c per-Tier-3a-module seeds with each Phase 3a module). Until split is confirmed, T-008's dialog ships with a hardcoded `general`/`ngo` dropdown as the interim measure. |
+| **T-010** | **Ready (carries to Phase 2)** — ADR-0026 Accepted on 2026-04-24 unblocked the gate, but 4 of 5 target consumer modules (CRM, Subscription, Fundraising, Finance) don't exist yet and the 10M-row perf harness isn't in the repo. Proposed reclassification to Phase 2 Milestone A/B so Contacts locator + Audit scan job + arch test can ship as scaffolding alongside the CRM pilot. |
+
+The sweep also scoped + filed the three orphan uninstall tasks
+(T-025 / T-026 / T-027) that ADR-0028 references in their own files
+under `docs/analysis/tasks/phase-2/` — they were missing before.
 
 
 
@@ -93,13 +111,23 @@ phase (2.5).
    enhancements ✅, Demo Data Framework foundation ✅ — **all met as of 2026-04-24**.
 2. **ADR-0015, ADR-0016, ADR-0017 Accepted** ✅ (maintainer promoted 2026-04-22).
 3. `docs/` restructure (this initiative) complete through Phase 2 (five parallel agent outputs
-   in `In Review`, maintainer verified) — **pending**.
+   in `In Review`, maintainer verified) ✅ — **met as of 2026-04-24**. All five agent
+   outputs are in place and have been consumed by the Phase 1.5 work that shipped on top
+   of them (7 phase files including phase-2-enterprise, 14 standards, 29 ADRs under the
+   new numbering, 4 tier folders with module specs, architecture docs including
+   portal-extensions.md, analysis/tasks infrastructure). Verification happened in-place
+   as the Phase 1.5 batch (T-001..T-024) depended on and refined each agent's output.
 4. Demo Data Framework scaffold (1.5.7) available so Phase 2 modules can declare demo seeds ✅.
 
 ### Pilot commitment
 
-Phase 2 Milestone A pilots the Portal Extension manifest (ADR-017) with one Tier-2 module
-(CRM or Subscription, TBD by the maintainer). Lessons feed back into `docs/architecture/portal-extensions.md`.
+Phase 2 Milestone A pilots the Portal Extension manifest (ADR-0017) with **CRM**
+(selected 2026-04-24). CRM exercises more of the manifest surface than
+Subscription — multiple slot contributions (Contacts 360° tab, dashboard
+widgets), no external-payment-gateway entanglement, and sits on the critical
+path for Phase 3a/3b downstream dependencies. See
+[`phases/phase-2-enterprise.md`](phases/phase-2-enterprise.md) §Milestone A for
+the full rationale. Lessons feed back into `docs/architecture/portal-extensions.md`.
 
 ---
 

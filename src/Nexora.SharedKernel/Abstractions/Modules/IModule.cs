@@ -84,6 +84,44 @@ public interface IModule
     /// </remarks>
     Task SeedDemoDataAsync(TenantDemoSeedContext context, CancellationToken ct)
         => Task.CompletedTask;
+
+    /// <summary>
+    /// Removes every row this module seeded via <see cref="SeedDemoDataAsync"/>
+    /// from the tenant named by <paramref name="context"/>. Called by
+    /// <c>IDemoDataCleaner</c> (T-009) when an operator invokes
+    /// <c>nexora demo:clean --tenant=&lt;id&gt;</c> or the matching admin UI
+    /// button. The default implementation is a no-op so modules without demo
+    /// data compile unchanged.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Modules MUST scope all deletes to the current tenant schema and MUST
+    /// NOT delete data from another module's tables — the same boundary
+    /// enforced for <see cref="SeedDemoDataAsync"/> by
+    /// <c>DemoDataSeedingBoundaryTests</c>.
+    /// </para>
+    /// <para>
+    /// <b>Mixed real + demo data.</b> When a tenant carries both real rows
+    /// (produced by day-to-day use) and demo rows (produced by
+    /// <see cref="SeedDemoDataAsync"/>), only the demo rows MUST be deleted.
+    /// The recommended strategy is to tag demo rows with a stable marker
+    /// at seed time (e.g. a <c>Source = "demo"</c> column, a
+    /// <c>DemoBatchId</c> FK, or a deterministic ID prefix) and filter on
+    /// that marker here. Module-by-module choice is intentional — some
+    /// modules may legitimately choose full-scenario wipes when their
+    /// entities are strictly demo-exclusive.
+    /// </para>
+    /// <para>
+    /// This method is the counterpart of the CASCADE path taken by
+    /// <c>demo:clean --drop-tenant</c> — which bypasses every
+    /// <see cref="CleanDemoDataAsync"/> call entirely and drops the whole
+    /// tenant schema. Implementations SHOULD remain idempotent so an
+    /// operator can run <c>demo:clean</c> repeatedly against the same
+    /// tenant without surprising errors; see T-009 acceptance criteria.
+    /// </para>
+    /// </remarks>
+    Task CleanDemoDataAsync(TenantDemoSeedContext context, CancellationToken ct)
+        => Task.CompletedTask;
 }
 
 /// <summary>

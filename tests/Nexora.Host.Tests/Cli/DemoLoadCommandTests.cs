@@ -12,22 +12,31 @@ namespace Nexora.Host.Tests.Cli;
 /// require a real Postgres schema and are exercised via
 /// <c>docker compose run nexora-api demo:load ...</c>).
 /// </summary>
-public sealed class DemoLoadCommandTests
+public sealed class DemoLoadCommandTests : IDisposable
 {
     private readonly Guid _tenantId = Guid.NewGuid();
     private const string Scenario = "general";
 
-    static DemoLoadCommandTests()
+    // Restore-after-test culture discipline (see DemoCleanCommandTests for
+    // the same pattern + rationale). Static ctors would mutate process-wide
+    // state across every test class — unacceptable for xUnit shared
+    // collections. Instance ctor + Dispose restores.
+    private readonly System.Globalization.CultureInfo _originalCulture;
+    private readonly System.Globalization.CultureInfo? _originalDefault;
+
+    public DemoLoadCommandTests()
     {
-        // Pin CurrentUICulture to English for the whole test class so
-        // console-output assertions below ("seeded", "already-seeded",
-        // "FAILED", "Identity admin API") match deterministically regardless
-        // of the developer's host locale. The tr bundle uses different
-        // tokens ("seed edildi", "BAŞARISIZ"), which the legacy assertions
-        // would miss and the test would fail under tr-TR locales.
-        System.Globalization.CultureInfo.CurrentUICulture =
+        _originalCulture = System.Globalization.CultureInfo.CurrentUICulture;
+        _originalDefault = System.Globalization.CultureInfo.DefaultThreadCurrentUICulture;
+        System.Threading.Thread.CurrentThread.CurrentUICulture =
             System.Globalization.CultureInfo.DefaultThreadCurrentUICulture =
                 new System.Globalization.CultureInfo("en");
+    }
+
+    public void Dispose()
+    {
+        System.Threading.Thread.CurrentThread.CurrentUICulture = _originalCulture;
+        System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = _originalDefault;
     }
 
     [Fact]
@@ -254,6 +263,8 @@ public sealed class DemoLoadCommandTests
     private sealed class RecordingConsole : IConsole
     {
         public List<string> Lines { get; } = new();
+        public List<string> ErrorLines { get; } = new();
         public void WriteLine(string line) => Lines.Add(line);
+        public void WriteErrorLine(string line) => ErrorLines.Add(line);
     }
 }

@@ -211,7 +211,10 @@ public static class DemoLoadCommand
                 if (Guid.TryParse(tenantValue, out var guid))
                     tenantId = guid;
                 else
-                    unknown.Add($"invalid tenant GUID: '{tenantValue}'");
+                    unknown.Add(string.Format(
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        CliLocalization.T("lockey_cli_demoload_invalid_tenant_guid_template"),
+                        tenantValue));
                 continue;
             }
 
@@ -374,11 +377,21 @@ internal sealed record DemoLoadOptions(
 /// </summary>
 internal interface IConsole
 {
+    /// <summary>Writes <paramref name="line"/> to stdout.</summary>
     void WriteLine(string line);
+
+    /// <summary>
+    /// Writes <paramref name="line"/> to stderr. Used for warnings and
+    /// destructive-operation notices so scripts can parse stdout cleanly
+    /// (e.g., capture the per-module outcome summary on stdout while
+    /// `--drop-tenant` warnings stream on stderr).
+    /// </summary>
+    void WriteErrorLine(string line);
 }
 
 internal sealed class SystemConsole : IConsole
 {
     public static readonly SystemConsole Instance = new();
     public void WriteLine(string line) => Console.WriteLine(line);
+    public void WriteErrorLine(string line) => Console.Error.WriteLine(line);
 }

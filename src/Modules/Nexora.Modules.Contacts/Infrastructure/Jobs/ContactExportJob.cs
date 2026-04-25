@@ -70,7 +70,6 @@ public sealed class ContactExportJob(
     IFileStorageService fileStorageService,
     IOptions<StorageOptions> storageOptions,
     IOutbox outbox,
-    INotificationService notificationService,
     ILocaleContext localeContext,
     ILogger<ContactExportJob> logger) : NexoraJob<ContactExportJobParams>(tenantContextAccessor, logger)
 {
@@ -95,8 +94,13 @@ public sealed class ContactExportJob(
         }
 
         // Idempotency guard — skip Completed or Failed terminal states; Processing means
-        // a mid-job Hangfire retry and must resume without re-running MarkProcessing,
-        // re-emitting the outbox event or re-sending the completion notification.
+        // a mid-job Hangfire retry and must resume without re-running MarkProcessing
+        // or re-emitting the outbox event. The outbox emission is atomic with the
+        // Completed state transition (see comment at the outbox-emit site below), so
+        // skipping here is safe: if a prior attempt got to "emitted", it also got to
+        // "Completed" and we return early above. Resume path (Processing) re-runs the
+        // full flow; outbox re-emits with a new EventId; inbox-guarded consumers
+        // (see T-028) dedupe redeliveries of either emission via EventId.
         if (exportJob.Status is ExportJobStatus.Completed or ExportJobStatus.Failed)
         {
             logger.LogWarning(
@@ -104,7 +108,6 @@ public sealed class ContactExportJob(
                 exportJobId, exportJob.Status);
             return;
         }
-        var startedFromQueued = exportJob.Status == ExportJobStatus.Queued;
 
         List<Contact> contacts;
         Dictionary<Guid, List<ContactCustomField>> customFieldsByContactId;
@@ -218,11 +221,19 @@ public sealed class ContactExportJob(
 
         exportJob.MarkCompleted(storageKey);
 
-        // Always emit the outbox event — the outbox+MarkCompleted SaveChangesAsync below
-        // is atomic, so if a prior attempt had persisted the event, it would also have
-        // persisted Completed and we wouldn't have reached this path (the early-return
-        // guard above skips terminal states). Downstream consumers are inbox-guarded
-        // (ADR-014) so a retry that re-emits is safely deduplicated.
+        // Atomicity boundary — important for reviewers: the DB state
+        // (exportJob.MarkCompleted) + the outbox row (via EnqueueAsync
+        // staging the OutboxMessage on the SAME dbContext change-tracker)
+        // commit atomically below in the single SaveChangesAsync. The
+        // MinIO upload above is OUTSIDE the DB transaction — on a crash
+        // between UploadObjectAsync and SaveChangesAsync, the blob is
+        // written but neither Completed nor the outbox row commits, so
+        // the next run re-uploads to the same storageKey (idempotent) and
+        // emits a new outbox event with a NEW EventId. That new EventId
+        // triggers a fresh inbox-guarded dispatch downstream — the
+        // previous emission never escaped, so there is no dup. Downstream
+        // consumers are inbox-guarded (ADR-014) so any Dapr-level
+        // redelivery of the same EventId is also deduplicated.
         await outbox.EnqueueAsync(new ContactExportCompletedIntegrationEvent
         {
             TenantId = parameters.TenantId,
@@ -231,49 +242,17 @@ public sealed class ContactExportJob(
             Format = parameters.Format.ToLowerInvariant(),
             StorageKey = storageKey,
             TriggeredByUserId = parameters.TriggeredByUserId,
+            // Carry the organization id so the downstream notification
+            // handler can scope the in-app send to the right org — without
+            // this, the handler sent with OrganizationId=null which was a
+            // regression from the previous inline implementation.
+            OrganizationId = parameters.OrganizationIdGuid,
             CompletedAtUtc = DateTime.UtcNow
         }, ct);
 
-        // Completion notification fires only on the Queued-origin path. On resume we do
-        // not re-send because the original attempt may have already notified the user.
-        // Planned idempotent follow-up — tracked as T-028:
-        //   1. Remove this inline SendAsync call.
-        //   2. Add a ContactExportCompletedNotificationHandler subscribing to
-        //      ContactExportCompletedIntegrationEvent via the standard inbox table.
-        //   3. Use a stable dedupe key of the form
-        //        $"contacts:export-ready:{jobId}"
-        //      — jobId is assigned at Queue time, survives retries unchanged, and is
-        //      unique per export. The inbox primary key (MessageId, Consumer) will
-        //      collapse duplicates no matter how many times the event is redelivered.
-        // Until that lands, the startedFromQueued guard prevents duplicate at-most-once
-        // notification on resume at the cost of possibly missing notification when a
-        // crash happens between MarkProcessing and SendAsync — acceptable trade-off
-        // given the user can see completion on the status page.
-        if (startedFromQueued && parameters.TriggeredByUserId is { } userId)
-        {
-            try
-            {
-                await notificationService.SendAsync(new SendNotificationRequest(
-                    TemplateCode: "lockey_contacts_notification_export_ready",
-                    Channel: "in_app",
-                    ContactId: userId,
-                    RecipientAddress: userId.ToString(),
-                    Variables: new Dictionary<string, string>
-                    {
-                        ["jobId"] = exportJobId.Value.ToString(),
-                        ["format"] = parameters.Format.ToLowerInvariant(),
-                        ["totalRows"] = totalRows.ToString(CultureInfo.InvariantCulture)
-                    },
-                    OrganizationId: orgId.ToString()), ct);
-            }
-            catch (InvalidOperationException ex)
-            {
-                logger.LogWarning(
-                    ex,
-                    "Failed to send export-ready notification for job {ExportJobId}; export itself succeeded",
-                    exportJobId);
-            }
-        }
+        // Completion notification is delivered by the inbox-guarded
+        // ContactExportCompletedNotificationHandler in the Notifications module
+        // (T-028). The job intentionally does not send inline.
 
         await dbContext.SaveChangesAsync(ct);
 
@@ -284,13 +263,19 @@ public sealed class ContactExportJob(
 
     private static CultureInfo ResolveCulture(string locale)
     {
-        try
+        // Belt-and-suspenders: locale → en-US → InvariantCulture. The last
+        // fallback matters when the .NET runtime is in globalization-invariant
+        // mode (e.g. Alpine container missing icu-libs) — `en-US` would also
+        // throw there. InvariantCulture always resolves.
+        return TryGet(locale)
+            ?? TryGet("en-US")
+            ?? CultureInfo.InvariantCulture;
+
+        static CultureInfo? TryGet(string? name)
         {
-            return CultureInfo.GetCultureInfo(locale);
-        }
-        catch (CultureNotFoundException)
-        {
-            return CultureInfo.GetCultureInfo("en-US");
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            try { return CultureInfo.GetCultureInfo(name); }
+            catch (CultureNotFoundException) { return null; }
         }
     }
 
