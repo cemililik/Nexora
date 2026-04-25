@@ -14,6 +14,7 @@ _None._
 |------|--------|
 | T-013 — `platform:audit-migration-drift` Hangfire job | In Review (AC4 deviation: direct `IEventBus` publish rather than outbox — platform outbox infra not yet built; logged in task status log for follow-up) |
 | T-015 — License revocation list fetcher | In Review |
+| T-014 — `LicenseService.ValidateAsync` hot-reload watcher | In Review (ADR-0030 deviation: `IOptions` instead of `IConfigurationResolver` for polling interval — resolver is tenant-scoped, hosted service is tenant-less; range still enforced; logged in task status log) |
 
 ## Recently closed (Phase 2 Milestone A batch — merged to `main` 2026-04-25)
 

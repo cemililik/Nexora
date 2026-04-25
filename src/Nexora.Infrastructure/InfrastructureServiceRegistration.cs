@@ -257,6 +257,13 @@ public static class InfrastructureServiceRegistration
             sp.GetRequiredService<Licensing.FileRevocationListProvider>());
         services.AddHttpClient(Licensing.RevocationListFetchJob.HttpClientName);
 
+        // T-014 (ADR-0030): hot-reload watcher for the on-prem license file.
+        // Polling-loop baseline + SIGHUP short-circuit; works under K8s
+        // projected Secret volumes where inotify silently no-ops.
+        services.Configure<Licensing.LicenseReloadOptions>(
+            configuration.GetSection(Licensing.LicenseReloadOptions.SectionName));
+        services.AddLicenseReload();
+
         // Audit context (requires IHttpContextAccessor)
         services.AddHttpContextAccessor();
         services.AddScoped<IAuditContext, HttpAuditContext>();
