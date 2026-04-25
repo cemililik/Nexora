@@ -53,6 +53,26 @@ public interface IGdprRenamedTableScanner
     /// Returns the row count the redaction UPDATE affected.
     /// </param>
     /// <param name="ct">Cancellation token.</param>
+    /// <remarks>
+    /// <para>
+    /// <b>Callback exception contract.</b>
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     <see cref="OperationCanceledException"/> / <see cref="TaskCanceledException"/>
+    ///     (or any exception thrown when <paramref name="ct"/> is cancelled)
+    ///     MUST immediately propagate and abort the scan.
+    ///   </description></item>
+    ///   <item><description>
+    ///     All other exceptions thrown by <paramref name="redactSingleTableAsync"/>
+    ///     MUST be handled by implementations: either caught and logged so
+    ///     remaining tables continue, or re-thrown to abort the scan.
+    ///     Implementations MUST document which strategy they use.
+    ///     <see cref="PostgresGdprRenamedTableScanner{TDbContext}"/> catches and
+    ///     continues; <c>NoOpGdprRenamedTableScanner</c> never invokes the callback.
+    ///   </description></item>
+    /// </list>
+    /// </para>
+    /// </remarks>
     Task<GdprRenamedTableScanResult> ScanAsync(
         string moduleName,
         Func<RenamedTableInfo, CancellationToken, Task<int>> redactSingleTableAsync,
@@ -76,6 +96,18 @@ public sealed record RenamedTableInfo(
 /// DI disambiguation; it carries no runtime contract beyond the base
 /// <see cref="IGdprRenamedTableScanner"/>.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <typeparamref name="TDbContext"/> exists only to disambiguate DI
+/// registrations — analogous to <c>IOptions&lt;T&gt;</c> where the type
+/// parameter selects the registration without adding behaviour. It has no
+/// runtime contract and is never used inside an implementation. The
+/// <c>CA1715</c> / <c>S2326</c> pragmas below suppress warnings about the
+/// unused type parameter for precisely this reason; future maintainers should
+/// keep the suppressions and this remark rather than renaming or removing the
+/// parameter.
+/// </para>
+/// </remarks>
 #pragma warning disable CA1715, S2326 // generic type param exists for DI shape, not behaviour
 public interface IGdprRenamedTableScanner<TDbContext> : IGdprRenamedTableScanner { }
 #pragma warning restore CA1715, S2326

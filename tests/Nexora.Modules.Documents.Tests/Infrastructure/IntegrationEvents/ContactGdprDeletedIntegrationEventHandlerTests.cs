@@ -37,10 +37,11 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         _dbContext = new DocumentsDbContext(options, accessor);
     }
 
-    private ContactGdprDeletedIntegrationEventHandler CreateHandler() =>
+    private ContactGdprDeletedIntegrationEventHandler CreateHandler(
+        IGdprRenamedTableScanner<DocumentsDbContext>? scanner = null) =>
         new(_dbContext,
             new InboxGuard<DocumentsDbContext>(_dbContext),
-            new NoOpGdprRenamedTableScanner<DocumentsDbContext>(),
+            scanner ?? new NoOpGdprRenamedTableScanner<DocumentsDbContext>(),
             NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
 
     private ContactGdprDeletedIntegrationEvent CreateEvent() => new()
@@ -190,6 +191,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
         // actually CALLS ScanAsync for the documents module slug at
         // runtime so a future refactor can't accidentally drop the call
         // (review round-2 finding).
+
+        // Arrange
         var scanner = Substitute.For<IGdprRenamedTableScanner<DocumentsDbContext>>();
         scanner.ScanAsync(
             Arg.Any<string>(),
@@ -197,14 +200,10 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
             Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(GdprRenamedTableScanResult.Empty));
 
-        var handler = new ContactGdprDeletedIntegrationEventHandler(
-            _dbContext,
-            new InboxGuard<DocumentsDbContext>(_dbContext),
-            scanner,
-            NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
+        // Act
+        await CreateHandler(scanner).HandleAsync(CreateEvent(), CancellationToken.None);
 
-        await handler.HandleAsync(CreateEvent(), CancellationToken.None);
-
+        // Assert
         await scanner.Received(1).ScanAsync(
             "documents",
             Arg.Any<Func<RenamedTableInfo, CancellationToken, Task<int>>>(),

@@ -173,8 +173,21 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
                     // Sibling identifier needs to be qualified with the
                     // same schema as the parent — derive it from the
                     // parent's QualifiedIdentifier (`"schema"."parent"`).
+                    // Guard: QualifiedIdentifier must contain the quoted BareName so the
+                    // Replace produces a valid sibling identifier. The scanner builds
+                    // it as `"schema"."bareName"` so this should always hold — but
+                    // fail fast on any unexpected shape rather than silently emitting
+                    // broken SQL.
+                    var quotedBareName = $"\"{info.BareName}\"";
+                    if (!info.QualifiedIdentifier.Contains(quotedBareName, StringComparison.Ordinal))
+                    {
+                        logger.LogWarning(
+                            "GDPR escape hatch: QualifiedIdentifier {QualifiedIdentifier} does not contain expected quoted bare name {QuotedBareName}; skipping renamed table {Table}.",
+                            info.QualifiedIdentifier, quotedBareName, info.BareName);
+                        return 0;
+                    }
                     var qualifiedSibling = info.QualifiedIdentifier.Replace(
-                        $"\"{info.BareName}\"", $"\"{siblingBare}\"", StringComparison.Ordinal);
+                        quotedBareName, $"\"{siblingBare}\"", StringComparison.Ordinal);
                     var sql =
                         $"""
                         UPDATE {info.QualifiedIdentifier}
@@ -219,7 +232,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             var ambientTx = dbContext.Database.CurrentTransaction?.GetDbTransaction();
             if (ambientTx is not null) cmd.Transaction = ambientTx;
             var p1 = cmd.CreateParameter();
-            p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
+            p1.ParameterName = "@placeholder";
+            p1.Value = PiiRedactedPlaceholder.Value;
             cmd.Parameters.Add(p1);
             var p2 = cmd.CreateParameter();
             p2.ParameterName = "@contactId"; p2.Value = contactId;

@@ -54,6 +54,16 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             return;
         }
 
+        // Wrap in an EF transaction on relational providers so all redaction
+        // work (canonical ExecuteUpdateAsync calls, renamedTableScanner raw
+        // UPDATEs, inbox mark) is atomic: if SaveChangesAsync fails the
+        // scrub is rolled back and the event can be redelivered safely.
+        // InMemory providers (tests) don't need a transaction — SaveChanges
+        // is already atomic for EF-tracked domain-method changes.
+        await using var tx = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(ct)
+            : null;
+
         int unlinkedCount;
         int scrubbedCount;
 
@@ -141,6 +151,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);
+        if (tx is not null) await tx.CommitAsync(ct);
 
         logger.LogInformation(
             "Completed ContactGdprDeletedIntegrationEvent for TenantId {TenantId}, ContactId {ContactId}: " +
@@ -175,7 +186,8 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             if (withPlaceholder)
             {
                 var p1 = cmd.CreateParameter();
-                p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
+                p1.ParameterName = "@placeholder";
+                p1.Value = PiiRedactedPlaceholder.Value;
                 cmd.Parameters.Add(p1);
             }
             var p2 = cmd.CreateParameter();

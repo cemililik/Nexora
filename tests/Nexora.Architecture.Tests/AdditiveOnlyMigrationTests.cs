@@ -200,9 +200,12 @@ public sealed class AdditiveOnlyMigrationTests
         string pattern, string operation, string remediation)
     {
         // EF Core convention: migrations land under `Migrations/` folders
-        // beside the DbContext. Scan recursively under src/ so module
-        // additions are picked up automatically.
-        var migrationFiles = Directory.EnumerateDirectories(RepoSrcRoot, "Migrations", SearchOption.AllDirectories)
+        // beside the DbContext. Also scan `Migration/` (singular) in case
+        // a module uses that variant. Scan recursively so new modules are
+        // picked up automatically without per-module configuration.
+        var migrationFiles = new[] { "Migrations", "Migration" }
+            .SelectMany(dirName =>
+                Directory.EnumerateDirectories(RepoSrcRoot, dirName, SearchOption.AllDirectories))
             .SelectMany(dir => Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
             // Skip designer files (EF Core generates *.Designer.cs that
             // contains the snapshot of the model — destructive operations

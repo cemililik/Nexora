@@ -93,7 +93,10 @@ public sealed class MigrationRunner(
         }
         finally
         {
-            await ReleaseAdvisoryLockAsync(lockConn, lockKey, ct);
+            // Use CancellationToken.None: if ct is already cancelled, passing
+            // it here would throw OperationCanceledException and mask the
+            // Succeeded/Failed result that was already determined above.
+            await ReleaseAdvisoryLockAsync(lockConn, lockKey, CancellationToken.None);
         }
     }
 

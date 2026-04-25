@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Hangfire;
@@ -79,8 +78,13 @@ public sealed class PurgeUninstalledModulesJob(
     ///   purge step.</description></item>
     /// </list>
     /// </summary>
+    // Two mandatory segments required before _del_:
+    //   [a-z][a-z0-9]* — module prefix (no internal underscores, e.g. "crm")
+    //   _[a-z][a-z0-9_]* — table name (may contain underscores, e.g. "signature_recipients")
+    // Single-segment names like "users_del_..." are rejected — they have no
+    // module prefix and were never emitted by the canonical uninstall path.
     public static readonly Regex DeletedTableNameRegex = new(
-        @"^[a-z][a-z0-9_]*_del_(?:[0-9]{14}|[0-9]{8}_[0-9]{6})$",
+        @"^[a-z][a-z0-9]*_[a-z][a-z0-9_]*_del_(?:[0-9]{14}|[0-9]{8}_[0-9]{6})$",
         RegexOptions.Compiled);
 
     private static readonly Meter Meter = new("Nexora.Modules.Identity.PurgeUninstalledModules", "1.0");
@@ -109,15 +113,24 @@ public sealed class PurgeUninstalledModulesJob(
     }
 
     /// <summary>
-    /// Stable per-tenant jitter offset (0–119 minutes). MD5-based +
-    /// <c>&amp; 0x7FFFFFFF</c> overflow-safe non-negative conversion per the
-    /// T-025 AC; <c>Math.Abs(int.MinValue)</c> would throw.
+    /// Stable per-tenant jitter offset (0–119 minutes).
+    /// FNV-1a-32 over the tenant GUID bytes — deterministic, non-crypto,
+    /// never throws (unlike MD5 which can fail under FIPS policy), and
+    /// produces a good distribution over the 120-minute window.
+    /// <c>&amp; 0x7FFFFFFF</c> ensures a non-negative int before modulo.
     /// </summary>
     public static int ComputeJitterOffsetMinutes(Guid tenantId)
     {
-        var hash = BitConverter.ToInt32(MD5.HashData(tenantId.ToByteArray()), 0);
-        var nonNegative = hash & 0x7FFFFFFF;
-        return nonNegative % 120;
+        const uint fnvOffset = 2166136261u;
+        const uint fnvPrime = 16777619u;
+        var bytes = tenantId.ToByteArray();
+        var hash = fnvOffset;
+        foreach (var b in bytes)
+        {
+            hash ^= b;
+            unchecked { hash *= fnvPrime; }
+        }
+        return (int)(hash & 0x7FFFFFFF) % 120;
     }
 
     protected override async Task ExecuteAsync(PurgeUninstalledModulesParams parameters, CancellationToken ct)

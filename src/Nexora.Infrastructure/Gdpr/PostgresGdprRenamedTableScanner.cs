@@ -30,16 +30,21 @@ namespace Nexora.Infrastructure.Gdpr;
 public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
     TDbContext dbContext,
     ITenantContextAccessor tenantContextAccessor,
+    IMeterFactory meterFactory,
     ILogger<PostgresGdprRenamedTableScanner<TDbContext>> logger)
     : IGdprRenamedTableScanner<TDbContext>
     where TDbContext : DbContext
 {
-    private static readonly Meter Meter = new("Nexora.Infrastructure.Gdpr", "1.0");
-
-    /// <summary>Counter incremented per scan operation, tagged by module.</summary>
-    public static readonly Counter<long> ScanCounter = Meter.CreateCounter<long>(
-        "nexora_gdpr_erasure_renamed_table_scans_total", "scans",
-        "Total renamed-table scan operations during GDPR erasure handling.");
+    // Instance counter created from the injected factory so each DI scope
+    // gets its own Meter — enables proper test isolation and lifecycle
+    // management (static Meter + Counter would outlive the scope).
+    // Name follows OpenTelemetry conventions: dotted namespace, snake_case component.
+    private readonly Counter<long> _scanCounter = meterFactory
+        .Create("Nexora.Infrastructure.Gdpr", "1.0")
+        .CreateCounter<long>(
+            "nexora.gdpr.erasure.renamed_table_scans",
+            "scans",
+            "Total renamed-table scan operations during GDPR erasure handling.");
 
     // Defence-in-depth: even though module names are validated at module
     // registration to be snake_case ASCII, escape any regex metacharacters
@@ -66,7 +71,7 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
             // EF InMemory in tests — the scanner is a no-op; the caller's
             // canonical-table redaction is the source of truth in those
             // suites. Counter still ticks so dashboards see the call.
-            ScanCounter.Add(1, new KeyValuePair<string, object?>("module", moduleName));
+            _scanCounter.Add(1, new KeyValuePair<string, object?>("module", moduleName));
             return GdprRenamedTableScanResult.Empty;
         }
 
@@ -104,7 +109,7 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
             if (openedHere) await connection.CloseAsync();
         }
 
-        ScanCounter.Add(1, new KeyValuePair<string, object?>("module", moduleName));
+        _scanCounter.Add(1, new KeyValuePair<string, object?>("module", moduleName));
 
         if (renamedTables.Count == 0)
             return GdprRenamedTableScanResult.Empty;
@@ -126,13 +131,15 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
             {
                 totalRedacted += await redactSingleTableAsync(info, ct);
             }
-            catch (Npgsql.NpgsqlException ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // One renamed table failing must not abort the rest of the
-                // scan — the canonical redaction has already happened, and
-                // a stale renamed table that cannot be UPDATE-ed is better
-                // surfaced as a logged warning than as a thrown exception
-                // that fails the entire GDPR event handler.
+                // Catch any non-cancellation exception so one table's
+                // failure does not abort the rest of the scan. Npgsql
+                // errors (stale table, missing column) are the common
+                // case, but domain / timeout / invalid-op exceptions
+                // must also continue rather than propagating as a 500.
+                // OperationCanceledException always re-propagates so the
+                // handler honours the caller's cancellation token.
                 logger.LogWarning(ex,
                     "GDPR escape hatch: redaction failed for renamed table {Table} (module {Module}); other tables continue.",
                     bareName, moduleName);

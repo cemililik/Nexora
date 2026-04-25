@@ -88,6 +88,10 @@ public sealed class LinkUserContactHandler(
         var alreadyLinked = await dbContext.Users
             .AnyAsync(u => u.ContactId == request.ContactId
                         && u.TenantId == tenantId
+                        // u.Id != userId is defensively redundant: the earlier
+                        // `user.ContactId is not null` check short-circuits before
+                        // reaching here, so the current user's ContactId is always
+                        // null at this point. Kept for clarity and future-proofing.
                         && u.Id != userId, cancellationToken);
 
         if (alreadyLinked)
@@ -120,12 +124,43 @@ public sealed class LinkUserContactHandler(
             LinkedByUserId = linkedByUserGuid
         }, cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (IsUniqueContactViolation(ex))
+        {
+            // The AnyAsync pre-check above races with concurrent requests.
+            // SQLSTATE 23505 on the ContactId unique index means another
+            // request won the race — surface the same business failure the
+            // pre-check would have returned. The outbox enqueue is also
+            // rolled back because it shares the same EF unit-of-work.
+            logger.LogWarning(
+                "LinkContact rejected (race on unique index): contact {ContactId} already linked to another user in tenant {TenantId}",
+                request.ContactId, tenantId);
+            return Result.Failure(
+                LocalizedMessage.Of("lockey_identity_user_link_contact_contact_already_in_use"));
+        }
 
         logger.LogInformation(
             "User {UserId} linked to contact {ContactId} by {LinkedByUserId} in tenant {TenantId}",
             request.UserId, request.ContactId, linkedByUserGuid, tenantId);
 
         return Result.Success(LocalizedMessage.Of("lockey_identity_user_link_contact_success"));
+    }
+
+    // Reflect on the inner exception type name to avoid a compile-time
+    // reference on Npgsql — the provider is transitively available but
+    // the Application layer must not take a hard dependency on it.
+    // Same pattern as DemoDataSeeder.IsUniqueViolation.
+    private static bool IsUniqueContactViolation(DbUpdateException ex)
+    {
+        for (var current = ex.InnerException; current is not null; current = current.InnerException)
+        {
+            if (current.GetType().FullName != "Npgsql.PostgresException") continue;
+            var sqlState = current.GetType().GetProperty("SqlState")?.GetValue(current) as string;
+            if (sqlState == "23505") return true;
+        }
+        return false;
     }
 }
