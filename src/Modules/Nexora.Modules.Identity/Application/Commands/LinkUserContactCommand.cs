@@ -85,6 +85,20 @@ public sealed class LinkUserContactHandler(
                 LocalizedMessage.Of("lockey_identity_user_link_contact_already_linked"));
         }
 
+        var alreadyLinked = await dbContext.Users
+            .AnyAsync(u => u.ContactId == request.ContactId
+                        && u.TenantId == tenantId
+                        && u.Id != userId, cancellationToken);
+
+        if (alreadyLinked)
+        {
+            logger.LogWarning(
+                "LinkContact rejected: contact {ContactId} already linked to another user in tenant {TenantId}",
+                request.ContactId, tenantId);
+            return Result.Failure(
+                LocalizedMessage.Of("lockey_identity_user_link_contact_contact_already_in_use"));
+        }
+
         try
         {
             user.LinkContact(request.ContactId, linkedByUserId);

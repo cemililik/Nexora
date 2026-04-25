@@ -28,8 +28,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.PreferredLanguage).HasMaxLength(10);
 
         // Optional link to Contacts module (raw Guid — crosses module boundary).
+        // Partial unique index: a contact may be linked to at most one user per tenant
+        // (NULL rows are excluded so unlinked users don't collide with each other).
         builder.Property(u => u.ContactId).IsRequired(false);
-        builder.HasIndex(u => u.ContactId).HasDatabaseName("ix_identity_users_contact_id");
+        builder.HasIndex(u => u.ContactId)
+            .IsUnique()
+            .HasFilter("contact_id IS NOT NULL")
+            .HasDatabaseName("ix_identity_users_contact_id_unique");
 
         builder.HasMany(u => u.OrganizationUsers).WithOne().HasForeignKey(ou => ou.UserId);
         builder.Navigation(u => u.OrganizationUsers).UsePropertyAccessMode(PropertyAccessMode.Field);

@@ -367,6 +367,7 @@
   "lockey_identity_user_link_contact_failed": "Failed to link user to contact.",
   "lockey_identity_user_link_contact_unlink_success": "Contact link removed.",
   "lockey_identity_user_link_contact_already_linked": "This user is already linked to a contact.",
+  "lockey_identity_user_link_contact_contact_already_in_use": "This contact is already linked to another user.",
   "lockey_identity_user_link_contact_system_account_rejected": "System accounts cannot be linked to contacts.",
   "lockey_identity_user_link_contact_user_not_found": "User not found.",
   "lockey_identity_user_link_contact_contact_id_required": "Contact ID is required.",

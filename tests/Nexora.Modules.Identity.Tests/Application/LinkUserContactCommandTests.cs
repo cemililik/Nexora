@@ -99,6 +99,35 @@ public sealed class LinkUserContactCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task Handle_WhenContactAlreadyLinkedToAnotherUser_ReturnsFailure()
+    {
+        // Arrange — User A claims contact C first.
+        var contactId = Guid.NewGuid();
+        var userA = User.Create(_tenantId, "kc-a", "a@test.com", "A", "One");
+        userA.LinkContact(contactId, UserId.From(_actorUserId));
+        _dbContext.Users.Add(userA);
+
+        var userB = User.Create(_tenantId, "kc-b", "b@test.com", "B", "Two");
+        _dbContext.Users.Add(userB);
+
+        await _dbContext.SaveChangesAsync();
+
+        // Act — User B attempts to link to the same contact.
+        var result = await CreateHandler().Handle(
+            new LinkUserContactCommand(userB.Id.Value, contactId), CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_user_link_contact_contact_already_in_use");
+
+        var reloaded = await _dbContext.Users.FindAsync(userB.Id);
+        reloaded!.ContactId.Should().BeNull();
+
+        await _outbox.DidNotReceive().EnqueueAsync(
+            Arg.Any<UserContactLinkedIntegrationEvent>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public void Validator_EmptyIds_Fails()
     {
         var validator = new LinkUserContactValidator();

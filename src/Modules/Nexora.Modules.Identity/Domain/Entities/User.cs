@@ -104,6 +104,9 @@ public sealed class User : AuditableEntity<UserId>, IAggregateRoot
         if (IsSystemAccount)
             throw new DomainException("lockey_identity_user_link_contact_system_account_rejected");
 
+        if (ContactId is not null && ContactId.Value != contactId)
+            throw new DomainException("lockey_identity_user_link_contact_already_linked_to_different_contact");
+
         if (ContactId is not null)
             throw new DomainException("lockey_identity_user_link_contact_already_linked");
 

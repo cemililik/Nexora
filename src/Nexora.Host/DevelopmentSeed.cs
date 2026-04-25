@@ -462,6 +462,9 @@ public static class DevelopmentSeed
             "ALTER TABLE identity_organizations ADD COLUMN IF NOT EXISTS \"DefaultLocale\" varchar(20) NOT NULL DEFAULT 'en-US'",
             // User.ContactId — optional link to a Contacts module contact record for 360° view
             "ALTER TABLE identity_users ADD COLUMN IF NOT EXISTS \"ContactId\" uuid NULL",
+            // Partial unique index: a contact may be linked to at most one user per tenant.
+            // NULL rows excluded — unlinked users must not collide with each other.
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_identity_users_contact_id_unique ON identity_users (\"ContactId\") WHERE \"ContactId\" IS NOT NULL",
             // TenantModule.DeletedTableNames — CSV of renamed tables captured at uninstall time, used by reinstall path
             "ALTER TABLE identity_tenant_modules ADD COLUMN IF NOT EXISTS \"DeletedTableNames\" text NULL",
 

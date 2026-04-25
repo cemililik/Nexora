@@ -367,6 +367,7 @@
   "lockey_identity_user_link_contact_failed": "Kullanıcı kişiye bağlanamadı.",
   "lockey_identity_user_link_contact_unlink_success": "Kişi bağlantısı kaldırıldı.",
   "lockey_identity_user_link_contact_already_linked": "Bu kullanıcı zaten bir kişiye bağlı.",
+  "lockey_identity_user_link_contact_contact_already_in_use": "Bu kişi zaten başka bir kullanıcıya bağlı.",
   "lockey_identity_user_link_contact_system_account_rejected": "Sistem hesapları kişilere bağlanamaz.",
   "lockey_identity_user_link_contact_user_not_found": "Kullanıcı bulunamadı.",
   "lockey_identity_user_link_contact_contact_id_required": "Kişi kimliği zorunludur.",
