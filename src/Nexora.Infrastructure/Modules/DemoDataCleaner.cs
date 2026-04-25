@@ -56,11 +56,18 @@ public sealed class DemoDataCleaner(
         // clean passes.
         var ordered = DemoDataSeeder.OrderByDependencies(allModules);
         ordered.Reverse();
+        // Filter to modules actually installed for the tenant — same
+        // semantics as the seeder's FilterInstalledAsync. Without this,
+        // Cleaning would invoke CleanDemoDataAsync on every DI-registered
+        // module regardless of per-tenant install state, producing
+        // spurious Failed outcomes for modules whose tables were never
+        // provisioned for this tenant.
+        var filtered = await FilterInstalledAsync(ordered, tenantGuid, ct);
 
         var existingMarkers = await LoadExistingMarkersAsync(tenantGuid, scenario, ct);
-        var outcomes = new List<DemoCleanModuleOutcome>(ordered.Count);
+        var outcomes = new List<DemoCleanModuleOutcome>(filtered.Count);
 
-        foreach (var module in ordered)
+        foreach (var module in filtered)
         {
             ct.ThrowIfCancellationRequested();
             outcomes.Add(await CleanModuleAsync(module, tenantGuid, scenario, existingMarkers, ct));
@@ -316,6 +323,46 @@ public sealed class DemoDataCleaner(
             tenantId,
             SchemaDropped: true,
             ErrorMessage: $"Schema dropped; event publish failed: {ex.Message}");
+    }
+
+    /// <summary>
+    /// Mirror of <see cref="DemoDataSeeder.FilterInstalledAsync"/> — returns
+    /// the subset of <paramref name="ordered"/> that is installed for the
+    /// tenant via <see cref="IModuleAvailability"/>. Falls back to the full
+    /// list when no implementation is registered (Phase 1.5 default), so
+    /// the cleaner has the same semantics as the seeder when there is no
+    /// per-tenant install pipeline.
+    /// </summary>
+    private async Task<List<IModule>> FilterInstalledAsync(
+        IList<IModule> ordered, Guid tenantGuid, CancellationToken ct)
+    {
+        // Probe for IModuleAvailability without opening an async scope
+        // first — common Phase 1.5 path is "no implementation registered"
+        // and there is no point materialising tenant context just to
+        // discover that.
+        using (var probeScope = scopeFactory.CreateScope())
+        {
+            if (probeScope.ServiceProvider.GetService<IModuleAvailability>() is null)
+            {
+                return ordered.ToList();
+            }
+        }
+
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<ITenantContextAccessor>();
+        accessor.SetTenant(tenantGuid.ToString());
+        var availability = scope.ServiceProvider.GetRequiredService<IModuleAvailability>();
+
+        var installed = (await availability.GetInstalledModulesAsync(ct))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var skipped = ordered.Where(m => !installed.Contains(m.Name)).ToList();
+        if (skipped.Count > 0)
+        {
+            logger.LogDebug(
+                "Demo-clean: skipping {Count} not-installed modules for tenant {TenantId}: {Modules}",
+                skipped.Count, tenantGuid, string.Join(", ", skipped.Select(m => m.Name)));
+        }
+        return ordered.Where(m => installed.Contains(m.Name)).ToList();
     }
 
     private async Task<IDictionary<string, DemoSeedMarker>> LoadExistingMarkersAsync(

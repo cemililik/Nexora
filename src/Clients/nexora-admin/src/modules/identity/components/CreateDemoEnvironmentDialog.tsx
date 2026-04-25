@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -65,7 +65,23 @@ export function CreateDemoEnvironmentDialog({
 
   const mutation = useCreateDemoEnvironment();
 
+  // AbortController kept in a ref so closing the dialog mid-submit aborts
+  // the in-flight request → axios rejects → mutation goes to error state
+  // → onSuccess never fires → setResult cannot leak stale data into a
+  // dialog the user has already dismissed and may re-open. The controller
+  // is recreated per submit so a previous abort does not poison the next
+  // one. Note: a fully-form-driven implementation (React Hook Form + Zod
+  // per project standard) would offer the same guarantee + validation —
+  // intentionally not adopted here because the dialog has a single
+  // controlled field (scenario dropdown) and no field-level error surface,
+  // so the RHF/Zod ceremony would outweigh the value. Re-evaluate when
+  // T-007a turns the dropdown into a server-fetched list with per-row
+  // validation requirements.
+  const abortRef = useRef<AbortController | null>(null);
+
   const reset = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setScenario('general');
     setResult(null);
     mutation.reset();
@@ -78,10 +94,17 @@ export function CreateDemoEnvironmentDialog({
     // dropdown ever becomes registry-driven (T-007a), widen the type to
     // `DemoScenario | ''` and reinstate the guard alongside the first
     // Select.Empty item.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     mutation.mutate(
-      { tenantId, scenario },
+      { tenantId, scenario, signal: controller.signal },
       {
         onSuccess: (data) => {
+          // Guard: if the user closed the dialog while the request was
+          // in flight, controller.signal.aborted is true and we must
+          // not push stale state.
+          if (controller.signal.aborted) return;
           setResult(data);
         },
       },

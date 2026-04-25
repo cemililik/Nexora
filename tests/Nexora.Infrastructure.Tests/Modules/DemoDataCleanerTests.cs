@@ -181,7 +181,7 @@ public sealed class DemoDataCleanerTests
     }
 
     [Fact]
-    public async Task CleanAsync_Idempotent_SecondRunReportsNothingToClean()
+    public async Task CleanAsync_Idempotent_SecondRunReportsCleaned()
     {
         var module = new FakeModule("contacts", Array.Empty<string>(), new List<string>(), new List<string>());
         var (seeder, cleaner) = BuildPair(module);

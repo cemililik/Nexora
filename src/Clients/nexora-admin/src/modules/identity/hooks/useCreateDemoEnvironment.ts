@@ -26,6 +26,13 @@ export interface DemoSeedRunResult {
 interface CreateDemoEnvironmentPayload {
   tenantId: string;
   scenario: string;
+  /**
+   * Optional cancellation signal — wired through to the underlying axios
+   * request. Lets the caller (e.g. a dialog) abort an in-flight mutation
+   * on close so a delayed onSuccess does not paint stale state into a
+   * dialog that has already been dismissed and re-opened.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -54,10 +61,11 @@ export function useCreateDemoEnvironment() {
   const { handleApiError } = useApiError();
 
   return useMutation<DemoSeedRunResult, Error, CreateDemoEnvironmentPayload>({
-    mutationFn: async ({ tenantId, scenario }) => {
+    mutationFn: async ({ tenantId, scenario, signal }) => {
       const result = await api.post<DemoSeedRunResult>(
         '/identity/tenants/demo',
         { tenantId, scenario },
+        signal ? { signal } : undefined,
       );
       return result;
     },

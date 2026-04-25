@@ -182,7 +182,7 @@ own footprint.
 nexora demo:clean --tenant=<guid> --scenario=<name> [--dry-run] [--verbose]
 
 # Destructive full-tenant drop (requires explicit --yes confirmation):
-nexora demo:clean --tenant=<guid> --drop-tenant --yes [--verbose]
+nexora demo:clean --tenant=<guid> --drop-tenant --yes [--dry-run] [--verbose]
 ```
 
 | Flag | Required | Accepts | Description |
