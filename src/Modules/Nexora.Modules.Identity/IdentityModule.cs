@@ -104,6 +104,12 @@ public sealed class IdentityModule : IModule
     /// <inheritdoc />
     public void ConfigureJobs(IJobScheduler scheduler)
     {
+        // T-025: drops module tables that aged past the uninstall retention
+        // window (default 30 days, ADR-0028). Outer cron fires platform-wide
+        // at 03:00 UTC; inside it fans per-tenant child runs out with
+        // deterministic 0–119 minute jitter so DROP TABLEs don't all hit
+        // Postgres WAL writers at the same instant.
+        Infrastructure.Jobs.PurgeUninstalledModulesJob.RegisterRecurringSchedule(scheduler);
     }
 
     /// <inheritdoc />

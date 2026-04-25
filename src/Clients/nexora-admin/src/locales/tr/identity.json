@@ -160,6 +160,8 @@
   "lockey_identity_error_module_uninstall_lock_busy": "Bu kiracı için başka bir kaldırma işlemi sürüyor. Lütfen kısa süre sonra tekrar deneyin.",
   "lockey_identity_error_module_uninstall_db_failure": "Veritabanı hatası kaldırma işlemini kesti. Tamamlanan modüllerin yeniden adlandırılan _del_ tabloları yerinde kalır — saklama süresi içinde yeniden kurarak geri alınabilir.",
   "lockey_identity_error_module_uninstall_invalid_state": "Modül kaldırma isteğini reddetti. Temel neden için sunucu günlüklerine bakın.",
+  "lockey_identity_module_purge_partial": "Bu temizleme döngüsünde bazı yeniden adlandırılmış tablolar düşürülemedi ve yeniden deneme için tutuldu; sorunlu tablo adları için iş günlüklerine bakın.",
+  "lockey_identity_module_purge_hard_delete_failed": "Tüm tablolar düşürüldü ancak TenantModule satırı kalıcı olarak silinemedi. Satır bir sonraki temizleme döngüsü için yerinde kalır.",
   "lockey_identity_error_module_already_active": "Modül zaten aktif.",
   "lockey_identity_error_module_already_inactive": "Modül zaten devre dışı.",
   "lockey_identity_error_module_migration_failed": "Modül migrasyon kontrolü başarısız.",

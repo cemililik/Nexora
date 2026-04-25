@@ -14,8 +14,8 @@ Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
 | T-011 — MigrationRunner.MigrateAllModulesAsync | In Review (commit pending squash to PR) |
 | T-012 — AdditiveOnlyMigrationTest | In Review (commit `c786961`) |
 | T-029 — DemoScenario registry + Contacts seed | In Review |
-| T-026 — Cascade guard in UninstallModuleCommand | **In Review** (this commit) |
-| T-025 — `platform:purge-uninstalled-modules` Hangfire job | Pending |
+| T-026 — Cascade guard in UninstallModuleCommand | In Review |
+| T-025 — `platform:purge-uninstalled-modules` Hangfire job | **In Review** (this commit) |
 | T-027 — GDPR erasure escape hatch for renamed uninstall tables | Pending |
 
 ## Prior active task

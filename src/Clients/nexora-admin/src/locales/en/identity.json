@@ -160,6 +160,8 @@
   "lockey_identity_error_module_uninstall_lock_busy": "Another uninstall is already in progress for this tenant. Try again shortly.",
   "lockey_identity_error_module_uninstall_db_failure": "A database error interrupted the uninstall. Renamed _del_ tables for already-completed modules remain — reinstall within retention to recover.",
   "lockey_identity_error_module_uninstall_invalid_state": "The module rejected the uninstall request. See server logs for the underlying cause.",
+  "lockey_identity_module_purge_partial": "Some renamed tables could not be dropped this purge cycle and are kept for retry; check job logs for the offending table names.",
+  "lockey_identity_module_purge_hard_delete_failed": "All tables dropped but the TenantModule row could not be hard-deleted. The row stays in place for the next purge cycle.",
   "lockey_identity_error_module_already_active": "Module is already active.",
   "lockey_identity_error_module_already_inactive": "Module is already inactive.",
   "lockey_identity_error_module_migration_failed": "Module migration check failed.",

@@ -117,8 +117,20 @@ For data issues (bad backfill), write a targeted data migration in the next rele
 - CLAUDE.md §Database - additive-only rule
 - CLAUDE.md §Infrastructure Standards §Cache - DaprCacheService tenant prefix
 
+## 8.A Uninstall purge
+
+Module uninstall renames tables to `{module}_{table}_del_{timestamp}` rather than dropping them ([ADR-0028](../decisions/0028-module-uninstall-data-retention-contract.md)). The `platform:purge-uninstalled-modules` Hangfire job (T-025) is what eventually expunges those tables once they age past the retention window.
+
+- **Schedule.** One platform-level recurring registration at `0 3 * * *` UTC. The outer run enumerates tenants with eligible `TenantModule` rows and fans per-tenant child runs out via `BackgroundJob.Schedule` with a stable jitter offset of 0–119 minutes (`MD5(tenantId) & 0x7FFFFFFF % 120`). Different tenants land in different minute slices so concurrent `DROP TABLE` statements don't thundering-herd Postgres WAL writers.
+- **Retention.** Default 30 days; per-tenant override via `IConfigurationResolver.GetAsync<int?>("modules.uninstall.retention_days")` subject to the platform compliance cap (ADR-0029).
+- **Per-row body.** Parses `TenantModule.DeletedTableNames` (CSV) via `ParseDeletedTableNames`, validates each entry against `^[a-z][a-z0-9_]*_del_(?:[0-9]{14}|[0-9]{8}_[0-9]{6})$` (the regex accepts both timestamp shapes T-026 may emit), drops surviving entries one at a time under their own try/catch, reserializes the failed list, and hard-deletes the `TenantModule` row only when nothing is left to retry.
+- **Observability.** Counter `nexora_module_uninstall_purged_total{module}` + histogram `nexora_module_uninstall_purge_duration_seconds`. One audit entry per row (`Module=Identity`, `Operation=module.uninstall.purge`, `OperationType=Delete`, `UserEmail=system:platform-purge`) with structured `Metadata` carrying the dropped/failed lists; success is `failed.Count == 0 && rowHardDeleted` per the AC.
+- **Tuning.** Lower the retention via the per-tenant config override (cap-bounded). Force a rerun by triggering the recurring job from the Hangfire dashboard.
+
 ## 9. Task references
 
 - T-011 (Phase 2 Milestone A) - `MigrationRunner.MigrateAllModulesAsync` implementation
 - T-012 (Phase 2 Milestone A) - Architecture test `AdditiveOnlyMigrationTest`
 - T-013 (Phase 2 Milestone B) - `platform:audit-migration-drift` Hangfire job
+- T-025 (Phase 2 Milestone A) - `platform:purge-uninstalled-modules` Hangfire job (this §8.A)
+- T-026 (Phase 2 Milestone A) - cascade-uninstall orchestrator (ADR-0031)
