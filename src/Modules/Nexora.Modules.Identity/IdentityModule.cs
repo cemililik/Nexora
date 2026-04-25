@@ -98,6 +98,7 @@ public sealed class IdentityModule : IModule
         endpoints.MapRoleEndpoints();
         endpoints.MapAuditEndpoints();
         endpoints.MapModuleEndpoints();
+        endpoints.MapDemoScenarioEndpoints();
     }
 
     /// <inheritdoc />

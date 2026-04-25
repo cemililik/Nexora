@@ -6,6 +6,20 @@
 
 ## Active task
 
+**Phase 2 Milestone A batch — autonomous execution in progress** (started 2026-04-24).
+Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
+
+| Task | Status |
+|------|--------|
+| T-011 — MigrationRunner.MigrateAllModulesAsync | In Review (commit pending squash to PR) |
+| T-012 — AdditiveOnlyMigrationTest | In Review (commit `c786961`) |
+| T-029 — DemoScenario registry + Contacts seed | **In Review** (this commit) |
+| T-026 — Cascade guard in UninstallModuleCommand | Pending |
+| T-025 — `platform:purge-uninstalled-modules` Hangfire job | Pending |
+| T-027 — GDPR erasure escape hatch for renamed uninstall tables | Pending |
+
+## Prior active task
+
 _None._
 
 ## Recently closed (Phase 1.5 batch — merged to `main` 2026-04-24)

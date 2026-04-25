@@ -154,6 +154,11 @@ public static class InfrastructureServiceRegistration
         // verb / admin UI both create a scope before resolving, so per-call
         // scoping is the right default.
         services.AddScoped<IDemoDataCleaner, Modules.DemoDataCleaner>();
+        // T-029: scenario catalogue. Singleton — scenarios are immutable
+        // records frozen at construction; per-tenant filtering takes a
+        // fresh DI scope inside the registry, so the singleton itself
+        // holds no per-tenant state.
+        services.AddSingleton<IDemoScenarioRegistry, Modules.InMemoryDemoScenarioRegistry>();
 
         // T-011: platform-level migration orchestrator + the public-schema
         // failure-log DbContext it writes through. Singleton matches the

@@ -338,7 +338,7 @@ public sealed class DemoDataSeeder(
     /// typeof(IModule)</c>; an overriding implementation declares it as the
     /// concrete module type.
     /// </summary>
-    internal static bool IsDefaultNoOp(IModule module)
+    public static bool IsDefaultNoOp(IModule module)
     {
         var concrete = module.GetType();
         // Find the interface map for IModule on the concrete type.

@@ -18,22 +18,25 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { FormField } from '@/shared/components/data/FormField';
+import { EmptyState } from '@/shared/components/feedback/EmptyState';
+import { LoadingSkeleton } from '@/shared/components/feedback/LoadingSkeleton';
 import { cn } from '@/shared/lib/utils';
 import {
   useCreateDemoEnvironment,
   type DemoSeedModuleOutcome,
   type DemoSeedRunResult,
 } from '../hooks/useCreateDemoEnvironment';
+import { useDemoScenarios } from '../hooks/useDemoScenarios';
 
 /**
- * Supported demo-scenario identifiers. Kept as a typed union so TypeScript
- * catches drift when a backend scenario is added but the frontend dropdown
- * is not updated. When T-007a ships the `IDemoScenarioRegistry`, replace
- * this with a fetched list + derived-enum pattern.
+ * Backend scenario identifier — string-typed because T-029 turned the
+ * dropdown registry-driven (server returns the catalogue via
+ * `GET /identity/demo/scenarios`). The hardcoded union previously here
+ * is removed; new scenarios that ship from a future module's
+ * `IDemoScenarioContribution` show up automatically without a frontend
+ * change.
  */
-export type DemoScenario = 'general' | 'ngo';
-
-const DEMO_SCENARIOS: readonly DemoScenario[] = ['general', 'ngo'] as const;
+export type DemoScenario = string;
 
 export interface CreateDemoEnvironmentDialogProps {
   tenantId: string;
@@ -45,10 +48,12 @@ export interface CreateDemoEnvironmentDialogProps {
  * T-008 admin UI: platform-operator dialog that seeds demo data into an
  * existing tenant. Permission guard (`platform.tenants.create_demo`) is
  * enforced on the backend; the caller is responsible for hiding the trigger
- * button if the user lacks the permission. Scenario list is the hardcoded
- * {@link DemoScenario} union (`general`, `ngo`); when T-007a extends the
- * catalogue, wire the dropdown to `IDemoScenarioRegistry` and remove the
- * static union here.
+ * button if the user lacks the permission.
+ *
+ * Scenario catalogue is registry-driven via `useDemoScenarios()` (T-029) —
+ * `GET /identity/demo/scenarios` returns the scenarios whose
+ * `RequiredModules` are all installed for the current tenant. Empty
+ * catalogue is a legitimate state and renders `<EmptyState>`.
  *
  * On successful submit, the dialog switches to a per-module outcome view so
  * the operator can see which modules seeded, which were already seeded, and
@@ -60,7 +65,8 @@ export function CreateDemoEnvironmentDialog({
   onOpenChange,
 }: CreateDemoEnvironmentDialogProps) {
   const { t } = useTranslation('identity');
-  const [scenario, setScenario] = useState<DemoScenario>('general');
+  const scenariosQuery = useDemoScenarios();
+  const [scenario, setScenario] = useState<DemoScenario>('');
   const [result, setResult] = useState<DemoSeedRunResult | null>(null);
 
   const mutation = useCreateDemoEnvironment();
@@ -82,18 +88,15 @@ export function CreateDemoEnvironmentDialog({
   const reset = () => {
     abortRef.current?.abort();
     abortRef.current = null;
-    setScenario('general');
+    setScenario('');
     setResult(null);
     mutation.reset();
   };
 
   const handleSubmit = () => {
-    // `scenario` is typed as DemoScenario (non-nullable union) with a
-    // hardcoded default of 'general' and `setScenario` only accepts the
-    // same union, so a falsy check is dead. Submit unconditionally — if the
-    // dropdown ever becomes registry-driven (T-007a), widen the type to
-    // `DemoScenario | ''` and reinstate the guard alongside the first
-    // Select.Empty item.
+    // Scenario is now empty until the user picks one from the
+    // server-fetched list (T-029) — guard the empty case.
+    if (!scenario) return;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -146,10 +149,19 @@ export function CreateDemoEnvironmentDialog({
     return cn(statusToClass[status]);
   };
 
-  const scenarioLabel: Record<DemoScenario, string> = {
-    general: t('lockey_identity_tenants_demo_scenario_general'),
-    ngo: t('lockey_identity_tenants_demo_scenario_ngo'),
+  // Per-scenario label resolution: the server returns the scenario
+  // name (kebab-case identifier) + a description lockey. We compose the
+  // display string from a name-specific lockey when one exists in the
+  // bundle and the description below it. New scenarios from future
+  // module contributions just need their name + description lockeys
+  // added to the bundle — no code change here.
+  const scenarioLabel = (name: string): string => {
+    const nameKey = `lockey_identity_tenants_demo_scenario_${name}`;
+    return t(nameKey, { defaultValue: name });
   };
+
+  const scenarios = scenariosQuery.data ?? [];
+  const isLoadingScenarios = scenariosQuery.isLoading;
 
   return (
     <Dialog
@@ -168,6 +180,14 @@ export function CreateDemoEnvironmentDialog({
         </DialogHeader>
 
         {result === null ? (
+          isLoadingScenarios ? (
+            <LoadingSkeleton lines={2} />
+          ) : scenarios.length === 0 ? (
+            <EmptyState
+              title={t('lockey_identity_tenants_demo_no_scenarios_title')}
+              description={t('lockey_identity_tenants_demo_no_scenarios_description')}
+            />
+          ) : (
           <FormField
             label={t('lockey_identity_tenants_demo_scenario_label')}
             required
@@ -176,21 +196,22 @@ export function CreateDemoEnvironmentDialog({
             <Select
               value={scenario}
               onValueChange={(next) => {
-                setScenario(next as DemoScenario);
+                setScenario(next);
               }}
             >
               <SelectTrigger id="demo-scenario-select">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {DEMO_SCENARIOS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {scenarioLabel[s]}
+                {scenarios.map((s) => (
+                  <SelectItem key={s.name} value={s.name}>
+                    {scenarioLabel(s.name)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </FormField>
+          )
         ) : (
           <ul
             className="space-y-1 max-h-60 overflow-y-auto"
@@ -220,7 +241,7 @@ export function CreateDemoEnvironmentDialog({
           >
             {t('lockey_identity_tenants_demo_cancel')}
           </Button>
-          {result === null ? (
+          {result === null && scenarios.length > 0 ? (
             <Button onClick={handleSubmit} disabled={mutation.isPending || !scenario}>
               {t('lockey_identity_tenants_demo_submit')}
             </Button>
