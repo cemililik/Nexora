@@ -55,7 +55,7 @@ public sealed class UninstallModuleValidator : AbstractValidator<UninstallModule
 ///   <item><description>On per-module failure: rolling back THAT module only,
 ///   emitting <see cref="ModuleUninstallFailedIntegrationEvent"/> with the
 ///   forward log of already-committed modules, throwing
-///   <see cref="CascadePartialFailure"/>. Earlier successful modules are NOT
+///   <c>Result.Failure</c> with a metadata-bound lockey. Earlier successful modules are NOT
 ///   auto-undone — operators reinstall within retention to recover.</description></item>
 /// </list>
 /// </summary>
@@ -111,9 +111,11 @@ public sealed class UninstallModuleHandler(
                 request.TenantId, request.ModuleName, dependentNames);
             return Result.Failure(LocalizedMessage.Of(
                 "lockey_identity_error_module_uninstall_blocked_by_dependent",
+                // Placeholder names follow the camelCase convention used by
+                // every other lockey in identity.json (review #07).
                 new Dictionary<string, string>
                 {
-                    ["Dependents"] = dependentNames,
+                    ["dependents"] = dependentNames,
                 }));
         }
 
@@ -147,26 +149,37 @@ public sealed class UninstallModuleHandler(
                 await UninstallSingleModuleAsync(tenantId, module, cancellationToken);
                 successes.Add(module.Name);
             }
-            // Narrow exception families per CLAUDE.md "Never catch(Exception)
-            // in module code" — the same envelope MigrationRunner uses.
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                // Cancellation IS an unexpected unwind — let it bubble.
+                // The lock handle's `await using` releases the advisory
+                // lock so a retry isn't blocked.
                 throw;
             }
-            catch (Npgsql.NpgsqlException ex)
-            {
-                await EmitCascadeFailureAsync(request, module.Name, "lockey_identity_error_module_uninstall_db_failure", successes, cancellationToken);
-                throw new CascadePartialFailure(module.Name, "lockey_identity_error_module_uninstall_db_failure", successes, ex);
-            }
+            // Two narrow catches → one unified Result.Failure path. The
+            // per-module exception families that bubble up here are
+            // expected operational failures (renamed-table conflict, FK
+            // dependency, transient connection blip, model misuse). Per
+            // CLAUDE.md "expected failures use Result, unexpected use
+            // exceptions" + the standing handler contract that returns
+            // Result instead of throwing CascadePartialFailure (review
+            // #00 / #46 / #27). Earlier modules in the forward log
+            // remain uninstalled per ADR-0031 — the rename-to-_del_
+            // is the compensation primitive; the failure event makes
+            // the partial state observable to the operator.
             catch (System.Data.Common.DbException ex)
             {
-                await EmitCascadeFailureAsync(request, module.Name, "lockey_identity_error_module_uninstall_db_failure", successes, cancellationToken);
-                throw new CascadePartialFailure(module.Name, "lockey_identity_error_module_uninstall_db_failure", successes, ex);
+                return await EmitCascadeFailureResultAsync(
+                    request, module.Name,
+                    "lockey_identity_error_module_uninstall_db_failure",
+                    successes, ex, cancellationToken);
             }
             catch (InvalidOperationException ex)
             {
-                await EmitCascadeFailureAsync(request, module.Name, "lockey_identity_error_module_uninstall_invalid_state", successes, cancellationToken);
-                throw new CascadePartialFailure(module.Name, "lockey_identity_error_module_uninstall_invalid_state", successes, ex);
+                return await EmitCascadeFailureResultAsync(
+                    request, module.Name,
+                    "lockey_identity_error_module_uninstall_invalid_state",
+                    successes, ex, cancellationToken);
             }
         }
 
@@ -175,6 +188,32 @@ public sealed class UninstallModuleHandler(
             request.TenantId, request.ModuleName, string.Join(", ", successes));
 
         return Result.Success(LocalizedMessage.Of("lockey_identity_module_uninstalled"));
+    }
+
+    private async Task<Result> EmitCascadeFailureResultAsync(
+        UninstallModuleCommand request,
+        string failedModuleName,
+        string errorLockey,
+        IReadOnlyList<string> successes,
+        Exception cause,
+        CancellationToken cancellationToken)
+    {
+        await EmitCascadeFailureAsync(request, failedModuleName, errorLockey, successes, cancellationToken);
+        // Lockey carries the failed module name + the forward log so the
+        // admin UI can render "uninstall partially completed: X, Y were
+        // removed; Z failed" without inspecting an exception payload.
+        var meta = new Dictionary<string, string>
+        {
+            ["failedModule"] = failedModuleName,
+            ["successfulModules"] = string.Join(", ", successes),
+            ["targetModule"] = request.ModuleName,
+        };
+        // Log the underlying cause at Error so operators see the stack
+        // trace; the Result carries only the lockey + bound metadata.
+        logger.LogError(cause,
+            "Cascade uninstall failure surfaced as Result.Failure for tenant {TenantId} target {Target} at module {Failed}",
+            request.TenantId, request.ModuleName, failedModuleName);
+        return Result.Failure(LocalizedMessage.Of(errorLockey, meta));
     }
 
     /// <summary>
@@ -247,7 +286,7 @@ public sealed class UninstallModuleHandler(
             TenantIdGuid = tenantId.Value,
             CanonicalTableNames = canonicalNames,
             RenamedTableNames = renamedNames,
-            UninstalledAtUtc = DateTimeOffset.UtcNow,
+            // OccurredAt comes from IntegrationEventBase.
         }, ct);
 
         await platformDb.SaveChangesAsync(ct);
@@ -270,16 +309,16 @@ public sealed class UninstallModuleHandler(
             FailedModuleName = failedModuleName,
             ErrorLockey = errorLockey,
             SuccessfulModulesSoFar = successesSoFar.ToList(),
-            FailedAtUtc = DateTimeOffset.UtcNow,
+            // OccurredAt comes from IntegrationEventBase.
         }, ct);
 
-        // SaveChanges before the caller throws CascadePartialFailure;
-        // otherwise the staged failure-event row never reaches the
-        // outbox table and downstream consumers (admin UI, audit) lose
-        // the partial-state signal. The failing module's per-module
-        // transaction has already rolled back, so this SaveChanges only
-        // persists the OutboxMessage row — no domain mutation rides
-        // along on the failing branch.
+        // SaveChanges before the caller returns Result.Failure; otherwise
+        // the staged failure-event row never reaches the outbox table and
+        // downstream consumers (admin UI, audit) lose the partial-state
+        // signal. The failing module's per-module transaction has already
+        // rolled back, so this SaveChanges only persists the
+        // OutboxMessage row — no domain mutation rides along on the
+        // failing branch.
         await platformDb.SaveChangesAsync(ct);
 
         logger.LogError(
@@ -297,11 +336,17 @@ public sealed class UninstallModuleHandler(
         Guid tenantId, string moduleName, CancellationToken ct)
     {
         var registeredNames = registeredModules.Select(m => m.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!registeredNames.Contains(moduleName) && !Regex.IsMatch(moduleName, "^[a-z][a-z0-9_]*$"))
+        if (!registeredNames.Contains(moduleName) && !ModuleNameRegex.IsMatch(moduleName))
         {
             logger.LogWarning("Invalid module name rejected: {ModuleName}", moduleName);
             return ([], []);
         }
+
+        // EF InMemory: schema rename is meaningless. Skip cleanly so tests
+        // exercise the rest of the path. Production ALWAYS lands in the
+        // relational branch.
+        if (!platformDb.Database.IsRelational())
+            return ([], []);
 
         var schemaName = $"tenant_{tenantId}"; // canonical D-format, see comment in UninstallSingleModuleAsync
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
@@ -309,18 +354,28 @@ public sealed class UninstallModuleHandler(
         var canonical = new List<string>();
         var renamed = new List<string>();
 
+        // EF owns the DbContext's connection — borrow it WITHOUT
+        // `await using`. Disposing the borrowed connection (or closing it
+        // if EF had it open) returns it to the pool prematurely and
+        // poisons the next EF call on the same DbContext (review #49).
+        var connection = platformDb.Database.GetDbConnection();
+        var openedHere = connection.State != System.Data.ConnectionState.Open;
+        if (openedHere) await connection.OpenAsync(ct);
+
         try
         {
-            await using var connection = platformDb.Database.GetDbConnection();
-            await connection.OpenAsync(ct);
-
             var tableNames = new List<string>();
             await using (var cmd = connection.CreateCommand())
             {
+                // ESCAPE on BOTH LIKE clauses — the canonical-prefix LIKE
+                // also needs the literal `_` escape (review: T-026 medium
+                // finding); without it `auth_%` would match `authX`,
+                // `auth_X`, etc., and modules whose names share a prefix
+                // could cross-bleed.
                 cmd.CommandText = @"
                     SELECT table_name FROM information_schema.tables
                     WHERE table_schema = @schemaName
-                    AND table_name LIKE @prefix
+                    AND table_name LIKE @prefix ESCAPE '\'
                     AND table_name NOT LIKE '%\_del\_%' ESCAPE '\'
                     ORDER BY table_name";
 
@@ -352,17 +407,26 @@ public sealed class UninstallModuleHandler(
                 renamed.Add(newName);
             }
         }
-        catch (Npgsql.NpgsqlException ex)
+        // No NpgsqlException catch here: a rename failure means the
+        // tenant schema is in a state we did not expect (locked table,
+        // permissions error, network blip). Swallowing it would leave
+        // the canonical tables in place AND the TenantModule row
+        // soft-deleted, advertising "uninstall succeeded" while the
+        // operator sees no _del_ rename in the database. Letting the
+        // exception bubble is correct: the cascade orchestrator catches
+        // DbException at the per-module loop boundary, emits
+        // ModuleUninstallFailedIntegrationEvent, and the row stays
+        // installed for retry.
+        finally
         {
-            logger.LogError(ex, "Failed to rename tables for module {ModuleName} in tenant {TenantId}",
-                moduleName, tenantId);
-            // Don't fail the uninstall — tables may not exist or be already renamed
-        }
-        catch (InvalidOperationException)
-        {
-            // InMemory/non-relational provider — skip table rename (only works with PostgreSQL)
+            // Mirror the borrow: only close if we opened. Disposing is
+            // never our right to do — EF owns the connection lifetime.
+            if (openedHere) await connection.CloseAsync();
         }
 
         return (canonical, renamed);
     }
+
+    private static readonly Regex ModuleNameRegex = new(
+        "^[a-z][a-z0-9_]*$", RegexOptions.Compiled);
 }

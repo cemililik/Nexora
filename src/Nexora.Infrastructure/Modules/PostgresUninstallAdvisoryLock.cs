@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using Nexora.SharedKernel.Abstractions.Modules;
@@ -19,8 +20,21 @@ public sealed class PostgresUninstallAdvisoryLock(
     // rather surface a "try again shortly" error than block the request.
     private const int AdvisoryLockTimeoutSeconds = 5;
 
+    /// <summary>
+    /// OpenTelemetry span for the advisory-lock acquisition path.
+    /// External-call observability per OBSERVABILITY_STANDARDS — operators
+    /// triaging "cascade lock starvation" can pull this from Tempo
+    /// without adding ad-hoc logging (review #24).
+    /// </summary>
+    private static readonly ActivitySource ActivitySource =
+        new("Nexora.Infrastructure.Modules.UninstallAdvisoryLock", "1.0");
+
     public async Task<IAsyncDisposable?> AcquireAsync(Guid tenantId, CancellationToken ct)
     {
+        using var activity = ActivitySource.StartActivity(
+            "uninstall.advisory_lock.acquire", ActivityKind.Client);
+        activity?.SetTag("nexora.tenant_id", tenantId);
+
         var lockKey = ComputeLockKey(tenantId);
         var conn = new NpgsqlConnection(connectionString);
         try
@@ -34,13 +48,20 @@ public sealed class PostgresUninstallAdvisoryLock(
                 var acquired = await cmd.ExecuteScalarAsync(ct);
                 if (acquired is true)
                 {
-                    var handle = new Handle(conn, lockKey, logger);
+                    activity?.SetTag("nexora.lock.attempt", attempt + 1);
+                    activity?.SetStatus(ActivityStatusCode.Ok);
+                    var handle = new Handle(conn, lockKey, tenantId, logger);
                     conn = null!; // ownership transferred — outer finally must NOT dispose.
                     return handle;
                 }
-                await Task.Delay(TimeSpan.FromSeconds(1), ct);
+                // Skip the delay after the LAST attempt — falling through
+                // to the timeout warning + return null is the right path,
+                // an extra second of waiting buys nothing (review #25 / #62).
+                if (attempt < AdvisoryLockTimeoutSeconds - 1)
+                    await Task.Delay(TimeSpan.FromSeconds(1), ct);
             }
 
+            activity?.SetStatus(ActivityStatusCode.Error, "lock-busy");
             logger.LogWarning(
                 "Cascade uninstall: could not acquire advisory lock for tenant {TenantId} within {Timeout}s.",
                 tenantId, AdvisoryLockTimeoutSeconds);
@@ -73,7 +94,7 @@ public sealed class PostgresUninstallAdvisoryLock(
     }
 
     private sealed class Handle(
-        NpgsqlConnection conn, long lockKey, ILogger logger) : IAsyncDisposable
+        NpgsqlConnection conn, long lockKey, Guid tenantId, ILogger logger) : IAsyncDisposable
     {
         public async ValueTask DisposeAsync()
         {
@@ -88,9 +109,11 @@ public sealed class PostgresUninstallAdvisoryLock(
             {
                 // Connection died — the lock is released automatically by
                 // session termination, so log and continue rather than
-                // letting dispose throw.
+                // letting dispose throw. Tenant id is structured so an
+                // operator can grep for the failing cascade (review #26).
                 logger.LogWarning(ex,
-                    "Cascade uninstall: advisory unlock failed; relying on session-close release.");
+                    "Cascade uninstall: advisory unlock failed for tenant {TenantId}; relying on session-close release.",
+                    tenantId);
             }
             finally
             {

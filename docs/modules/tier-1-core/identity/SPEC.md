@@ -483,8 +483,8 @@ flowchart LR
 | POST | `/api/v1/identity/tenants/{id}/suspend` | Suspend tenant | `platform.tenants.manage` |
 | POST | `/api/v1/identity/tenants/{id}/activate` | Activate tenant | `platform.tenants.manage` |
 | GET | `/api/v1/identity/tenants/{id}/modules` | List installed modules | `platform.tenants.read` |
-| POST | `/api/v1/identity/tenants/{id}/modules` | Install module | `platform.modules.manage` |
-| DELETE | `/api/v1/identity/tenants/{id}/modules/{name}?cascade={bool}` | Uninstall module (T-026: refuses with `lockey_identity_error_module_uninstall_blocked_by_dependent` when an installed module declares the target in `Dependencies` and `cascade=false`; with `cascade=true` uninstalls the dependent subtree in reverse-dependency order under per-module transactions and a session `pg_advisory_lock` per ADR-0031) | `identity.modules.uninstall` |
+| POST | `/api/v1/identity/tenants/{id}/modules` | Install module | `identity.modules.manage` |
+| DELETE | `/api/v1/identity/tenants/{id}/modules/{name}?cascade={bool}` | Uninstall module (T-026: refuses with `lockey_identity_error_module_uninstall_blocked_by_dependent` when an installed module declares the target in `Dependencies` and `cascade=false`; with `cascade=true` uninstalls the dependent subtree in reverse-dependency order under per-module transactions and a session `pg_advisory_lock` per ADR-0031) | `identity.modules.manage` |
 
 ### Organization Management
 

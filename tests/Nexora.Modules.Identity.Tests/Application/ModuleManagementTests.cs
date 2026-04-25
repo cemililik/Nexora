@@ -252,14 +252,15 @@ public sealed class ModuleManagementTests : IDisposable
     }
 
     [Fact]
-    public async Task UninstallModule_CascadeFails_EmitsForwardLogEvent_AndThrowsPartialFailure()
+    public async Task UninstallModule_CascadeFails_EmitsForwardLogEvent_AndReturnsFailureResult()
     {
         // identity ← crm; the crm step succeeds but identity's
         // OnUninstallAsync throws — cascade orchestrator must:
         //   1. Keep crm's per-module commit (forward log).
         //   2. Emit ModuleUninstallFailedIntegrationEvent with crm in
         //      SuccessfulModulesSoFar.
-        //   3. Throw CascadePartialFailure naming "identity" as failure.
+        //   3. Return Result.Failure with the failure lockey + bound
+        //      metadata (no thrown exception — review #00 / #46 / #27).
         _platformDb.TenantModules.Add(TenantModule.Create(_tenantId, "crm"));
         await _platformDb.SaveChangesAsync();
 
@@ -269,13 +270,11 @@ public sealed class ModuleManagementTests : IDisposable
         var outbox = Substitute.For<IOutbox>();
         var handler = new UninstallModuleHandler(_platformDb, _identityDb, _modules, outbox, new NoOpUninstallAdvisoryLock(), NullLogger<UninstallModuleHandler>.Instance);
 
-        var act = async () => await handler.Handle(
+        var result = await handler.Handle(
             new UninstallModuleCommand(_tenantId.Value, "identity", Cascade: true), CancellationToken.None);
 
-        var ex = await act.Should().ThrowAsync<CascadePartialFailure>();
-        ex.Which.FailedModuleName.Should().Be("identity");
-        ex.Which.SuccessfulModules.Should().Equal("crm");
-        ex.Which.ErrorLockey.Should().Be("lockey_identity_error_module_uninstall_invalid_state");
+        result.IsFailure.Should().BeTrue();
+        result.Error!.Message.Key.Should().Be("lockey_identity_error_module_uninstall_invalid_state");
 
         await outbox.Received(1).EnqueueAsync(
             Arg.Is<ModuleUninstallFailedIntegrationEvent>(e =>

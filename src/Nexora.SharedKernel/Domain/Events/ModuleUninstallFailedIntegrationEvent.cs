@@ -30,10 +30,12 @@ public sealed record ModuleUninstallFailedIntegrationEvent : IntegrationEventBas
     /// <summary>
     /// Modules whose per-module uninstall already committed before the
     /// failing step. Per ADR-0031 these are NOT auto-unwound — operators
-    /// reinstall within retention to recover.
+    /// reinstall within retention to recover. Required so producers cannot
+    /// silently emit an event with no forward log.
     /// </summary>
-    public IReadOnlyList<string> SuccessfulModulesSoFar { get; init; } = [];
+    public required IReadOnlyList<string> SuccessfulModulesSoFar { get; init; }
 
-    /// <summary>UTC timestamp at which the orchestrator gave up.</summary>
-    public DateTimeOffset FailedAtUtc { get; init; } = DateTimeOffset.UtcNow;
+    // NOTE: <c>FailedAtUtc</c> intentionally absent — see the matching
+    // note on <see cref="ModuleUninstalledIntegrationEvent"/>; consumers
+    // read <see cref="IntegrationEventBase.OccurredAt"/>.
 }

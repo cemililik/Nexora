@@ -47,13 +47,13 @@ public sealed class InMemoryDemoScenarioRegistry : IDemoScenarioRegistry
         // working until T-029's frontend swap.
         Register(byName, new DemoScenario(
             Name: "general",
-            DescriptionLockey: "lockey_demo_scenario_general_description",
+            DescriptionLockey: "lockey_identity_tenants_demo_scenario_general_description",
             RequiredModules: new[] { "contacts" },
             OptionalModules: new[] { "crm", "finance", "subscription", "projects" }));
 
         Register(byName, new DemoScenario(
             Name: "ngo",
-            DescriptionLockey: "lockey_demo_scenario_ngo_description",
+            DescriptionLockey: "lockey_identity_tenants_demo_scenario_ngo_description",
             RequiredModules: new[] { "contacts" },
             OptionalModules: new[] { "fundraising", "sponsorship", "events" }));
 

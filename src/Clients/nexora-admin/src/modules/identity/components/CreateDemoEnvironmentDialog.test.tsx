@@ -41,13 +41,13 @@ function renderWithClient(node: ReactNode) {
 const scenariosFixture = [
   {
     name: 'general',
-    descriptionLockey: 'lockey_demo_scenario_general_description',
+    descriptionLockey: 'lockey_identity_tenants_demo_scenario_general_description',
     requiredModules: ['contacts'],
     optionalModules: [],
   },
   {
     name: 'ngo',
-    descriptionLockey: 'lockey_demo_scenario_ngo_description',
+    descriptionLockey: 'lockey_identity_tenants_demo_scenario_ngo_description',
     requiredModules: ['contacts'],
     optionalModules: [],
   },

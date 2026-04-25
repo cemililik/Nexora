@@ -59,6 +59,7 @@ public sealed class PurgeUninstalledModulesJob(
     PlatformDbContext platformDb,
     IConfigurationResolver configResolver,
     IAuditStore auditStore,
+    IBackgroundJobClient backgroundJobClient,
     ILogger<PurgeUninstalledModulesJob> logger)
     : NexoraJob<PurgeUninstalledModulesParams>(tenantContextAccessor, logger)
 {
@@ -148,33 +149,48 @@ public sealed class PurgeUninstalledModulesJob(
     /// </summary>
     private async Task FanOutPerTenantAsync(CancellationToken ct)
     {
-        // Outer fan-out: tenant context is the synthetic "platform" sentinel
-        // so per-tenant config lookup is meaningless here. Use the platform
-        // default directly; per-tenant overrides apply inside the child run
-        // where the tenant context is set correctly by NexoraJob.RunAsync.
-        var retentionDays = DefaultRetentionDays;
-        var cutoffUtc = DateTimeOffset.UtcNow.AddDays(-retentionDays);
+        // Use a permissive 1-day cutoff for the fan-out so a tenant that
+        // overrode retention to a value SHORTER than the platform default
+        // (e.g. 7 days, 3 days, or 1 day) is still picked up. The child
+        // run resolves the per-tenant override and re-applies it as the
+        // authoritative cutoff before touching any rows. The earlier
+        // hardcoded 30-day cutoff here silently dropped tenants whose
+        // override was shorter than the platform default — they would
+        // never make it into the fan-out (review #01 + user finding).
+        var fanOutCutoffUtc = DateTimeOffset.UtcNow.AddDays(-MinFanOutRetentionDays);
 
         var dueTenantIds = await platformDb.TenantModules
             .IgnoreQueryFilters()
-            .Where(tm => tm.IsDeleted && tm.DeletedAt != null && tm.DeletedAt < cutoffUtc)
+            .Where(tm => tm.IsDeleted && tm.DeletedAt != null && tm.DeletedAt < fanOutCutoffUtc)
             .Select(tm => tm.TenantId)
             .Distinct()
             .ToListAsync(ct);
 
         logger.LogInformation(
-            "Purge fan-out: {Count} tenants have modules past {Retention}-day retention.",
-            dueTenantIds.Count, retentionDays);
+            "Purge fan-out: {Count} tenants candidate for purge (cutoff = {MinDays}-day; per-tenant override applied in child).",
+            dueTenantIds.Count, MinFanOutRetentionDays);
 
         foreach (var tenantId in dueTenantIds)
         {
             var offsetMinutes = ComputeJitterOffsetMinutes(tenantId.Value);
             var childParams = new PurgeUninstalledModulesParams { TenantId = tenantId.Value.ToString() };
-            BackgroundJob.Schedule<PurgeUninstalledModulesJob>(
+            backgroundJobClient.Schedule<PurgeUninstalledModulesJob>(
                 job => job.RunAsync(childParams, CancellationToken.None),
                 TimeSpan.FromMinutes(offsetMinutes));
         }
     }
+
+    /// <summary>
+    /// Hard floor for the fan-out cutoff. Anything shorter would let the
+    /// outer enumerator pick up tenants whose retention has barely
+    /// elapsed and add scheduling noise; anything longer and we'd miss
+    /// tenants who overrode retention to less than the platform default.
+    /// 1 day is the smallest meaningful retention surface and lines up
+    /// with the per-tenant validation floor in PurgeTenantAsync.
+    /// </summary>
+    private const int MinFanOutRetentionDays = 1;
+    private const int MinAllowedRetentionDays = 1;
+    private const int MaxAllowedRetentionDays = 365;
 
     /// <summary>
     /// Per-tenant body: scans this tenant's eligible <see cref="TenantModule"/>
@@ -183,13 +199,24 @@ public sealed class PurgeUninstalledModulesJob(
     /// </summary>
     private async Task PurgeTenantAsync(Guid tenantId, CancellationToken ct)
     {
-        var stopwatch = Stopwatch.StartNew();
-
         // Tenant context already set by NexoraJob.RunAsync — resolver picks
         // up the per-tenant override automatically; falls back to the
         // platform default if no override.
-        var retentionDays = await configResolver.GetAsync<int?>(
+        var rawRetention = await configResolver.GetAsync<int?>(
             "modules.uninstall.retention_days", ct) ?? DefaultRetentionDays;
+
+        // Validate the resolved value — operator misconfiguration (e.g.
+        // 0 or -1) would expand cutoff to "now or future" and immediately
+        // purge live retention windows. Clamp + warn instead of letting
+        // a bad config silently delete recent data.
+        var retentionDays = rawRetention;
+        if (retentionDays < MinAllowedRetentionDays || retentionDays > MaxAllowedRetentionDays)
+        {
+            logger.LogWarning(
+                "Purge: tenant {TenantId} retention override {Raw} is out of [{Min},{Max}] range; clamping to platform default {Default}.",
+                tenantId, rawRetention, MinAllowedRetentionDays, MaxAllowedRetentionDays, DefaultRetentionDays);
+            retentionDays = DefaultRetentionDays;
+        }
         var cutoffUtc = DateTimeOffset.UtcNow.AddDays(-retentionDays);
 
         var tenantStrongId = Domain.ValueObjects.TenantId.From(tenantId);
@@ -210,6 +237,12 @@ public sealed class PurgeUninstalledModulesJob(
 
         foreach (var row in due)
         {
+            // Per-row stopwatch — the previous outer-scoped Stopwatch wrote
+            // cumulative ElapsedMilliseconds into every audit entry, so the
+            // last row in a multi-module purge looked far more expensive
+            // than the first. Per-row makes the metadata accurate (review
+            // user finding + #52).
+            var rowStopwatch = Stopwatch.StartNew();
             var entries = row.ParseDeletedTableNames();
             var dropped = new List<string>();
             var failed = new List<string>();
@@ -286,16 +319,16 @@ public sealed class PurgeUninstalledModulesJob(
                 await platformDb.SaveChangesAsync(ct);
             }
 
-            await WriteAuditAsync(tenantId, row, dropped, failed, retentionDays, stopwatch.ElapsedMilliseconds, hardDeleteError, rowHardDeleted, ct);
+            rowStopwatch.Stop();
+            await WriteAuditAsync(tenantId, row, dropped, failed, retentionDays, rowStopwatch.ElapsedMilliseconds, hardDeleteError, rowHardDeleted, ct);
+            PurgeDurationHistogram.Record(rowStopwatch.Elapsed.TotalSeconds,
+                new KeyValuePair<string, object?>("tenant", tenantId),
+                new KeyValuePair<string, object?>("module", row.ModuleName));
 
             logger.LogInformation(
                 "Purge tenant {TenantId} module {Module}: dropped {Dropped} table(s), {Failed} retained for retry, hard-deleted={HardDeleted}",
                 tenantId, row.ModuleName, dropped.Count, failed.Count, rowHardDeleted);
         }
-
-        stopwatch.Stop();
-        PurgeDurationHistogram.Record(stopwatch.Elapsed.TotalSeconds,
-            new KeyValuePair<string, object?>("tenant", tenantId));
     }
 
     private async Task DropTableAsync(string schemaName, string tableName, CancellationToken ct)

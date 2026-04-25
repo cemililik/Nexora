@@ -53,7 +53,7 @@ public sealed class InMemoryDemoScenarioRegistryTests
         var registry = BuildRegistry(contribution);
         var general = registry.GetAll().Single(s => s.Name == "general");
         general.DescriptionLockey.Should().Be(
-            "lockey_demo_scenario_general_description",
+            "lockey_identity_tenants_demo_scenario_general_description",
             "first registration wins — a module contribution must not silently override the platform default.");
     }
 

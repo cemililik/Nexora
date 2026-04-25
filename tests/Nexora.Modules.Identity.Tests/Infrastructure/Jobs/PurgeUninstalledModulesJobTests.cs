@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nexora.Modules.Identity.Domain.Entities;
@@ -99,7 +100,7 @@ public sealed class PurgeUninstalledModulesJobTests
 
         var tenantAccessor = new TenantContextAccessor();
         var job = new PurgeUninstalledModulesJob(
-            tenantAccessor, platformDb, resolver, auditStore,
+            tenantAccessor, platformDb, resolver, auditStore, Substitute.For<IBackgroundJobClient>(),
             NullLogger<PurgeUninstalledModulesJob>.Instance);
 
         await job.RunAsync(
@@ -152,7 +153,7 @@ public sealed class PurgeUninstalledModulesJobTests
         var auditStore = Substitute.For<IAuditStore>();
 
         var job = new PurgeUninstalledModulesJob(
-            new TenantContextAccessor(), platformDb, resolver, auditStore,
+            new TenantContextAccessor(), platformDb, resolver, auditStore, Substitute.For<IBackgroundJobClient>(),
             NullLogger<PurgeUninstalledModulesJob>.Instance);
 
         await job.RunAsync(

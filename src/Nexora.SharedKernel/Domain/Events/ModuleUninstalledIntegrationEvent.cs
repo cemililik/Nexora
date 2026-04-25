@@ -20,17 +20,27 @@ public sealed record ModuleUninstalledIntegrationEvent : IntegrationEventBase
 
     /// <summary>
     /// Canonical (pre-rename) table names that belonged to the module at
-    /// uninstall time. May be empty when the database provider doesn't
-    /// support introspection (e.g. EF InMemory in tests).
+    /// uninstall time. Empty list is valid when the database provider
+    /// doesn't support introspection (EF InMemory in tests) — the
+    /// invariant the consumer must rely on is "same length as
+    /// <see cref="RenamedTableNames"/>". Required so producers cannot
+    /// forget to populate it.
     /// </summary>
-    public IReadOnlyList<string> CanonicalTableNames { get; init; } = [];
+    public required IReadOnlyList<string> CanonicalTableNames { get; init; }
 
     /// <summary>
     /// Renamed-to-<c>_del_</c> table names in the tenant schema. One-to-one
-    /// with <see cref="CanonicalTableNames"/> in the same order.
+    /// with <see cref="CanonicalTableNames"/> in the same order — the
+    /// producer guarantees this; consumers SHOULD assert
+    /// <c>Canonical.Count == Renamed.Count</c> and treat any divergence
+    /// as a producer bug.
     /// </summary>
-    public IReadOnlyList<string> RenamedTableNames { get; init; } = [];
+    public required IReadOnlyList<string> RenamedTableNames { get; init; }
 
-    /// <summary>UTC timestamp at which the per-module transaction committed.</summary>
-    public DateTimeOffset UninstalledAtUtc { get; init; } = DateTimeOffset.UtcNow;
+    // NOTE: <c>UninstalledAtUtc</c> intentionally absent — the
+    // <see cref="IntegrationEventBase.OccurredAt"/> field on the base
+    // record already carries the per-event UTC timestamp; a duplicate
+    // field on the payload would diverge under cascade orchestration
+    // (one event raised in a loop, "now" called twice). Consumers read
+    // <c>OccurredAt</c>.
 }

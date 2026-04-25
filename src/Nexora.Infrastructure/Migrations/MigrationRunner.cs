@@ -283,7 +283,12 @@ public sealed class MigrationRunner(
             cmd.Parameters.AddWithValue("key", lockKey);
             var result = await cmd.ExecuteScalarAsync(ct);
             if (result is true) return true;
-            await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            // No delay after the LAST attempt — falling through to
+            // `return false` is the right path; an extra second buys
+            // nothing and adds latency to the caller's failure response
+            // (review #62).
+            if (attempt < AdvisoryLockTimeoutSeconds - 1)
+                await Task.Delay(TimeSpan.FromSeconds(1), ct);
         }
         return false;
     }
