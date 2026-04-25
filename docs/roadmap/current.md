@@ -6,7 +6,7 @@
 
 ## Active task
 
-**Phase 2 Milestone A batch — autonomous execution in progress** (started 2026-04-24).
+**Phase 2 Milestone A batch — 6 tasks now In Review, awaiting maintainer review** (started + completed 2026-04-24).
 Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
 
 | Task | Status |
@@ -15,8 +15,8 @@ Sequence: T-011 → T-012 → T-029 → T-026 → T-025 → T-027.
 | T-012 — AdditiveOnlyMigrationTest | In Review (commit `c786961`) |
 | T-029 — DemoScenario registry + Contacts seed | In Review |
 | T-026 — Cascade guard in UninstallModuleCommand | In Review |
-| T-025 — `platform:purge-uninstalled-modules` Hangfire job | **In Review** (this commit) |
-| T-027 — GDPR erasure escape hatch for renamed uninstall tables | Pending |
+| T-025 — `platform:purge-uninstalled-modules` Hangfire job | In Review |
+| T-027 — GDPR erasure escape hatch for renamed uninstall tables | **In Review** (this commit) |
 
 ## Prior active task
 

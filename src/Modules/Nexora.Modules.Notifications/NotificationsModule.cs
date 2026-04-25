@@ -52,6 +52,12 @@ public sealed class NotificationsModule : IModule
         // Register inbox guard for idempotent integration event consumption
         services.AddScoped<IInboxGuard, InboxGuard<NotificationsDbContext>>();
         services.AddScoped<IOutbox, OutboxService<NotificationsDbContext>>();
+
+        // T-027: GDPR escape hatch — discovers renamed _del_ tables for the
+        // notifications module so Article-17 redaction reaches them too.
+        services.AddScoped<
+            Nexora.SharedKernel.Abstractions.Gdpr.IGdprRenamedTableScanner<NotificationsDbContext>,
+            Nexora.Infrastructure.Gdpr.PostgresGdprRenamedTableScanner<NotificationsDbContext>>();
     }
 
     /// <inheritdoc />

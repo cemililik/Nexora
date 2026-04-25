@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Nexora.SharedKernel.Abstractions.Gdpr;
 using Nexora.SharedKernel.Abstractions.Messaging;
 using Nexora.SharedKernel.Constants;
 using Nexora.SharedKernel.Domain.Events;
@@ -18,6 +19,7 @@ namespace Nexora.Modules.Documents.Infrastructure.IntegrationEvents;
 public sealed class ContactGdprDeletedIntegrationEventHandler(
     DocumentsDbContext dbContext,
     IInboxGuard inboxGuard,
+    IGdprRenamedTableScanner<DocumentsDbContext> renamedTableScanner,
     ILogger<ContactGdprDeletedIntegrationEventHandler> logger)
     : IIntegrationEventHandler<ContactGdprDeletedIntegrationEvent>
 {
@@ -102,6 +104,41 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             unlinkedCount = linkedDocuments.Count;
             scrubbedCount = recipients.Count;
         }
+
+        // T-027: GDPR escape hatch — apply the same scrub to any
+        // documents_*_del_* tables left behind by a previous module
+        // uninstall (ADR-0028 retention window). Renamed signature-recipient
+        // table inherits the canonical column shape, so the same SET clause
+        // works against either table identifier.
+        await renamedTableScanner.ScanAsync(
+            "documents",
+            redactSingleTableAsync: async (renamedTable, innerCt) =>
+            {
+                if (!renamedTable.StartsWith("documents_signaturerecipients_del_", StringComparison.Ordinal))
+                    return 0;
+                var sql =
+                    $"""UPDATE "{renamedTable}" SET "Name" = @placeholder, "Email" = @placeholder, "IpAddress" = NULL WHERE "ContactId" = @contactId""";
+                var conn = dbContext.Database.GetDbConnection();
+                var openedHere = conn.State != System.Data.ConnectionState.Open;
+                if (openedHere) await conn.OpenAsync(innerCt);
+                try
+                {
+                    await using var cmd = conn.CreateCommand();
+                    cmd.CommandText = sql;
+                    var p1 = cmd.CreateParameter();
+                    p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
+                    cmd.Parameters.Add(p1);
+                    var p2 = cmd.CreateParameter();
+                    p2.ParameterName = "@contactId"; p2.Value = @event.ContactId;
+                    cmd.Parameters.Add(p2);
+                    return await cmd.ExecuteNonQueryAsync(innerCt);
+                }
+                finally
+                {
+                    if (openedHere) await conn.CloseAsync();
+                }
+            },
+            ct: ct);
 
         inboxGuard.MarkAsProcessed(@event.EventId, @event.GetType().Name);
         await dbContext.SaveChangesAsync(ct);

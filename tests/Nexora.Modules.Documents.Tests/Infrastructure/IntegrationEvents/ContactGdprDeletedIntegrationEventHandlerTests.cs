@@ -37,6 +37,7 @@ public sealed class ContactGdprDeletedIntegrationEventHandlerTests : IDisposable
     private ContactGdprDeletedIntegrationEventHandler CreateHandler() =>
         new(_dbContext,
             new InboxGuard<DocumentsDbContext>(_dbContext),
+            new Nexora.Infrastructure.Gdpr.NoOpGdprRenamedTableScanner<DocumentsDbContext>(),
             NullLogger<ContactGdprDeletedIntegrationEventHandler>.Instance);
 
     private ContactGdprDeletedIntegrationEvent CreateEvent() => new()
