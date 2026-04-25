@@ -88,8 +88,11 @@ No side effects. Always exits `0`.
 ### 3.2 `demo:load`
 
 Seeds a tenant schema with demo data by invoking `IDemoDataSeeder` under the
-CLI's DI scope. Foundation for the admin-UI "Create Demo Environment"
-button (T-008 — carry-over) and the scenario catalogue (T-007 — carry-over).
+CLI's DI scope. The admin-UI "Create Demo Environment" button (T-008) shipped
+in the 2026-04-24 carry-over sweep; the scenario catalogue is delivered by
+[T-029](../analysis/tasks/phase-1.5/T-029.md) (the implementable slice of the
+superseded T-007 split — registry + Contacts seed) plus per-Phase-2 / per-Phase-3a
+module seeds filed at each owning module's kickoff.
 
 ```bash
 nexora demo:load --tenant=<guid> --scenario=<name> [--dry-run] [--verbose]
@@ -161,10 +164,14 @@ $ echo $?
 - `general` — default business setup (generic contacts, sample documents, one user).
 - `ngo` — NGO vertical (donors, donation campaigns, volunteer workflows).
 
-> T-007 ships the scenario content itself; until then, module implementations
-> that declare a non-no-op `SeedDemoDataAsync` define what a scenario means
-> for them. The scenario string is passed through untouched — experimental
-> values ARE accepted and will no-op on modules that do not recognise them.
+> [T-029](../analysis/tasks/phase-1.5/T-029.md) ships the `DemoScenario`
+> registry + the Contacts-module seed content for both `general` and `ngo`;
+> per-Phase-2 / per-Phase-3a module seeds (CRM, Finance, Subscription,
+> Projects, Fundraising, Sponsorship, Events) ship with each owning module
+> at its kickoff. Until those land, module implementations that declare a
+> non-no-op `SeedDemoDataAsync` define what a scenario means for them. The
+> scenario string is passed through untouched — experimental values ARE
+> accepted and will no-op on modules that do not recognise them.
 
 ### 3.3 `demo:clean`
 
@@ -387,10 +394,11 @@ in `tr` is a test failure, not a silent fallback.
 
 ## 8. Related
 
-- [T-005 task file](../analysis/tasks/phase-1.5/T-005.md) — `IModule.SeedDemoDataAsync` + orchestrator (the backend that `demo:load` drives).
-- [T-006 task file](../analysis/tasks/phase-1.5/T-006.md) — the CLI command itself.
-- [T-007 task file](../analysis/tasks/phase-1.5/T-007.md) — demo scenarios (carry-over).
-- [T-008 task file](../analysis/tasks/phase-1.5/T-008.md) — admin-UI "Create Demo Environment" button (carry-over).
-- [T-009 task file](../analysis/tasks/phase-1.5/T-009.md) — demo-data cleanup command (carry-over; will add a `demo:clean` verb).
+- [T-005 task file](../analysis/tasks/phase-1.5/T-005.md) — `IModule.SeedDemoDataAsync` + orchestrator (the backend that `demo:load` drives). Done.
+- [T-006 task file](../analysis/tasks/phase-1.5/T-006.md) — the CLI command itself. Done.
+- [T-007 task file](../analysis/tasks/phase-1.5/T-007.md) — original demo-scenarios task (Superseded by T-029 in the 2026-04-24 reconciliation; kept for historical record).
+- [T-008 task file](../analysis/tasks/phase-1.5/T-008.md) — admin-UI "Create Demo Environment" button. Done (2026-04-24 carry-over sweep).
+- [T-009 task file](../analysis/tasks/phase-1.5/T-009.md) — demo-data cleanup command (`demo:clean` verb). Done (2026-04-24 carry-over sweep).
+- [T-029 task file](../analysis/tasks/phase-1.5/T-029.md) — `DemoScenario` registry + Contacts seed (the implementable slice of the T-007 split). Open under Phase 1.5 Milestone C; not blocking Phase 2 entry.
 - [`standards/localization.md`](../standards/localization.md) — lockey conventions the CLI follows.
 - [`standards/schema-migration.md`](../standards/schema-migration.md) — the `demo_seed_markers` table is declared in `DevelopmentSeed.ApplySchemaUpdatesAsync` per this standard.

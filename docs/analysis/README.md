@@ -11,7 +11,7 @@ apart from [`../roadmap/`](../roadmap/), which is the **plan layer** (ADR-gated,
 | [`tasks/`](tasks/) | One file per task (`T-NNN.md`), grouped by phase. Daily execution state. |
 | [`reviews/`](reviews/) | Business / code / security / performance reviews. |
 
-The split follows [ADR-015](../decisions/ADR-015-roadmap-structure.md): plan and execution
+The split follows [ADR-015](../decisions/0015-roadmap-structure.md): plan and execution
 change at different speeds and must not share files.
 
 ## Where things live
@@ -32,6 +32,6 @@ change at different speeds and must not share files.
 
 ## Related
 
-- [ADR-015 — Roadmap Structure](../decisions/ADR-015-roadmap-structure.md)
+- [ADR-015 — Roadmap Structure](../decisions/0015-roadmap-structure.md)
 - [Tasks README](tasks/README.md)
 - [Reviews README](reviews/README.md)

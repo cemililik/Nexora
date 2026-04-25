@@ -19,7 +19,7 @@ each phase deliver*. It does **not** track day-to-day execution — that lives i
 2. **One sync point.** Only `current.md` is guaranteed fresh for "where are we right now?".
    Update it in the same commit as any phase transition.
 3. **`Done` requires maintainer review.** See the status vocabulary in
-   [ADR-015](../decisions/ADR-015-roadmap-structure.md) — contributors may mark tasks
+   [ADR-015](../decisions/0015-roadmap-structure.md) — contributors may mark tasks
    `In Review`; only the maintainer promotes to `Done`.
 
 ## Conventions

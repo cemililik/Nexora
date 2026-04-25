@@ -265,3 +265,35 @@ Host tests additionally cover:
 - **Tier classification** (the `tier` field's semantics): ADR-016.
 - **Standards**: `../standards/FRONTEND_STANDARDS.md` (module manifest conventions in use today)
   and `../standards/documentation-style.md` for diagram rules.
+
+## 8. Manifest schema artefact — single source of truth
+
+ADR-0017 names two manifest-schema paths in two different sections — the
+runtime validator path (`src/Nexora.Infrastructure/PortalExtensions/Schemas/module.manifest.v1.json`,
+§Manifest JSON Schema) and a docs publish path (`docs/standards/schemas/module.manifest.v1.json`,
+§Implementation notes). Both paths exist for legitimate reasons but the
+ADR did not say which is canonical, leaving an implementer free to pick
+either and risk drift.
+
+The convention this document fixes — and that the [T-030](../analysis/tasks/phase-2/T-030.md)
+pilot enforces in CI — is:
+
+- **Canonical source**: `src/Nexora.Infrastructure/PortalExtensions/Schemas/module.manifest.v1.json`.
+  This is the file the runtime `ManifestLoader` validates against and the
+  file the `validate-manifests` CI job consumes. Edits land here and
+  nowhere else.
+- **Public publish path**: `docs/standards/schemas/module.manifest.v1.json`
+  is **generated** from the canonical source at build time (a one-line
+  `cp` step in the docs-build pipeline) and serves as the URL that
+  third-party manifest authors point at via
+  `https://schemas.nexora.io/module.manifest.v1.json`. The generated
+  file is regenerated on every release; manual edits are forbidden and
+  caught by a pre-commit check that compares the two files.
+- **Schema version bumps**: a new `manifestVersion` requires a
+  superseding ADR per ADR-0017 §Versioning. The new schema file lands
+  next to v1 (`module.manifest.v2.json`); v1 is retained for backward
+  compatibility until every installed module migrates.
+
+Until the docs-build automation lands (filed inside T-030's acceptance
+criteria), either-path edits MUST be mirrored manually with a
+"matches canonical" reviewer comment on the PR.

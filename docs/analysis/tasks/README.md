@@ -5,7 +5,7 @@ owns them (`phase-1.5/`, `phase-2/`, …).
 
 ## Status vocabulary
 
-Taken verbatim from [ADR-015](../../decisions/ADR-015-roadmap-structure.md). These are the
+Taken verbatim from [ADR-0015](../../decisions/0015-roadmap-structure.md). These are the
 **only** allowed values:
 
 | Status | Meaning | Who can set |
@@ -32,7 +32,7 @@ Contributors **must not** set `Done` or `Superseded`.
 | Phase | Folder |
 |-------|--------|
 | Phase 1.5 — Bridge | [`phase-1.5/`](phase-1.5/) |
-| Phase 2 — Enterprise Core | [`phase-2/`](phase-2/) (populated when Phase 2 starts) |
+| Phase 2 — Enterprise Core | [`phase-2/`](phase-2/) (stubs pre-allocated for ADR-dependent tasks; Phase 2 not yet executing) |
 | Phase 2.5, 3a, 3b, 4 | folders created at each phase kickoff |
 
 ## Creating a new task
@@ -45,5 +45,5 @@ Contributors **must not** set `Done` or `Superseded`.
 ## Related
 
 - [Task template](TEMPLATE.md)
-- [ADR-015 — Roadmap Structure](../../decisions/ADR-015-roadmap-structure.md)
+- [ADR-0015 — Roadmap Structure](../../decisions/0015-roadmap-structure.md)
 - [Roadmap phases](../../roadmap/phases/)

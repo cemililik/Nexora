@@ -155,6 +155,25 @@ public static class InfrastructureServiceRegistration
         // scoping is the right default.
         services.AddScoped<IDemoDataCleaner, Modules.DemoDataCleaner>();
 
+        // T-011: platform-level migration orchestrator + the public-schema
+        // failure-log DbContext it writes through. Singleton matches the
+        // dep shape (IServiceScopeFactory + IEnumerable<IModule> + ILogger
+        // + a captured connection-string string) and the post-deploy
+        // platform:migrate-tenants Hangfire job calls it from a single
+        // outer scope per tenant.
+        services.AddDbContext<Migrations.MigrationFailureLogDbContext>((_, options) =>
+        {
+            var connStr = configuration.GetConnectionString("Default");
+            options.UseNpgsql(connStr);
+        });
+        services.AddSingleton<SharedKernel.Abstractions.Migrations.IMigrationRunner>(sp =>
+            new Migrations.MigrationRunner(
+                sp.GetRequiredService<IServiceScopeFactory>(),
+                sp.GetRequiredService<IEnumerable<SharedKernel.Abstractions.Modules.IModule>>(),
+                sp.GetRequiredService<ILogger<Migrations.MigrationRunner>>(),
+                configuration.GetConnectionString("Default")
+                    ?? throw new InvalidOperationException("Default connection string is required for IMigrationRunner.")));
+
         // Localization
         services.AddDbContext<LocalizationDbContext>((_, options) =>
         {

@@ -1,6 +1,6 @@
 # Migration Orchestration Runbook
 
-**Derives from:** ADR-0002 (Schema-per-Tenant Multi-Tenancy), ADR-0003 (Deployment Strategy).
+**Derives from:** [ADR-0002](../decisions/0002-schema-per-tenant.md) (Schema-per-Tenant Multi-Tenancy), [ADR-0003](../decisions/0003-deployment-strategy.md) (Deployment Strategy), [ADR-0027](../decisions/0027-production-schema-migration-strategy.md) (Production Schema-Migration Strategy — the ADR that formalises the EF-Core-migrations + release-gate dev-to-prod bridge this runbook operationalises).
 
 Operational guide for applying EF Core migrations across all tenant schemas.
 

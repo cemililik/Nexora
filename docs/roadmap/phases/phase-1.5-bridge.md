@@ -1,7 +1,7 @@
 # Phase 1.5 — Bridge
 
 **Tier:** cross-cutting (no new tier; closes Tier-1 gaps + seeds Tier-2 plumbing)
-**Status:** Scaffolding complete as of 2026-04-24 (Contacts + Demo-Data foundation shipped; Portal UI extension pilot + Demo-Data scenarios/UI/cleanup carry over to Phase 2)
+**Status:** Closed for Phase-2 entry as of 2026-04-24. All scope items shipped or formally handed over via the carry-over sweep (see Milestone C). Two named carry-overs remain visible in `current.md`: T-010 (cross-module PII payload scan) is reclassified to Phase 2 Milestone A; T-029 (DemoScenario registry + Contacts seed, the implementable slice of the [T-007](../../analysis/tasks/phase-1.5/T-007.md) split) is filed under Phase 1.5 Milestone C and ready to pick up. The Portal UI extension pilot is filed as [T-030](../../analysis/tasks/phase-2/T-030.md) under Phase 2 Milestone A per [ADR-0017](../../decisions/0017-portal-extension-architecture.md) "First pilot".
 **Dates:** 2026-Q1 → 2026-Q2
 
 The bridge phase closes cross-cutting gaps between the Tier-1 foundation and the Tier-2
@@ -31,8 +31,11 @@ Phase 1.5 is complete when **all** of the following hold:
 6. Contacts Module enhancements (user-contact linking, import wizard, export, GDPR hard
    delete) are merged (Phase 1.5.6 — **met** as of 2026-04-24; T-001..T-004 closed).
 7. Demo Data Framework (`SeedDemoData()` in `IModule`, CLI, scenarios, admin UI, cleanup)
-   is merged (Phase 1.5.7 — **foundation met**; T-005 + T-006 closed 2026-04-24;
-   T-007 scenarios / T-008 admin UI / T-009 cleanup carry over as Phase 2 follow-ups).
+   is merged (Phase 1.5.7 — **foundation + admin UI + cleanup met**; T-005 + T-006 closed
+   2026-04-23; T-008 admin UI + T-009 cleanup closed 2026-04-24 in the carry-over sweep;
+   T-007 scenarios was split — see Milestone C — into [T-029](../../analysis/tasks/phase-1.5/T-029.md)
+   (registry + Contacts seed, still open under this phase) and per-Phase-2 / per-Phase-3a
+   module slices that are filed at each owning module's kickoff).
 
 This exit bar is also the entry criterion for Phase 2 (see `../current.md`).
 
@@ -93,18 +96,24 @@ Follow-ups surfaced during review and filed as separate tasks: T-010
 T-017/T-018/T-021/T-022 (all now Done), T-028 (export/import notification
 inbox dedup, carry-over).
 
-### 1.5.7 Demo Data Framework — **Foundation Done; scenarios/UI/cleanup carry over**
+### 1.5.7 Demo Data Framework — **Closed for Phase-2 entry; scenario-content task open under this phase**
 
-Foundation shipped 2026-04-24 (T-005 + T-006 closed). The remaining three
-items are tracked as Phase 1.5 → Phase 2 carry-over tasks:
+Foundation + admin UI + cleanup all shipped (T-005 + T-006 closed 2026-04-23;
+T-008 + T-009 closed in the carry-over sweep 2026-04-24). The original T-007
+scenarios task was Superseded; the implementable slice carries on as
+[T-029](../../analysis/tasks/phase-1.5/T-029.md) (still under this phase).
+The per-Phase-2 / per-Phase-3a module seed slices are filed at each owning
+module's kickoff (no orphan stubs):
 
 - T-005 `IModule.SeedDemoDataAsync` + `DemoDataSeeder` orchestrator + `demo_seed_markers`
   idempotency table — **Done**.
 - T-006 `nexora demo:load` CLI command (dispatcher, parser, dry-run, exit codes,
   9 unit tests) — **Done**.
-- T-007 Pre-built demo scenarios (General business, NGO vertical) — **Not started**.
-- T-008 Admin UI "Create Demo Environment" button — **Not started**.
-- T-009 Demo data cleanup command — **Not started**.
+- T-007 Pre-built demo scenarios — **Superseded** by [T-029](../../analysis/tasks/phase-1.5/T-029.md)
+  (registry + Contacts seed, the slice implementable today) plus per-Phase-2 / per-Phase-3a
+  module seed tasks filed at each module's kickoff. See T-007's status log for the rationale.
+- T-008 Admin UI "Create Demo Environment" button — **Done** (carry-over sweep 2026-04-24).
+- T-009 Demo data cleanup command — **Done** (carry-over sweep 2026-04-24).
 
 ## Out of scope
 
@@ -123,23 +132,30 @@ isolation (backend). Gate for Phase 2 financial flows.
 ### Milestone B — Experience plumbing (Scaffolding Done; pilot in Phase 2)
 
 1.5.3 localization (minus tax receipts), 1.5.4 portal UI extension points (scaffold
-only — no module contributes to a slot yet; end-to-end pilot is Phase 2 Milestone A
-per ADR-0017). Gate for Phase 2 portal surfaces is therefore "scaffold ready to
-receive the first pilot module", not "end-to-end contribution proven".
+only — no module contributes to a slot yet; end-to-end pilot tracked as
+[T-030](../../analysis/tasks/phase-2/T-030.md) under Phase 2 Milestone A
+per [ADR-0017](../../decisions/0017-portal-extension-architecture.md)). Gate
+for Phase 2 portal surfaces is therefore "scaffold ready to receive the first
+pilot module", not "end-to-end contribution proven".
 
-### Milestone C — Seed + lifecycle (Mostly Done)
+### Milestone C — Seed + lifecycle (Closed for Phase-2 entry)
 
 1.5.6 Contacts enhancements closed 2026-04-24 (4 tasks Done: T-001..T-004 + 6
 follow-up review tasks T-017..T-022 closed the same day). 1.5.7 Demo Data
-Framework: foundation Done (T-005 + T-006); CLI cleanup (T-009) and admin UI
-(T-008) Done in the 2026-04-24 carry-over sweep. Scenarios (T-007) remain
-Blocked because the catalogue refers to modules that ship in Phase 2 / 3a
-(CRM, Finance, Projects, Fundraising, Sponsorship) — see T-007's status
-log for the proposed three-way split. None of the carry-overs block Phase 2
-entry: the foundation + CLI + admin surface let module authors declare demo
-content from Phase 2 Milestone A onward, and the T-008 dialog ships with a
-hardcoded `general`/`ngo` dropdown as the interim measure until T-007a
-(scenario registry) lands.
+Framework: foundation Done (T-005 + T-006); admin UI (T-008) and CLI cleanup
+(T-009) closed in the 2026-04-24 carry-over sweep. The original T-007
+"Pre-built demo scenarios" task was **Superseded** by the T-007 split
+captured in its status log: the implementable slice ships as
+[T-029](../../analysis/tasks/phase-1.5/T-029.md) (`DemoScenario` registry +
+Contacts seed — still under this phase, ready to pick up); per-Phase-2
+module seeds (CRM / Finance / Subscription / Projects) and per-Phase-3a
+seeds (Fundraising / Sponsorship / Events) are filed at each module's
+kickoff so the seed lands with the module rather than as orphan stubs.
+None of the open items block Phase 2 entry: the foundation + CLI + admin
+surface let module authors declare demo content from Phase 2 Milestone A
+onward, and the T-008 dialog ships with a hardcoded `general`/`ngo`
+dropdown as the interim measure until T-029 (scenario registry) lands and
+turns it registry-driven.
 
 ## Acceptance criteria
 
@@ -148,15 +164,22 @@ hardcoded `general`/`ngo` dropdown as the interim measure until T-007a
 - [x] Tenant locale setting round-trips through report export (1.5.3).
 - [~] Cross-module tab contribution works end-to-end (1.5.4) — **scaffold shipped
       and unit-tested; end-to-end proof (one module contributing a tab into another
-      module's page) deferred to Phase 2 Milestone A per ADR-0017 "First pilot"**.
+      module's page) is the deliverable of [T-030](../../analysis/tasks/phase-2/T-030.md)
+      under Phase 2 Milestone A per [ADR-0017](../../decisions/0017-portal-extension-architecture.md)
+      "First pilot"**. The Phase 1.5 contract is "scaffold ready"; CRM proves it end-to-end
+      inside the next phase.
 - [x] Audit partitions auto-created three months ahead (1.5.5).
 - [x] All four Contacts enhancements merged and covered by tests (1.5.6) — T-001..T-004
       Done 2026-04-24; the "fifth" (cross-module PII audit scan) was explicitly scoped
-      out as the separate T-010 carry-over per ADR-0026.
+      out as the separate [T-010](../../analysis/tasks/phase-2/T-010.md) carry-over per
+      ADR-0026 (file moved to Phase 2 in the post-sweep reconciliation).
 - [~] Demo tenant provisionable via `nexora demo:load` in < 2 minutes (1.5.7) —
-      foundation shipped; the "< 2 minutes" wall-clock check needs T-007 scenarios to
-      produce meaningful content. Foundation AC (T-005 + T-006) met; scenario-level
-      AC carries over with T-007.
+      foundation shipped; the "< 2 minutes" wall-clock check needs scenario content
+      from [T-029](../../analysis/tasks/phase-1.5/T-029.md) (registry + Contacts seed,
+      the implementable slice of the superseded T-007 split). Foundation AC
+      (T-005 + T-006) met; scenario-level AC ships under T-029. Per-Phase-2 / per-Phase-3a
+      module seed contributions are filed at each owning module's kickoff and are not
+      blockers for the Phase 1.5 → Phase 2 transition.
 
 ## ADR ledger
 

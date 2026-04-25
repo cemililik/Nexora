@@ -22,4 +22,4 @@ decisions elsewhere (ADRs, phase files, tasks).
 ## Related
 
 - [Analysis root](../README.md)
-- [ADR-015 — Roadmap Structure](../../decisions/ADR-015-roadmap-structure.md)
+- [ADR-015 — Roadmap Structure](../../decisions/0015-roadmap-structure.md)
