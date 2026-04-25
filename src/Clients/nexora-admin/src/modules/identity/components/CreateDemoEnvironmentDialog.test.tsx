@@ -73,9 +73,14 @@ describe('CreateDemoEnvironmentDialog', () => {
     );
 
     await waitFor(() => {
+      // Third arg is the AxiosRequestConfig that the hook now threads
+      // an AbortSignal through (round-4 review). Match it loosely so the
+      // test asserts on the URL + payload + the *presence* of a signal,
+      // not the controller identity.
       expect(mockApiPost).toHaveBeenCalledWith(
         '/identity/tenants/demo',
         { tenantId: 't-1', scenario: 'general' },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
 
