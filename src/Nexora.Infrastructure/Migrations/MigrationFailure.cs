@@ -23,11 +23,31 @@ public sealed class MigrationFailure
     /// <summary>Exception type name (<c>ex.GetType().FullName</c>) — distinguishes Npgsql vs. EF vs. unknown.</summary>
     public required string ExceptionType { get; init; }
 
-    /// <summary>Exception message — may include SQL fragments. Kept verbatim; redaction is the operator's responsibility when sharing.</summary>
+    /// <summary>
+    /// Exception message — may include SQL fragments, external system
+    /// identifiers, or other operational data. Kept verbatim because the
+    /// row's purpose is post-mortem forensics. <b>Redaction is the
+    /// operator's responsibility when sharing</b>: sanitize before
+    /// pasting into ticket trackers, screen-share, or chat. Refer to the
+    /// operations runbook for the redaction checklist (PII, secrets,
+    /// privileged identifiers).
+    /// </summary>
     public required string ExceptionMessage { get; init; }
 
-    /// <summary>Stack trace at the point of failure. Truncated to 8000 chars in the column to bound row size.</summary>
+    /// <summary>
+    /// Stack trace at the point of failure. Truncated to <see cref="StackTraceMaxLength"/>
+    /// chars to bound row size while staying large enough to contain the
+    /// full async-method-chain + EF Core query pipeline + MediatR
+    /// behaviour stack that real production exceptions surface.
+    /// </summary>
     public string? StackTrace { get; init; }
+
+    /// <summary>
+    /// Cap for <see cref="StackTrace"/>. Selected to fit the typical .NET
+    /// 9 async + EF Core + MediatR chain (≈10–15 KB observed across the
+    /// suite) with headroom; see review #21.
+    /// </summary>
+    public const int StackTraceMaxLength = 16000;
 
     /// <summary>UTC timestamp of the failure. Set at row creation.</summary>
     public DateTime OccurredAtUtc { get; init; } = DateTime.UtcNow;
@@ -47,11 +67,16 @@ public sealed class MigrationFailure
             ModuleName = moduleName,
             ExceptionType = exception.GetType().FullName ?? exception.GetType().Name,
             ExceptionMessage = exception.Message,
-            StackTrace = Truncate(exception.StackTrace, 8000),
+            StackTrace = Truncate(exception.StackTrace, StackTraceMaxLength),
         };
     }
 
-    private static string? Truncate(string? value, int maxLength)
+    /// <summary>
+    /// Internal so the architecture-level test can call it directly with
+    /// a synthetic over-cap input (real exceptions rarely have stacks
+    /// long enough to exercise the truncation branch).
+    /// </summary>
+    internal static string? Truncate(string? value, int maxLength)
     {
         if (value is null) return null;
         return value.Length <= maxLength ? value : value[..maxLength];

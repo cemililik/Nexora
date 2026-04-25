@@ -201,13 +201,25 @@ public sealed class PurgeUninstalledModulesJob(
                 && tm.DeletedAt < cutoffUtc)
             .ToListAsync(ct);
 
-        var schemaName = $"tenant_{tenantId:N}";
+        // Canonical platform schema-name format is tenant_{guid:D} (with
+        // hyphens) — set in CreateTenantCommand and TenantContext.
+        // The earlier ":N" form here would target a non-existent schema and
+        // every DROP TABLE would raise "schema does not exist", get swallowed
+        // by the Npgsql catch, and the row would loop forever in the failed list.
+        var schemaName = $"tenant_{tenantId}";
 
         foreach (var row in due)
         {
             var entries = row.ParseDeletedTableNames();
             var dropped = new List<string>();
             var failed = new List<string>();
+
+            // Branch on provider capability ONCE per row instead of catching
+            // InvalidOperationException to fork the path. The earlier
+            // catch-as-success swallowed legitimate prod-side
+            // InvalidOperationExceptions (DbContext misuse, model errors)
+            // and reported them as a successful drop.
+            var isRelational = platformDb.Database.IsRelational();
 
             foreach (var rawName in entries)
             {
@@ -220,32 +232,30 @@ public sealed class PurgeUninstalledModulesJob(
                     continue;
                 }
 
+                if (!isRelational)
+                {
+                    // EF InMemory in tests: skip the SQL DROP and treat as
+                    // dropped so the audit + hard-delete path exercises
+                    // end-to-end. Production never lands here.
+                    dropped.Add(rawName);
+                    continue;
+                }
+
                 try
                 {
                     await DropTableAsync(schemaName, rawName, ct);
                     dropped.Add(rawName);
                     PurgedTablesCounter.Add(1, new KeyValuePair<string, object?>("module", row.ModuleName));
                 }
-                catch (Npgsql.NpgsqlException ex)
-                {
-                    logger.LogError(ex,
-                        "Purge: DROP TABLE failed for {Schema}.{Table} (tenant {TenantId} module {Module}); kept for retry.",
-                        schemaName, rawName, tenantId, row.ModuleName);
-                    failed.Add(rawName);
-                }
                 catch (System.Data.Common.DbException ex)
                 {
+                    // NpgsqlException derives from DbException — one branch
+                    // covers both. Other DbException-derived providers would
+                    // also land here.
                     logger.LogError(ex,
                         "Purge: DROP TABLE failed for {Schema}.{Table} (tenant {TenantId} module {Module}); kept for retry.",
                         schemaName, rawName, tenantId, row.ModuleName);
                     failed.Add(rawName);
-                }
-                catch (InvalidOperationException)
-                {
-                    // EF InMemory / non-relational: skip drop, pretend success
-                    // so the test path can exercise the audit + hard-delete
-                    // flow without a Postgres instance.
-                    dropped.Add(rawName);
                 }
             }
 

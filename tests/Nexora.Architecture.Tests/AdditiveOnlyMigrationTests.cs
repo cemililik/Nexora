@@ -150,6 +150,22 @@ public sealed class AdditiveOnlyMigrationTests
                 }
                 """);
 
+            // 3) destructive ONLY in Down() — must NOT be flagged. EF Core
+            // generates Down() as the inverse of Up(); a DropColumn there
+            // is the legitimate reverse of an AddColumn in Up().
+            File.WriteAllText(
+                Path.Combine(migrationsDir, "20260103000000_DownDropOnly.cs"),
+                """
+                public partial class DownDropOnly : Migration {
+                    protected override void Up(MigrationBuilder migrationBuilder) {
+                        migrationBuilder.AddColumn<string>(name: "NewCol", table: "users", nullable: true);
+                    }
+                    protected override void Down(MigrationBuilder migrationBuilder) {
+                        migrationBuilder.DropColumn(name: "NewCol", table: "users");
+                    }
+                }
+                """);
+
             var pattern = @"\bmigrationBuilder\s*\.\s*DropColumn\s*\(";
             var offenders = ScanFilesForPattern(
                 Directory.EnumerateFiles(migrationsDir, "*.cs", SearchOption.AllDirectories),
@@ -158,9 +174,10 @@ public sealed class AdditiveOnlyMigrationTests
                 "self-test remediation");
 
             offenders.Should().HaveCount(1,
-                "exactly the unmarked file must be flagged; the allowlisted one must not.");
+                "exactly the unmarked Up-side drop must be flagged; the allowlisted file and the Down-only file must not.");
             offenders[0].Should().Contain("BadDrop.cs");
             offenders[0].Should().NotContain("AllowedDrop.cs");
+            offenders[0].Should().NotContain("DownDropOnly.cs");
         }
         finally
         {
@@ -208,7 +225,18 @@ public sealed class AdditiveOnlyMigrationTests
             // helper as NexoraJobBoundaryTests + PermissionRegistryBoundaryTests.
             var raw = File.ReadAllText(file);
             var stripped = SourceTextStripper.StripCommentsAndStrings(raw);
-            if (!rx.IsMatch(stripped)) continue;
+
+            // Restrict the scan to the Up method body. Down methods
+            // legitimately reverse Up changes and call DropColumn /
+            // DropTable / RenameColumn there as the inverse — flagging
+            // those would force every additive Up to ship without a
+            // reversal, which is a worse posture (forward-only
+            // migrations are an explicit ADR-0003 deviation, not the
+            // default). When a file has no Up method (non-migration
+            // helpers in a Migrations folder), scope skips the file.
+            var upBody = ExtractUpMethodBody(stripped);
+            if (upBody is null) continue;
+            if (!rx.IsMatch(upBody)) continue;
 
             // Allowlist is sourced from the ORIGINAL text (not stripped),
             // because the marker IS a comment.
@@ -217,23 +245,64 @@ public sealed class AdditiveOnlyMigrationTests
                 continue;
             }
 
-            // Find the first matching line for an operator-friendly
-            // pointer. Match against the stripped text so the line number
-            // points at the call site, not at a comment hit.
-            var lineNumber = FindFirstMatchLine(stripped, rx);
+            // Find the first matching line, mapped against the original
+            // file so the operator-facing pointer is the actual file
+            // line — extracting from the Up body alone would report
+            // body-relative offsets which are useless for navigation.
+            var lineNumber = FindFirstMatchLineInFile(stripped, upBody, rx);
             var rel = Path.GetRelativePath(RepoSrcRoot, file);
             hits.Add($"  - {rel}:{lineNumber} — `{operation}` call. {remediation}");
         }
         return hits;
     }
 
-    private static int FindFirstMatchLine(string text, Regex rx)
+    /// <summary>
+    /// Returns the brace-balanced body of the EF Core
+    /// <c>protected override void Up(MigrationBuilder ...)</c> method,
+    /// or <c>null</c> if the file has no Up method. The text is already
+    /// comment-stripped, so a brace counter is sufficient (no string
+    /// literals contain unbalanced braces).
+    /// </summary>
+    internal static string? ExtractUpMethodBody(string strippedSource)
     {
-        var lines = text.Split('\n');
-        for (int i = 0; i < lines.Length; i++)
+        var signature = new Regex(
+            @"protected\s+override\s+void\s+Up\s*\(\s*MigrationBuilder\b[^)]*\)\s*\{",
+            RegexOptions.Compiled);
+        var sigMatch = signature.Match(strippedSource);
+        if (!sigMatch.Success) return null;
+        // Position right AFTER the opening brace.
+        var start = sigMatch.Index + sigMatch.Length;
+        var depth = 1;
+        for (var i = start; i < strippedSource.Length; i++)
         {
-            if (rx.IsMatch(lines[i])) return i + 1;
+            var ch = strippedSource[i];
+            if (ch == '{') depth++;
+            else if (ch == '}')
+            {
+                depth--;
+                if (depth == 0) return strippedSource[start..i];
+            }
         }
-        return 0;
+        // Unbalanced — fail soft so the test doesn't crash on a
+        // half-edited file; treat as no-Up so the caller skips.
+        return null;
+    }
+
+    private static int FindFirstMatchLineInFile(string strippedFullSource, string upBody, Regex rx)
+    {
+        var bodyMatch = rx.Match(upBody);
+        if (!bodyMatch.Success) return 0;
+        // Locate the matched substring in the full file to report a
+        // navigable line number.
+        var matchedText = bodyMatch.Value;
+        var idx = strippedFullSource.IndexOf(matchedText, StringComparison.Ordinal);
+        if (idx < 0) return 0;
+        // Use \r\n + \r + \n splits so Windows checkouts don't bleed \r
+        // into the count and don't shift the reported line off-by-one.
+        var prefix = strippedFullSource[..idx];
+        var lineCount = 1;
+        foreach (var ch in prefix)
+            if (ch == '\n') lineCount++;
+        return lineCount;
     }
 }

@@ -677,7 +677,7 @@ public static class DevelopmentSeed
                 "ModuleName" varchar(100) NOT NULL,
                 "ExceptionType" varchar(500) NOT NULL,
                 "ExceptionMessage" varchar(4000) NOT NULL,
-                "StackTrace" varchar(8000) NULL,
+                "StackTrace" varchar(16000) NULL,
                 "OccurredAtUtc" timestamptz NOT NULL
             )
             """,

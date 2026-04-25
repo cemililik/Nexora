@@ -24,13 +24,16 @@ public sealed class MigrationFailureLogDbContext(
 
         modelBuilder.Entity<MigrationFailure>(e =>
         {
-            e.ToTable("platform_migration_failures");
+            e.ToTable("platform_migration_failures", schema: "public");
             e.HasKey(f => f.Id);
             e.Property(f => f.TenantId).IsRequired();
             e.Property(f => f.ModuleName).HasMaxLength(100).IsRequired();
             e.Property(f => f.ExceptionType).HasMaxLength(500).IsRequired();
             e.Property(f => f.ExceptionMessage).HasMaxLength(4000).IsRequired();
-            e.Property(f => f.StackTrace).HasMaxLength(8000);
+            // Cap matches MigrationFailure.StackTraceMaxLength (T-011 review
+            // round 2: 8000 was too small for typical async + EF + MediatR
+            // chains which trip the truncate branch).
+            e.Property(f => f.StackTrace).HasMaxLength(MigrationFailure.StackTraceMaxLength);
             e.Property(f => f.OccurredAtUtc).IsRequired();
             // Hot lookup pattern from the runbook: "SELECT … WHERE TenantId = X
             // ORDER BY OccurredAtUtc DESC LIMIT N" during ops triage.

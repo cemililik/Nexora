@@ -128,40 +128,48 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             scrubbedNotificationCount = notifications.Count;
         }
 
-        // T-027: GDPR escape hatch — apply the same redaction to any
-        // notifications_*_del_* tables left behind by an earlier module
-        // uninstall (ADR-0028 retention window). The renamed tables share
-        // the canonical schema, so the same SET clause works against
-        // either table name; only the table identifier swaps in.
+        // T-027: GDPR escape hatch — redact PII in any notifications_*_del_*
+        // tables left behind by an earlier module uninstall (ADR-0028
+        // retention window). Two PII-bearing tables exist:
+        //   - notifications_recipients_*: RecipientAddress (PII) + FailureReason
+        //   - notifications_notifications_*: Subject (PII) + BodyRendered (PII)
+        // The notifications_*_del_TS pair shares a timestamp suffix because
+        // they were renamed in the same uninstall transaction; we use the
+        // sibling recipient table as the subquery source so notifications-
+        // level scrub stays scoped to this contact's rows (matches the
+        // canonical-table behavior above).
         await renamedTableScanner.ScanAsync(
             "notifications",
             redactSingleTableAsync: async (renamedTable, innerCt) =>
             {
-                if (!renamedTable.StartsWith("notifications_recipients_del_", StringComparison.Ordinal))
-                    return 0;
-                // Renamed table preserves the canonical column shape — UPDATE
-                // by ContactId, mask RecipientAddress + clear FailureReason.
-                var sql =
-                    $"""UPDATE "{renamedTable}" SET "RecipientAddress" = @placeholder, "FailureReason" = NULL WHERE "ContactId" = @contactId""";
-                var conn = dbContext.Database.GetDbConnection();
-                var openedHere = conn.State != System.Data.ConnectionState.Open;
-                if (openedHere) await conn.OpenAsync(innerCt);
-                try
+                // notifications_recipients_del_<ts> : mask recipient PII.
+                if (renamedTable.StartsWith("notifications_recipients_del_", StringComparison.Ordinal))
                 {
-                    await using var cmd = conn.CreateCommand();
-                    cmd.CommandText = sql;
-                    var p1 = cmd.CreateParameter();
-                    p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
-                    cmd.Parameters.Add(p1);
-                    var p2 = cmd.CreateParameter();
-                    p2.ParameterName = "@contactId"; p2.Value = @event.ContactId;
-                    cmd.Parameters.Add(p2);
-                    return await cmd.ExecuteNonQueryAsync(innerCt);
+                    return await ExecuteParameterisedUpdateAsync(
+                        $"""UPDATE "{renamedTable}" SET "RecipientAddress" = @placeholder, "FailureReason" = NULL WHERE "ContactId" = @contactId""",
+                        @event.ContactId, innerCt);
                 }
-                finally
+                // notifications_notifications_del_<ts> : scope to the
+                // contact's notifications via the sibling renamed
+                // recipients table (same timestamp suffix). If the
+                // sibling does not exist we skip — a renamed parent
+                // notifications table without its recipients table
+                // means the recipient join can't be reconstructed and
+                // we fall back to canonical-table scrubbing only.
+                const string parentPrefix = "notifications_notifications_del_";
+                if (renamedTable.StartsWith(parentPrefix, StringComparison.Ordinal))
                 {
-                    if (openedHere) await conn.CloseAsync();
+                    var ts = renamedTable[parentPrefix.Length..];
+                    var sibling = $"notifications_recipients_del_{ts}";
+                    var sql =
+                        $"""
+                        UPDATE "{renamedTable}"
+                        SET "BodyRendered" = NULL, "Subject" = @placeholder
+                        WHERE "Id" IN (SELECT "NotificationId" FROM "{sibling}" WHERE "ContactId" = @contactId)
+                        """;
+                    return await ExecuteParameterisedUpdateAsync(sql, @event.ContactId, innerCt);
                 }
+                return 0;
             },
             ct: ct);
 
@@ -173,5 +181,30 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
         logger.LogInformation(
             "GDPR erasure event {EventId} for contact {ContactId} in tenant {TenantId}: scrubbed {RecipientCount} recipients across {NotificationCount} notifications (mode={Mode})",
             @event.EventId, @event.ContactId, tenantId, scrubbedRecipientCount, scrubbedNotificationCount, @event.Mode);
+    }
+
+    private async Task<int> ExecuteParameterisedUpdateAsync(string sql, Guid contactId, CancellationToken ct)
+    {
+        var conn = dbContext.Database.GetDbConnection();
+        var openedHere = conn.State != System.Data.ConnectionState.Open;
+        if (openedHere) await conn.OpenAsync(ct);
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            var p1 = cmd.CreateParameter();
+            p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
+            cmd.Parameters.Add(p1);
+            var p2 = cmd.CreateParameter();
+            p2.ParameterName = "@contactId"; p2.Value = contactId;
+            cmd.Parameters.Add(p2);
+            return await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            // EF-owned pooled connection: only close it if we opened it.
+            // Disposing would yank it from the pool prematurely.
+            if (openedHere) await conn.CloseAsync();
+        }
     }
 }

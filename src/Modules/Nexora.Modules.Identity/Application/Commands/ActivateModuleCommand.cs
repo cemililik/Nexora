@@ -52,7 +52,11 @@ public sealed class ActivateModuleHandler(
         }
 
         // Run migration check to ensure tables are up-to-date
-        var schemaName = $"tenant_{request.TenantId:N}";
+        // Canonical platform schema-name format is tenant_{guid:D} (with
+        // hyphens) — see CreateTenantCommand.cs:71 + TenantContext.cs:33.
+        // ":N" would target a non-existent schema and the migration check
+        // would silently no-op against zero tables.
+        var schemaName = $"tenant_{request.TenantId}";
         try
         {
             await schemaManager.MigrateModuleAsync(schemaName, request.ModuleName, ct);

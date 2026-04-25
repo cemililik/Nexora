@@ -139,8 +139,20 @@ public sealed class PostgresGdprRenamedTableScanner<TDbContext>(
     {
         var ctx = tenantContextAccessor.Current;
         if (!string.IsNullOrWhiteSpace(ctx.SchemaName)) return ctx.SchemaName;
-        if (Guid.TryParse(ctx.TenantId, out var g)) return $"tenant_{g:N}";
-        return ctx.TenantId;
+        // Canonical platform schema-name format is tenant_{guid:D} (with
+        // hyphens) — set in CreateTenantCommand and TenantContext. The
+        // earlier ":N" form here would diverge from the actual schema name
+        // when accessor.SchemaName was empty.
+        if (Guid.TryParse(ctx.TenantId, out var g)) return $"tenant_{g}";
+        // Non-GUID TenantId: refuse to guess a schema name — caller has
+        // ITenantContextAccessor wired but populated it with a raw string
+        // that is neither a GUID nor a usable schema. Fail loud instead of
+        // returning a value that would cause the next SQL discovery to hit
+        // a schema we never own.
+        throw new InvalidOperationException(
+            $"GDPR scanner: tenant context has no SchemaName and TenantId '{ctx.TenantId}' is not a GUID; " +
+            "cannot derive a tenant schema name. Caller must set ITenantContextAccessor with a populated SchemaName " +
+            "or with a GUID-shaped TenantId.");
     }
 
     private static void AddParameter(System.Data.Common.DbCommand cmd, string name, object value)

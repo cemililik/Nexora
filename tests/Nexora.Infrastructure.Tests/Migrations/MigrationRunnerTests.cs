@@ -59,29 +59,33 @@ public sealed class MigrationRunnerTests
     }
 
     [Fact]
-    public void MigrationFailure_Create_TruncatesLargeStackTrace()
+    public void MigrationFailure_Truncate_CutsOversizedInputToColumnCap()
     {
-        // The StackTrace column is varchar(8000) — anything larger gets
-        // truncated at the factory so the SaveChangesAsync below never
-        // fails with a column-overflow error in the failure-logging
-        // path (which would silently swallow the original failure).
-        var tenantId = Guid.NewGuid();
-        // Build a synthetic exception whose stack trace exceeds 8000 chars
-        // by chaining captures; easier than emulating: throw + catch
-        // a constructed-string-trace via `ExceptionDispatchInfo`.
-        var ex = new InvalidOperationException("x");
-        try
-        {
-            throw ex;
-        }
-        catch (Exception caught)
-        {
-            // Caught exception now has a real (short) stack trace —
-            // the factory's Truncate runs through that path. We assert
-            // the truncation HELPER directly via reflection-free behaviour:
-            // a long synthetic input must be cut to <= 8000 chars.
-            var failure = MigrationFailure.Create(tenantId, "x", caught);
-            (failure.StackTrace?.Length ?? 0).Should().BeLessOrEqualTo(8000);
-        }
+        // The StackTrace column is varchar(StackTraceMaxLength) — anything
+        // larger gets truncated at the factory so the failure-log INSERT
+        // never raises a column-overflow error in the very path that
+        // exists to record the original failure. Real exceptions rarely
+        // overflow the cap, so we exercise Truncate directly with a
+        // synthetic over-cap input — the previous test passed even when
+        // truncation was a no-op because the synthetic stack trace was a
+        // few hundred chars (review #37).
+        var oversized = new string('x', MigrationFailure.StackTraceMaxLength + 5_000);
+
+        var truncated = MigrationFailure.Truncate(oversized, MigrationFailure.StackTraceMaxLength);
+
+        truncated.Should().NotBeNull();
+        truncated!.Length.Should().Be(MigrationFailure.StackTraceMaxLength,
+            "Truncate must clamp inputs longer than the column cap");
+        truncated.Should().Be(oversized[..MigrationFailure.StackTraceMaxLength]);
+    }
+
+    [Fact]
+    public void MigrationFailure_Truncate_LeavesShorterInputUnchanged()
+    {
+        var input = "short stack trace";
+        MigrationFailure.Truncate(input, MigrationFailure.StackTraceMaxLength)
+            .Should().Be(input);
+        MigrationFailure.Truncate(null, MigrationFailure.StackTraceMaxLength)
+            .Should().BeNull();
     }
 }

@@ -107,36 +107,32 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
 
         // T-027: GDPR escape hatch — apply the same scrub to any
         // documents_*_del_* tables left behind by a previous module
-        // uninstall (ADR-0028 retention window). Renamed signature-recipient
-        // table inherits the canonical column shape, so the same SET clause
-        // works against either table identifier.
+        // uninstall (ADR-0028 retention window). Two PII-bearing tables
+        // exist:
+        //   - documents_signature_recipients_*: Name/Email/IpAddress
+        //   - documents_documents_*: LinkedEntityId/LinkedEntityType
+        //     (drop the back-reference to the contact)
+        // Note the canonical name has an underscore between
+        // "signature" and "recipients" — see SignatureRecipientConfiguration.
         await renamedTableScanner.ScanAsync(
             "documents",
             redactSingleTableAsync: async (renamedTable, innerCt) =>
             {
-                if (!renamedTable.StartsWith("documents_signaturerecipients_del_", StringComparison.Ordinal))
-                    return 0;
-                var sql =
-                    $"""UPDATE "{renamedTable}" SET "Name" = @placeholder, "Email" = @placeholder, "IpAddress" = NULL WHERE "ContactId" = @contactId""";
-                var conn = dbContext.Database.GetDbConnection();
-                var openedHere = conn.State != System.Data.ConnectionState.Open;
-                if (openedHere) await conn.OpenAsync(innerCt);
-                try
+                if (renamedTable.StartsWith("documents_signature_recipients_del_", StringComparison.Ordinal))
                 {
-                    await using var cmd = conn.CreateCommand();
-                    cmd.CommandText = sql;
-                    var p1 = cmd.CreateParameter();
-                    p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
-                    cmd.Parameters.Add(p1);
-                    var p2 = cmd.CreateParameter();
-                    p2.ParameterName = "@contactId"; p2.Value = @event.ContactId;
-                    cmd.Parameters.Add(p2);
-                    return await cmd.ExecuteNonQueryAsync(innerCt);
+                    return await ExecuteScrubAsync(
+                        $"""UPDATE "{renamedTable}" SET "Name" = @placeholder, "Email" = @placeholder, "IpAddress" = NULL WHERE "ContactId" = @contactId""",
+                        @event.ContactId, innerCt);
                 }
-                finally
+                if (renamedTable.StartsWith("documents_documents_del_", StringComparison.Ordinal))
                 {
-                    if (openedHere) await conn.CloseAsync();
+                    // Mirror the canonical-table behavior: keep the
+                    // document, drop the contact back-reference.
+                    return await ExecuteUnlinkAsync(
+                        $"""UPDATE "{renamedTable}" SET "LinkedEntityId" = NULL, "LinkedEntityType" = NULL WHERE "LinkedEntityType" = 'Contact' AND "LinkedEntityId" = @contactId""",
+                        @event.ContactId, innerCt);
                 }
+                return 0;
             },
             ct: ct);
 
@@ -147,5 +143,39 @@ public sealed class ContactGdprDeletedIntegrationEventHandler(
             "Completed ContactGdprDeletedIntegrationEvent for TenantId {TenantId}, ContactId {ContactId}: " +
             "UnlinkedDocuments {UnlinkedCount}, ScrubbedRecipients {ScrubbedCount}",
             @event.TenantId, @event.ContactId, unlinkedCount, scrubbedCount);
+    }
+
+    private Task<int> ExecuteScrubAsync(string sql, Guid contactId, CancellationToken ct)
+        => RunUpdateAsync(sql, contactId, withPlaceholder: true, ct);
+
+    private Task<int> ExecuteUnlinkAsync(string sql, Guid contactId, CancellationToken ct)
+        => RunUpdateAsync(sql, contactId, withPlaceholder: false, ct);
+
+    private async Task<int> RunUpdateAsync(string sql, Guid contactId, bool withPlaceholder, CancellationToken ct)
+    {
+        var conn = dbContext.Database.GetDbConnection();
+        var openedHere = conn.State != System.Data.ConnectionState.Open;
+        if (openedHere) await conn.OpenAsync(ct);
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            if (withPlaceholder)
+            {
+                var p1 = cmd.CreateParameter();
+                p1.ParameterName = "@placeholder"; p1.Value = PiiRedactedPlaceholder.Value;
+                cmd.Parameters.Add(p1);
+            }
+            var p2 = cmd.CreateParameter();
+            p2.ParameterName = "@contactId"; p2.Value = contactId;
+            cmd.Parameters.Add(p2);
+            return await cmd.ExecuteNonQueryAsync(ct);
+        }
+        finally
+        {
+            // EF-owned pooled connection: only close it if we opened it.
+            // Disposing would yank it from the pool prematurely.
+            if (openedHere) await conn.CloseAsync();
+        }
     }
 }

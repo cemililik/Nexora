@@ -189,7 +189,11 @@ public sealed class UninstallModuleHandler(
         var tenantModule = await platformDb.TenantModules
             .FirstAsync(tm => tm.TenantId == tenantId && tm.ModuleName == module.Name, ct);
 
-        var schemaName = $"tenant_{tenantId.Value:N}";
+        // Canonical platform schema-name format is tenant_{guid:D} (with
+        // hyphens) — set in CreateTenantCommand and TenantContext. The
+        // earlier ":N" form here would target a non-existent schema and
+        // every information_schema lookup would silently return zero rows.
+        var schemaName = $"tenant_{tenantId.Value}";
         await module.OnUninstallAsync(
             new TenantInstallContext(tenantId.Value.ToString(), schemaName, null), ct);
 
@@ -226,8 +230,16 @@ public sealed class UninstallModuleHandler(
         }
 
         platformDb.TenantModules.Remove(tenantModule);
-        await platformDb.SaveChangesAsync(ct);
 
+        // OutboxService.EnqueueAsync stages the row WITHOUT calling
+        // SaveChanges — it relies on the caller's unit-of-work to persist
+        // both the domain mutation and the OutboxMessage atomically. The
+        // earlier ordering (SaveChanges → Enqueue → return) flushed the
+        // TenantModule mutation but left the integration event row staged
+        // in the change tracker until the *next* SaveChanges, which never
+        // came on a single-module uninstall — so downstream consumers
+        // never received `ModuleUninstalledIntegrationEvent`. Stage the
+        // event first, then SaveChanges once for both.
         await outbox.EnqueueAsync(new ModuleUninstalledIntegrationEvent
         {
             TenantId = tenantId.Value.ToString(),
@@ -237,6 +249,8 @@ public sealed class UninstallModuleHandler(
             RenamedTableNames = renamedNames,
             UninstalledAtUtc = DateTimeOffset.UtcNow,
         }, ct);
+
+        await platformDb.SaveChangesAsync(ct);
 
         logger.LogInformation("Module {ModuleName} uninstalled for tenant {TenantId}", module.Name, tenantId.Value);
     }
@@ -259,6 +273,15 @@ public sealed class UninstallModuleHandler(
             FailedAtUtc = DateTimeOffset.UtcNow,
         }, ct);
 
+        // SaveChanges before the caller throws CascadePartialFailure;
+        // otherwise the staged failure-event row never reaches the
+        // outbox table and downstream consumers (admin UI, audit) lose
+        // the partial-state signal. The failing module's per-module
+        // transaction has already rolled back, so this SaveChanges only
+        // persists the OutboxMessage row — no domain mutation rides
+        // along on the failing branch.
+        await platformDb.SaveChangesAsync(ct);
+
         logger.LogError(
             "Cascade uninstall FAILED for tenant {TenantId} target {Target} at module {Failed}. " +
             "Forward log (committed): [{Successes}].",
@@ -280,7 +303,7 @@ public sealed class UninstallModuleHandler(
             return ([], []);
         }
 
-        var schemaName = $"tenant_{tenantId:N}";
+        var schemaName = $"tenant_{tenantId}"; // canonical D-format, see comment in UninstallSingleModuleAsync
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd_HHmmss");
         var prefix = $"{moduleName}\\_%";
         var canonical = new List<string>();
